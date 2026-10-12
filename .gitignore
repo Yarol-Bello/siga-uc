@@ -1,0 +1,46 @@
+# ============================================================
+# SIGA-UC - Archivos a ignorar en Git
+# ============================================================
+
+# Dependencias de Node.js
+node_modules/
+package-lock.json
+yarn.lock
+
+# Variables de entorno (¡NUNCA subir a Git!)
+.env
+.env.local
+.env.production
+.env.development
+
+# Builds y compilados
+dist/
+build/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Angular
+.angular/
+.cache/
+
+# PostgreSQL backups con datos sensibles
+database/*_backup.sql
+database/*_dump.sql
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Otros
+*.tmp
+*.bak
+.cache/
