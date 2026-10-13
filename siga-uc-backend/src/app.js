@@ -76,6 +76,10 @@ app.use("/api", academicoRoutes);
 const alumnoRoutes = require("./routes/alumnoRoutes");
 app.use("/api/alumnos", alumnoRoutes);
 
+// Rutas de personal y usuarios
+const personalRoutes = require("./routes/personalRoutes");
+app.use("/api/personal", personalRoutes);
+
 // Rutas de carga curricular
 const cargaCurricularRoutes = require("./routes/cargaCurricularRoutes");
 app.use("/api/carga-curricular", cargaCurricularRoutes);
