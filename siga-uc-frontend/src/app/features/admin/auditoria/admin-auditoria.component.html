@@ -1,0 +1,254 @@
+<div class="auditoria-container">
+
+  <!-- KPIs -->
+  @if (estadisticas()) {
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon total"><i class="fa-solid fa-list-check"></i></div>
+      <div class="kpi-content">
+        <span>Total Eventos</span>
+        <h3>{{ estadisticas()!.total_registros }}</h3>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon usuarios"><i class="fa-solid fa-users"></i></div>
+      <div class="kpi-content">
+        <span>Usuarios Activos</span>
+        <h3>{{ estadisticas()!.total_usuarios }}</h3>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon logins"><i class="fa-solid fa-sign-in-alt"></i></div>
+      <div class="kpi-content">
+        <span>Inicios de Sesión</span>
+        <h3>{{ estadisticas()!.total_logins }}</h3>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon modif"><i class="fa-solid fa-pen-to-square"></i></div>
+      <div class="kpi-content">
+        <span>Modificaciones</span>
+        <h3>{{ estadisticas()!.total_modificaciones }}</h3>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- PESTAÑAS -->
+  <div class="tab-nav">
+    <button class="tab-btn" [class.active]="tabActiva() === 'bitacora'" (click)="cambiarTab('bitacora')">
+      <i class="fa-solid fa-list-check"></i> Bitácora General de Cambios
+    </button>
+    <button class="tab-btn" [class.active]="tabActiva() === 'actas'" (click)="cambiarTab('actas')">
+      <i class="fa-solid fa-lock"></i> Cierre y Firmado de Actas
+    </button>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TAB 1: BITÁCORA DE AUDITORÍA -->
+  <!-- ============================================================ -->
+  @if (tabActiva() === 'bitacora') {
+  <div class="card-container">
+    <!-- Toolbar de filtros -->
+    <div class="table-toolbar">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" placeholder="Buscar por usuario, acción o descripción..." [(ngModel)]="filtroBusqueda"
+          (keyup.enter)="aplicarFiltros()" />
+      </div>
+
+      <div class="filter-group">
+        <select [(ngModel)]="filtroModulo" (change)="aplicarFiltros()">
+          <option value="">Todos los Módulos</option>
+          @for (m of modulos(); track m) {
+          <option [value]="m">{{ m }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <select [(ngModel)]="filtroAccion" (change)="aplicarFiltros()">
+          <option value="">Todas las Acciones</option>
+          <option value="CREAR">Crear</option>
+          <option value="MODIFICAR">Modificar</option>
+          <option value="ANULAR">Anular</option>
+          <option value="LOGIN">Login</option>
+        </select>
+      </div>
+
+      <button class="btn-secondary" (click)="limpiarFiltros()">
+        <i class="fa-solid fa-xmark"></i> Limpiar
+      </button>
+    </div>
+
+    @if (cargando()) {
+    <div class="loading-state">
+      <i class="fa-solid fa-spinner fa-spin"></i>
+      <p>Cargando bitácora...</p>
+    </div>
+    }
+
+    @if (!cargando()) {
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha y Hora</th>
+            <th>Usuario / Rol</th>
+            <th>Módulo</th>
+            <th>Acción</th>
+            <th>Descripción</th>
+            <th>IP</th>
+            <th>Detalles</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (b of bitacora(); track b.id_bitacora) {
+          <tr>
+            <td>{{ b.fecha_hora | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td>
+              <div class="usuario-cell">
+                <strong>{{ b.usuario_nombre || 'Sistema' }}</strong>
+                @if (b.nombre_rol) {
+                <small>{{ b.nombre_rol }}</small>
+                }
+              </div>
+            </td>
+            <td><span class="modulo-badge">{{ b.modulo_afectado }}</span></td>
+            <td>
+              <span class="badge-accion" [ngClass]="getAccionClass(b.accion)">
+                <i class="fa-solid" [ngClass]="getAccionIcon(b.accion)"></i>
+                {{ b.accion }}
+              </span>
+            </td>
+            <td>{{ b.descripcion }}</td>
+            <td><small>{{ b.ip_origen || '—' }}</small></td>
+            <td>
+              <button class="btn-ver" (click)="verDetalle(b)">
+                <i class="fa-solid fa-eye"></i> Ver
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (bitacora().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-inbox"></i>
+      <h3>No hay registros de auditoría</h3>
+      <p>Ajusta los filtros de búsqueda.</p>
+    </div>
+    }
+    }
+  </div>
+  }
+
+  <!-- ============================================================ -->
+  <!-- TAB 2: ACTAS -->
+  <!-- ============================================================ -->
+  @if (tabActiva() === 'actas') {
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-lock"></i>
+        Congelamiento de Notas y Cierre de Actas Bimestrales
+      </h3>
+    </div>
+
+    <p class="section-hint">
+      Al cerrar un bimestre, las calificaciones quedan bloqueadas para edición de docentes.
+    </p>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Periodo Lectivo</th>
+            <th>Grado Escolar</th>
+            <th>Estado del Acta</th>
+            <th>Fecha de Cierre</th>
+            <th>Cerrado Por</th>
+            <th>Acción de Seguridad</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of actas(); track a.id_acta) {
+          <tr>
+            <td><strong>{{ a.periodo }} {{ a.anio_lectivo }}</strong></td>
+            <td>{{ a.nombre_grado || 'Todos los grados' }}</td>
+            <td>
+              <span class="badge-acta" [ngClass]="a.estado === 'CERRADO' ? 'cerrado' : 'abierto'">
+                {{ a.estado }}
+              </span>
+            </td>
+            <td>{{ a.fecha_cierre ? (a.fecha_cierre | date:'dd/MM/yyyy HH:mm') : 'En Cierre...' }}</td>
+            <td>{{ a.cerrado_por_nombre || '—' }}</td>
+            <td>
+              @if (a.estado === 'ABIERTO') {
+              <button class="btn-lock" (click)="cerrarActa(a)">
+                <i class="fa-solid fa-lock"></i> Firmar y Bloquear
+              </button>
+              } @else {
+              <button class="btn-secondary" disabled>
+                <i class="fa-solid fa-shield-halved"></i> Acta Firmada
+              </button>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (actas().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-lock"></i>
+      <h3>No hay actas registradas</h3>
+    </div>
+    }
+  </div>
+  }
+
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL DETALLE DE AUDITORÍA -->
+<!-- ============================================================ -->
+@if (modalDetalle() && registroDetalle()) {
+<div class="modal-overlay" (click)="cerrarModalDetalle()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-magnifying-glass"></i> Detalle Inmutable del Cambio</h3>
+      <button class="modal-close" (click)="cerrarModalDetalle()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detalle-info">
+        <p><strong>Fecha y Hora:</strong> {{ registroDetalle()!.fecha_hora | date:'dd/MM/yyyy HH:mm:ss' }}</p>
+        <p><strong>Usuario:</strong> {{ registroDetalle()!.usuario_nombre || 'Sistema' }}</p>
+        <p><strong>Módulo:</strong> {{ registroDetalle()!.modulo_afectado }}</p>
+        <p><strong>Acción:</strong> {{ registroDetalle()!.accion }}</p>
+        <p><strong>Descripción:</strong> {{ registroDetalle()!.descripcion }}</p>
+      </div>
+
+      <div class="diff-box">
+        <strong>Comparativa de Valores:</strong>
+        <div class="diff-grid">
+          <div class="val-previo">
+            <span>Valor Anterior:</span>
+            <pre>{{ formatearJson(registroDetalle()!.valor_anterior) }}</pre>
+          </div>
+          <div class="val-nuevo">
+            <span>Valor Nuevo:</span>
+            <pre>{{ formatearJson(registroDetalle()!.valor_nuevo) }}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalDetalle()">Cerrar</button>
+    </div>
+  </div>
+</div>
+}

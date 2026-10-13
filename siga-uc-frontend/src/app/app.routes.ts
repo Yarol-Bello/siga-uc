@@ -71,6 +71,13 @@ export const routes: Routes = [
             (m) => m.AdminSiagieComponent,
           ),
       },
+      {
+        path: 'auditoria',
+        loadComponent: () =>
+          import('./features/admin/auditoria/admin-auditoria.component').then(
+            (m) => m.AdminAuditoriaComponent,
+          ),
+      },
     ],
   },
 
