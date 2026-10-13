@@ -1,0 +1,163 @@
+<div class="horario-container">
+  <!-- ESTADO DE CARGA -->
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando tu horario...</p>
+  </div>
+  }
+
+  <!-- ERROR -->
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  <!-- CONTENIDO PRINCIPAL -->
+  @if (!cargando() && !error()) {
+
+  <!-- BANNER INFORMATIVO -->
+  <div class="info-banner">
+    <div class="info-icon">
+      <i class="fa-solid fa-calendar-week"></i>
+    </div>
+    <div class="info-text">
+      <h3>Horario Académico — {{ nombreGrado() }}</h3>
+      <p>Distribución semanal de clases con recesos y almuerzo.</p>
+    </div>
+    <span class="info-badge">Jornada Escolar Completa</span>
+  </div>
+
+  <!-- CARD DEL HORARIO -->
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-calendar-days"></i>
+        Horario Semanal de Clases
+      </h3>
+      <span class="badge-periodo">Periodo 2026</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="horario-table">
+        <thead>
+          <tr>
+            <th class="col-hora">Hora</th>
+            <th>Lunes</th>
+            <th>Martes</th>
+            <th>Miércoles</th>
+            <th>Jueves</th>
+            <th>Viernes</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (bloque of bloques(); track bloque.hora) {
+
+          <!-- FILA ESPECIAL: RECESO O ALMUERZO -->
+          @if (esBloqueEspecial(bloque.lunes) || esBloqueEspecial(bloque.martes) ||
+          esBloqueEspecial(bloque.miercoles) || esBloqueEspecial(bloque.jueves) ||
+          esBloqueEspecial(bloque.viernes)) {
+          <tr class="fila-especial">
+            <td class="hora-cell">{{ bloque.hora }}</td>
+            <td colspan="5" class="especial-cell">
+              <span class="badge-especial recreo">
+                <i class="fa-solid fa-mug-hot"></i>
+                Receso / Almuerzo
+              </span>
+            </td>
+          </tr>
+          }
+
+          <!-- FILA NORMAL: CLASES -->
+          @else {
+          <tr class="fila-clase">
+            <td class="hora-cell">{{ bloque.hora }}</td>
+            <td>
+              @if (bloque.lunes) {
+              <div class="clase-item">
+                <div class="clase-nombre">{{ bloque.lunes.nombre_curso }}</div>
+                <div class="clase-docente">
+                  <i class="fa-solid fa-user-tie"></i>
+                  {{ bloque.lunes.docente_nombre || 'Sin asignar' }}
+                </div>
+              </div>
+              } @else {
+              <span class="celda-vacia">—</span>
+              }
+            </td>
+            <td>
+              @if (bloque.martes) {
+              <div class="clase-item">
+                <div class="clase-nombre">{{ bloque.martes.nombre_curso }}</div>
+                <div class="clase-docente">
+                  <i class="fa-solid fa-user-tie"></i>
+                  {{ bloque.martes.docente_nombre || 'Sin asignar' }}
+                </div>
+              </div>
+              } @else {
+              <span class="celda-vacia">—</span>
+              }
+            </td>
+            <td>
+              @if (bloque.miercoles) {
+              <div class="clase-item">
+                <div class="clase-nombre">{{ bloque.miercoles.nombre_curso }}</div>
+                <div class="clase-docente">
+                  <i class="fa-solid fa-user-tie"></i>
+                  {{ bloque.miercoles.docente_nombre || 'Sin asignar' }}
+                </div>
+              </div>
+              } @else {
+              <span class="celda-vacia">—</span>
+              }
+            </td>
+            <td>
+              @if (bloque.jueves) {
+              <div class="clase-item">
+                <div class="clase-nombre">{{ bloque.jueves.nombre_curso }}</div>
+                <div class="clase-docente">
+                  <i class="fa-solid fa-user-tie"></i>
+                  {{ bloque.jueves.docente_nombre || 'Sin asignar' }}
+                </div>
+              </div>
+              } @else {
+              <span class="celda-vacia">—</span>
+              }
+            </td>
+            <td>
+              @if (bloque.viernes) {
+              <div class="clase-item">
+                <div class="clase-nombre">{{ bloque.viernes.nombre_curso }}</div>
+                <div class="clase-docente">
+                  <i class="fa-solid fa-user-tie"></i>
+                  {{ bloque.viernes.docente_nombre || 'Sin asignar' }}
+                </div>
+              </div>
+              } @else {
+              <span class="celda-vacia">—</span>
+              }
+            </td>
+          </tr>
+          }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (bloques().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-calendar-xmark"></i>
+      <h3>No hay horario registrado</h3>
+      <p>Aún no se ha configurado el horario para tu grado.</p>
+    </div>
+    }
+
+    <div class="footer-info">
+      <i class="fa-solid fa-circle-info"></i>
+      <span>Jornada Escolar Completa (JEC) — Asistencia obligatoria por bloques.</span>
+    </div>
+  </div>
+  }
+</div>

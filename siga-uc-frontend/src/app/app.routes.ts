@@ -116,6 +116,13 @@ export const routes: Routes = [
             (m) => m.EstudianteAsistenciaComponent,
           ),
       },
+      {
+        path: 'horario',
+        loadComponent: () =>
+          import('./features/estudiante/horario/estudiante-horario.component').then(
+            (m) => m.EstudianteHorarioComponent,
+          ),
+      },
     ],
   },
 

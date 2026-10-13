@@ -19,6 +19,14 @@ router.get("/grados", academicoController.listarGrados);
 router.get("/grados/:id", academicoController.obtenerGrado);
 
 // ============================================================
+// HORARIOS
+// ============================================================
+router.get(
+  "/horarios/grado/:id_grado",
+  academicoController.listarHorariosPorGrado,
+);
+
+// ============================================================
 // CURSOS
 // ============================================================
 router.get("/cursos", academicoController.listarCursos);

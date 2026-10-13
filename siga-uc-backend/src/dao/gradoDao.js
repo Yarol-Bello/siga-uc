@@ -76,8 +76,44 @@ const getTutor = async (id_grado) => {
   return result.rows[0] || null;
 };
 
+/**
+ * Listar horarios de un grado con curso y docente
+ */
+const listarHorariosPorGrado = async (id_grado) => {
+  const sql = `
+    SELECT 
+      h.id_horario,
+      h.dia_semana,
+      h.hora_inicio,
+      h.hora_fin,
+      h.tipo_bloque,
+      c.id_curso,
+      c.nombre_curso,
+      c.area_academica,
+      u.nombres || ' ' || u.apellidos AS docente_nombre
+    FROM horarios h
+    LEFT JOIN cursos c ON c.id_curso = h.id_curso
+    LEFT JOIN personal p ON p.id_personal = h.id_personal
+    LEFT JOIN usuarios u ON u.id_usuario = p.id_usuario
+    WHERE h.id_grado = $1
+    ORDER BY 
+      CASE h.dia_semana 
+        WHEN 'Lunes' THEN 1
+        WHEN 'Martes' THEN 2
+        WHEN 'Miércoles' THEN 3
+        WHEN 'Jueves' THEN 4
+        WHEN 'Viernes' THEN 5
+        WHEN 'Sábado' THEN 6
+      END,
+      h.hora_inicio
+  `;
+  const result = await query(sql, [id_grado]);
+  return result.rows;
+};
+
 module.exports = {
   listar,
   findById,
   getTutor,
+  listarHorariosPorGrado,
 };

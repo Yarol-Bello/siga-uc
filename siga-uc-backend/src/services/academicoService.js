@@ -81,6 +81,13 @@ const listarEscalaCalificacion = async () => {
   return await cursoDao.listarEscalaCalificacion();
 };
 
+/**
+ * Listar horarios de un grado
+ */
+const listarHorariosPorGrado = async (id_grado) => {
+  return await gradoDao.listarHorariosPorGrado(id_grado);
+};
+
 module.exports = {
   listarGrados,
   obtenerGrado,
@@ -88,4 +95,5 @@ module.exports = {
   obtenerCurso,
   listarCompetencias,
   listarEscalaCalificacion,
+  listarHorariosPorGrado,
 };

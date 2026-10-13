@@ -99,6 +99,21 @@ const listarEscalaCalificacion = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/horarios/grado/:id_grado
+ * Listar el horario de un grado
+ */
+const listarHorariosPorGrado = async (req, res) => {
+  try {
+    const { id_grado } = req.params;
+    const data = await academicoService.listarHorariosPorGrado(id_grado);
+    return response.success(res, 200, "Horario del grado obtenido", data);
+  } catch (error) {
+    console.error("❌ Error al listar horario:", error);
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
 module.exports = {
   listarGrados,
   obtenerGrado,
@@ -106,4 +121,5 @@ module.exports = {
   obtenerCurso,
   listarCompetencias,
   listarEscalaCalificacion,
+  listarHorariosPorGrado,
 };
