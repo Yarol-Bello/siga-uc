@@ -67,6 +67,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
   formaPago = signal('Efectivo');
   nroOperacion = signal('');
   procesando = signal(false);
+  esCobroMatricula = signal(false);
 
   // Meses del año
   meses = [
@@ -181,6 +182,10 @@ export class SecretariaTesoreriaComponent implements OnInit {
     this.montoCobro.set(monto);
     this.formaPago.set('Efectivo');
     this.nroOperacion.set('');
+
+    const esMatricula = concepto.toLowerCase().includes('matrícula');
+    this.esCobroMatricula.set(esMatricula);
+
     this.modalCobro.set(true);
   }
 
@@ -203,13 +208,40 @@ export class SecretariaTesoreriaComponent implements OnInit {
 
     this.procesando.set(true);
 
-    // Obtener el concepto correspondiente (buscar por mes)
-    const conceptoMes = 10; // Octubre por defecto
-    const idConcepto = 9; // ID del concepto de pensión Octubre
+    // Mapeo de conceptos a sus IDs reales en la BD
+    const conceptosMap: { [key: string]: number } = {
+      'Matrícula Escolar 2026': 1,
+      'Pensión Octubre 2026': 9,
+      'Pensión Noviembre 2026': 10,
+      'Pensión Diciembre 2026': 11,
+    };
+
+    const idConcepto = conceptosMap[this.conceptoCobro()] || 9;
+
+    // 👇 BUSCAR LA PENSIÓN CORRESPONDIENTE
+    let idPension: number | null = null;
+    const match = this.conceptoCobro().match(/Pensión (\w+)/);
+
+    if (match) {
+      const mesesMap: { [key: string]: number } = {
+        Octubre: 10,
+        Noviembre: 11,
+        Diciembre: 12,
+      };
+      const mes = mesesMap[match[1]];
+
+      if (mes) {
+        const pension = alumno.pensiones.find((p) => p.mes === mes);
+        if (pension) {
+          idPension = pension.id_pension;
+        }
+      }
+    }
 
     const payload = {
       id_alumno: alumno.id_alumno,
       id_concepto: idConcepto,
+      id_pension: idPension, // 👈 Enviar el id_pension al backend
       monto: this.montoCobro(),
       forma_pago: this.formaPago(),
       nro_operacion: this.nroOperacion(),
@@ -222,6 +254,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
           alert(
             `✅ Cobro registrado exitosamente\n\n` +
               `Estudiante: ${alumno.nombre_completo}\n` +
+              `Concepto: ${this.conceptoCobro()}\n` +
               `Monto: S/ ${this.montoCobro()}\n` +
               `Forma de pago: ${this.formaPago()}\n` +
               `Boleta: ${res.data.boleta.numero_boleta}`,
