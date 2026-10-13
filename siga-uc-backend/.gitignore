@@ -24,3 +24,6 @@ desktop.ini
 # VS Code
 .vscode/
 *.code-workspace
+
+# Uploads temporales
+uploads/

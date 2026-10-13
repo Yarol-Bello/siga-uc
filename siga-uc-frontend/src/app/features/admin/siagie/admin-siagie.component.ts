@@ -140,18 +140,51 @@ export class AdminSiagieComponent implements OnInit {
     document.getElementById('fileSiagie')?.click();
   }
 
+  /**
+   * Generar y descargar el Excel SIAGIE inyectado con las notas reales
+   */
   generarExcel(): void {
-    const grado = this.grados().find((g) => g.id_grado === this.gradoSeleccionado());
-    const nombreGrado = grado ? grado.nombre_grado.replace(/\s+/g, '_') : 'GRADO';
+    if (!this.archivoCargado() || !this.analisisCompletado()) {
+      alert('⚠️ Primero debes cargar la plantilla del SIAGIE.');
+      return;
+    }
 
-    alert(
-      `📊 Generando Excel SIAGIE inyectado...\n\n` +
-        `Archivo: SIAGIE_${nombreGrado}_BIM${this.bimestre()}_2026.xlsx\n` +
-        `Grado: ${grado?.nombre_grado}\n` +
-        `Bimestre: ${this.bimestre()}\n\n` +
-        `Las notas finales registradas por los docentes se inyectarán en las celdas correspondientes.\n\n` +
-        `✅ Archivo listo para subir al portal del SIAGIE.`,
-    );
+    const archivo = this.archivoCargado()!;
+    const formData = new FormData();
+    formData.append('plantilla', archivo);
+    formData.append('id_grado', this.gradoSeleccionado().toString());
+    formData.append('bimestre', this.bimestre().toString());
+    formData.append('anio_lectivo', '2026');
+
+    // Llamar al backend y descargar el archivo
+    this.http
+      .post(
+        `${environment.apiUrl}/siagie/generar-excel`,
+        formData,
+        { responseType: 'blob' }, // El backend devuelve un archivo binario
+      )
+      .subscribe({
+        next: (blob: Blob) => {
+          // Crear enlace de descarga automática
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `SIAGIE_BIM${this.bimestre()}_2026.xlsx`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+
+          alert('✅ Excel SIAGIE generado y descargado exitosamente.');
+        },
+        error: (err) => {
+          console.error('❌ Error al generar Excel:', err);
+          alert(
+            '❌ Error al generar el Excel: ' +
+              (err.error?.message || 'Verifica la consola del navegador.'),
+          );
+        },
+      });
   }
 
   estaCompleto(item: AuditoriaDocente): boolean {

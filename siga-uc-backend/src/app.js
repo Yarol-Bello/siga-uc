@@ -108,6 +108,10 @@ app.use("/api/reportes", reporteRoutes);
 const auditoriaRoutes = require("./routes/auditoriaRoutes");
 app.use("/api/auditoria", auditoriaRoutes);
 
+// Rutas de exportación SIAGIE
+const siagieRoutes = require("./routes/siagieRoutes");
+app.use("/api/siagie", siagieRoutes);
+
 // Rutas de notificaciones
 const notificacionRoutes = require("./routes/notificacionRoutes");
 app.use("/api/notificaciones", notificacionRoutes);
