@@ -1,0 +1,44 @@
+<div class="construccion-wrapper">
+  <div class="construccion-card">
+    <div class="icon-container">
+      <i class="fa-solid fa-screwdriver-wrench"></i>
+    </div>
+
+    <h1>🚧 En Construcción 🚧</h1>
+
+    <p class="subtitle">
+      Hola <strong>{{ usuario()?.nombre_completo }}</strong>
+      <span class="badge">{{ rol }}</span>
+    </p>
+
+    <p class="message">
+      El panel para el rol <strong>{{ rol }}</strong> está en desarrollo.
+      Estará disponible próximamente con todos los módulos específicos de tu rol.
+    </p>
+
+    <div class="info-list">
+      <p><strong>Estado de tu login:</strong> ✅ Exitoso</p>
+      <p><strong>Token JWT:</strong> ✅ Guardado</p>
+      <p><strong>Rol asignado:</strong> {{ rol }}</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" (click)="logout()">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Cerrar Sesión
+      </button>
+    </div>
+
+    <div class="progress-info">
+      <p>Progreso del proyecto:</p>
+      <ul>
+        <li>✅ Backend completo</li>
+        <li>✅ Login funcional</li>
+        <li>✅ Dashboard Admin</li>
+        <li>⏳ Dashboard Docente (en desarrollo)</li>
+        <li>⏳ Dashboard Estudiante (en desarrollo)</li>
+        <li>⏳ Dashboard Secretaría (en desarrollo)</li>
+      </ul>
+    </div>
+  </div>
+</div>

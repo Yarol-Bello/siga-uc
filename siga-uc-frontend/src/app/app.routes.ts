@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
 
 /**
  * Rutas principales de SIGA-UC
@@ -19,9 +21,10 @@ export const routes: Routes = [
       import('./features/auth/login/login.component').then((m) => m.LoginComponent),
   },
 
-  // Rutas del Administrador (con layout)
+  // Rutas del Administrador (protegidas + rol ADMIN)
   {
     path: 'admin',
+    canActivate: [authGuard, roleGuard(['ADMIN'])],
     loadComponent: () =>
       import('./features/admin/layout/admin-layout.component').then((m) => m.AdminLayoutComponent),
     children: [
@@ -32,11 +35,20 @@ export const routes: Routes = [
             (m) => m.DashboardComponent,
           ),
       },
-      // Aquí agregaremos más rutas del admin después:
+      // Próximamente:
       // { path: 'alumnos', loadComponent: () => ... },
       // { path: 'personal', loadComponent: () => ... },
-      // etc.
     ],
+  },
+
+  // Ruta temporal para roles sin dashboard
+  {
+    path: 'en-construccion',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/en-construccion/en-construccion.component').then(
+        (m) => m.EnConstruccionComponent,
+      ),
   },
 
   // Ruta comodín

@@ -1,0 +1,135 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.construccion-wrapper {
+  width: 100%;
+  max-width: 600px;
+}
+
+.construccion-card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+  padding: 50px 40px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+}
+
+.icon-container {
+  width: 100px;
+  height: 100px;
+  background: rgba(128, 0, 32, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 25px;
+
+  i {
+    font-size: 3rem;
+    color: #800020;
+  }
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 15px;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #1e293b;
+  margin-bottom: 15px;
+
+  strong {
+    color: #800020;
+  }
+
+  .badge {
+    display: inline-block;
+    background: rgba(128, 0, 32, 0.1);
+    color: #800020;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-left: 5px;
+    text-transform: uppercase;
+  }
+}
+
+.message {
+  font-size: 0.9rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 25px;
+}
+
+.info-list {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 25px;
+  text-align: left;
+
+  p {
+    font-size: 0.85rem;
+    color: #1e293b;
+    margin: 6px 0;
+  }
+}
+
+.btn-primary {
+  background: #800020;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #600018;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(128, 0, 32, 0.3);
+  }
+}
+
+.progress-info {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+  text-align: left;
+
+  p {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 10px;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+
+    li {
+      font-size: 0.83rem;
+      color: #64748b;
+      padding: 4px 0;
+    }
+  }
+}
