@@ -127,6 +127,14 @@ export const routes: Routes = [
             (m) => m.SecretariaDashboardComponent,
           ),
       },
+      
+      {
+        path: 'tesoreria',
+        loadComponent: () =>
+          import('./features/secretaria/tesoreria/secretaria-tesoreria.component').then(
+            (m) => m.SecretariaTesoreriaComponent,
+          ),
+      },
     ],
   },
 
