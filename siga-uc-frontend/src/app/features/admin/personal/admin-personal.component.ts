@@ -63,6 +63,7 @@ export class AdminPersonalComponent implements OnInit {
     nombres: '',
     apellidos: '',
     correo_institucional: '',
+    correo_personal: '',
     telefono: '',
     id_rol: 2,
     especialidad: '',
@@ -157,6 +158,7 @@ export class AdminPersonalComponent implements OnInit {
       nombres: '',
       apellidos: '',
       correo_institucional: '',
+      correo_personal: '',
       telefono: '',
       id_rol: 2,
       especialidad: '',
@@ -178,6 +180,11 @@ export class AdminPersonalComponent implements OnInit {
     }
     if (!this.formNuevo.nombres || !this.formNuevo.apellidos) {
       this.errorNuevo.set('Nombres y apellidos son obligatorios');
+      return;
+    }
+
+    if (!this.formNuevo.correo_personal || !this.formNuevo.correo_personal.includes('@')) {
+      this.errorNuevo.set('El correo personal es obligatorio (para notificaciones y recuperación)');
       return;
     }
 

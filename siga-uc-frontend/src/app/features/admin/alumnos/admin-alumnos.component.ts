@@ -183,6 +183,13 @@ export class AdminAlumnosComponent implements OnInit {
       this.errorMatricula.set('Debe seleccionar un grado');
       return;
     }
+    if (
+      !this.nuevaMatricula.apoderado.correo ||
+      !this.nuevaMatricula.apoderado.correo.includes('@')
+    ) {
+      this.errorMatricula.set('El correo personal del apoderado es obligatorio');
+      return;
+    }
 
     this.guardando.set(true);
     this.errorMatricula.set(null);

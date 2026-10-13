@@ -50,6 +50,7 @@ const listar = async (filtros = {}) => {
       u.apellidos,
       u.nombres || ' ' || u.apellidos AS nombre_completo,
       u.correo_institucional,
+      u.correo_personal,
       u.telefono,
       u.estado,
       u.ultimo_login,
@@ -74,7 +75,8 @@ const findById = async (id) => {
   const sql = `
     SELECT 
       p.*,
-      u.id_usuario, u.dni, u.nombres, u.apellidos, u.correo_institucional,
+      u.id_usuario, u.dni, u.nombres, u.apellidos,
+      u.correo_institucional, u.correo_personal,
       u.telefono, u.estado, u.requiere_cambio_password,
       r.id_rol, r.nombre_rol, r.descripcion AS rol_descripcion
     FROM personal p
@@ -109,15 +111,18 @@ const crear = async (data) => {
   try {
     await client.query("BEGIN");
 
-    // 1. Generar correo si no lo envían
+    // 1. Generar correo institucional si no lo envían
     const correoGenerado =
       data.correo_institucional ||
       `${data.nombres.toLowerCase().replace(/\s+/g, "")}.${data.apellidos.toLowerCase().replace(/\s+/g, "")}@unioncientifica.edu.pe`;
 
-    // 2. Crear usuario
+    // 2. Crear usuario (con correo_personal)
     const usuarioSql = `
-      INSERT INTO usuarios (dni, nombres, apellidos, correo_institucional, password_hash, telefono, id_rol, estado)
-      VALUES ($1, $2, $3, $4, crypt($5, gen_salt('bf', 10)), $6, $7, 'ACTIVO')
+      INSERT INTO usuarios (
+        dni, nombres, apellidos, correo_institucional, correo_personal,
+        password_hash, telefono, id_rol, estado
+      )
+      VALUES ($1, $2, $3, $4, $5, crypt($6, gen_salt('bf', 10)), $7, $8, 'ACTIVO')
       RETURNING id_usuario
     `;
     const usuarioResult = await client.query(usuarioSql, [
@@ -125,6 +130,7 @@ const crear = async (data) => {
       data.nombres,
       data.apellidos,
       correoGenerado,
+      data.correo_personal || null,
       data.password || "UC2026*",
       data.telefono || null,
       data.id_rol,
@@ -166,6 +172,7 @@ const crear = async (data) => {
       dni: data.dni,
       nombre_completo: `${data.nombres} ${data.apellidos}`,
       correo_institucional: correoGenerado,
+      correo_personal: data.correo_personal || null,
       password_temporal: data.password || "UC2026*",
     };
   } catch (error) {
@@ -190,14 +197,16 @@ const actualizar = async (id_personal, data) => {
         nombres = COALESCE($1, nombres),
         apellidos = COALESCE($2, apellidos),
         correo_institucional = COALESCE($3, correo_institucional),
-        telefono = COALESCE($4, telefono),
-        id_rol = COALESCE($5, id_rol)
-      WHERE id_usuario = (SELECT id_usuario FROM personal WHERE id_personal = $6)
+        correo_personal = COALESCE($4, correo_personal),
+        telefono = COALESCE($5, telefono),
+        id_rol = COALESCE($6, id_rol)
+      WHERE id_usuario = (SELECT id_usuario FROM personal WHERE id_personal = $7)
     `;
     await client.query(usuarioSql, [
       data.nombres,
       data.apellidos,
       data.correo_institucional,
+      data.correo_personal,
       data.telefono,
       data.id_rol,
       id_personal,

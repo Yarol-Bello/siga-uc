@@ -266,9 +266,12 @@
               placeholder="Ej. 987654321" />
           </div>
           <div class="form-group">
-            <label>Correo</label>
+            <label>Correo Personal del Apoderado *</label>
             <input type="email" [(ngModel)]="nuevaMatricula.apoderado.correo" name="apo_correo"
-              placeholder="correo@ejemplo.com" />
+              placeholder="correo@gmail.com" required />
+            <small style="color: #64748B; font-size: 0.72rem;">
+              Se usará para notificaciones y recuperación de contraseña del alumno
+            </small>
           </div>
         </div>
 

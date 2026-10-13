@@ -5,6 +5,9 @@
 
 const { query, getClient } = require("../config/database");
 
+/**
+ * Listar alumnos con filtros
+ */
 const listar = async (filtros = {}) => {
   const conditions = [];
   const params = [];
@@ -42,7 +45,8 @@ const listar = async (filtros = {}) => {
       g.nombre_grado, g.seccion,
       a.id_apoderado,
       ap.nombres || ' ' || ap.apellidos AS apoderado_nombre,
-      ap.telefono AS apoderado_telefono
+      ap.telefono AS apoderado_telefono,
+      ap.correo AS apoderado_correo
     FROM alumnos a
     LEFT JOIN grados g ON g.id_grado = a.id_grado
     LEFT JOIN apoderados ap ON ap.id_apoderado = a.id_apoderado
@@ -54,6 +58,9 @@ const listar = async (filtros = {}) => {
   return result.rows;
 };
 
+/**
+ * Buscar alumno por ID
+ */
 const findById = async (id) => {
   const sql = `
     SELECT 
@@ -74,6 +81,9 @@ const findById = async (id) => {
   return result.rows[0] || null;
 };
 
+/**
+ * Buscar alumno por DNI
+ */
 const findByDni = async (dni) => {
   const sql = `
     SELECT 
@@ -88,6 +98,9 @@ const findByDni = async (dni) => {
   return result.rows[0] || null;
 };
 
+/**
+ * Obtener el siguiente código de estudiante
+ */
 const getSiguienteCodigo = async () => {
   const sql = `
     SELECT MAX(CAST(SUBSTRING(codigo_estudiante FROM 5) AS INTEGER)) AS max_codigo
@@ -98,11 +111,15 @@ const getSiguienteCodigo = async () => {
   return `EST-${String(next).padStart(3, "0")}`;
 };
 
+/**
+ * Crear un alumno (transacción: apoderado + usuario + alumno + expediente + QR)
+ */
 const crear = async (data) => {
   const client = await getClient();
   try {
     await client.query("BEGIN");
 
+    // 1. Crear apoderado (opcional)
     let id_apoderado = null;
     if (data.apoderado && data.apoderado.nombres) {
       const apoderadoSql = `
@@ -119,13 +136,22 @@ const crear = async (data) => {
       id_apoderado = apoderadoResult.rows[0].id_apoderado;
     }
 
+    // 2. Generar correo institucional
     const correoGenerado =
       data.correo_institucional ||
       `${data.nombres.toLowerCase().replace(/\s+/g, "")}.${data.apellidos.toLowerCase().replace(/\s+/g, "")}@unioncientifica.edu.pe`;
 
+    // 3. Determinar correo personal (prioridad: alumno, si no, apoderado)
+    const correoPersonal =
+      data.correo_personal || (data.apoderado && data.apoderado.correo) || null;
+
+    // 4. Crear usuario
     const usuarioSql = `
-      INSERT INTO usuarios (dni, nombres, apellidos, correo_institucional, password_hash, telefono, id_rol, estado)
-      VALUES ($1, $2, $3, $4, crypt($5, gen_salt('bf', 10)), $6,
+      INSERT INTO usuarios (
+        dni, nombres, apellidos, correo_institucional, correo_personal,
+        password_hash, telefono, id_rol, estado
+      )
+      VALUES ($1, $2, $3, $4, $5, crypt($6, gen_salt('bf', 10)), $7,
         (SELECT id_rol FROM roles WHERE nombre_rol = 'ESTUDIANTE'), 'ACTIVO')
       RETURNING id_usuario
     `;
@@ -134,13 +160,16 @@ const crear = async (data) => {
       data.nombres,
       data.apellidos,
       correoGenerado,
+      correoPersonal,
       "UC" + data.dni,
       data.telefono || null,
     ]);
     const id_usuario = usuarioResult.rows[0].id_usuario;
 
+    // 5. Generar código estudiante
     const codigo = await getSiguienteCodigo();
 
+    // 6. Crear alumno
     const alumnoSql = `
       INSERT INTO alumnos (
         id_usuario, dni, nombres, apellidos, fecha_nacimiento,
@@ -165,11 +194,13 @@ const crear = async (data) => {
     ]);
     const id_alumno = alumnoResult.rows[0].id_alumno;
 
+    // 7. Crear expediente
     await client.query(
       `INSERT INTO expediente_alumno (id_alumno, nivel_logro_actual, asistencia_acumulada) VALUES ($1, NULL, 0)`,
       [id_alumno],
     );
 
+    // 8. Crear credencial QR
     await client.query(
       `INSERT INTO credenciales_qr (id_usuario, codigo_qr, tipo)
        VALUES ($1, 'QR-' || $2 || '-' || UPPER(MD5($2 || 'SIGAUC')), 'ESTUDIANTE')`,
@@ -186,6 +217,7 @@ const crear = async (data) => {
       nombre_completo: `${data.nombres} ${data.apellidos}`,
       password_temporal: "UC" + data.dni,
       correo_institucional: correoGenerado,
+      correo_personal: correoPersonal,
     };
   } catch (error) {
     await client.query("ROLLBACK");
@@ -195,6 +227,9 @@ const crear = async (data) => {
   }
 };
 
+/**
+ * Actualizar alumno
+ */
 const actualizar = async (id, data) => {
   const sql = `
     UPDATE alumnos SET
@@ -218,6 +253,9 @@ const actualizar = async (id, data) => {
   return result.rows[0] || null;
 };
 
+/**
+ * Registrar retiro
+ */
 const retirar = async (id, data) => {
   const sql = `
     UPDATE alumnos SET
@@ -238,6 +276,9 @@ const retirar = async (id, data) => {
   return result.rows[0] || null;
 };
 
+/**
+ * Cambiar estado de matrícula
+ */
 const cambiarEstado = async (id, nuevoEstado) => {
   const sql = `UPDATE alumnos SET estado_matricula = $1 WHERE id_alumno = $2 RETURNING *`;
   const result = await query(sql, [nuevoEstado, id]);
