@@ -1,0 +1,180 @@
+<div class="alumnos-container">
+  <!-- BARRA DE FILTROS -->
+  <div class="filter-toolbar">
+    <div class="search-box">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" placeholder="Buscar por DNI, nombres o apellidos..." [(ngModel)]="busqueda"
+        (keyup.enter)="aplicarFiltros()" />
+    </div>
+
+    <div class="filter-group">
+      <select [(ngModel)]="filtroGrado" (change)="aplicarFiltros()">
+        <option value="">Todos los Grados</option>
+        <option value="1">1ro de Secundaria</option>
+        <option value="2">2do de Secundaria</option>
+        <option value="3">3ro de Secundaria</option>
+        <option value="4">4to de Secundaria</option>
+        <option value="5">5to de Secundaria</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <select [(ngModel)]="filtroEstado" (change)="aplicarFiltros()">
+        <option value="">Todos los Estados</option>
+        <option value="Matriculado">Matriculados</option>
+        <option value="PendientePago">Pendientes de Pago</option>
+        <option value="Retirado">Retirados</option>
+      </select>
+    </div>
+
+    <button class="btn-secondary" (click)="limpiarFiltros()">
+      <i class="fa-solid fa-xmark"></i> Limpiar
+    </button>
+
+    <button class="btn-primary" (click)="nuevaMatricula()">
+      <i class="fa-solid fa-user-plus"></i> Nueva Matrícula
+    </button>
+  </div>
+
+  <!-- ESTADO CARGA -->
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando alumnos...</p>
+  </div>
+  }
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  <!-- TABLA DE ALUMNOS -->
+  @if (!cargando() && !error()) {
+  <div class="card-container">
+    <div class="table-header">
+      <h3>
+        <i class="fa-solid fa-users"></i>
+        Padrón de Alumnos — Año Lectivo 2026
+      </h3>
+      <span class="badge-count">{{ alumnos().length }} estudiantes</span>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>DNI</th>
+            <th>Apellidos y Nombres</th>
+            <th>Grado</th>
+            <th>Apoderado</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (alumno of alumnos(); track alumno.id_alumno) {
+          <tr>
+            <td><span class="codigo">{{ alumno.codigo_estudiante }}</span></td>
+            <td>{{ alumno.dni }}</td>
+            <td><strong>{{ alumno.nombre_completo }}</strong></td>
+            <td>{{ alumno.nombre_grado }}</td>
+            <td>
+              <div class="apoderado-info">
+                <span>{{ alumno.apoderado_nombre || 'No registrado' }}</span>
+                @if (alumno.apoderado_telefono) {
+                <small><i class="fa-solid fa-phone"></i> {{ alumno.apoderado_telefono }}</small>
+                }
+              </div>
+            </td>
+            <td>
+              <span class="badge-estado" [ngClass]="{
+                      'matriculado': alumno.estado_matricula === 'Matriculado',
+                      'pendiente': alumno.estado_matricula === 'PendientePago',
+                      'retirado': alumno.estado_matricula === 'Retirado'
+                    }">
+                {{ alumno.estado_matricula }}
+              </span>
+            </td>
+            <td>
+              <div class="action-icons">
+                <i class="fa-solid fa-eye" (click)="verDetalle(alumno)" title="Ver Ficha"></i>
+              </div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (alumnos().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-users-slash"></i>
+      <h3>No se encontraron alumnos</h3>
+      <p>Ajusta los filtros de búsqueda.</p>
+    </div>
+    }
+  </div>
+  }
+</div>
+
+<!-- MODAL DE FICHA DEL ALUMNO -->
+@if (modalAbierto() && alumnoSeleccionado()) {
+<div class="modal-overlay" (click)="cerrarModal()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-id-card"></i> Ficha del Estudiante</h3>
+      <button class="modal-close" (click)="cerrarModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="ficha-header">
+        <div class="ficha-avatar">{{ alumnoSeleccionado()!.nombres.charAt(0) }}{{
+          alumnoSeleccionado()!.apellidos.charAt(0) }}</div>
+        <div>
+          <h4>{{ alumnoSeleccionado()!.nombre_completo }}</h4>
+          <p class="ficha-codigo">{{ alumnoSeleccionado()!.codigo_estudiante }}</p>
+        </div>
+      </div>
+
+      <div class="ficha-grid">
+        <div class="ficha-item">
+          <label>DNI:</label>
+          <strong>{{ alumnoSeleccionado()!.dni }}</strong>
+        </div>
+        <div class="ficha-item">
+          <label>Fecha Nacimiento:</label>
+          <strong>{{ alumnoSeleccionado()!.fecha_nacimiento | date:'dd/MM/yyyy' }}</strong>
+        </div>
+        <div class="ficha-item">
+          <label>Grado:</label>
+          <strong>{{ alumnoSeleccionado()!.nombre_grado }}</strong>
+        </div>
+        <div class="ficha-item">
+          <label>Condición:</label>
+          <strong>{{ alumnoSeleccionado()!.condicion }}</strong>
+        </div>
+        <div class="ficha-item">
+          <label>Estado:</label>
+          <strong>{{ alumnoSeleccionado()!.estado_matricula }}</strong>
+        </div>
+        <div class="ficha-item">
+          <label>Apoderado:</label>
+          <strong>{{ alumnoSeleccionado()!.apoderado_nombre || 'No registrado' }}</strong>
+        </div>
+        @if (alumnoSeleccionado()!.apoderado_telefono) {
+        <div class="ficha-item">
+          <label>Teléfono Apoderado:</label>
+          <strong>{{ alumnoSeleccionado()!.apoderado_telefono }}</strong>
+        </div>
+        }
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+}

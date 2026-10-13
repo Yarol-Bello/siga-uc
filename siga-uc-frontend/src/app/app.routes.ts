@@ -24,6 +24,14 @@ export const routes: Routes = [
             (m) => m.DashboardComponent,
           ),
       },
+      // 👇 AQUÍ VA ALUMNOS (dentro del bloque admin)
+      {
+        path: 'alumnos',
+        loadComponent: () =>
+          import('./features/admin/alumnos/admin-alumnos.component').then(
+            (m) => m.AdminAlumnosComponent,
+          ),
+      },
     ],
   },
 
@@ -65,17 +73,7 @@ export const routes: Routes = [
     ],
   },
 
-  // EN CONSTRUCCIÓN
-  {
-    path: 'en-construccion',
-    canActivate: [authGuard],
-    loadComponent: () =>
-      import('./features/en-construccion/en-construccion.component').then(
-        (m) => m.EnConstruccionComponent,
-      ),
-  },
-
-  // SECRETARÍA
+  // SECRETARÍA (SIN la ruta de alumnos)
   {
     path: 'secretaria',
     canActivate: [authGuard, roleGuard(['SECRETARIA'])],
@@ -92,6 +90,16 @@ export const routes: Routes = [
           ),
       },
     ],
+  },
+
+  // EN CONSTRUCCIÓN
+  {
+    path: 'en-construccion',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/en-construccion/en-construccion.component').then(
+        (m) => m.EnConstruccionComponent,
+      ),
   },
 
   { path: '**', redirectTo: 'login' },

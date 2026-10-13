@@ -3,10 +3,6 @@ import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 
-/**
- * Componente Sidebar (menú lateral)
- * SIGA-UC - Sistema Integrado de Gestión Académica
- */
 @Component({
   selector: 'app-sidebar',
   standalone: true,
@@ -22,9 +18,7 @@ export class SidebarComponent {
 
   usuario = this.authService.usuario;
 
-  /**
-   * Definición de los módulos por rol
-   */
+  // 👇 AQUÍ ESTÁ EL ARRAY menuItems 👇
   menuItems = [
     { path: '/admin', label: 'Resumen Ejecutivo', icon: 'fa-chart-pie', roles: ['ADMIN'] },
     {
@@ -32,7 +26,7 @@ export class SidebarComponent {
       label: 'Padrón de Alumnos',
       icon: 'fa-users',
       roles: ['ADMIN', 'SECRETARIA'],
-    },
+    }, // ← ESTA LÍNEA
     {
       path: '/admin/personal',
       label: 'Personal & Usuarios',
@@ -77,10 +71,8 @@ export class SidebarComponent {
       roles: ['ADMIN'],
     },
   ];
+  // 👆 FIN DEL ARRAY 👆
 
-  /**
-   * Cerrar sesión
-   */
   logout(): void {
     if (confirm('¿Está seguro de cerrar sesión?')) {
       this.authService.logout();

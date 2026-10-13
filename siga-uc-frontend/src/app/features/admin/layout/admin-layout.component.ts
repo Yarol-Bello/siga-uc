@@ -5,11 +5,6 @@ import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.com
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { AuthService } from '../../../core/services/auth.service';
 
-/**
- * Layout principal del Administrador
- * Contiene: Sidebar + Header + RouterOutlet
- * SIGA-UC - Sistema Integrado de Gestión Académica
- */
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
@@ -19,6 +14,5 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class AdminLayoutComponent {
   private authService = inject(AuthService);
-
   usuario = this.authService.usuario;
 }
