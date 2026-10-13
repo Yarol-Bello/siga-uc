@@ -92,6 +92,10 @@ app.use("/api/calificaciones", calificacionRoutes);
 const tesoreriaRoutes = require("./routes/tesoreriaRoutes");
 app.use("/api/tesoreria", tesoreriaRoutes);
 
+// Rutas de caja
+const cajaRoutes = require("./routes/cajaRoutes");
+app.use("/api/caja", cajaRoutes);
+
 // ============================================================
 // MANEJO DE ERRORES
 // ============================================================
