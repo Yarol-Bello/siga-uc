@@ -1,0 +1,168 @@
+<div class="asistencia-container">
+  <!-- ESTADO DE CARGA -->
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando tu asistencia...</p>
+  </div>
+  }
+
+  <!-- ERROR -->
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  <!-- CONTENIDO PRINCIPAL -->
+  @if (!cargando() && !error()) {
+
+  <!-- SELECTOR DE CURSO -->
+  <div class="filter-selector-box">
+    <label>
+      <i class="fa-solid fa-filter" style="color: var(--primary-guindo);"></i>
+      Seleccionar Asignatura:
+    </label>
+    <select [ngModel]="cursoSeleccionado()" (ngModelChange)="onCursoChange($event)">
+      @for (curso of resumenPorCurso(); track curso.id_curso) {
+      <option [value]="curso.id_curso">
+        {{ curso.nombre_curso }} ({{ curso.area_academica }})
+      </option>
+      }
+    </select>
+  </div>
+
+  <!-- TARJETAS KPI DE ASISTENCIA -->
+  @if (resumenCursoActual) {
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon porcentaje">
+        <i class="fa-solid fa-calendar-check"></i>
+      </div>
+      <div class="kpi-content">
+        <h4>Asistencia en Curso</h4>
+        <span>{{ resumenCursoActual.porcentaje_asistencia }}%</span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon presente">
+        <i class="fa-solid fa-user-check"></i>
+      </div>
+      <div class="kpi-content">
+        <h4>Presente</h4>
+        <span>{{ resumenCursoActual.total_presente }} Clases</span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon tardanza">
+        <i class="fa-solid fa-clock"></i>
+      </div>
+      <div class="kpi-content">
+        <h4>Tardanzas</h4>
+        <span>{{ resumenCursoActual.total_tardanza }} Clases</span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon falta">
+        <i class="fa-solid fa-user-xmark"></i>
+      </div>
+      <div class="kpi-content">
+        <h4>Faltas</h4>
+        <span>{{ resumenCursoActual.total_falta }} Clases</span>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- TABLA HISTORIAL CRONOLÓGICO -->
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-calendar-days"></i>
+        Historial de Asistencia — {{ resumenCursoActual?.nombre_curso || 'Cargando...' }}
+      </h3>
+      <span class="badge-oficial">Registro Oficial</span>
+    </div>
+
+    @if (cargandoDetalle()) {
+    <div class="loading-detail">
+      <i class="fa-solid fa-spinner fa-spin"></i>
+      <p>Cargando registros...</p>
+    </div>
+    }
+
+    @if (!cargandoDetalle()) {
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Día</th>
+            <th>Estado</th>
+            <th>Observación del Docente</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (asistencia of asistencias(); track asistencia.id_asistencia) {
+          <tr>
+            <td><strong>{{ asistencia.fecha | date:'dd/MM/yyyy' }}</strong></td>
+            <td>{{ asistencia.dia_semana }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="getEstadoClass(asistencia.estado)">
+                {{ getEstadoTexto(asistencia.estado) }}
+              </span>
+            </td>
+            <td>{{ asistencia.observacion || '-' }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (asistencias().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-calendar-xmark"></i>
+      <h3>No hay registros de asistencia</h3>
+      <p>Aún no se han registrado asistencias para este curso.</p>
+    </div>
+    }
+    }
+  </div>
+
+  <!-- RESUMEN GLOBAL -->
+  @if (estadisticas()) {
+  <div class="resumen-global-card">
+    <div class="resumen-header">
+      <i class="fa-solid fa-chart-pie"></i>
+      <h3>Resumen Global del Periodo</h3>
+    </div>
+    <div class="resumen-grid">
+      <div class="resumen-item">
+        <span>Total Registros</span>
+        <strong>{{ estadisticas()!.total_registros }}</strong>
+      </div>
+      <div class="resumen-item presente">
+        <span>Presentes</span>
+        <strong>{{ estadisticas()!.total_presente }}</strong>
+      </div>
+      <div class="resumen-item tardanza">
+        <span>Tardanzas</span>
+        <strong>{{ estadisticas()!.total_tardanza }}</strong>
+      </div>
+      <div class="resumen-item falta">
+        <span>Faltas</span>
+        <strong>{{ estadisticas()!.total_falta }}</strong>
+      </div>
+      <div class="resumen-item porcentaje">
+        <span>% Global</span>
+        <strong>{{ estadisticas()!.porcentaje_global }}%</strong>
+      </div>
+    </div>
+  </div>
+  }
+  }
+</div>

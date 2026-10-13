@@ -108,6 +108,14 @@ export const routes: Routes = [
             (m) => m.EstudianteDashboardComponent,
           ),
       },
+
+      {
+        path: 'asistencia',
+        loadComponent: () =>
+          import('./features/estudiante/asistencia/estudiante-asistencia.component').then(
+            (m) => m.EstudianteAsistenciaComponent,
+          ),
+      },
     ],
   },
 
