@@ -58,7 +58,7 @@ export class LoginComponent {
             this.router.navigate(['/admin']);
             break;
           case 'DOCENTE':
-            this.router.navigate(['/en-construccion'], { queryParams: { rol: 'DOCENTE' } });
+            this.router.navigate(['/docente']);
             break;
           case 'ESTUDIANTE':
             this.router.navigate(['/en-construccion'], { queryParams: { rol: 'ESTUDIANTE' } });

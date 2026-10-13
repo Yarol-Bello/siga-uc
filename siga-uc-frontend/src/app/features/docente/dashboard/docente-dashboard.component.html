@@ -1,0 +1,82 @@
+<div class="docente-dashboard">
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando tus cursos asignados...</p>
+  </div>
+  }
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  @if (!cargando() && !error()) {
+  <!-- BIENVENIDA -->
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h2>¡Hola, Prof. {{ usuario()?.nombres }}! 👋</h2>
+      <p>Tienes <strong>{{ cursos().length }} asignaciones</strong> en {{ areas.length }} áreas académicas.</p>
+    </div>
+    <div class="welcome-stats">
+      <div class="w-stat-item">
+        <span>Total Asignaciones</span>
+        <strong>{{ cursos().length }}</strong>
+      </div>
+      <div class="w-stat-item" style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 20px;">
+        <span>Áreas Académicas</span>
+        <strong>{{ areas.length }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- CURSOS POR ÁREA -->
+  @for (area of areas; track area) {
+  <div class="area-section">
+    <h3 class="area-title">
+      <i class="fa-solid fa-book"></i>
+      {{ area }}
+      <span class="badge-count">{{ cursosAgrupados[area].length }} asignaciones</span>
+    </h3>
+
+    <div class="courses-grid">
+      @for (curso of cursosAgrupados[area]; track curso.id_carga) {
+      <div class="course-card">
+        <div class="course-header">
+          <div class="course-icon">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <span class="course-badge">{{ curso.horas_asignadas }} hrs/sem</span>
+        </div>
+        <div class="course-body">
+          <h4>{{ curso.nombre_curso }}</h4>
+          <p class="course-grado">
+            <i class="fa-solid fa-users"></i>
+            {{ curso.nombre_grado }} — {{ curso.seccion }}
+          </p>
+        </div>
+        <div class="course-actions">
+          <button class="btn-action-asistencia" (click)="irAAsistencia(curso)">
+            <i class="fa-solid fa-clipboard-user"></i> Asistencia
+          </button>
+          <button class="btn-action-notas" (click)="irANotas(curso)">
+            <i class="fa-solid fa-marker"></i> Notas
+          </button>
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  @if (cursos().length === 0) {
+  <div class="empty-state">
+    <i class="fa-solid fa-book-open"></i>
+    <h3>No tienes cursos asignados</h3>
+    <p>Contacta con la administración para que te asigne cursos.</p>
+  </div>
+  }
+  }
+</div>

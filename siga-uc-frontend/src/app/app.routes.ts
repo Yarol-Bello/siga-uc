@@ -2,26 +2,15 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
 
-/**
- * Rutas principales de SIGA-UC
- * Sistema Integrado de Gestión Académica
- */
 export const routes: Routes = [
-  // Ruta por defecto: redirige al login
-  {
-    path: '',
-    redirectTo: 'login',
-    pathMatch: 'full',
-  },
-
-  // Ruta del Login (pública)
+  { path: '', redirectTo: 'login', pathMatch: 'full' },
   {
     path: 'login',
     loadComponent: () =>
       import('./features/auth/login/login.component').then((m) => m.LoginComponent),
   },
 
-  // Rutas del Administrador (protegidas + rol ADMIN)
+  // ADMIN
   {
     path: 'admin',
     canActivate: [authGuard, roleGuard(['ADMIN'])],
@@ -35,13 +24,29 @@ export const routes: Routes = [
             (m) => m.DashboardComponent,
           ),
       },
-      // Próximamente:
-      // { path: 'alumnos', loadComponent: () => ... },
-      // { path: 'personal', loadComponent: () => ... },
     ],
   },
 
-  // Ruta temporal para roles sin dashboard
+  // DOCENTE
+  {
+    path: 'docente',
+    canActivate: [authGuard, roleGuard(['DOCENTE'])],
+    loadComponent: () =>
+      import('./features/docente/layout/docente-layout.component').then(
+        (m) => m.DocenteLayoutComponent,
+      ),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/docente/dashboard/docente-dashboard.component').then(
+            (m) => m.DocenteDashboardComponent,
+          ),
+      },
+    ],
+  },
+
+  // EN CONSTRUCCIÓN
   {
     path: 'en-construccion',
     canActivate: [authGuard],
@@ -51,9 +56,5 @@ export const routes: Routes = [
       ),
   },
 
-  // Ruta comodín
-  {
-    path: '**',
-    redirectTo: 'login',
-  },
+  { path: '**', redirectTo: 'login' },
 ];

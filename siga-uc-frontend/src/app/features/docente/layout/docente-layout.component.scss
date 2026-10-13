@@ -1,0 +1,22 @@
+:host {
+  display: block;
+}
+
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+.content-area {
+  flex: 1;
+  padding: 30px 35px;
+  overflow-y: auto;
+}
