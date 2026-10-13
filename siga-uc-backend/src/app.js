@@ -100,6 +100,9 @@ app.use("/api/caja", cajaRoutes);
 const reporteRoutes = require("./routes/reporteRoutes");
 app.use("/api/reportes", reporteRoutes);
 
+// Rutas de notificaciones
+const notificacionRoutes = require("./routes/notificacionRoutes");
+app.use("/api/notificaciones", notificacionRoutes);
 // ============================================================
 // MANEJO DE ERRORES
 // ============================================================
