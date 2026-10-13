@@ -1,0 +1,15 @@
+<div class="admin-layout">
+  <!-- SIDEBAR -->
+  <app-sidebar [rol]="usuario()?.rol || 'ADMIN'"></app-sidebar>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <main class="main-content">
+    <!-- HEADER -->
+    <app-header titulo="Resumen Ejecutivo" subtitulo="I.E.P. Unión Científica — Panel Directivo Central"></app-header>
+
+    <!-- CONTENIDO DINÁMICO (según la ruta) -->
+    <div class="content-area">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

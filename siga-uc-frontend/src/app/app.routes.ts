@@ -19,13 +19,27 @@ export const routes: Routes = [
       import('./features/auth/login/login.component').then((m) => m.LoginComponent),
   },
 
-  // Rutas por rol (se implementarán después)
-  // { path: 'admin', loadChildren: ... },
-  // { path: 'docente', loadChildren: ... },
-  // { path: 'estudiante', loadChildren: ... },
-  // { path: 'secretaria', loadChildren: ... },
+  // Rutas del Administrador (con layout)
+  {
+    path: 'admin',
+    loadComponent: () =>
+      import('./features/admin/layout/admin-layout.component').then((m) => m.AdminLayoutComponent),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/admin/dashboard/dashboard.component').then(
+            (m) => m.DashboardComponent,
+          ),
+      },
+      // Aquí agregaremos más rutas del admin después:
+      // { path: 'alumnos', loadComponent: () => ... },
+      // { path: 'personal', loadComponent: () => ... },
+      // etc.
+    ],
+  },
 
-  // Ruta comodín: si no coincide con nada, redirige al login
+  // Ruta comodín
   {
     path: '**',
     redirectTo: 'login',

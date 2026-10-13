@@ -1,0 +1,117 @@
+<div class="dashboard-body">
+  <!-- ESTADO DE CARGA -->
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando datos del dashboard...</p>
+  </div>
+  }
+
+  <!-- ERROR -->
+  @if (error()) {
+  <div class="alert alert-danger" role="alert">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  <!-- DASHBOARD -->
+  @if (!cargando() && datos()) {
+  <!-- TARJETAS DE ESTADÍSTICAS RÁPIDAS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon students">
+        <i class="fa-solid fa-user-graduate"></i>
+      </div>
+      <div class="stat-info">
+        <span>Total Estudiantes</span>
+        <h3>{{ datos()!.total_alumnos }}</h3>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon teachers">
+        <i class="fa-solid fa-chalkboard-user"></i>
+      </div>
+      <div class="stat-info">
+        <span>Plana Docente</span>
+        <h3>{{ datos()!.total_personal }}</h3>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon finance">
+        <i class="fa-solid fa-wallet"></i>
+      </div>
+      <div class="stat-info">
+        <span>Recaudación Anual</span>
+        <h3>S/ {{ datos()!.recaudacion_anual }}</h3>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon alerts">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div class="stat-info">
+        <span>Pre-Tickets Pendientes</span>
+        <h3>{{ datos()!.pre_tickets_pendientes }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANELES DE CONTROL OPERATIVO -->
+  <div class="dashboard-main-grid">
+    <div class="card-panel">
+      <div class="panel-header">
+        <h3>
+          <i class="fa-solid fa-bell" style="color: #EF4444;"></i>
+          Alertas de Asistencia y Expedientes
+        </h3>
+        <span class="panel-badge">Filtro Automático</span>
+      </div>
+
+      <ul class="alert-list">
+        <li class="alert-item warning">
+          <div class="alert-content">
+            <p>Pre-Tickets por cobrar: {{ datos()!.pre_tickets_pendientes }}</p>
+            <span>Monto pendiente: S/ {{ datos()!.monto_pendiente }}</span>
+          </div>
+          <span class="badge-alert warning">Cobranza</span>
+        </li>
+        <li class="alert-item warning">
+          <div class="alert-content">
+            <p>Estudiantes retirados este año: {{ datos()!.total_retirados }}</p>
+            <span>Verificar expedientes congelados</span>
+          </div>
+          <span class="badge-alert warning">Expediente</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="card-panel">
+      <div class="panel-header">
+        <h3>
+          <i class="fa-solid fa-chart-line" style="color: #800020;"></i>
+          Estructura Académica
+        </h3>
+      </div>
+
+      <div class="info-list">
+        <div class="info-row">
+          <span>Total Grados:</span>
+          <strong>{{ datos()!.total_grados }}</strong>
+        </div>
+        <div class="info-row">
+          <span>Total Cursos:</span>
+          <strong>{{ datos()!.total_cursos }}</strong>
+        </div>
+        <div class="info-row">
+          <span>Alumnos por Grado (promedio):</span>
+          <strong>{{ (+datos()!.total_alumnos / +datos()!.total_grados).toFixed(1) }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+</div>

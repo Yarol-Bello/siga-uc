@@ -1,0 +1,30 @@
+<header class="main-header">
+  <div class="header-title">
+    <h2>{{ titulo }}</h2>
+    <p>{{ subtitulo }}</p>
+  </div>
+
+  <div class="header-widgets">
+    <!-- CAMPANA DE NOTIFICACIONES -->
+    <div class="notification-bell-container" (click)="abrirNotificaciones()" title="Ver Notificaciones">
+      <div class="bell-icon-btn">
+        <i class="fa-solid fa-bell"></i>
+        @if (notificacionesNoLeidas > 0) {
+        <span class="notification-badge">{{ notificacionesNoLeidas }}</span>
+        }
+      </div>
+    </div>
+
+    <!-- CÁPSULA DE PERFIL -->
+    <div class="user-profile-widget" (click)="abrirCarne()" title="Ver Carné Digital QR">
+      <div class="user-details">
+        <span class="name">{{ usuario()?.nombre_completo || 'Usuario' }}</span>
+        <span class="user-role-badge">
+          <i class="fa-solid fa-user-gear"></i>
+          {{ usuario()?.rol || '' }}
+        </span>
+      </div>
+      <div class="user-avatar">{{ iniciales }}</div>
+    </div>
+  </div>
+</header>
