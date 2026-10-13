@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict quvItjndYFgC3jGj5fxhHesOJqlItWa0xNykc05tMfoipLuNvrQaP3VvzcoZbhy
+\restrict hBDz7fjlo2QAtY8Rgv4d10e7YDzFP8IeUQrCN0gvcSblnLhKNlDgkCsPtpfUtpr
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
 
--- Started on 2026-10-12 14:22:05
+-- Started on 2026-10-13 16:05:00
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1943,6 +1943,7 @@ CREATE TABLE public.usuarios (
     ultimo_login timestamp without time zone,
     fecha_creacion timestamp without time zone DEFAULT now() NOT NULL,
     fecha_actualizacion timestamp without time zone,
+    correo_personal character varying(150),
     CONSTRAINT chk_usuario_dni CHECK ((dni ~ '^[0-9]{8}$'::text)),
     CONSTRAINT chk_usuario_estado CHECK (((estado)::text = ANY ((ARRAY['ACTIVO'::character varying, 'INACTIVO'::character varying, 'CESADO'::character varying])::text[])))
 );
@@ -3787,11 +3788,11 @@ ALTER TABLE ONLY public.usuarios
     ADD CONSTRAINT usuarios_id_rol_fkey FOREIGN KEY (id_rol) REFERENCES public.roles(id_rol) ON UPDATE CASCADE;
 
 
--- Completed on 2026-10-12 14:22:06
+-- Completed on 2026-10-13 16:05:00
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict quvItjndYFgC3jGj5fxhHesOJqlItWa0xNykc05tMfoipLuNvrQaP3VvzcoZbhy
+\unrestrict hBDz7fjlo2QAtY8Rgv4d10e7YDzFP8IeUQrCN0gvcSblnLhKNlDgkCsPtpfUtpr
 
