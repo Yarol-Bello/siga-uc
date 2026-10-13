@@ -72,6 +72,10 @@ app.use("/api/auth", authRoutes);
 const academicoRoutes = require("./routes/academicoRoutes");
 app.use("/api", academicoRoutes);
 
+// Rutas de gestión de alumnos
+const alumnoRoutes = require("./routes/alumnoRoutes");
+app.use("/api/alumnos", alumnoRoutes);
+
 // ============================================================
 // MANEJO DE ERRORES
 // ============================================================
