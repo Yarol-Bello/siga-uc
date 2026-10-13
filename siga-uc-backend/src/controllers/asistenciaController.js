@@ -83,10 +83,67 @@ const registrarMasivo = async (req, res) => {
   }
 };
 
+// ============================================================
+// ASISTENCIA DE PERSONAL
+// ============================================================
+
+const listarAsistenciaPersonal = async (req, res) => {
+  try {
+    const { fecha } = req.query;
+    const data = await asistenciaService.listarAsistenciaPersonal(fecha);
+    return response.success(
+      res,
+      200,
+      `Asistencia del personal (${data.length} registros)`,
+      data,
+    );
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
+const buscarPersonalPorDni = async (req, res) => {
+  try {
+    const data = await asistenciaService.buscarPersonalPorDni(req.params.dni);
+    return response.success(res, 200, "Personal encontrado", data);
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
+const registrarAsistenciaPersonal = async (req, res) => {
+  try {
+    const data = await asistenciaService.registrarAsistenciaPersonal(req.body);
+    return response.success(res, 201, "Asistencia registrada", data);
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
+const obtenerResumenAsistenciaPersonal = async (req, res) => {
+  try {
+    const { fecha } = req.query;
+    const data =
+      await asistenciaService.obtenerResumenAsistenciaPersonal(fecha);
+    return response.success(
+      res,
+      200,
+      "Resumen de asistencia del personal",
+      data,
+    );
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
 module.exports = {
   obtenerPorCursoFecha,
   obtenerPorAlumno,
   obtenerResumenPorAlumno,
   registrar,
   registrarMasivo,
+  listarAsistenciaPersonal,
+  buscarPersonalPorDni,
+  registrarAsistenciaPersonal,
+  obtenerResumenAsistenciaPersonal,
 };

@@ -216,6 +216,108 @@ const registrarMasivo = async (registros) => {
   }
 };
 
+// ============================================================
+// ASISTENCIA DE PERSONAL (DOCENTES + ADMINISTRATIVOS)
+// ============================================================
+
+/**
+ * Listar asistencias del personal en una fecha
+ */
+const listarAsistenciaPersonal = async (fecha) => {
+  const sql = `
+    SELECT 
+      p.id_personal,
+      u.dni,
+      u.nombres || ' ' || u.apellidos AS nombre_completo,
+      u.nombres,
+      u.apellidos,
+      u.correo_institucional,
+      r.nombre_rol,
+      p.especialidad,
+      p.cargo,
+      ap.id_asistencia_personal,
+      ap.fecha,
+      ap.hora_ingreso,
+      ap.hora_salida,
+      ap.estado,
+      ap.observacion
+    FROM personal p
+    INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+    INNER JOIN roles r ON r.id_rol = u.id_rol
+    LEFT JOIN asistencia_personal ap 
+      ON ap.id_personal = p.id_personal 
+      AND ap.fecha = $1
+    WHERE u.estado = 'ACTIVO'
+    ORDER BY u.apellidos, u.nombres
+  `;
+  const result = await query(sql, [fecha]);
+  return result.rows;
+};
+
+/**
+ * Buscar asistencia de personal por DNI (para escaneo QR)
+ */
+const buscarPersonalPorDni = async (dni) => {
+  const sql = `
+    SELECT 
+      p.id_personal,
+      u.dni,
+      u.nombres || ' ' || u.apellidos AS nombre_completo,
+      r.nombre_rol,
+      p.cargo,
+      u.estado
+    FROM personal p
+    INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+    INNER JOIN roles r ON r.id_rol = u.id_rol
+    WHERE u.dni = $1
+  `;
+  const result = await query(sql, [dni]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Registrar marcación de asistencia del personal
+ */
+const registrarAsistenciaPersonal = async (data) => {
+  const sql = `
+    INSERT INTO asistencia_personal (id_personal, fecha, hora_ingreso, estado, observacion)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (id_personal, fecha)
+    DO UPDATE SET
+      hora_ingreso = EXCLUDED.hora_ingreso,
+      estado = EXCLUDED.estado,
+      observacion = EXCLUDED.observacion
+    RETURNING *
+  `;
+  const result = await query(sql, [
+    data.id_personal,
+    data.fecha,
+    data.hora_ingreso || null,
+    data.estado || "Puntual",
+    data.observacion || null,
+  ]);
+  return result.rows[0];
+};
+
+/**
+ * Obtener resumen de asistencia del personal
+ */
+const obtenerResumenAsistenciaPersonal = async (fecha) => {
+  const sql = `
+    SELECT
+      (SELECT COUNT(*) FROM personal p 
+       INNER JOIN usuarios u ON u.id_usuario = p.id_usuario 
+       WHERE u.estado = 'ACTIVO') AS total_personal,
+      COUNT(*) FILTER (WHERE estado = 'Puntual') AS total_puntual,
+      COUNT(*) FILTER (WHERE estado = 'Tardanza') AS total_tardanza,
+      COUNT(*) FILTER (WHERE estado = 'Falta') AS total_falta
+    FROM asistencia_personal
+    WHERE fecha = $1
+  `;
+  const result = await query(sql, [fecha]);
+  return result.rows[0];
+};
+
 module.exports = {
   obtenerPorCursoFecha,
   obtenerPorAlumno,
@@ -223,4 +325,8 @@ module.exports = {
   obtenerEstadisticasAlumno,
   registrar,
   registrarMasivo,
+  listarAsistenciaPersonal,
+  buscarPersonalPorDni,
+  registrarAsistenciaPersonal,
+  obtenerResumenAsistenciaPersonal,
 };

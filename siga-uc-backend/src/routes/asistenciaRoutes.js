@@ -29,6 +29,21 @@ router.get(
 );
 
 // ============================================================
+// ASISTENCIA DE PERSONAL (QR)
+// ============================================================
+router.get("/personal/todos", asistenciaController.listarAsistenciaPersonal);
+router.get(
+  "/personal/resumen",
+  asistenciaController.obtenerResumenAsistenciaPersonal,
+);
+router.get("/personal/dni/:dni", asistenciaController.buscarPersonalPorDni);
+router.post(
+  "/personal/marcar",
+  verificarRol("ADMIN", "SECRETARIA"),
+  asistenciaController.registrarAsistenciaPersonal,
+);
+
+// ============================================================
 // REGISTROS (solo DOCENTE y ADMIN)
 // ============================================================
 router.post(

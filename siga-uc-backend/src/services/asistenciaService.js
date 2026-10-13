@@ -72,10 +72,67 @@ const registrarMasivo = async (registros) => {
   return await asistenciaDao.registrarMasivo(registros);
 };
 
+// ============================================================
+// ASISTENCIA DE PERSONAL
+// ============================================================
+
+const listarAsistenciaPersonal = async (fecha) => {
+  if (!fecha) {
+    const error = new Error("La fecha es obligatoria");
+    error.statusCode = 400;
+    throw error;
+  }
+  return await asistenciaDao.listarAsistenciaPersonal(fecha);
+};
+
+const buscarPersonalPorDni = async (dni) => {
+  const personal = await asistenciaDao.buscarPersonalPorDni(dni);
+  if (!personal) {
+    const error = new Error("Personal no encontrado con ese DNI");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (personal.estado !== "ACTIVO") {
+    const error = new Error("El personal no está activo en el sistema");
+    error.statusCode = 400;
+    throw error;
+  }
+  return personal;
+};
+
+const registrarAsistenciaPersonal = async (data) => {
+  if (!data.id_personal || !data.fecha) {
+    const error = new Error("Faltan campos: id_personal, fecha");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!["Puntual", "Tardanza", "Falta"].includes(data.estado || "Puntual")) {
+    const error = new Error(
+      "Estado inválido. Debe ser: Puntual, Tardanza o Falta",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+  return await asistenciaDao.registrarAsistenciaPersonal(data);
+};
+
+const obtenerResumenAsistenciaPersonal = async (fecha) => {
+  if (!fecha) {
+    const error = new Error("La fecha es obligatoria");
+    error.statusCode = 400;
+    throw error;
+  }
+  return await asistenciaDao.obtenerResumenAsistenciaPersonal(fecha);
+};
+
 module.exports = {
   obtenerPorCursoFecha,
   obtenerPorAlumno,
   obtenerResumenPorAlumno,
   registrar,
   registrarMasivo,
+  listarAsistenciaPersonal,
+  buscarPersonalPorDni,
+  registrarAsistenciaPersonal,
+  obtenerResumenAsistenciaPersonal,
 };
