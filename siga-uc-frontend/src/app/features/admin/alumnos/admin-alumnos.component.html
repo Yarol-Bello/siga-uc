@@ -31,7 +31,7 @@
       <i class="fa-solid fa-xmark"></i> Limpiar
     </button>
 
-    <button class="btn-primary" (click)="nuevaMatricula()">
+    <button class="btn-primary" (click)="abrirModalMatricula()">
       <i class="fa-solid fa-user-plus"></i> Nueva Matrícula
     </button>
   </div>
@@ -102,6 +102,7 @@
             <td>
               <div class="action-icons">
                 <i class="fa-solid fa-eye" (click)="verDetalle(alumno)" title="Ver Ficha"></i>
+                <i class="fa-solid fa-user-slash" (click)="abrirModalRetiro(alumno)" title="Registrar Retiro"></i>
               </div>
             </td>
           </tr>
@@ -121,7 +122,9 @@
   }
 </div>
 
-<!-- MODAL DE FICHA DEL ALUMNO -->
+<!-- ============================================================ -->
+<!-- MODAL DE FICHA DEL ALUMNO (NIVEL PRINCIPAL) -->
+<!-- ============================================================ -->
 @if (modalAbierto() && alumnoSeleccionado()) {
 <div class="modal-overlay" (click)="cerrarModal()">
   <div class="modal-container" (click)="$event.stopPropagation()">
@@ -131,8 +134,9 @@
     </div>
     <div class="modal-body">
       <div class="ficha-header">
-        <div class="ficha-avatar">{{ alumnoSeleccionado()!.nombres.charAt(0) }}{{
-          alumnoSeleccionado()!.apellidos.charAt(0) }}</div>
+        <div class="ficha-avatar">
+          {{ alumnoSeleccionado()!.nombres.charAt(0) }}{{ alumnoSeleccionado()!.apellidos.charAt(0) }}
+        </div>
         <div>
           <h4>{{ alumnoSeleccionado()!.nombre_completo }}</h4>
           <p class="ficha-codigo">{{ alumnoSeleccionado()!.codigo_estudiante }}</p>
@@ -174,6 +178,165 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="cerrarModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- MODAL NUEVA MATRÍCULA (NIVEL PRINCIPAL) -->
+<!-- ============================================================ -->
+@if (modalMatricula()) {
+<div class="modal-overlay" (click)="cerrarModalMatricula()">
+  <div class="modal-container modal-large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-user-plus"></i> Registrar Nueva Matrícula</h3>
+      <button class="modal-close" (click)="cerrarModalMatricula()">&times;</button>
+    </div>
+    <div class="modal-body">
+      @if (errorMatricula()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorMatricula() }}
+      </div>
+      }
+
+      <form>
+        <div class="form-section-title">Datos del Estudiante</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>DNI (8 dígitos) *</label>
+            <input type="text" maxlength="8" [(ngModel)]="nuevaMatricula.dni" name="dni" placeholder="Ej. 78945612" />
+          </div>
+          <div class="form-group">
+            <label>Fecha de Nacimiento *</label>
+            <input type="date" [(ngModel)]="nuevaMatricula.fecha_nacimiento" name="fecha_nacimiento" />
+          </div>
+          <div class="form-group">
+            <label>Nombres *</label>
+            <input type="text" [(ngModel)]="nuevaMatricula.nombres" name="nombres" placeholder="Nombres completos" />
+          </div>
+          <div class="form-group">
+            <label>Apellidos *</label>
+            <input type="text" [(ngModel)]="nuevaMatricula.apellidos" name="apellidos"
+              placeholder="Apellidos completos" />
+          </div>
+          <div class="form-group">
+            <label>Grado *</label>
+            <select [(ngModel)]="nuevaMatricula.id_grado" name="id_grado">
+              <option value="">Seleccione el grado...</option>
+              @for (g of grados(); track g.id_grado) {
+              <option [value]="g.id_grado">{{ g.nombre_grado }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Condición</label>
+            <select [(ngModel)]="nuevaMatricula.condicion" name="condicion">
+              <option value="Regular">Regular</option>
+              <option value="Traslado">Traslado</option>
+            </select>
+          </div>
+          @if (nuevaMatricula.condicion === 'Traslado') {
+          <div class="form-group full-width">
+            <label>Colegio de Procedencia</label>
+            <input type="text" [(ngModel)]="nuevaMatricula.colegio_procedencia" name="colegio_procedencia"
+              placeholder="Nombre del colegio anterior" />
+          </div>
+          }
+        </div>
+
+        <div class="form-section-title">Datos del Apoderado</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombres del Apoderado</label>
+            <input type="text" [(ngModel)]="nuevaMatricula.apoderado.nombres" name="apo_nombres"
+              placeholder="Nombres" />
+          </div>
+          <div class="form-group">
+            <label>Apellidos del Apoderado</label>
+            <input type="text" [(ngModel)]="nuevaMatricula.apoderado.apellidos" name="apo_apellidos"
+              placeholder="Apellidos" />
+          </div>
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input type="text" maxlength="9" [(ngModel)]="nuevaMatricula.apoderado.telefono" name="apo_telefono"
+              placeholder="Ej. 987654321" />
+          </div>
+          <div class="form-group">
+            <label>Correo</label>
+            <input type="email" [(ngModel)]="nuevaMatricula.apoderado.correo" name="apo_correo"
+              placeholder="correo@ejemplo.com" />
+          </div>
+        </div>
+
+        <div class="info-box">
+          <i class="fa-solid fa-circle-info"></i>
+          <p>Al guardar, el alumno quedará en estado <strong>PendientePago</strong> hasta que Tesorería confirme el
+            pago.</p>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalMatricula()">Cancelar</button>
+      <button class="btn-primary" [disabled]="guardando()" (click)="guardarMatricula()">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-save"></i> Guardar Matrícula
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- MODAL RETIRO (NIVEL PRINCIPAL) -->
+<!-- ============================================================ -->
+@if (modalRetiro() && retiroAlumno()) {
+<div class="modal-overlay" (click)="cerrarModalRetiro()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header modal-header-danger">
+      <h3><i class="fa-solid fa-user-slash"></i> Registrar Retiro del Estudiante</h3>
+      <button class="modal-close" (click)="cerrarModalRetiro()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="retiro-info">
+        <p><strong>Estudiante:</strong> {{ retiroAlumno()!.nombre_completo }}</p>
+        <p><strong>DNI:</strong> {{ retiroAlumno()!.dni }}</p>
+        <p><strong>Grado:</strong> {{ retiroAlumno()!.nombre_grado }}</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Fecha de Retiro *</label>
+          <input type="date" [(ngModel)]="fechaRetiro" name="fecha_retiro" />
+        </div>
+        <div class="form-group">
+          <label>Motivo de Retiro *</label>
+          <select [(ngModel)]="motivoRetiro" name="motivo_retiro">
+            <option value="">Seleccione...</option>
+            <option value="Traslado I.E.">Traslado a otra I.E.</option>
+            <option value="Cambio Domicilio">Cambio de Domicilio</option>
+            <option value="Economico">Razones Económicas</option>
+            <option value="Disciplinario">Reglamento Interno</option>
+          </select>
+        </div>
+        @if (motivoRetiro() === 'Traslado I.E.') {
+        <div class="form-group full-width">
+          <label>Colegio de Destino</label>
+          <input type="text" [(ngModel)]="colegioDestino" name="colegio_destino"
+            placeholder="Nombre del colegio de destino" />
+        </div>
+        }
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalRetiro()">Cancelar</button>
+      <button class="btn-danger" (click)="confirmarRetiro()">
+        <i class="fa-solid fa-user-slash"></i> Confirmar Retiro
+      </button>
     </div>
   </div>
 </div>
