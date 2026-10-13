@@ -43,6 +43,7 @@ export const routes: Routes = [
       import('./features/docente/layout/docente-layout.component').then(
         (m) => m.DocenteLayoutComponent,
       ),
+
     children: [
       {
         path: '',
@@ -65,12 +66,19 @@ export const routes: Routes = [
             (m) => m.DocenteAsistenciaComponent,
           ),
       },
-      
       {
         path: 'ficha-estudiante',
         loadComponent: () =>
           import('./features/docente/ficha-estudiante/docente-ficha.component').then(
             (m) => m.DocenteFichaComponent,
+          ),
+      },
+
+      {
+        path: 'reportes',
+        loadComponent: () =>
+          import('./features/docente/reportes/docente-reportes.component').then(
+            (m) => m.DocenteReportesComponent,
           ),
       },
     ],

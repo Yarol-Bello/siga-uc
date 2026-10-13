@@ -1,0 +1,177 @@
+<div class="reportes-container">
+  <!-- TOOLBAR CON SELECTOR Y CAMPANA -->
+  <div class="filtro-toolbar">
+    <div class="filtro-group">
+      <label><i class="fa-solid fa-book"></i> Curso / Grado</label>
+      <select [ngModel]="cursoSeleccionado()?.id_carga" (ngModelChange)="onCursoChange($event)">
+        @for (curso of cursos(); track curso.id_carga) {
+        <option [value]="curso.id_carga">
+          {{ curso.nombre_curso }} — {{ curso.nombre_grado }} ({{ curso.seccion }})
+        </option>
+        }
+      </select>
+    </div>
+
+    <div class="filtro-group" style="max-width: 200px;">
+      <label><i class="fa-solid fa-calendar"></i> Bimestre</label>
+      <select [ngModel]="bimestre()" (ngModelChange)="bimestre.set($event); cambiarBimestre()">
+        <option [value]="1">I Bimestre</option>
+        <option [value]="2">II Bimestre</option>
+        <option [value]="3">III Bimestre</option>
+        <option [value]="4">IV Bimestre</option>
+      </select>
+    </div>
+
+    <div class="toolbar-actions">
+      <!-- CAMPANA DE NOTIFICACIONES -->
+      <div class="notification-bell" (click)="abrirInbox()" title="Ver Notificaciones">
+        <i class="fa-solid fa-bell"></i>
+        @if (noLeidas() > 0) {
+        <span class="notification-badge">{{ noLeidas() }}</span>
+        }
+      </div>
+
+      <button class="btn-primary" onclick="window.print()">
+        <i class="fa-solid fa-file-pdf"></i> Descargar PDF
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  <!-- TABLA DE ESTADÍSTICAS -->
+  @if (cargandoReporte()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Calculando estadísticas...</p>
+  </div>
+  }
+
+  @if (!cargandoReporte() && cursoSeleccionado()) {
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-chart-pie"></i>
+        Consolidado Estadístico por Competencias
+      </h3>
+      <span class="badge-count">{{ alumnos().length }} estudiantes</span>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Competencia Evaluada</th>
+            <th style="text-align: center;">AD (Destacado)</th>
+            <th style="text-align: center;">A (Esperado)</th>
+            <th style="text-align: center;">B (Proceso)</th>
+            <th style="text-align: center;">C (Inicio)</th>
+            <th style="text-align: center;">Predominante</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (stat of estadisticas(); track stat.id_competencia) {
+          <tr>
+            <td><strong>{{ stat.orden }}. {{ stat.nombre }}</strong></td>
+            <td style="text-align: center;">
+              <span class="stat-cell pct-ad">{{ stat.ad }} ({{ stat.pct_ad }}%)</span>
+            </td>
+            <td style="text-align: center;">
+              <span class="stat-cell pct-a">{{ stat.a }} ({{ stat.pct_a }}%)</span>
+            </td>
+            <td style="text-align: center;">
+              <span class="stat-cell pct-b">{{ stat.b }} ({{ stat.pct_b }}%)</span>
+            </td>
+            <td style="text-align: center;">
+              <span class="stat-cell pct-c">{{ stat.c }} ({{ stat.pct_c }}%)</span>
+            </td>
+            <td style="text-align: center;">
+              <span class="predominante" [ngClass]="getNotaClass(stat.predominante)">
+                {{ stat.predominante }}
+              </span>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (estadisticas().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-chart-simple"></i>
+      <h3>Sin datos para mostrar</h3>
+      <p>No hay calificaciones registradas en este bimestre.</p>
+    </div>
+    }
+  </div>
+  }
+</div>
+
+<!-- MODAL BUZÓN DE NOTIFICACIONES -->
+@if (modalInbox()) {
+<div class="modal-overlay" (click)="cerrarInbox()">
+  <div class="modal-container modal-inbox" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-envelope"></i> Buzón de Mensajes Institucionales</h3>
+      <button class="modal-close" (click)="cerrarInbox()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- VISTA: LISTA DE MENSAJES -->
+      @if (!vistaDetalle()) {
+      <div class="inbox-toolbar">
+        <span class="inbox-count">{{ notificaciones().length }} mensajes recibidos</span>
+        <button class="btn-link" (click)="marcarTodasLeidas()">Marcar todos como leídos</button>
+      </div>
+
+      @if (notificaciones().length > 0) {
+      <div class="email-list">
+        @for (notif of notificaciones(); track notif.id_notificacion) {
+        <div class="email-item" [class.unread]="!notif.leido" (click)="verDetalle(notif)">
+          <div class="email-header">
+            <span class="email-sender">
+              <i class="fa-solid fa-user-tie"></i>
+              {{ notif.remitente_nombre || 'Sistema SIGA-UC' }}
+            </span>
+            <span class="email-date">{{ notif.fecha_envio | date:'short' }}</span>
+          </div>
+          <div class="email-subject">{{ notif.asunto }}</div>
+          <div class="email-snippet">{{ notif.cuerpo }}</div>
+        </div>
+        }
+      </div>
+      } @else {
+      <div class="empty-inbox">
+        <i class="fa-solid fa-inbox"></i>
+        <p>No tienes mensajes</p>
+      </div>
+      }
+      }
+
+      <!-- VISTA: DETALLE DEL MENSAJE -->
+      @if (vistaDetalle() && notificacionDetalle()) {
+      <button class="btn-volver" (click)="volverALista()">
+        <i class="fa-solid fa-arrow-left"></i> Volver a la bandeja
+      </button>
+
+      <div class="email-detail">
+        <div class="email-detail-subject">{{ notificacionDetalle()!.asunto }}</div>
+        <div class="email-detail-meta">
+          <span><i class="fa-solid fa-user"></i> {{ notificacionDetalle()!.remitente_nombre }}</span>
+          <span><i class="fa-solid fa-envelope"></i> {{ notificacionDetalle()!.remitente_correo }}</span>
+          <span><i class="fa-solid fa-clock"></i> {{ notificacionDetalle()!.fecha_envio | date:'medium' }}</span>
+        </div>
+        <div class="email-detail-body">{{ notificacionDetalle()!.cuerpo }}</div>
+      </div>
+      }
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarInbox()">Cerrar</button>
+    </div>
+  </div>
+</div>
+}
