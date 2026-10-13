@@ -16,7 +16,8 @@ interface AuditoriaDocente {
   area_academica: string;
   id_personal: number;
   docente_nombre: string;
-  docente_correo: string;
+  docente_correo_institucional: string;
+  docente_correo_personal: string;
   id_grado: number;
   nombre_grado: string;
   total_alumnos: string;
@@ -110,7 +111,6 @@ export class AdminSiagieComponent implements OnInit {
   limpiarArchivo(): void {
     this.archivoCargado.set(null);
     this.analisisCompletado.set(false);
-    // También limpiar el input file del DOM
     const fileInput = document.getElementById('fileSiagie') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   }
@@ -156,16 +156,10 @@ export class AdminSiagieComponent implements OnInit {
     formData.append('bimestre', this.bimestre().toString());
     formData.append('anio_lectivo', '2026');
 
-    // Llamar al backend y descargar el archivo
     this.http
-      .post(
-        `${environment.apiUrl}/siagie/generar-excel`,
-        formData,
-        { responseType: 'blob' }, // El backend devuelve un archivo binario
-      )
+      .post(`${environment.apiUrl}/siagie/generar-excel`, formData, { responseType: 'blob' })
       .subscribe({
         next: (blob: Blob) => {
-          // Crear enlace de descarga automática
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
@@ -229,12 +223,88 @@ export class AdminSiagieComponent implements OnInit {
     }
   }
 
+  /**
+   * Enviar notificación real al docente (campanita + correo)
+   */
   alertarDocente(item: AuditoriaDocente): void {
-    alert(
-      `📧 Recordatorio enviado a: ${item.docente_nombre}\n` +
-        `Correo: ${item.docente_correo}\n\n` +
-        `Curso pendiente: ${item.nombre_curso}\n` +
-        `Porcentaje completado: ${item.porcentaje || 0}%`,
-    );
+    const totalAlumnos = Number(item.total_alumnos) || 0;
+    const alumnosCalificados = Number(item.alumnos_calificados) || 0;
+    const pendientes = totalAlumnos - alumnosCalificados;
+
+    if (
+      !confirm(
+        `¿Enviar notificación a ${item.docente_nombre}?\n\n` +
+          `Curso pendiente: ${item.nombre_curso}\n` +
+          `Alumnos sin calificar: ${pendientes} de ${totalAlumnos}\n\n` +
+          `Se enviará a su campanita y a su correo personal.`,
+      )
+    )
+      return;
+
+    this.http.get<any>(`${environment.apiUrl}/personal/${item.id_personal}`).subscribe({
+      next: (res) => {
+        if (!res.success || !res.data) {
+          alert('❌ No se pudo obtener la información del docente.');
+          return;
+        }
+
+        const idUsuarioDestino = res.data.id_usuario;
+        const gradoNombre =
+          this.grados().find((g) => g.id_grado === this.gradoSeleccionado())?.nombre_grado || '';
+
+        const asunto = `Recordatorio: Notas Pendientes — ${item.nombre_curso} ${gradoNombre} ${this.getBimestreTexto()}`;
+        const cuerpo =
+          `Estimado(a) Prof. ${item.docente_nombre},\n\n` +
+          `Te recordamos que tienes notas pendientes de registrar en el curso de ${item.nombre_curso} ` +
+          `para el ${gradoNombre} — ${this.getBimestreTexto()} 2026.\n\n` +
+          `📊 Alumnos pendientes: ${pendientes} de ${totalAlumnos} ` +
+          `(${item.porcentaje || 0}% completado)\n\n` +
+          `Por favor, ingresa al módulo "Registro de Notas" para completar las calificaciones ` +
+          `antes del cierre del bimestre.\n\n` +
+          `Atentamente,\nDirección Académica — I.E.P. Unión Científica`;
+
+        const payload = {
+          id_usuario_destino: idUsuarioDestino,
+          asunto,
+          cuerpo,
+        };
+
+        this.http.post<any>(`${environment.apiUrl}/notificaciones`, payload).subscribe({
+          next: () => {
+            alert(
+              `✅ Notificación enviada exitosamente a ${item.docente_nombre}.\n\nLlegará a su campanita y a su correo personal.`,
+            );
+          },
+          error: (err) => {
+            console.error('Error al enviar notificación:', err);
+            alert(
+              '❌ Error al enviar la notificación: ' + (err.error?.message || 'Error desconocido'),
+            );
+          },
+        });
+      },
+      error: (err) => {
+        console.error('Error al obtener docente:', err);
+        alert('❌ No se pudo encontrar la información del docente.');
+      },
+    });
+  }
+
+  /**
+   * Convertir bimestre a texto
+   */
+  getBimestreTexto(): string {
+    switch (this.bimestre()) {
+      case 1:
+        return 'I Bimestre';
+      case 2:
+        return 'II Bimestre';
+      case 3:
+        return 'III Bimestre';
+      case 4:
+        return 'IV Bimestre';
+      default:
+        return `${this.bimestre()} Bimestre`;
+    }
   }
 }

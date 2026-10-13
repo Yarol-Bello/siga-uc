@@ -209,7 +209,8 @@ const getAuditoriaDocentes = async (id_grado, bimestre, anioLectivo = 2026) => {
       c.area_academica,
       p.id_personal,
       u.nombres || ' ' || u.apellidos AS docente_nombre,
-      u.correo_institucional AS docente_correo,
+      u.correo_institucional AS docente_correo_institucional,
+      u.correo_personal AS docente_correo_personal,
       g.id_grado,
       g.nombre_grado,
       (SELECT COUNT(*) FROM alumnos a 

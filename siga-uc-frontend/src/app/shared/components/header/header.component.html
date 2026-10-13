@@ -9,8 +9,8 @@
     <div class="notification-bell-container" (click)="abrirNotificaciones()" title="Ver Notificaciones">
       <div class="bell-icon-btn">
         <i class="fa-solid fa-bell"></i>
-        @if (notificacionesNoLeidas > 0) {
-        <span class="notification-badge">{{ notificacionesNoLeidas }}</span>
+        @if (noLeidas() > 0) {
+        <span class="notification-badge">{{ noLeidas() }}</span>
         }
       </div>
     </div>
@@ -28,3 +28,83 @@
     </div>
   </div>
 </header>
+
+<!-- MODAL BUZÓN DE NOTIFICACIONES -->
+@if (modalInbox()) {
+<div class="modal-overlay" (click)="cerrarInbox()">
+  <div class="modal-container modal-inbox" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-envelope"></i> Buzón de Notificaciones</h3>
+      <button class="modal-close" (click)="cerrarInbox()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- VISTA: LISTA DE MENSAJES -->
+      @if (!vistaDetalle()) {
+      <div class="inbox-toolbar">
+        <span class="inbox-count">{{ notificaciones().length }} mensajes</span>
+        @if (noLeidas() > 0) {
+        <button class="btn-link" (click)="marcarTodasLeidas()">
+          Marcar todos como leídos
+        </button>
+        }
+      </div>
+
+      @if (cargandoNotif()) {
+      <div class="loading-inbox">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <p>Cargando mensajes...</p>
+      </div>
+      }
+
+      @if (!cargandoNotif() && notificaciones().length > 0) {
+      <div class="email-list">
+        @for (notif of notificaciones(); track notif.id_notificacion) {
+        <div class="email-item" [class.unread]="!notif.leido" (click)="verDetalle(notif)">
+          <div class="email-header">
+            <span class="email-sender">
+              <i class="fa-solid fa-bell"></i>
+              {{ notif.remitente_nombre || 'Sistema SIGA-UC' }}
+            </span>
+            <span class="email-date">{{ fechaRelativa(notif.fecha_envio) }}</span>
+          </div>
+          <div class="email-subject">{{ notif.asunto }}</div>
+          <div class="email-snippet">{{ notif.cuerpo }}</div>
+        </div>
+        }
+      </div>
+      }
+
+      @if (!cargandoNotif() && notificaciones().length === 0) {
+      <div class="empty-inbox">
+        <i class="fa-solid fa-inbox"></i>
+        <p>No tienes notificaciones</p>
+      </div>
+      }
+      }
+
+      <!-- VISTA: DETALLE DEL MENSAJE -->
+      @if (vistaDetalle() && notificacionDetalle()) {
+      <button class="btn-volver" (click)="volverALista()">
+        <i class="fa-solid fa-arrow-left"></i> Volver a la bandeja
+      </button>
+
+      <div class="email-detail">
+        <div class="email-detail-subject">{{ notificacionDetalle()!.asunto }}</div>
+        <div class="email-detail-meta">
+          <span><i class="fa-solid fa-user"></i> {{ notificacionDetalle()!.remitente_nombre || 'Sistema SIGA-UC'
+            }}</span>
+          @if (notificacionDetalle()!.remitente_correo) {
+          <span><i class="fa-solid fa-envelope"></i> {{ notificacionDetalle()!.remitente_correo }}</span>
+          }
+          <span><i class="fa-solid fa-clock"></i> {{ notificacionDetalle()!.fecha_envio | date:'medium' }}</span>
+        </div>
+        <div class="email-detail-body">{{ notificacionDetalle()!.cuerpo }}</div>
+      </div>
+      }
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarInbox()">Cerrar</button>
+    </div>
+  </div>
+</div>
+}

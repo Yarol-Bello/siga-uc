@@ -163,7 +163,12 @@
                 <i class="fa-solid fa-user-tie"></i>
                 <div>
                   <strong>{{ item.docente_nombre }}</strong>
-                  <small>{{ item.docente_correo }}</small>
+                  <small style="display: block; color: #64748B;">
+                    <i class="fa-solid fa-envelope"></i> {{ item.docente_correo_personal || 'Sin correo personal' }}
+                  </small>
+                  <small style="display: block; color: #94A3B8; font-size: 0.7rem;">
+                    <i class="fa-solid fa-building"></i> {{ item.docente_correo_institucional }}
+                  </small>
                 </div>
               </div>
             </td>

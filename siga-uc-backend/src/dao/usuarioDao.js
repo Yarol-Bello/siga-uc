@@ -18,6 +18,7 @@ const findByDni = async (dni) => {
       u.nombres,
       u.apellidos,
       u.correo_institucional,
+      u.correo_personal,
       u.password_hash,
       u.telefono,
       u.estado,
@@ -49,6 +50,7 @@ const findByCorreo = async (correo) => {
       u.nombres,
       u.apellidos,
       u.correo_institucional,
+      u.correo_personal,
       u.password_hash,
       u.estado,
       r.id_rol,
@@ -75,6 +77,7 @@ const findById = async (id) => {
       u.nombres,
       u.apellidos,
       u.correo_institucional,
+      u.correo_personal,
       u.telefono,
       u.estado,
       u.ultimo_login,
@@ -159,7 +162,7 @@ const resetPasswordByDni = async (dni) => {
         requiere_cambio_password = TRUE,
         fecha_actualizacion = NOW()
     WHERE dni = $2
-    RETURNING id_usuario, dni, nombres, apellidos, correo_institucional
+    RETURNING id_usuario, dni, nombres, apellidos, correo_institucional, correo_personal
   `;
   const result = await query(sql, [nuevaPassword, dni]);
   return result.rows[0] || null;

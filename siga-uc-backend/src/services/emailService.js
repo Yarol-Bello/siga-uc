@@ -5,8 +5,8 @@
  * Utiliza Nodemailer para enviar correos institucionales.
  */
 
-const nodemailer = require('nodemailer');
-const env = require('../config/env');
+const nodemailer = require("nodemailer");
+const env = require("../config/env");
 
 // Configurar transporter SMTP
 const transporter = nodemailer.createTransport({
@@ -25,10 +25,10 @@ const transporter = nodemailer.createTransport({
 const verificarConexion = async () => {
   try {
     await transporter.verify();
-    console.log('✅ Servicio de correo SMTP conectado correctamente');
+    console.log("✅ Servicio de correo SMTP conectado correctamente");
     return true;
   } catch (error) {
-    console.error('❌ Error al conectar SMTP:', error.message);
+    console.error("❌ Error al conectar SMTP:", error.message);
     return false;
   }
 };
@@ -43,8 +43,8 @@ const enviarCorreo = async ({ to, subject, html, text }) => {
       from: `"${env.SMTP.FROM_NAME}" <${env.SMTP.USER}>`,
       to,
       subject,
-      text: text || '',
-      html: html || '',
+      text: text || "",
+      html: html || "",
     });
     console.log(`📧 Correo enviado a ${to}: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
@@ -103,8 +103,15 @@ const plantillaNotificacion = (destinatario, asunto, cuerpo, remitente) => {
 
 /**
  * Enviar notificación con plantilla institucional
+ * Usa el correo personal si existe, sino el institucional.
  */
-const enviarNotificacion = async ({ to, destinatario, asunto, cuerpo, remitente }) => {
+const enviarNotificacion = async ({
+  to,
+  destinatario,
+  asunto,
+  cuerpo,
+  remitente,
+}) => {
   const html = plantillaNotificacion(destinatario, asunto, cuerpo, remitente);
   return await enviarCorreo({ to, subject: `[SIGA-UC] ${asunto}`, html });
 };

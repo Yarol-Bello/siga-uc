@@ -47,19 +47,24 @@ const crear = async (data) => {
       ? await usuarioDao.findById(data.id_usuario_remitente)
       : null;
 
-    if (destinatario && destinatario.correo_institucional) {
-      await emailService.enviarNotificacion({
-        to: destinatario.correo_institucional,
-        destinatario: `${destinatario.nombres} ${destinatario.apellidos}`,
-        asunto: data.asunto,
-        cuerpo: data.cuerpo,
-        remitente: remitente
-          ? `${remitente.nombres} ${remitente.apellidos}`
-          : "SIGA-UC",
-      });
+    if (destinatario) {
+      // 👇 Elegir el correo personal si existe, sino el institucional
+      const correoDestino =
+        destinatario.correo_personal || destinatario.correo_institucional;
+
+      if (correoDestino) {
+        await emailService.enviarNotificacion({
+          to: correoDestino,
+          destinatario: `${destinatario.nombres} ${destinatario.apellidos}`,
+          asunto: data.asunto,
+          cuerpo: data.cuerpo,
+          remitente: remitente
+            ? `${remitente.nombres} ${remitente.apellidos}`
+            : "SIGA-UC",
+        });
+      }
     }
   } catch (emailError) {
-    // El correo no bloquea la creación de la notificación
     console.error(
       "⚠️  No se pudo enviar el correo, pero la notificación fue guardada:",
       emailError.message,

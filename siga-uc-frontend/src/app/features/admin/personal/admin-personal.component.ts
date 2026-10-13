@@ -12,6 +12,7 @@ interface Personal {
   apellidos: string;
   nombre_completo: string;
   correo_institucional: string;
+  correo_personal: string; // 👈 NUEVO
   telefono: string;
   estado: string;
   id_rol: number;
@@ -80,6 +81,7 @@ export class AdminPersonalComponent implements OnInit {
     nombres: '',
     apellidos: '',
     correo_institucional: '',
+    correo_personal: '',
     telefono: '',
     id_rol: 2,
     especialidad: '',
@@ -226,6 +228,7 @@ export class AdminPersonalComponent implements OnInit {
       nombres: p.nombres,
       apellidos: p.apellidos,
       correo_institucional: p.correo_institucional,
+      correo_personal: p.correo_personal || '',
       telefono: p.telefono || '',
       id_rol: p.id_rol,
       especialidad: p.especialidad || '',
