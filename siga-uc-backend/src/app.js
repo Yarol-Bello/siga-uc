@@ -80,6 +80,10 @@ app.use("/api/alumnos", alumnoRoutes);
 const cargaCurricularRoutes = require("./routes/cargaCurricularRoutes");
 app.use("/api/carga-curricular", cargaCurricularRoutes);
 
+// Rutas de asistencia
+const asistenciaRoutes = require("./routes/asistenciaRoutes");
+app.use("/api/asistencias", asistenciaRoutes);
+
 // ============================================================
 // MANEJO DE ERRORES
 // ============================================================

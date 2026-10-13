@@ -1,0 +1,81 @@
+/**
+ * Servicio de Asistencia
+ * SIGA-UC - Sistema Integrado de Gestión Académica
+ */
+
+const asistenciaDao = require("../dao/asistenciaDao");
+const alumnoDao = require("../dao/alumnoDao");
+
+const obtenerPorCursoFecha = async (id_curso, fecha, id_grado) => {
+  if (!id_curso || !fecha || !id_grado) {
+    const error = new Error("Faltan parámetros: id_curso, fecha, id_grado");
+    error.statusCode = 400;
+    throw error;
+  }
+  return await asistenciaDao.obtenerPorCursoFecha(id_curso, fecha, id_grado);
+};
+
+const obtenerPorAlumno = async (id_alumno, filtros) => {
+  const alumno = await alumnoDao.findById(id_alumno);
+  if (!alumno) {
+    const error = new Error("Alumno no encontrado");
+    error.statusCode = 404;
+    throw error;
+  }
+  return await asistenciaDao.obtenerPorAlumno(id_alumno, filtros);
+};
+
+const obtenerResumenPorAlumno = async (id_alumno) => {
+  const alumno = await alumnoDao.findById(id_alumno);
+  if (!alumno) {
+    const error = new Error("Alumno no encontrado");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const resumen = await asistenciaDao.obtenerResumenPorAlumno(id_alumno);
+  const estadisticas = await asistenciaDao.obtenerEstadisticasAlumno(id_alumno);
+
+  return {
+    alumno: {
+      id_alumno: alumno.id_alumno,
+      nombre_completo: alumno.nombre_completo,
+      dni: alumno.dni,
+    },
+    estadisticas,
+    por_curso: resumen,
+  };
+};
+
+const registrar = async (data) => {
+  if (!data.id_alumno || !data.id_curso || !data.fecha || !data.estado) {
+    const error = new Error(
+      "Faltan campos: id_alumno, id_curso, fecha, estado",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!["P", "T", "F"].includes(data.estado)) {
+    const error = new Error("Estado inválido. Debe ser P, T o F");
+    error.statusCode = 400;
+    throw error;
+  }
+  return await asistenciaDao.registrar(data);
+};
+
+const registrarMasivo = async (registros) => {
+  if (!Array.isArray(registros) || registros.length === 0) {
+    const error = new Error("Debe enviar al menos un registro");
+    error.statusCode = 400;
+    throw error;
+  }
+  return await asistenciaDao.registrarMasivo(registros);
+};
+
+module.exports = {
+  obtenerPorCursoFecha,
+  obtenerPorAlumno,
+  obtenerResumenPorAlumno,
+  registrar,
+  registrarMasivo,
+};
