@@ -1,0 +1,207 @@
+<div class="siagie-container">
+
+  <!-- BANNER PRINCIPAL -->
+  <div class="info-banner">
+    <div class="info-icon">
+      <i class="fa-solid fa-file-excel"></i>
+    </div>
+    <div class="info-text">
+      <h3>Exportación e Integración SIAGIE (MINEDU)</h3>
+      <p>Inyección dinámica de calificaciones de PostgreSQL sobre la plantilla oficial del MINEDU.</p>
+    </div>
+    <span class="info-badge">Año Lectivo 2026</span>
+  </div>
+
+  <!-- 3 PASOS EXPLICATIVOS -->
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-number">1</div>
+      <h4>Descargar del SIAGIE</h4>
+      <p>Usa el acceso directo al portal del MINEDU y descarga la plantilla oficial limpia del grado que vas a
+        calificar.</p>
+      <button class="btn-external" (click)="descargarPlantilla()">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Portal MINEDU
+      </button>
+    </div>
+
+    <div class="step-card">
+      <div class="step-number">2</div>
+      <h4>Cargar Plantilla en SIGA-UC</h4>
+      <p>Carga el archivo Excel aquí. El Mapeador Dinámico analizará las celdas sin alterar las macros del MINEDU.</p>
+    </div>
+
+    <div class="step-card">
+      <div class="step-number">3</div>
+      <h4>Descargar e Importar</h4>
+      <p>Descarga la plantilla procesada con las notas registradas por los docentes y súbela al portal del SIAGIE.</p>
+    </div>
+  </div>
+
+  <!-- SELECTOR DE GRADO Y BIMESTRE -->
+  <div class="toolbar-siagie">
+    <div class="selector-item">
+      <label><i class="fa-solid fa-graduation-cap"></i> Grado:</label>
+      <select [ngModel]="gradoSeleccionado()" (ngModelChange)="onGradoChange($event)">
+        @for (g of grados(); track g.id_grado) {
+        <option [value]="g.id_grado">{{ g.nombre_grado }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="selector-item">
+      <label><i class="fa-solid fa-calendar"></i> Bimestre:</label>
+      <select [ngModel]="bimestre()" (ngModelChange)="onBimestreChange($event)">
+        <option [value]="1">I Bimestre</option>
+        <option [value]="2">II Bimestre</option>
+        <option [value]="3">III Bimestre</option>
+        <option [value]="4">IV Bimestre</option>
+      </select>
+    </div>
+
+    <div class="resumen-auditoria">
+      <span class="badge-completo">
+        <i class="fa-solid fa-check-circle"></i> {{ totalCompletos }} completos
+      </span>
+      <span class="badge-pendiente">
+        <i class="fa-solid fa-clock"></i> {{ totalPendientes }} pendientes
+      </span>
+    </div>
+  </div>
+
+  <!-- PROCESADOR Y DROPZONE -->
+  <div class="card-container">
+    <h3 class="section-title">
+      <i class="fa-solid fa-file-circle-plus"></i>
+      Procesador y Mapeador Dinámico de Plantilla SIAGIE
+    </h3>
+
+    <div class="dropzone-box" (click)="onDropzoneClick()">
+      @if (!archivoCargado()) {
+      <i class="fa-solid fa-file-excel"></i>
+      <p>Haz clic aquí o arrastra la plantilla Excel (.xlsx) descargada del SIAGIE</p>
+      <span>El sistema mapeará automáticamente celdas de DNI, materias y competencias.</span>
+      } @else {
+      <i class="fa-solid fa-file-circle-check" style="color: var(--success-green);"></i>
+      <p style="color: var(--success-green);">Archivo cargado: <strong>{{ archivoCargado()?.name }}</strong></p>
+      <span>Analizando estructura...</span>
+      }
+      <input type="file" id="fileSiagie" accept=".xlsx, .xls" style="display: none;"
+        (change)="onArchivoSeleccionado($event)" />
+    </div>
+
+    @if (analisisCompletado()) {
+    <div class="mapping-status-box">
+      <p><strong><i class="fa-solid fa-check-circle" style="color: var(--success-green);"></i> Análisis Dinámico
+          Exitoso</strong></p>
+      <p>Detectado: {{ auditoria()[0]?.nombre_grado || 'Grado' }} | {{ auditoria()[0]?.total_alumnos || 0 }} Estudiantes
+        | {{ auditoria().length }} Asignaturas | Columnas mapeadas correctamente.</p>
+    </div>
+    }
+
+    <div class="action-row">
+      <div class="estado-mapeo">
+        Estado del Mapeo:
+        @if (analisisCompletado()) {
+        <strong style="color: var(--success-green);">✓ Estructura mapeada correctamente</strong>
+        } @else {
+        <strong style="color: var(--warning-amber);">Pendiente de cargar plantilla .xlsx del MINEDU</strong>
+        }
+      </div>
+      <button class="btn-excel" [disabled]="!analisisCompletado()" (click)="generarExcel()">
+        <i class="fa-solid fa-download"></i> Generar Excel Inyectado para SIAGIE
+      </button>
+    </div>
+  </div>
+
+  <!-- AUDITORÍA DE DOCENTES -->
+  <div class="card-container">
+    <h3 class="section-title">
+      <i class="fa-solid fa-clipboard-check"></i>
+      Estado de Carga de Notas por Docentes en SIGA-UC
+    </h3>
+    <p class="section-hint">Verifica que todos los docentes hayan cerrado sus calificaciones antes de inyectarlas en el
+      Excel.</p>
+
+    @if (cargando()) {
+    <div class="loading-state">
+      <i class="fa-solid fa-spinner fa-spin"></i>
+      <p>Cargando auditoría...</p>
+    </div>
+    }
+
+    @if (error()) {
+    <div class="alert alert-danger">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      {{ error() }}
+    </div>
+    }
+
+    @if (!cargando() && !error()) {
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Curso / Asignatura</th>
+            <th>Docente Responsable</th>
+            <th>Notas Ingresadas en BD</th>
+            <th>Estado para SIAGIE</th>
+            <th>Acción Recordatorio</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of auditoria(); track item.id_curso) {
+          <tr>
+            <td>
+              <strong>{{ item.nombre_curso }}</strong>
+              <br>
+              <span class="badge-area" [ngClass]="getAreaClass(item.area_academica)">
+                {{ item.area_academica }}
+              </span>
+            </td>
+            <td>
+              <div class="docente-cell">
+                <i class="fa-solid fa-user-tie"></i>
+                <div>
+                  <strong>{{ item.docente_nombre }}</strong>
+                  <small>{{ item.docente_correo }}</small>
+                </div>
+              </div>
+            </td>
+            <td>
+              <strong>{{ item.alumnos_calificados }} / {{ item.total_alumnos }} Alumnos</strong>
+              <br>
+              <small style="color: #64748B;">{{ item.porcentaje || 0 }}% completado</small>
+            </td>
+            <td>
+              <span class="badge-estado" [ngClass]="getEstadoClass(item)">
+                {{ getEstadoTexto(item) }}
+              </span>
+            </td>
+            <td>
+              @if (!estaCompleto(item)) {
+              <button class="btn-warning" (click)="alertarDocente(item)">
+                <i class="fa-solid fa-bell"></i> Notificar a Profesor
+              </button>
+              } @else {
+              <button class="btn-secondary" disabled>
+                <i class="fa-solid fa-check"></i> Verificado
+              </button>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (auditoria().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-inbox"></i>
+      <h3>No hay carga curricular para este grado</h3>
+      <p>Asigna cursos a docentes primero en el módulo de Carga Curricular.</p>
+    </div>
+    }
+    }
+  </div>
+
+</div>

@@ -63,6 +63,14 @@ export const routes: Routes = [
             (m) => m.AdminAsistenciaQrComponent,
           ),
       },
+
+      {
+        path: 'siagie',
+        loadComponent: () =>
+          import('./features/admin/siagie/admin-siagie.component').then(
+            (m) => m.AdminSiagieComponent,
+          ),
+      },
     ],
   },
 
