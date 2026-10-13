@@ -1,0 +1,30 @@
+<aside class="sidebar">
+  <div>
+    <div class="sidebar-brand">
+      <div class="sidebar-logo-icon">UC</div>
+      <div>
+        <h3>SIGA-UC</h3>
+        <p>Panel Estudiante</p>
+      </div>
+    </div>
+
+    <ul class="sidebar-menu">
+      @for (item of menuItems; track item.path) {
+        <li>
+          <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: item.path === '/estudiante' }">
+            <i class="fa-solid" [ngClass]="item.icon"></i>
+            {{ item.label }}
+          </a>
+        </li>
+      }
+    </ul>
+  </div>
+
+  <div class="sidebar-user">
+    <div class="user-info">
+      <p>{{ usuario()?.nombre_completo || 'Estudiante' }}</p>
+      <span>3ro de Secundaria</span>
+    </div>
+    <i class="fa-solid fa-right-from-bracket user-logout" (click)="logout()" title="Cerrar Sesión"></i>
+  </div>
+</aside>

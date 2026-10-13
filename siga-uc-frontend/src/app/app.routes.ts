@@ -46,6 +46,25 @@ export const routes: Routes = [
     ],
   },
 
+  // ESTUDIANTE
+  {
+    path: 'estudiante',
+    canActivate: [authGuard, roleGuard(['ESTUDIANTE'])],
+    loadComponent: () =>
+      import('./features/estudiante/layout/estudiante-layout.component').then(
+        (m) => m.EstudianteLayoutComponent,
+      ),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/estudiante/dashboard/estudiante-dashboard.component').then(
+            (m) => m.EstudianteDashboardComponent,
+          ),
+      },
+    ],
+  },
+
   // EN CONSTRUCCIÓN
   {
     path: 'en-construccion',

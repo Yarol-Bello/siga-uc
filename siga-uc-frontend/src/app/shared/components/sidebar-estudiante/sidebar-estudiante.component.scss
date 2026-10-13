@@ -1,0 +1,121 @@
+:host {
+  display: block;
+}
+
+.sidebar {
+  width: 280px;
+  height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px;
+  position: sticky;
+  top: 0;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e2e8f0;
+
+  h3 {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #800020;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  p {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin: 0;
+  }
+}
+
+.sidebar-logo-icon {
+  width: 42px;
+  height: 42px;
+  background: #800020;
+  color: white;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.sidebar-menu {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+
+    &:hover {
+      background-color: rgba(128, 0, 32, 0.08);
+      color: #800020;
+    }
+    &.active {
+      background-color: rgba(128, 0, 32, 0.1);
+      color: #800020;
+      font-weight: 700;
+    }
+    i {
+      font-size: 1rem;
+      width: 20px;
+      text-align: center;
+    }
+  }
+}
+
+.sidebar-user {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .user-info {
+    p {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 0;
+    }
+    span {
+      font-size: 0.72rem;
+      color: #64748b;
+    }
+  }
+
+  .user-logout {
+    color: #800020;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 8px;
+    &:hover {
+      color: #600018;
+    }
+  }
+}

@@ -1,0 +1,99 @@
+<div class="estudiante-dashboard">
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando tus calificaciones...</p>
+  </div>
+  }
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  @if (!cargando() && !error()) {
+  <!-- BANNER BIENVENIDA -->
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h2>¡Hola, {{ usuario()?.nombres }}! 👋</h2>
+      <p>Vas por un excelente rendimiento académico este periodo. ¡Sigue así!</p>
+    </div>
+    <div class="welcome-stats">
+      <div class="w-stat-item">
+        <span>Promedio General</span>
+        <strong>{{ promedioGeneral() }}</strong>
+      </div>
+      <div class="w-stat-item" style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 20px;">
+        <span>Cursos Matriculados</span>
+        <strong>{{ cursos().length }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA DE NOTAS -->
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-marker"></i>
+        Detalle de Calificaciones por Curso
+      </h3>
+      <span class="periodo-badge">Año Lectivo 2026</span>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Área / Curso</th>
+            <th style="text-align: center;">I Bim</th>
+            <th style="text-align: center;">II Bim</th>
+            <th style="text-align: center;">III Bim</th>
+            <th style="text-align: center;">IV Bim</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (curso of cursos(); track curso.id_curso) {
+          <tr>
+            <td>
+              <strong>{{ curso.nombre_curso }}</strong>
+              <br>
+              <span class="area-label">{{ curso.area_academica }}</span>
+            </td>
+            <td style="text-align: center;">
+              <span class="badge-literal" [ngClass]="getNotaClass(curso.bimestres['b1'])">
+                {{ curso.bimestres['b1'] || '-' }}
+              </span>
+            </td>
+            <td style="text-align: center;">
+              <span class="badge-literal" [ngClass]="getNotaClass(curso.bimestres['b2'])">
+                {{ curso.bimestres['b2'] || '-' }}
+              </span>
+            </td>
+            <td style="text-align: center;">
+              <span class="badge-literal" [ngClass]="getNotaClass(curso.bimestres['b3'])">
+                {{ curso.bimestres['b3'] || '-' }}
+              </span>
+            </td>
+            <td style="text-align: center;">
+              <span class="badge-literal" [ngClass]="getNotaClass(curso.bimestres['b4'])">
+                {{ curso.bimestres['b4'] || '-' }}
+              </span>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (cursos().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-book-open"></i>
+      <h3>Aún no tienes calificaciones registradas</h3>
+      <p>Espera a que tus docentes ingresen las notas del bimestre.</p>
+    </div>
+    }
+  </div>
+  }
+</div>
