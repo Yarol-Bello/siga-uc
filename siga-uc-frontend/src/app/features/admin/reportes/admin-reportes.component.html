@@ -1,0 +1,296 @@
+<div class="reportes-container">
+  <!-- PESTAÑAS -->
+  <div class="tab-nav">
+    <button class="tab-btn" [class.active]="tabActiva() === 'libretas'" (click)="cambiarTab('libretas')">
+      <i class="fa-solid fa-id-card"></i> Libretas Informativas
+    </button>
+    <button class="tab-btn" [class.active]="tabActiva() === 'merito'" (click)="cambiarTab('merito')">
+      <i class="fa-solid fa-trophy"></i> Cuadro de Mérito
+    </button>
+    <button class="tab-btn" [class.active]="tabActiva() === 'riesgo'" (click)="cambiarTab('riesgo')">
+      <i class="fa-solid fa-triangle-exclamation"></i> Alumnos en Riesgo
+    </button>
+  </div>
+
+  <!-- TOOLBAR COMÚN -->
+  <div class="filter-toolbar">
+    <div class="filter-group">
+      <label><i class="fa-solid fa-graduation-cap"></i> Grado</label>
+      <select [ngModel]="gradoSeleccionado()" (ngModelChange)="gradoSeleccionado.set($event); cambiarGrado()">
+        @for (g of grados(); track g.id_grado) {
+        <option [value]="g.id_grado">{{ g.nombre_grado }}</option>
+        }
+      </select>
+    </div>
+
+    @if (tabActiva() !== 'libretas') {
+    <div class="filter-group" style="max-width: 220px;">
+      <label><i class="fa-solid fa-calendar"></i> Bimestre</label>
+      <select [ngModel]="bimestre()" (ngModelChange)="bimestre.set($event); cambiarBimestre()">
+        <option [value]="1">I Bimestre</option>
+        <option [value]="2">II Bimestre</option>
+        <option [value]="3">III Bimestre</option>
+        <option [value]="4">IV Bimestre</option>
+      </select>
+    </div>
+    }
+
+    <div class="toolbar-actions">
+      <button class="btn-primary" onclick="window.print()">
+        <i class="fa-solid fa-file-pdf"></i> Exportar PDF
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando datos...</p>
+  </div>
+  }
+
+  <!-- PESTAÑA 1: LIBRETAS -->
+  @if (!cargando() && tabActiva() === 'libretas') {
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-id-card"></i>
+        Libretas Informativas — {{ bimestre() }}° Bimestre
+      </h3>
+      <span class="badge-count">{{ alumnos().length }} alumnos</span>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>DNI</th>
+            <th>Apellidos y Nombres</th>
+            <th>Grado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (alumno of alumnos(); track alumno.id_alumno) {
+          <tr>
+            <td><span class="codigo">{{ alumno.codigo_estudiante }}</span></td>
+            <td>{{ alumno.dni }}</td>
+            <td><strong>{{ alumno.nombre_completo }}</strong></td>
+            <td>{{ alumno.nombre_grado }}</td>
+            <td>
+              <button class="btn-ver" (click)="verLibreta(alumno)">
+                <i class="fa-solid fa-eye"></i> Ver Libreta
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (alumnos().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-users-slash"></i>
+      <h3>No hay alumnos en este grado</h3>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- PESTAÑA 2: CUADRO DE MÉRITO -->
+  @if (!cargando() && tabActiva() === 'merito') {
+  <div class="card-container">
+    <div class="section-header-banner" style="background: #FEF3C7; border-bottom-color: #FCD34D;">
+      <h3 style="color: #92400E;">
+        <i class="fa-solid fa-trophy"></i>
+        Cuadro de Mérito — {{ bimestre() }}° Bimestre
+      </h3>
+      <span class="badge-count" style="background: #F59E0B;">Top 10</span>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 80px;">Puesto</th>
+            <th>Código</th>
+            <th>Estudiante</th>
+            <th style="text-align: center;">AD</th>
+            <th style="text-align: center;">A</th>
+            <th style="text-align: center;">B</th>
+            <th style="text-align: center;">C</th>
+            <th style="text-align: center;">Promedio</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of cuadroMerito(); track item.id_alumno) {
+          <tr [class.top-3]="esTop3(item.puesto)">
+            <td style="font-size: 1.2rem; text-align: center;">{{ getMedalla(item.puesto) }}</td>
+            <td><span class="codigo">{{ item.codigo_estudiante }}</span></td>
+            <td><strong>{{ item.nombre_completo }}</strong></td>
+            <td style="text-align: center;"><span class="badge-literal nota-ad">{{ item.total_ad }}</span></td>
+            <td style="text-align: center;"><span class="badge-literal nota-a">{{ item.total_a }}</span></td>
+            <td style="text-align: center;"><span class="badge-literal nota-b">{{ item.total_b }}</span></td>
+            <td style="text-align: center;"><span class="badge-literal nota-c">{{ item.total_c }}</span></td>
+            <td style="text-align: center;">
+              <strong style="color: #800020; font-size: 1rem;">{{ item.promedio_ponderado }}</strong>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (cuadroMerito().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-trophy"></i>
+      <h3>Sin datos de mérito</h3>
+      <p>No hay notas finales registradas para este bimestre.</p>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- PESTAÑA 3: ALUMNOS EN RIESGO -->
+  @if (!cargando() && tabActiva() === 'riesgo') {
+  <div class="card-container">
+    <div class="section-header-banner" style="background: #FEF2F2; border-bottom-color: #FCA5A5;">
+      <h3 style="color: #991B1B;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        Alumnos con Bajo Rendimiento
+      </h3>
+      <span class="badge-count" style="background: #EF4444;">{{ alumnosRiesgo().length }} en riesgo</span>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Estudiante</th>
+            <th>Cursos con C</th>
+            <th>Detalle de Cursos</th>
+            <th>Tutor</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (alumno of alumnosRiesgo(); track alumno.id_alumno) {
+          <tr>
+            <td><span class="codigo">{{ alumno.codigo_estudiante }}</span></td>
+            <td><strong>{{ alumno.nombre_completo }}</strong></td>
+            <td style="text-align: center;">
+              <span class="badge-riesgo">{{ alumno.cursos_con_c }}</span>
+            </td>
+            <td><span class="cursos-detalle">{{ alumno.cursos_detalle }}</span></td>
+            <td>{{ alumno.tutor_nombre || '-' }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (alumnosRiesgo().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-check-circle" style="color: #10B981;"></i>
+      <h3>¡Excelente!</h3>
+      <p>No hay alumnos en riesgo en este grado.</p>
+    </div>
+    }
+  </div>
+  }
+</div>
+
+<!-- MODAL DE LIBRETA IMPRIMIBLE -->
+@if (modalLibreta()) {
+<div class="modal-overlay" (click)="cerrarModalLibreta()">
+  <div class="modal-container modal-libreta" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-id-card"></i> Libreta Informativa</h3>
+      <button class="modal-close" (click)="cerrarModalLibreta()">&times;</button>
+    </div>
+    <div class="modal-body">
+      @if (cargandoLibreta()) {
+      <div class="loading-state">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <p>Cargando libreta...</p>
+      </div>
+      }
+
+      @if (libretaData()) {
+      <div class="libreta-sheet">
+        <div class="libreta-header">
+          <div>
+            <h3>I.E.P. UNIÓN CIENTÍFICA</h3>
+            <p>Boletín Informativo — Año Lectivo {{ libretaData()!.anio_lectivo }}</p>
+          </div>
+          <div style="text-align: right; font-weight: 700; color: #800020; font-size: 0.85rem;">
+            HUANCAYO — JUNÍN
+          </div>
+        </div>
+
+        <div class="libreta-info">
+          <p><strong>Estudiante:</strong> {{ libretaData()!.alumno.nombre_completo }}</p>
+          <p><strong>DNI:</strong> {{ libretaData()!.alumno.dni }}</p>
+          <p><strong>Código:</strong> {{ libretaData()!.alumno.codigo_estudiante }}</p>
+          <p><strong>Grado:</strong> {{ libretaData()!.alumno.nombre_grado }} — {{ libretaData()!.alumno.seccion }}</p>
+          @if (libretaData()!.tutor) {
+          <p><strong>Tutor:</strong> {{ libretaData()!.tutor.tutor_nombre }}</p>
+          }
+          <p><strong>Bimestre:</strong> {{ libretaData()!.bimestre }}° Bimestre</p>
+        </div>
+
+        <table class="libreta-table">
+          <thead>
+            <tr>
+              <th>Área / Curso</th>
+              <th>Nota</th>
+              <th>Conclusión Descriptiva</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (nota of libretaData()!.notas; track nota.id_curso) {
+            <tr>
+              <td>
+                <strong>{{ nota.nombre_curso }}</strong>
+                <br>
+                <small>{{ nota.area_academica }}</small>
+              </td>
+              <td style="text-align: center;">
+                <span class="badge-literal" [ngClass]="getNotaClass(nota.nota_final)">
+                  {{ nota.nota_final || '-' }}
+                </span>
+              </td>
+              <td>{{ nota.conclusion || '-' }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (libretaData()!.asistencia) {
+        <div class="libreta-asistencia">
+          <p><strong>Asistencias:</strong> {{ libretaData()!.asistencia.total_presente }} días</p>
+          <p><strong>Tardanzas:</strong> {{ libretaData()!.asistencia.total_tardanza }}</p>
+          <p><strong>Faltas:</strong> {{ libretaData()!.asistencia.total_falta }}</p>
+          <p><strong>% Asistencia:</strong> {{ libretaData()!.asistencia.porcentaje_asistencia }}%</p>
+        </div>
+        }
+      </div>
+      }
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalLibreta()">Cerrar</button>
+      <button class="btn-primary" onclick="window.print()">
+        <i class="fa-solid fa-print"></i> Imprimir Libreta
+      </button>
+    </div>
+  </div>
+</div>
+}

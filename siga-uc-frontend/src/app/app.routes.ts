@@ -16,6 +16,7 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard(['ADMIN'])],
     loadComponent: () =>
       import('./features/admin/layout/admin-layout.component').then((m) => m.AdminLayoutComponent),
+
     children: [
       {
         path: '',
@@ -24,12 +25,19 @@ export const routes: Routes = [
             (m) => m.DashboardComponent,
           ),
       },
-      // 👇 AQUÍ VA ALUMNOS (dentro del bloque admin)
       {
         path: 'alumnos',
         loadComponent: () =>
           import('./features/admin/alumnos/admin-alumnos.component').then(
             (m) => m.AdminAlumnosComponent,
+          ),
+      },
+
+      {
+        path: 'reportes',
+        loadComponent: () =>
+          import('./features/admin/reportes/admin-reportes.component').then(
+            (m) => m.AdminReportesComponent,
           ),
       },
     ],
