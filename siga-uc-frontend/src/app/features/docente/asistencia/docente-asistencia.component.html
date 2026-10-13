@@ -1,0 +1,157 @@
+<div class="asistencia-container">
+  <!-- TOOLBAR -->
+  <div class="filtro-toolbar">
+    <div class="filtro-group">
+      <label><i class="fa-solid fa-book"></i> Curso / Grado</label>
+      <select [ngModel]="cursoSeleccionado()?.id_carga" (ngModelChange)="onCursoChange($event)">
+        @for (curso of cursos(); track curso.id_carga) {
+        <option [value]="curso.id_carga">
+          {{ curso.nombre_curso }} — {{ curso.nombre_grado }} ({{ curso.seccion }})
+        </option>
+        }
+      </select>
+    </div>
+
+    <div class="filtro-group" style="max-width: 220px;">
+      <label><i class="fa-solid fa-calendar"></i> Fecha de Clase</label>
+      <input type="date" [ngModel]="fecha()" (ngModelChange)="fecha.set($event); cambiarFecha()" />
+    </div>
+
+    <div class="toolbar-actions">
+      <button class="btn-secondary" (click)="marcarTodosPresentes()">
+        <i class="fa-solid fa-check-double"></i> Todos Presentes
+      </button>
+      <button class="btn-primary" (click)="guardarAsistencia()" [disabled]="guardando() || totalCambios === 0">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-save"></i>
+        Guardar Asistencia
+        @if (totalCambios > 0) {
+        <span class="badge-cambios">{{ totalCambios }}</span>
+        }
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- MENSAJES -->
+  @if (mensajeExito()) {
+  <div class="alert alert-success">
+    <i class="fa-solid fa-check-circle"></i>
+    {{ mensajeExito() }}
+  </div>
+  }
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  <!-- RESUMEN DE ASISTENCIA -->
+  @if (!cargandoLista() && cursoSeleccionado()) {
+  <div class="resumen-grid">
+    <div class="resumen-card">
+      <div class="resumen-icon presente"><i class="fa-solid fa-user-check"></i></div>
+      <div class="resumen-info">
+        <span>Presentes</span>
+        <h3>{{ contarPorEstado('P') }}</h3>
+      </div>
+    </div>
+    <div class="resumen-card">
+      <div class="resumen-icon tardanza"><i class="fa-solid fa-clock"></i></div>
+      <div class="resumen-info">
+        <span>Tardanzas</span>
+        <h3>{{ contarPorEstado('T') }}</h3>
+      </div>
+    </div>
+    <div class="resumen-card">
+      <div class="resumen-icon falta"><i class="fa-solid fa-user-xmark"></i></div>
+      <div class="resumen-info">
+        <span>Faltas</span>
+        <h3>{{ contarPorEstado('F') }}</h3>
+      </div>
+    </div>
+    <div class="resumen-card">
+      <div class="resumen-icon total"><i class="fa-solid fa-users"></i></div>
+      <div class="resumen-info">
+        <span>Total Alumnos</span>
+        <h3>{{ alumnos().length }}</h3>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- TABLA DE ASISTENCIA -->
+  @if (cargandoLista()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando lista de alumnos...</p>
+  </div>
+  }
+
+  @if (!cargandoLista() && cursoSeleccionado()) {
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-clipboard-user"></i>
+        {{ cursoSeleccionado()!.nombre_curso }} — {{ cursoSeleccionado()!.nombre_grado }}
+      </h3>
+      <span class="badge-fecha">{{ fecha() }}</span>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 50px;">N°</th>
+            <th style="width: 100px;">DNI</th>
+            <th>Apellidos y Nombres</th>
+            <th style="width: 320px;">Estado de Asistencia</th>
+            <th>Observación</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (alumno of alumnos(); track alumno.id_alumno; let i = $index) {
+          <tr [ngClass]="{ 'row-modificada': cambios[alumno.id_alumno] }">
+            <td style="text-align: center;">{{ (i + 1).toString().padStart(2, '0') }}</td>
+            <td>{{ alumno.dni }}</td>
+            <td><strong>{{ alumno.nombre_completo }}</strong></td>
+            <td>
+              <div class="attendance-selector">
+                <button type="button" class="att-btn presente" [class.active]="getEstado(alumno.id_alumno) === 'P'"
+                  (click)="cambiarEstado(alumno.id_alumno, 'P')">
+                  <i class="fa-solid fa-check"></i> Presente
+                </button>
+                <button type="button" class="att-btn tardanza" [class.active]="getEstado(alumno.id_alumno) === 'T'"
+                  (click)="cambiarEstado(alumno.id_alumno, 'T')">
+                  <i class="fa-solid fa-clock"></i> Tardanza
+                </button>
+                <button type="button" class="att-btn falta" [class.active]="getEstado(alumno.id_alumno) === 'F'"
+                  (click)="cambiarEstado(alumno.id_alumno, 'F')">
+                  <i class="fa-solid fa-xmark"></i> Falta
+                </button>
+              </div>
+            </td>
+            <td>
+              <input type="text" class="input-observacion" placeholder="Ej. Justificado por dirección"
+                [ngModel]="getObservacion(alumno.id_alumno)"
+                (ngModelChange)="cambiarObservacion(alumno.id_alumno, $event)" />
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (alumnos().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-users-slash"></i>
+      <h3>No hay alumnos en este curso</h3>
+    </div>
+    }
+  </div>
+  }
+</div>
