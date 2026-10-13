@@ -48,6 +48,14 @@ export const routes: Routes = [
             (m) => m.AdminPersonalComponent,
           ),
       },
+
+      {
+        path: 'carga-curricular',
+        loadComponent: () =>
+          import('./features/admin/carga-curricular/admin-carga-curricular.component').then(
+            (m) => m.AdminCargaCurricularComponent,
+          ),
+      },
     ],
   },
 

@@ -1,0 +1,234 @@
+<div class="carga-container">
+
+  <!-- BANNER DE INFO -->
+  <div class="info-banner">
+    <div class="info-icon">
+      <i class="fa-solid fa-chalkboard-user"></i>
+    </div>
+    <div class="info-text">
+      <h3>Asignación de Cursos y Docentes</h3>
+      <p>Administra los 11 cursos oficiales de secundaria y designa a cada docente por grado.</p>
+    </div>
+    <span class="info-badge">Año Lectivo 2026</span>
+  </div>
+
+  <!-- TOOLBAR CON SELECTOR DE GRADO Y TUTOR -->
+  <div class="toolbar-carga">
+    <div class="selector-item">
+      <label><i class="fa-solid fa-graduation-cap"></i> Grado:</label>
+      <select [ngModel]="gradoSeleccionado()" (ngModelChange)="onGradoChange($event)">
+        @for (g of grados(); track g.id_grado) {
+        <option [value]="g.id_grado">{{ g.nombre_grado }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="tutor-info">
+      <label><i class="fa-solid fa-user-shield"></i> Tutor del Grado:</label>
+      @if (tutorActual()) {
+      <span class="tutor-name">{{ tutorActual().nombre_completo }}</span>
+      <button class="btn-link" (click)="abrirModalTutor()">Cambiar</button>
+      } @else {
+      <span class="tutor-empty">Sin asignar</span>
+      <button class="btn-link" (click)="abrirModalTutor()">Asignar</button>
+      }
+    </div>
+
+    <button class="btn-primary" (click)="abrirModalAsignar()">
+      <i class="fa-solid fa-plus"></i> Nueva Asignación
+    </button>
+  </div>
+
+  <!-- ESTADO CARGA -->
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando carga curricular...</p>
+  </div>
+  }
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  <!-- TABLA DE ASIGNACIONES -->
+  @if (!cargando() && !error()) {
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-list-check"></i>
+        Plan de Estudios — Asignación por Curso
+      </h3>
+      <span class="badge-count">{{ asignaciones().length }} asignaciones</span>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Curso / Asignatura</th>
+            <th>Área Académica</th>
+            <th>Horas/Sem</th>
+            <th>Docente Asignado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of asignaciones(); track a.id_carga) {
+          <tr>
+            <td><strong>{{ a.nombre_curso }}</strong></td>
+            <td>
+              <span class="badge-area" [ngClass]="getAreaClass(a.area_academica)">
+                {{ a.area_academica }}
+              </span>
+            </td>
+            <td style="text-align: center;">{{ a.horas_asignadas }} hrs</td>
+            <td>
+              <div class="docente-cell">
+                <i class="fa-solid fa-user-tie"></i>
+                <strong>{{ a.docente_nombre_completo }}</strong>
+              </div>
+            </td>
+            <td>
+              <div class="action-icons">
+                <i class="fa-solid fa-pen-to-square" title="Editar" (click)="abrirModalAsignar(a)"></i>
+                <i class="fa-solid fa-trash" title="Eliminar" (click)="eliminarAsignacion(a)"></i>
+              </div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (asignaciones().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-inbox"></i>
+      <h3>No hay cursos asignados</h3>
+      <p>Crea la primera asignación con el botón "Nueva Asignación".</p>
+    </div>
+    }
+  </div>
+  }
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: ASIGNAR CURSO A DOCENTE -->
+<!-- ============================================================ -->
+@if (modalAsignar()) {
+<div class="modal-overlay" (click)="cerrarModalAsignar()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        <i class="fa-solid" [ngClass]="asignacionEditando() ? 'fa-pen-to-square' : 'fa-plus'"></i>
+        {{ asignacionEditando() ? 'Editar Asignación' : 'Nueva Asignación de Curso' }}
+      </h3>
+      <button class="modal-close" (click)="cerrarModalAsignar()">&times;</button>
+    </div>
+    <div class="modal-body">
+      @if (errorModal()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorModal() }}
+      </div>
+      }
+
+      <div class="form-group">
+        <label>Curso / Asignatura *</label>
+        <select [(ngModel)]="formAsignar.id_curso" [disabled]="!!asignacionEditando()">
+          <option value="">Seleccione el curso...</option>
+          @for (c of cursos(); track c.id_curso) {
+          <option [value]="c.id_curso">
+            {{ c.nombre_curso }} ({{ c.area_academica }})
+          </option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Docente Encargado *</label>
+        <select [(ngModel)]="formAsignar.id_personal">
+          <option value="">Seleccione el docente...</option>
+          @for (d of docentes(); track d.id_personal) {
+          <option [value]="d.id_personal">
+            {{ d.nombre_completo }} — {{ d.especialidad || d.cargo }}
+          </option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Horas Semanales Asignadas</label>
+        <input type="number" min="1" max="10" [(ngModel)]="formAsignar.horas_asignadas" />
+      </div>
+
+      <div class="info-box">
+        <i class="fa-solid fa-circle-info"></i>
+        <p>Esta asignación alimenta el horario del docente y del estudiante, además del sistema de calificaciones.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalAsignar()">Cancelar</button>
+      <button class="btn-primary" [disabled]="guardando()" (click)="guardarAsignacion()">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-check"></i> {{ asignacionEditando() ? 'Guardar Cambios' : 'Asignar Curso' }}
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- MODAL: ASIGNAR TUTOR AL GRADO -->
+<!-- ============================================================ -->
+@if (modalTutor()) {
+<div class="modal-overlay" (click)="cerrarModalTutor()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-user-shield"></i> Asignar Tutor al Grado</h3>
+      <button class="modal-close" (click)="cerrarModalTutor()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 0.9rem; color: #64748B; margin-bottom: 20px;">
+        El tutor es el docente encargado de la gestión integral del grado, quien emite las conclusiones descriptivas de
+        las libretas.
+      </p>
+
+      <div class="form-group">
+        <label>Docente Tutor *</label>
+        <select [(ngModel)]="tutorSeleccionado">
+          <option value="">Seleccione el docente...</option>
+          @for (d of docentes(); track d.id_personal) {
+          <option [value]="d.id_personal">
+            {{ d.nombre_completo }} — {{ d.especialidad || d.cargo }}
+          </option>
+          }
+        </select>
+      </div>
+
+      @if (tutorActual()) {
+      <div class="tutor-actual-box">
+        <i class="fa-solid fa-info-circle"></i>
+        <span>Tutor actual: <strong>{{ tutorActual().nombre_completo }}</strong>. Se reemplazará al guardar.</span>
+      </div>
+      }
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalTutor()">Cancelar</button>
+      <button class="btn-primary" [disabled]="guardandoTutor()" (click)="guardarTutor()">
+        @if (guardandoTutor()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-check"></i> Asignar Tutor
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
