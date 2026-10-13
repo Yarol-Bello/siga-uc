@@ -1,0 +1,221 @@
+<div class="asistencia-qr-container">
+
+  <!-- BANNER -->
+  <div class="info-banner">
+    <div class="info-icon">
+      <i class="fa-solid fa-qrcode"></i>
+    </div>
+    <div class="info-text">
+      <h3>Control de Asistencia QR del Personal</h3>
+      <p>Estación de escaneo para el registro automático de ingreso de docentes y administrativos.</p>
+    </div>
+    <span class="info-badge">Jornada Laboral</span>
+  </div>
+
+  <!-- LAYOUT DE 2 COLUMNAS -->
+  <div class="qr-layout">
+
+    <!-- COLUMNA IZQUIERDA: ESCÁNER -->
+    <div class="card-container scanner-card">
+      <div class="card-title">
+        <i class="fa-solid fa-camera"></i>
+        <h3>Estación de Escaneo QR</h3>
+      </div>
+
+      <p class="scanner-hint">
+        Ingresa el DNI del docente o colaborador para simular el escaneo de su carné digital QR.
+      </p>
+
+      <!-- BOX DE ESCANEO -->
+      <div class="scanner-box">
+        <div class="scanner-icon">
+          <i class="fa-solid fa-qrcode"></i>
+        </div>
+        <input type="text" maxlength="8" placeholder="DNI (8 dígitos)" [(ngModel)]="dniEscaneado"
+          (keyup.enter)="simularEscaneo()" class="scanner-input" />
+        <button class="btn-scanner" [disabled]="buscando()" (click)="simularEscaneo()">
+          @if (buscando()) {
+          <i class="fa-solid fa-spinner fa-spin"></i> Buscando...
+          } @else {
+          <i class="fa-solid fa-expand"></i> Simular Escaneo
+          }
+        </button>
+      </div>
+
+      <!-- ERROR DE ESCANEO -->
+      @if (errorEscaneo()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorEscaneo() }}
+      </div>
+      }
+
+      <!-- PERSONAL ENCONTRADO -->
+      @if (personalEncontrado()) {
+      <div class="encontrado-box">
+        <div class="encontrado-header">
+          <div class="encontrado-avatar">
+            {{ personalEncontrado()!.nombre_completo.charAt(0) }}
+          </div>
+          <div>
+            <h4>{{ personalEncontrado()!.nombre_completo }}</h4>
+            <p>
+              <span class="badge-rol">{{ personalEncontrado()!.nombre_rol }}</span>
+              {{ personalEncontrado()!.cargo }}
+            </p>
+          </div>
+        </div>
+
+        <p class="encontrado-dni">DNI: {{ personalEncontrado()!.dni }}</p>
+
+        <div class="marcar-actions">
+          <p class="label-accion">Selecciona el estado de marcación:</p>
+          <div class="marcar-buttons">
+            <button class="btn-estado puntual" [disabled]="marcando()" (click)="registrarMarcacion('Puntual')">
+              <i class="fa-solid fa-check"></i> Puntual
+            </button>
+            <button class="btn-estado tardanza" [disabled]="marcando()" (click)="registrarMarcacion('Tardanza')">
+              <i class="fa-solid fa-clock"></i> Tardanza
+            </button>
+            <button class="btn-estado falta" [disabled]="marcando()" (click)="registrarMarcacion('Falta')">
+              <i class="fa-solid fa-xmark"></i> Falta
+            </button>
+          </div>
+        </div>
+      </div>
+      }
+
+      <!-- ÚLTIMO ESCANEO EXITOSO -->
+      @if (ultimoEscaneo()) {
+      <div class="ultimo-escaneo-card">
+        <div class="ultimo-icon">
+          <i class="fa-solid fa-check"></i>
+        </div>
+        <div class="ultimo-info">
+          <h4>{{ ultimoEscaneo().nombre_completo }}</h4>
+          <p>
+            Hora: <strong>{{ ultimoEscaneo().hora }}</strong> —
+            <strong style="color: var(--success-green);">{{ ultimoEscaneo().estado }}</strong>
+          </p>
+        </div>
+      </div>
+      }
+    </div>
+
+    <!-- COLUMNA DERECHA: KPIs Y TABLA -->
+    <div class="right-column">
+
+      <!-- SELECTOR DE FECHA -->
+      <div class="fecha-selector">
+        <i class="fa-solid fa-calendar"></i>
+        <label>Fecha:</label>
+        <input type="date" [(ngModel)]="fechaActual" (change)="onFechaChange()" />
+      </div>
+
+      <!-- KPIs DEL DÍA -->
+      @if (resumen()) {
+      <div class="kpi-grid">
+        <div class="kpi-card total">
+          <div class="kpi-icon total"><i class="fa-solid fa-users"></i></div>
+          <div class="kpi-content">
+            <span>Total Personal</span>
+            <h3>{{ resumen()!.total_personal }}</h3>
+          </div>
+        </div>
+
+        <div class="kpi-card puntual">
+          <div class="kpi-icon puntual"><i class="fa-solid fa-user-check"></i></div>
+          <div class="kpi-content">
+            <span>Puntuales</span>
+            <h3>{{ resumen()!.total_puntual }}</h3>
+          </div>
+        </div>
+
+        <div class="kpi-card tardanza">
+          <div class="kpi-icon tardanza"><i class="fa-solid fa-clock"></i></div>
+          <div class="kpi-content">
+            <span>Tardanzas</span>
+            <h3>{{ resumen()!.total_tardanza }}</h3>
+          </div>
+        </div>
+
+        <div class="kpi-card falta">
+          <div class="kpi-icon falta"><i class="fa-solid fa-user-xmark"></i></div>
+          <div class="kpi-content">
+            <span>Faltas</span>
+            <h3>{{ resumen()!.total_falta }}</h3>
+          </div>
+        </div>
+      </div>
+      }
+
+      <!-- TABLA DE ASISTENCIAS -->
+      <div class="card-container">
+        <div class="section-header-banner">
+          <h3>
+            <i class="fa-solid fa-list-check"></i>
+            Asistencias del Día ({{ fechaActual() }})
+          </h3>
+          <span class="badge-count">{{ personal().length }} personas</span>
+        </div>
+
+        @if (cargando()) {
+        <div class="loading-state">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          <p>Cargando asistencias...</p>
+        </div>
+        }
+
+        @if (!cargando()) {
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>DNI</th>
+                <th>Colaborador</th>
+                <th>Rol / Cargo</th>
+                <th>Hora Ingreso</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of personal(); track p.id_personal) {
+              <tr>
+                <td>{{ p.dni }}</td>
+                <td>
+                  <div class="personal-cell">
+                    <i class="fa-solid" [ngClass]="getRolIcon(p.nombre_rol)"></i>
+                    <strong>{{ p.nombre_completo }}</strong>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge-rol-tabla">{{ p.nombre_rol }}</span>
+                  <small style="display: block; color: #64748B; font-size: 0.72rem;">{{ p.cargo }}</small>
+                </td>
+                <td>{{ p.hora_ingreso || '—' }}</td>
+                <td>
+                  @if (p.estado) {
+                  <span class="badge-estado" [ngClass]="getEstadoClass(p.estado)">
+                    {{ p.estado }}
+                  </span>
+                  } @else {
+                  <span class="badge-estado sin-registro">Sin registro</span>
+                  }
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (personal().length === 0) {
+        <div class="empty-state">
+          <i class="fa-solid fa-inbox"></i>
+          <h3>No hay personal registrado</h3>
+        </div>
+        }
+        }
+      </div>
+    </div>
+  </div>
+</div>

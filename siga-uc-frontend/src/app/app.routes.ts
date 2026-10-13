@@ -56,6 +56,13 @@ export const routes: Routes = [
             (m) => m.AdminCargaCurricularComponent,
           ),
       },
+      {
+        path: 'asistencia-qr',
+        loadComponent: () =>
+          import('./features/admin/asistencia-qr/admin-asistencia-qr.component').then(
+            (m) => m.AdminAsistenciaQrComponent,
+          ),
+      },
     ],
   },
 
