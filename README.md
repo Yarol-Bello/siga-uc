@@ -89,7 +89,6 @@ SIGA-UC es un sistema web que centraliza la gestión académica y administrativa
 
 ## 📁 Estructura del Proyecto
 
-text
 siga-uc/
 ├── database/ # Scripts SQL y backups
 │ ├── siga_uc.sql # Esquema completo (26 tablas)
@@ -130,112 +129,34 @@ siga-uc/
 │ └── package.json
 ├── .gitignore
 └── README.md
-🚀 Instalación Rápida
-Requisitos Previos
-Windows 11 (o Linux/macOS)
 
-Node.js 20 LTS
+---
 
-PostgreSQL 18.4
+## 🚀 Instalación Rápida
 
-Angular CLI 21
+### Requisitos Previos
 
-Git 2.56+
+- Windows 11 (o Linux/macOS)
+- Node.js 20 LTS
+- PostgreSQL 18.4
+- Angular CLI 21
+- Git 2.56+
 
-Pasos
-bash
+### Pasos
 
+```bash
 # 1. Clonar el repositorio
-
 git clone <url-del-repo>
 cd siga-uc
 
 # 2. Configurar Backend
-
 cd siga-uc-backend
 npm install
-
 # Configurar .env con tus credenciales de PostgreSQL y SMTP
-
 npm run dev
 
 # 3. Configurar Frontend (en otra terminal)
-
 cd ../siga-uc-frontend
 npm install
 ng serve
-Acceso:
-
-Backend API: http://localhost:3000
-
-Frontend SPA: http://localhost:4200
-
-Health Check: http://localhost:3000/api/health
-
-Para instrucciones detalladas, ver docs/INSTALACION.md.
-
-🔐 Credenciales de Prueba
-Rol DNI Contraseña
-Administrador 74829102 UC2026*
-Secretaría/Tesorería 40596837 UC2026*
-Docente (Matemática) 10293847 UC2026*
-Docente (Sociales) 20394812 UC2026*
-Docente (Ciencias) 30192847 UC2026*
-Docente (Comunicación) 50182736 UC2026*
-Estudiante (3ro Sec) 75918234 UC75918234
-Estudiante (2do Sec) 74829103 UC74829103
-Estudiante (5to Sec) 76829401 UC76829401
-Para ver todas las credenciales, consultar docs/CREDENCIALES.md.
-
-📚 Documentación
-Documento Descripción
-Manual de Usuario Guía paso a paso para cada rol
-Manual Técnico Arquitectura, BD, endpoints API
-Instalación Cómo desplegar el sistema
-Credenciales Usuarios de prueba
-🎯 Estado del Proyecto
-Fase Descripción Estado
-FASE 1 Entorno de desarrollo ✅ 100%
-FASE 2 Base de datos (26 tablas) ✅ 100%
-FASE 3 Backend API (60+ endpoints) ✅ 100%
-FASE 4 Frontend Angular (4 paneles) ✅ 100%
-FASE 5 Módulos por rol ✅ 100%
-FASE 6 SIAGIE real + Notificaciones SMTP ✅ 100%
-FASE 7 Documentación 🔄 En progreso
-FASE 8 Despliegue en producción ⏳ Pendiente
-Progreso total: 99% completado.
-
-🏆 Características Destacadas
-✅ Autenticación JWT con Guards e Interceptors por rol.
-
-✅ 26 tablas normalizadas en PostgreSQL con ACID.
-
-✅ 60+ endpoints REST organizados por módulos.
-
-✅ 4 paneles de rol con diseño institucional guindo/dorado.
-
-✅ Boletas electrónicas con hash CPE.
-
-✅ Cálculo automático de nota final por predominancia.
-
-✅ Auditoría completa con bitácora y valores anterior/nuevo en JSONB.
-
-✅ Cierre de actas con hash SHA-256 de integridad.
-
-✅ SIAGIE real: Excel inyectado con notas desde PostgreSQL.
-
-✅ Notificaciones reales: Correos institucionales vía SMTP Gmail.
-
-✅ Carné QR digital para asistencia del personal.
-
-👨‍💻 Autor
-Yarol Bello Coquil
-
-📧 yarolbellocoquil@gmail.com
-
-🎓 Proyecto Académico — 2026
-
-🏫 I.E.P. Unión Científica — Huancayo, Junín
-
-📄 Licencia
-Proyecto académico. Todos los derechos reservados © 2026 I.E.P. Unión Científica.
+```
