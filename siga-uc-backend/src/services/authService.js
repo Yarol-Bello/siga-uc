@@ -141,9 +141,13 @@ const getPerfil = async (id_usuario) => {
     infoAdicional = await usuarioDao.getPersonalInfo(id_usuario);
   }
 
+  // 👇 Obtener la credencial QR
+  const credencialQR = await usuarioDao.getCredencialQR(id_usuario);
+
   return {
     ...usuario,
     info_adicional: infoAdicional,
+    credencial_qr: credencialQR,
   };
 };
 

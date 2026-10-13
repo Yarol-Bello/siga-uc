@@ -70,4 +70,40 @@ router.put(
   authController.resetPassword,
 );
 
+/**
+ * @route   POST /api/auth/recuperar-password
+ * @desc    Solicitar recuperación de contraseña
+ * @access  Público
+ */
+router.post(
+  "/recuperar-password",
+  [body("identificador").notEmpty().withMessage("Debe enviar un DNI o correo")],
+  authController.solicitarRecuperacion,
+);
+
+/**
+ * @route   GET /api/auth/validar-token/:token
+ * @desc    Validar un token de recuperación
+ * @access  Público
+ */
+router.get("/validar-token/:token", authController.validarToken);
+
+/**
+ * @route   POST /api/auth/restablecer-password
+ * @desc    Restablecer contraseña con token
+ * @access  Público
+ */
+router.post(
+  "/restablecer-password",
+  [
+    body("token").notEmpty().withMessage("Token obligatorio"),
+    body("password")
+      .notEmpty()
+      .withMessage("Nueva contraseña obligatoria")
+      .isLength({ min: 6 })
+      .withMessage("Mínimo 6 caracteres"),
+  ],
+  authController.restablecerPassword,
+);
+
 module.exports = router;

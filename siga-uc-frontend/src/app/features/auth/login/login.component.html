@@ -103,20 +103,26 @@
       <button class="modal-close" (click)="cerrarRecuperar()">&times;</button>
     </div>
     <div class="modal-body">
-      <p>Ingresa tu número de DNI o tu correo institucional registrado. Te enviaremos las instrucciones y una
-        clave temporal para restablecer tu cuenta.</p>
+      <p>
+        Ingresa tu número de DNI o tu correo registrado. Te enviaremos un enlace para restablecer tu contraseña.
+      </p>
       <div class="form-group">
-        <label for="recoveryInput">DNI o Correo Institucional</label>
+        <label for="recoveryInput">DNI o Correo Electrónico</label>
         <div class="input-wrapper">
-          <input type="text" id="recoveryInput" placeholder="Ej. 74829102 o correo@unioncientifica.edu.pe" />
+          <input type="text" id="recoveryInput" [(ngModel)]="recoveryInput"
+            placeholder="Ej. 74829102 o correo@unioncientifica.edu.pe" />
           <i class="fa-solid fa-user-shield field-icon"></i>
         </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="cerrarRecuperar()">Cancelar</button>
-      <button class="btn-submit-modal" (click)="cerrarRecuperar()">
+      <button class="btn-submit-modal" (click)="enviarRecuperacion()" [disabled]="enviandoRecuperacion()">
+        @if (enviandoRecuperacion()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Enviando...
+        } @else {
         <i class="fa-solid fa-paper-plane"></i> Enviar Instrucciones
+        }
       </button>
     </div>
   </div>

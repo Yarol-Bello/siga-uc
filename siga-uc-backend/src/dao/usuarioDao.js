@@ -168,6 +168,68 @@ const resetPasswordByDni = async (dni) => {
   return result.rows[0] || null;
 };
 
+/**
+ * Obtener la credencial QR de un usuario
+ * @param {number} id_usuario - ID del usuario
+ * @returns {Promise<object|null>}
+ */
+const getCredencialQR = async (id_usuario) => {
+  const sql = `
+    SELECT 
+      cq.id_credencial,
+      cq.codigo_qr,
+      cq.tipo,
+      cq.fecha_emision,
+      cq.activo
+    FROM credenciales_qr cq
+    WHERE cq.id_usuario = $1
+    LIMIT 1
+  `;
+  const result = await query(sql, [id_usuario]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Actualizar contraseña de un usuario
+ */
+const actualizarPassword = async (id_usuario, passwordPlano) => {
+  const sql = `
+    UPDATE usuarios 
+    SET password_hash = crypt($1, gen_salt('bf', 10)),
+        requiere_cambio_password = FALSE,
+        fecha_actualizacion = NOW()
+    WHERE id_usuario = $2
+    RETURNING id_usuario, dni, nombres, apellidos, correo_institucional, correo_personal
+  `;
+  const result = await query(sql, [passwordPlano, id_usuario]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Buscar usuario por DNI o correo (institucional o personal)
+ */
+const findByDniOCorreo = async (identificador) => {
+  const sql = `
+    SELECT 
+      u.id_usuario,
+      u.dni,
+      u.nombres,
+      u.apellidos,
+      u.correo_institucional,
+      u.correo_personal,
+      u.estado,
+      r.nombre_rol
+    FROM usuarios u
+    INNER JOIN roles r ON r.id_rol = u.id_rol
+    WHERE u.dni = $1 
+       OR u.correo_institucional = $1 
+       OR u.correo_personal = $1
+    LIMIT 1
+  `;
+  const result = await query(sql, [identificador]);
+  return result.rows[0] || null;
+};
+
 module.exports = {
   findByDni,
   findByCorreo,
@@ -176,4 +238,7 @@ module.exports = {
   getAlumnoInfo,
   getPersonalInfo,
   resetPasswordByDni,
+  getCredencialQR,
+  actualizarPassword,
+  findByDniOCorreo,
 };

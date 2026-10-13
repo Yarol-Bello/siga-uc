@@ -1,9 +1,17 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  FormsModule,
+  Validators,
+} from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoginRequest } from '../../../core/models/usuario.model';
+import { environment } from '../../../../environments/environment';
 
 /**
  * Componente de Login
@@ -12,7 +20,7 @@ import { LoginRequest } from '../../../core/models/usuario.model';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
@@ -20,6 +28,7 @@ export class LoginComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private http = inject(HttpClient);
 
   // Formulario reactivo
   loginForm: FormGroup = this.fb.group({
@@ -32,6 +41,10 @@ export class LoginComponent {
   errorMensaje = signal<string | null>(null);
   mostrarPassword = signal(false);
   mostrarModalRecuperar = signal(false);
+
+  // Estado del modal de recuperación
+  recoveryInput = '';
+  enviandoRecuperacion = signal(false);
 
   /**
    * Enviar formulario de login
@@ -93,6 +106,7 @@ export class LoginComponent {
    */
   abrirRecuperar(event: Event): void {
     event.preventDefault();
+    this.recoveryInput = '';
     this.mostrarModalRecuperar.set(true);
   }
 
@@ -101,6 +115,50 @@ export class LoginComponent {
    */
   cerrarRecuperar(): void {
     this.mostrarModalRecuperar.set(false);
+  }
+
+  /**
+   * Enviar solicitud de recuperación al backend
+   */
+  enviarRecuperacion(): void {
+    const identificador = this.recoveryInput?.trim();
+
+    if (!identificador) {
+      alert('⚠️ Por favor ingrese su DNI o correo electrónico.');
+      return;
+    }
+
+    this.enviandoRecuperacion.set(true);
+
+    this.http
+      .post<any>(`${environment.apiUrl}/auth/recuperar-password`, {
+        identificador,
+      })
+      .subscribe({
+        next: (res) => {
+          this.enviandoRecuperacion.set(false);
+          this.cerrarRecuperar();
+
+          if (res.data?.tieneCorreo === false) {
+            alert(
+              '⚠️ No tiene un correo registrado en el sistema.\n\n' +
+                'Por favor, contacte al Administrador para que restablezca su contraseña.',
+            );
+          } else {
+            alert(
+              '✅ Solicitud enviada exitosamente.\n\n' +
+                'Revise su correo personal para encontrar el enlace de restablecimiento.',
+            );
+          }
+        },
+        error: (err) => {
+          this.enviandoRecuperacion.set(false);
+          console.error('Error al solicitar recuperación:', err);
+          alert(
+            '❌ Error al procesar la solicitud: ' + (err.error?.message || 'Error desconocido'),
+          );
+        },
+      });
   }
 
   // ============================================================

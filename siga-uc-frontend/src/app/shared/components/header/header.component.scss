@@ -381,3 +381,211 @@
   color: #1e293b;
   line-height: 1.6;
 }
+
+/* ============================================ */
+/* ESTILOS DEL CARNÉ DIGITAL QR (COMPACTO)      */
+/* ============================================ */
+.modal-carne {
+  max-width: 380px !important;
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-body-compact {
+  padding: 0 !important;
+  overflow: hidden !important; /* ❌ Sin scroll */
+  flex: 1;
+}
+
+.loading-carne {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+
+  i {
+    font-size: 2rem;
+    color: #800020;
+    margin-bottom: 10px;
+  }
+  p {
+    font-size: 0.88rem;
+    margin: 0;
+  }
+}
+
+.carne-digital-compact {
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+  border-top: 3px solid #d4af37;
+  border-bottom: 3px solid #d4af37;
+  padding: 18px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.carne-header-compact {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #800020;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #d4af37;
+}
+
+/* QR COMPACTO */
+.carne-qr-compact {
+  background: white;
+  padding: 8px;
+  border: 2px solid #d4af37;
+  border-radius: 10px;
+  display: inline-block;
+  margin: 0 auto;
+  box-shadow: 0 4px 12px rgba(128, 0, 32, 0.1);
+
+  img {
+    width: 130px;
+    height: 130px;
+    display: block;
+  }
+}
+
+/* NOMBRE COMPACTO */
+.carne-nombre-compact {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  padding: 0 4px;
+}
+
+/* ROL COMPACTO */
+.carne-rol-compact {
+  display: inline-block;
+  background: rgba(128, 0, 32, 0.1);
+  color: #800020;
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 3px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 auto;
+}
+
+/* DNI Y CÓDIGO (2 COLUMNAS) */
+.carne-datos-compact {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.dato-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 14px;
+  min-width: 110px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+
+  .dato-label-compact {
+    font-size: 0.55rem;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+
+  .dato-valor-compact {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #800020;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1.5px;
+    line-height: 1.1;
+  }
+}
+
+/* INFORMACIÓN ADICIONAL (GRADO / ESPECIALIDAD) */
+.carne-footer-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  color: #1e293b;
+  font-weight: 700;
+
+  i {
+    color: #800020;
+    font-size: 0.75rem;
+  }
+}
+
+/* FOOTER COMPACTO */
+.modal-footer-compact {
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* BOTONES COMPACTOS */
+.btn-cerrar-carne {
+  background: #e2e8f0;
+  color: #1e293b;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #cbd5e1;
+  }
+}
+
+.btn-imprimir-carne {
+  background: linear-gradient(135deg, #800020 0%, #600018 100%);
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.25s;
+  box-shadow: 0 4px 12px rgba(128, 0, 32, 0.25);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(128, 0, 32, 0.35);
+  }
+
+  i {
+    font-size: 0.9rem;
+  }
+}

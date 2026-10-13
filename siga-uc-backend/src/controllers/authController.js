@@ -96,10 +96,86 @@ const resetPassword = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/auth/recuperar-password
+ * Solicitar recuperación de contraseña
+ */
+const solicitarRecuperacion = async (req, res) => {
+  try {
+    const { identificador } = req.body;
+
+    if (!identificador) {
+      return response.error(res, 400, "Debe enviar un DNI o correo");
+    }
+
+    const recuperacionService = require("../services/recuperacionService");
+    const resultado =
+      await recuperacionService.solicitarRecuperacion(identificador);
+
+    if (!resultado.tieneCorreo) {
+      return response.success(
+        res,
+        200,
+        "No tiene un correo registrado. Contacte al Administrador para restablecer su contraseña.",
+        { tieneCorreo: false },
+      );
+    }
+
+    return response.success(
+      res,
+      200,
+      "Si el usuario existe, se ha enviado un correo con las instrucciones.",
+      { tieneCorreo: true },
+    );
+  } catch (error) {
+    console.error("❌ Error en recuperación:", error);
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
+/**
+ * GET /api/auth/validar-token/:token
+ * Validar un token de recuperación
+ */
+const validarToken = async (req, res) => {
+  try {
+    const recuperacionService = require("../services/recuperacionService");
+    const data = await recuperacionService.validarToken(req.params.token);
+    return response.success(res, 200, "Token válido", data);
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
+/**
+ * POST /api/auth/restablecer-password
+ * Restablecer contraseña con token
+ */
+const restablecerPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    const recuperacionService = require("../services/recuperacionService");
+    const data = await recuperacionService.restablecerPassword(token, password);
+
+    return response.success(
+      res,
+      200,
+      "Contraseña actualizada exitosamente",
+      data,
+    );
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
 module.exports = {
   login,
   perfil,
   verify,
   logout,
   resetPassword,
+  solicitarRecuperacion,
+  validarToken,
+  restablecerPassword,
 };
