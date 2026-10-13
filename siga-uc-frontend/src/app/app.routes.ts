@@ -78,6 +78,18 @@ export const routes: Routes = [
             (m) => m.AdminAuditoriaComponent,
           ),
       },
+      {
+        path: 'tesoreria',
+        loadComponent: () =>
+          import('./features/admin/tesoreria/admin-tesoreria.component').then(
+            (m) => m.AdminTesoreriaComponent,
+          ),
+      },
+      {
+        path: 'caja',
+        loadComponent: () =>
+          import('./features/admin/caja/admin-caja.component').then((m) => m.AdminCajaComponent),
+      },
     ],
   },
 
@@ -194,6 +206,21 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/secretaria/caja/secretaria-caja.component').then(
             (m) => m.SecretariaCajaComponent,
+          ),
+      },
+      {
+        path: 'asistencia-qr',
+        loadComponent: () =>
+          import('./features/secretaria/asistencia-qr/secretaria-asistencia-qr.component').then(
+            (m) => m.SecretariaAsistenciaQrComponent,
+          ),
+      },
+      // 👇 AGREGAR ESTA LÍNEA
+      {
+        path: 'padron',
+        loadComponent: () =>
+          import('./features/secretaria/padron/secretaria-padron.component').then(
+            (m) => m.SecretariaPadronComponent,
           ),
       },
     ],
