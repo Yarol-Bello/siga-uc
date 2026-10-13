@@ -1,0 +1,245 @@
+<div class="ficha-container">
+  <!-- BUSCADOR -->
+  <div class="search-panel">
+    <div class="search-header">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <h3>Buscar Estudiante por DNI</h3>
+    </div>
+
+    <div class="search-body">
+      <div class="search-input-group">
+        <input type="text" maxlength="8" placeholder="Ej. 75918234" [(ngModel)]="dniBusqueda"
+          (keyup.enter)="buscarAlumno()" />
+        <button class="btn-primary" [disabled]="buscando()" (click)="buscarAlumno()">
+          @if (buscando()) {
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          } @else {
+          <i class="fa-solid fa-search"></i>
+          }
+          Buscar
+        </button>
+        @if (alumno()) {
+        <button class="btn-secondary" (click)="limpiarBusqueda()">
+          <i class="fa-solid fa-xmark"></i> Limpiar
+        </button>
+        }
+      </div>
+
+      @if (errorBusqueda()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorBusqueda() }}
+      </div>
+      }
+
+      @if (!alumno() && !errorBusqueda() && !buscando()) {
+      <div class="ayuda-text">
+        <i class="fa-solid fa-info-circle"></i>
+        Ingresa el DNI del estudiante para consultar su ficha completa.
+      </div>
+      }
+    </div>
+  </div>
+
+  <!-- FICHA DEL ALUMNO -->
+  @if (alumno()) {
+  <!-- CARD DE IDENTIDAD -->
+  <div class="student-profile-card">
+    <div class="profile-avatar">
+      {{ alumno()!.nombres.charAt(0) }}{{ alumno()!.apellidos.charAt(0) }}
+    </div>
+
+    <div class="profile-info">
+      <h2>{{ alumno()!.nombre_completo }}</h2>
+
+      <div class="profile-tags">
+        <span class="tag-grado">
+          <i class="fa-solid fa-graduation-cap"></i>
+          {{ alumno()!.nombre_grado }} — {{ alumno()!.seccion }}
+        </span>
+        <span class="tag-estado" [ngClass]="{
+              'activo': alumno()!.estado_matricula === 'Matriculado',
+              'pendiente': alumno()!.estado_matricula === 'PendientePago',
+              'retirado': alumno()!.estado_matricula === 'Retirado'
+            }">
+          <i class="fa-solid fa-circle-check"></i>
+          {{ alumno()!.estado_matricula }}
+        </span>
+      </div>
+
+      <div class="profile-meta">
+        <div class="meta-item">
+          <label>Código</label>
+          <strong>{{ alumno()!.codigo_estudiante }}</strong>
+        </div>
+        <div class="meta-item">
+          <label>DNI</label>
+          <strong>{{ alumno()!.dni }}</strong>
+        </div>
+        <div class="meta-item">
+          <label>Apoderado</label>
+          <strong>{{ alumno()!.apoderado_nombre || 'No registrado' }}</strong>
+        </div>
+        <div class="meta-item">
+          <label>Teléfono Apoderado</label>
+          <strong>{{ alumno()!.apoderado_telefono || 'No registrado' }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESUMEN DE ASISTENCIA -->
+  @if (resumenAsistencia()) {
+  <div class="resumen-grid">
+    <div class="resumen-card">
+      <div class="resumen-icon total"><i class="fa-solid fa-clipboard-list"></i></div>
+      <div class="resumen-info">
+        <span>Total Registros</span>
+        <h3>{{ resumenAsistencia().total_registros }}</h3>
+      </div>
+    </div>
+    <div class="resumen-card">
+      <div class="resumen-icon presente"><i class="fa-solid fa-user-check"></i></div>
+      <div class="resumen-info">
+        <span>Presentes</span>
+        <h3>{{ resumenAsistencia().total_presente }}</h3>
+      </div>
+    </div>
+    <div class="resumen-card">
+      <div class="resumen-icon tardanza"><i class="fa-solid fa-clock"></i></div>
+      <div class="resumen-info">
+        <span>Tardanzas</span>
+        <h3>{{ resumenAsistencia().total_tardanza }}</h3>
+      </div>
+    </div>
+    <div class="resumen-card">
+      <div class="resumen-icon falta"><i class="fa-solid fa-user-xmark"></i></div>
+      <div class="resumen-info">
+        <span>Faltas</span>
+        <h3>{{ resumenAsistencia().total_falta }}</h3>
+      </div>
+    </div>
+    <div class="resumen-card">
+      <div class="resumen-icon porcentaje"><i class="fa-solid fa-percent"></i></div>
+      <div class="resumen-info">
+        <span>% Asistencia</span>
+        <h3>{{ resumenAsistencia().porcentaje_global }}%</h3>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- GRID: ASISTENCIA + NOTAS -->
+  <div class="detalles-grid">
+    <!-- HISTORIAL DE ASISTENCIA -->
+    <div class="card-container">
+      <div class="section-header-banner">
+        <h3>
+          <i class="fa-solid fa-calendar-days"></i>
+          Historial de Asistencia
+        </h3>
+        <span class="badge-count">{{ asistencias().length }} registros</span>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Día</th>
+              <th>Curso</th>
+              <th>Estado</th>
+              <th>Observación</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (asistencia of asistencias(); track asistencia.id_asistencia) {
+            <tr>
+              <td><strong>{{ asistencia.fecha | date:'dd/MM/yyyy' }}</strong></td>
+              <td>{{ asistencia.dia_semana }}</td>
+              <td>{{ asistencia.nombre_curso }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="getEstadoClass(asistencia.estado)">
+                  {{ getEstadoTexto(asistencia.estado) }}
+                </span>
+              </td>
+              <td>{{ asistencia.observacion || '-' }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (asistencias().length === 0) {
+      <div class="empty-state">
+        <i class="fa-solid fa-calendar-xmark"></i>
+        <p>No hay registros de asistencia</p>
+      </div>
+      }
+    </div>
+
+    <!-- NOTAS FINALES -->
+    <div class="card-container">
+      <div class="section-header-banner">
+        <h3>
+          <i class="fa-solid fa-file-pen"></i>
+          Notas Finales por Curso
+        </h3>
+        <span class="badge-count">{{ notas().length }} cursos</span>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Área / Curso</th>
+              <th style="text-align: center;">I Bim</th>
+              <th style="text-align: center;">II Bim</th>
+              <th style="text-align: center;">III Bim</th>
+              <th style="text-align: center;">IV Bim</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (nota of notas(); track nota.id_curso) {
+            <tr>
+              <td>
+                <strong>{{ nota.nombre_curso }}</strong>
+                <br>
+                <span class="area-label">{{ nota.area_academica }}</span>
+              </td>
+              <td style="text-align: center;">
+                <span class="badge-literal" [ngClass]="getNotaClass(nota.bimestres['b1'])">
+                  {{ nota.bimestres['b1'] || '-' }}
+                </span>
+              </td>
+              <td style="text-align: center;">
+                <span class="badge-literal" [ngClass]="getNotaClass(nota.bimestres['b2'])">
+                  {{ nota.bimestres['b2'] || '-' }}
+                </span>
+              </td>
+              <td style="text-align: center;">
+                <span class="badge-literal" [ngClass]="getNotaClass(nota.bimestres['b3'])">
+                  {{ nota.bimestres['b3'] || '-' }}
+                </span>
+              </td>
+              <td style="text-align: center;">
+                <span class="badge-literal" [ngClass]="getNotaClass(nota.bimestres['b4'])">
+                  {{ nota.bimestres['b4'] || '-' }}
+                </span>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (notas().length === 0) {
+      <div class="empty-state">
+        <i class="fa-solid fa-file-circle-xmark"></i>
+        <p>No hay notas registradas</p>
+      </div>
+      }
+    </div>
+  </div>
+  }
+</div>

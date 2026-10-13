@@ -58,12 +58,19 @@ export const routes: Routes = [
             (m) => m.DocenteNotasComponent,
           ),
       },
-
       {
         path: 'asistencia',
         loadComponent: () =>
           import('./features/docente/asistencia/docente-asistencia.component').then(
             (m) => m.DocenteAsistenciaComponent,
+          ),
+      },
+      
+      {
+        path: 'ficha-estudiante',
+        loadComponent: () =>
+          import('./features/docente/ficha-estudiante/docente-ficha.component').then(
+            (m) => m.DocenteFichaComponent,
           ),
       },
     ],
