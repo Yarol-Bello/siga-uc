@@ -96,6 +96,10 @@ app.use("/api/tesoreria", tesoreriaRoutes);
 const cajaRoutes = require("./routes/cajaRoutes");
 app.use("/api/caja", cajaRoutes);
 
+// Rutas de reportes
+const reporteRoutes = require("./routes/reporteRoutes");
+app.use("/api/reportes", reporteRoutes);
+
 // ============================================================
 // MANEJO DE ERRORES
 // ============================================================
