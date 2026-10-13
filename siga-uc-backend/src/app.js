@@ -84,6 +84,10 @@ app.use("/api/carga-curricular", cargaCurricularRoutes);
 const asistenciaRoutes = require("./routes/asistenciaRoutes");
 app.use("/api/asistencias", asistenciaRoutes);
 
+// Rutas de calificaciones
+const calificacionRoutes = require("./routes/calificacionRoutes");
+app.use("/api/calificaciones", calificacionRoutes);
+
 // ============================================================
 // MANEJO DE ERRORES
 // ============================================================
