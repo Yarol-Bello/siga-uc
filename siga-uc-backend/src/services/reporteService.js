@@ -40,10 +40,23 @@ const getResumenAsistencia = async (id_grado, anioLectivo) => {
   return await reporteDao.getResumenAsistenciaGrado(id_grado, anioLectivo);
 };
 
+/**
+ * Auditoría de carga de notas por docentes
+ */
+const getAuditoriaDocentes = async (id_grado, bimestre, anioLectivo) => {
+  if (!id_grado || !bimestre) {
+    const error = new Error("Faltan parámetros: id_grado, bimestre");
+    error.statusCode = 400;
+    throw error;
+  }
+  return await reporteDao.getAuditoriaDocentes(id_grado, bimestre, anioLectivo);
+};
+
 module.exports = {
   getDashboard,
   getAlumnosRiesgo,
   getCuadroMerito,
   getLibreta,
   getResumenAsistencia,
+  getAuditoriaDocentes,
 };

@@ -42,4 +42,11 @@ router.get(
 // Libreta (accesible por ADMIN, DOCENTE y el propio ESTUDIANTE)
 router.get("/libreta/:id_alumno", reporteController.getLibreta);
 
+// Auditoría de docentes (para SIAGIE)
+router.get(
+  "/auditoria-docentes/:id_grado",
+  verificarRol("ADMIN"),
+  reporteController.getAuditoriaDocentes,
+);
+
 module.exports = router;

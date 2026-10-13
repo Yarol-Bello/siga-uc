@@ -77,10 +77,29 @@ const getResumenAsistencia = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/reportes/auditoria-docentes/:id_grado
+ */
+const getAuditoriaDocentes = async (req, res) => {
+  try {
+    const { id_grado } = req.params;
+    const { bimestre = 2, anio } = req.query;
+    const data = await reporteService.getAuditoriaDocentes(
+      id_grado,
+      parseInt(bimestre),
+      anio ? parseInt(anio) : 2026,
+    );
+    return response.success(res, 200, "Auditoría de docentes", data);
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
 module.exports = {
   getDashboard,
   getAlumnosRiesgo,
   getCuadroMerito,
   getLibreta,
   getResumenAsistencia,
+  getAuditoriaDocentes,
 };

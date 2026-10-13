@@ -197,10 +197,61 @@ const getResumenAsistenciaGrado = async (id_grado, anioLectivo = 2026) => {
   return result.rows;
 };
 
+/**
+ * Auditoría de carga de notas por docentes (para SIAGIE)
+ * Muestra quién ya completó y quién está pendiente
+ */
+const getAuditoriaDocentes = async (id_grado, bimestre, anioLectivo = 2026) => {
+  const sql = `
+    SELECT 
+      c.id_curso,
+      c.nombre_curso,
+      c.area_academica,
+      p.id_personal,
+      u.nombres || ' ' || u.apellidos AS docente_nombre,
+      u.correo_institucional AS docente_correo,
+      g.id_grado,
+      g.nombre_grado,
+      (SELECT COUNT(*) FROM alumnos a 
+       WHERE a.id_grado = g.id_grado 
+         AND a.estado_matricula = 'Matriculado' 
+         AND a.anio_lectivo = $3) AS total_alumnos,
+      (SELECT COUNT(DISTINCT nf.id_alumno) 
+       FROM notas_finales_area nf 
+       WHERE nf.id_curso = c.id_curso 
+         AND nf.bimestre = $2 
+         AND nf.anio_lectivo = $3) AS alumnos_calificados,
+      ROUND(
+        (SELECT COUNT(DISTINCT nf.id_alumno)::decimal 
+         FROM notas_finales_area nf 
+         WHERE nf.id_curso = c.id_curso 
+           AND nf.bimestre = $2 
+           AND nf.anio_lectivo = $3) 
+        / NULLIF(
+          (SELECT COUNT(*) FROM alumnos a 
+           WHERE a.id_grado = g.id_grado 
+             AND a.estado_matricula = 'Matriculado' 
+             AND a.anio_lectivo = $3), 0) * 100, 
+        2
+      ) AS porcentaje
+    FROM carga_curricular cc
+    INNER JOIN cursos c ON c.id_curso = cc.id_curso
+    INNER JOIN grados g ON g.id_grado = cc.id_grado
+    INNER JOIN personal p ON p.id_personal = cc.id_personal
+    INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+    WHERE cc.id_grado = $1 
+      AND cc.anio_lectivo = $3
+    ORDER BY c.area_academica, c.nombre_curso
+  `;
+  const result = await query(sql, [id_grado, bimestre, anioLectivo]);
+  return result.rows;
+};
+
 module.exports = {
   getDashboardEjecutivo,
   getAlumnosRiesgo,
   getCuadroMerito,
   getLibretaAlumno,
   getResumenAsistenciaGrado,
+  getAuditoriaDocentes,
 };
