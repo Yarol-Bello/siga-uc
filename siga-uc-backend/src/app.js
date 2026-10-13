@@ -88,6 +88,10 @@ app.use("/api/asistencias", asistenciaRoutes);
 const calificacionRoutes = require("./routes/calificacionRoutes");
 app.use("/api/calificaciones", calificacionRoutes);
 
+// Rutas de tesorería
+const tesoreriaRoutes = require("./routes/tesoreriaRoutes");
+app.use("/api/tesoreria", tesoreriaRoutes);
+
 // ============================================================
 // MANEJO DE ERRORES
 // ============================================================
