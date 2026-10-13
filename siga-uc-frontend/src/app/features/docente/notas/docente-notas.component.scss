@@ -1,0 +1,297 @@
+:host {
+  display: block;
+}
+
+/* TOOLBAR */
+.filtro-toolbar {
+  background: white;
+  padding: 20px 24px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.filtro-group {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  select {
+    padding: 10px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
+    cursor: pointer;
+    font-weight: 600;
+
+    &:focus {
+      outline: none;
+      border-color: #800020;
+    }
+  }
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.btn-primary,
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.btn-primary {
+  background: #800020;
+  color: white;
+  &:hover:not(:disabled) {
+    background: #600018;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #1e293b;
+  &:hover {
+    background: #cbd5e1;
+  }
+}
+
+.badge-cambios {
+  background: #f59e0b;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+/* LEYENDA */
+.leyenda-box {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 12px 18px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 0.82rem;
+  flex-wrap: wrap;
+
+  > span:first-child {
+    font-weight: 700;
+    color: #1e293b;
+  }
+}
+
+.leyenda-item {
+  strong {
+    color: #800020;
+    margin-right: 4px;
+  }
+  span {
+    color: #64748b;
+  }
+}
+
+/* ALERTAS */
+.alert {
+  padding: 14px 18px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.alert-success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.alert-danger {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+}
+
+/* CARD */
+.card-container {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+.section-header-banner {
+  background: #fffbeb;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #fde68a;
+
+  h3 {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #b45309;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .badge-bimestre {
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: #f59e0b;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 700;
+  padding: 12px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  font-size: 0.75rem;
+}
+
+.th-competencia {
+  text-align: center;
+  max-width: 150px;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+tr:hover td {
+  background: #fafafa;
+}
+
+/* SELECT DE NOTA */
+.select-nota {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  background: #fafafa;
+  cursor: pointer;
+  width: 60px;
+  text-align: center;
+
+  &:focus {
+    outline: none;
+    border-color: #800020;
+  }
+
+  &.nota-ad {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border-color: #10b981;
+  }
+  &.nota-a {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border-color: #3b82f6;
+  }
+  &.nota-b {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+    border-color: #f59e0b;
+  }
+  &.nota-c {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: #ef4444;
+  }
+  &.nota-modificada {
+    box-shadow: 0 0 0 2px #f59e0b;
+  }
+}
+
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+
+  i {
+    font-size: 2.5rem;
+    color: #800020;
+    margin-bottom: 15px;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 50px 20px;
+  color: #64748b;
+
+  i {
+    font-size: 3rem;
+    color: #cbd5e1;
+    margin-bottom: 15px;
+  }
+  h3 {
+    font-size: 1.1rem;
+    color: #1e293b;
+    margin-bottom: 8px;
+  }
+}

@@ -51,6 +51,14 @@ export const routes: Routes = [
             (m) => m.DocenteDashboardComponent,
           ),
       },
+      // 👇 AGREGAR ESTA RUTA
+      {
+        path: 'notas',
+        loadComponent: () =>
+          import('./features/docente/notas/docente-notas.component').then(
+            (m) => m.DocenteNotasComponent,
+          ),
+      },
     ],
   },
 

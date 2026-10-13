@@ -1,0 +1,138 @@
+<div class="notas-container">
+  <!-- SELECCIÓN DE CURSO Y BIMESTRE -->
+  <div class="filtro-toolbar">
+    <div class="filtro-group">
+      <label><i class="fa-solid fa-book"></i> Curso / Grado</label>
+      <select [ngModel]="cursoSeleccionado()?.id_carga" (ngModelChange)="onCursoChange($event)">
+        @for (curso of cursos(); track curso.id_carga) {
+        <option [value]="curso.id_carga">
+          {{ curso.nombre_curso }} — {{ curso.nombre_grado }} ({{ curso.seccion }})
+        </option>
+        }
+      </select>
+    </div>
+
+    <div class="filtro-group" style="max-width: 200px;">
+      <label><i class="fa-solid fa-calendar"></i> Bimestre</label>
+      <select [ngModel]="bimestre()" (ngModelChange)="onBimestreChange($event)">
+        <option [value]="1">I Bimestre</option>
+        <option [value]="2">II Bimestre</option>
+        <option [value]="3">III Bimestre</option>
+        <option [value]="4">IV Bimestre</option>
+      </select>
+    </div>
+
+    <div class="toolbar-actions">
+      <button class="btn-secondary" (click)="cargarCalificaciones()" [disabled]="cargandoNotas()">
+        <i class="fa-solid fa-rotate"></i> Actualizar
+      </button>
+      <button class="btn-primary" (click)="guardarCalificaciones()" [disabled]="guardando() || totalModificadas === 0">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-save"></i>
+        Guardar Cambios
+        @if (totalModificadas > 0) {
+        <span class="badge-cambios">{{ totalModificadas }}</span>
+        }
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- MENSAJE DE ÉXITO -->
+  @if (mensajeExito()) {
+  <div class="alert alert-success">
+    <i class="fa-solid fa-check-circle"></i>
+    {{ mensajeExito() }}
+  </div>
+  }
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  <!-- LEYENDA -->
+  <div class="leyenda-box">
+    <span><i class="fa-solid fa-circle-info" style="color: #800020;"></i> Niveles de Logro:</span>
+    <div class="leyenda-item"><strong>AD:</strong><span>Logro Destacado</span></div>
+    <div class="leyenda-item"><strong>A:</strong><span>Logro Esperado</span></div>
+    <div class="leyenda-item"><strong>B:</strong><span>En Proceso</span></div>
+    <div class="leyenda-item"><strong>C:</strong><span>En Inicio</span></div>
+  </div>
+
+  <!-- TABLA DE CALIFICACIONES -->
+  @if (cargandoNotas()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando calificaciones...</p>
+  </div>
+  }
+
+  @if (!cargandoNotas() && cursoSeleccionado()) {
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-file-pen"></i>
+        {{ cursoSeleccionado()!.nombre_curso }} — {{ cursoSeleccionado()!.nombre_grado }}
+      </h3>
+      <span class="badge-bimestre">{{ bimestre() }}° Bimestre</span>
+    </div>
+
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 50px;">N°</th>
+            <th style="width: 90px;">DNI</th>
+            <th>Apellidos y Nombres</th>
+            @for (comp of competencias(); track comp.id_competencia) {
+            <th class="th-competencia" [title]="comp.nombre_competencia">
+              {{ comp.orden }}. {{ comp.nombre_competencia.substring(0, 25) }}{{ comp.nombre_competencia.length > 25 ?
+              '...' : '' }}
+            </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (alumno of alumnos(); track alumno.id_alumno; let i = $index) {
+          <tr>
+            <td style="text-align: center;">{{ (i + 1).toString().padStart(2, '0') }}</td>
+            <td>{{ alumno.dni }}</td>
+            <td><strong>{{ alumno.nombre_completo }}</strong></td>
+            @for (comp of alumno.calificaciones; track comp.id_competencia) {
+            <td style="text-align: center;">
+              <select class="select-nota" [ngModel]="getCalificacion(alumno.id_alumno, comp)"
+                (ngModelChange)="cambiarCalificacion(alumno.id_alumno, comp.id_competencia, $event)" [ngClass]="{
+                        'nota-ad': getCalificacion(alumno.id_alumno, comp) === 'AD',
+                        'nota-a': getCalificacion(alumno.id_alumno, comp) === 'A',
+                        'nota-b': getCalificacion(alumno.id_alumno, comp) === 'B',
+                        'nota-c': getCalificacion(alumno.id_alumno, comp) === 'C',
+                        'nota-modificada': calificacionesModificadas[alumno.id_alumno + '-' + comp.id_competencia] !== undefined
+                      }">
+                <option value="">--</option>
+                <option value="AD">AD</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
+            </td>
+            }
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (alumnos().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-users-slash"></i>
+      <h3>No hay alumnos matriculados en este grado</h3>
+    </div>
+    }
+  </div>
+  }
+</div>
