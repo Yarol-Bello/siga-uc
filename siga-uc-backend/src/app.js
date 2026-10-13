@@ -154,6 +154,10 @@ const startServer = async () => {
       console.error("   Verifica las credenciales en el archivo .env\n");
     }
 
+    //Verificar conexión SMTP
+    const emailService = require("./services/emailService");
+    await emailService.verificarConexion();
+
     app.listen(PORT, () => {
       console.log("═══════════════════════════════════════════════════");
       console.log(`   🎓 ${env.APP.NAME} v${env.APP.VERSION}`);

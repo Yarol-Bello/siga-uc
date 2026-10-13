@@ -32,7 +32,41 @@ const crear = async (data) => {
     error.statusCode = 400;
     throw error;
   }
-  return await notificacionDao.crear(data);
+
+  // 1. Guardar la notificación en la BD
+  const notificacion = await notificacionDao.crear(data);
+
+  // 2. Enviar el correo real (no bloquea si falla)
+  try {
+    const usuarioDao = require("../dao/usuarioDao");
+    const emailService = require("./emailService");
+
+    // Obtener el email del destinatario y el nombre del remitente
+    const destinatario = await usuarioDao.findById(data.id_usuario_destino);
+    const remitente = data.id_usuario_remitente
+      ? await usuarioDao.findById(data.id_usuario_remitente)
+      : null;
+
+    if (destinatario && destinatario.correo_institucional) {
+      await emailService.enviarNotificacion({
+        to: destinatario.correo_institucional,
+        destinatario: `${destinatario.nombres} ${destinatario.apellidos}`,
+        asunto: data.asunto,
+        cuerpo: data.cuerpo,
+        remitente: remitente
+          ? `${remitente.nombres} ${remitente.apellidos}`
+          : "SIGA-UC",
+      });
+    }
+  } catch (emailError) {
+    // El correo no bloquea la creación de la notificación
+    console.error(
+      "⚠️  No se pudo enviar el correo, pero la notificación fue guardada:",
+      emailError.message,
+    );
+  }
+
+  return notificacion;
 };
 
 const crearMasivo = async (data) => {

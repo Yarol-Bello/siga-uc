@@ -50,4 +50,13 @@ module.exports = {
     NAME: process.env.APP_NAME || "SIGA-UC",
     VERSION: process.env.APP_VERSION || "1.0.0",
   },
+
+  SMTP: {
+    HOST: process.env.SMTP_HOST || "smtp.gmail.com",
+    PORT: parseInt(process.env.SMTP_PORT) || 587,
+    SECURE: process.env.SMTP_SECURE === "true",
+    USER: process.env.SMTP_USER,
+    PASSWORD: process.env.SMTP_PASSWORD,
+    FROM_NAME: process.env.SMTP_FROM_NAME || "SIGA-UC",
+  },
 };
