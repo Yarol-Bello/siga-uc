@@ -274,4 +274,128 @@ export class AdminAlumnosComponent implements OnInit {
         },
       });
   }
+
+  // ============================================================
+  // MODAL EDITAR FICHA
+  // ============================================================
+  modalEditar = signal(false);
+  alumnoEditando = signal<Alumno | null>(null);
+  guardandoEdicion = signal(false);
+  errorEdicion = signal<string | null>(null);
+  formEditar: any = {
+    nombres: '',
+    apellidos: '',
+    fecha_nacimiento: '',
+    id_grado: '',
+    condicion: 'Regular',
+    colegio_procedencia: '',
+  };
+
+  abrirModalEditar(alumno: Alumno): void {
+    this.alumnoEditando.set(alumno);
+    this.formEditar = {
+      nombres: alumno.nombres,
+      apellidos: alumno.apellidos,
+      fecha_nacimiento: alumno.fecha_nacimiento?.split('T')[0] || '',
+      id_grado: alumno.id_grado,
+      condicion: alumno.condicion || 'Regular',
+      colegio_procedencia: '',
+    };
+    this.errorEdicion.set(null);
+    this.modalEditar.set(true);
+  }
+
+  cerrarModalEditar(): void {
+    this.modalEditar.set(false);
+    this.alumnoEditando.set(null);
+  }
+
+  guardarEdicion(): void {
+    if (!this.formEditar.nombres || !this.formEditar.apellidos) {
+      this.errorEdicion.set('Nombres y apellidos son obligatorios');
+      return;
+    }
+
+    const alumno = this.alumnoEditando();
+    if (!alumno) return;
+
+    this.guardandoEdicion.set(true);
+    this.errorEdicion.set(null);
+
+    const payload = {
+      nombres: this.formEditar.nombres,
+      apellidos: this.formEditar.apellidos,
+      fecha_nacimiento: this.formEditar.fecha_nacimiento,
+      id_grado: parseInt(this.formEditar.id_grado),
+      condicion: this.formEditar.condicion,
+      colegio_procedencia: this.formEditar.colegio_procedencia || null,
+    };
+
+    this.http.put<any>(`${environment.apiUrl}/alumnos/${alumno.id_alumno}`, payload).subscribe({
+      next: (res) => {
+        this.guardandoEdicion.set(false);
+        if (res.success) {
+          alert('✅ Ficha actualizada correctamente');
+          this.cerrarModalEditar();
+          this.cargarAlumnos();
+        }
+      },
+      error: (err) => {
+        this.guardandoEdicion.set(false);
+        this.errorEdicion.set(err.error?.message || 'Error al actualizar la ficha');
+      },
+    });
+  }
+
+  // ============================================================
+  // MODAL RESTABLECER CONTRASEÑA
+  // ============================================================
+  modalPassword = signal(false);
+  alumnoPassword = signal<Alumno | null>(null);
+  restableciendo = signal(false);
+  passwordTemporal = signal<string>('');
+
+  abrirModalPassword(alumno: Alumno): void {
+    this.alumnoPassword.set(alumno);
+    this.passwordTemporal.set('');
+    this.modalPassword.set(true);
+  }
+
+  cerrarModalPassword(): void {
+    this.modalPassword.set(false);
+    this.alumnoPassword.set(null);
+    this.passwordTemporal.set('');
+  }
+
+  confirmarRestablecer(): void {
+    const alumno = this.alumnoPassword();
+    if (!alumno) return;
+
+    if (
+      !confirm(
+        `¿Restablecer la contraseña de ${alumno.nombre_completo}?\n\nSe generará una nueva clave temporal.`,
+      )
+    ) {
+      return;
+    }
+
+    this.restableciendo.set(true);
+
+    this.http
+      .put<any>(`${environment.apiUrl}/auth/reset-password`, {
+        dni: alumno.dni,
+      })
+      .subscribe({
+        next: (res) => {
+          this.restableciendo.set(false);
+          if (res.success) {
+            this.passwordTemporal.set(res.data.password_temporal);
+          }
+        },
+        error: (err) => {
+          this.restableciendo.set(false);
+          alert('Error al restablecer: ' + (err.error?.message || 'Error desconocido'));
+        },
+      });
+  }
 }

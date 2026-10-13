@@ -75,9 +75,31 @@ const logout = async (req, res) => {
   return response.success(res, 200, "Sesión cerrada exitosamente");
 };
 
+/**
+ * PUT /api/usuarios/reset-password
+ * Restablecer contraseña de un usuario (Admin)
+ */
+const resetPassword = async (req, res) => {
+  try {
+    const { dni } = req.body;
+
+    if (!dni) {
+      return response.error(res, 400, "El DNI es obligatorio");
+    }
+
+    const result = await authService.resetPassword(dni);
+
+    return response.success(res, 200, "Contraseña restablecida", result);
+  } catch (error) {
+    console.error("❌ Error al restablecer contraseña:", error);
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
 module.exports = {
   login,
   perfil,
   verify,
   logout,
+  resetPassword,
 };

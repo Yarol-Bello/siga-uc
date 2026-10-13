@@ -146,6 +146,25 @@ const getPersonalInfo = async (id_usuario) => {
   return result.rows[0] || null;
 };
 
+/**
+ * Restablecer contraseña de un usuario (por DNI)
+ * @param {string} dni - DNI del usuario
+ * @returns {Promise<object>}
+ */
+const resetPasswordByDni = async (dni) => {
+  const nuevaPassword = "UC" + dni;
+  const sql = `
+    UPDATE usuarios 
+    SET password_hash = crypt($1, gen_salt('bf', 10)),
+        requiere_cambio_password = TRUE,
+        fecha_actualizacion = NOW()
+    WHERE dni = $2
+    RETURNING id_usuario, dni, nombres, apellidos, correo_institucional
+  `;
+  const result = await query(sql, [nuevaPassword, dni]);
+  return result.rows[0] || null;
+};
+
 module.exports = {
   findByDni,
   findByCorreo,
@@ -153,4 +172,5 @@ module.exports = {
   updateUltimoLogin,
   getAlumnoInfo,
   getPersonalInfo,
+  resetPasswordByDni,
 };

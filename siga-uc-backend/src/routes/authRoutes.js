@@ -6,7 +6,10 @@
 const express = require("express");
 const { body } = require("express-validator");
 const authController = require("../controllers/authController");
-const { verificarAutenticacion } = require("../middlewares/authMiddleware");
+const {
+  verificarAutenticacion,
+  verificarRol,
+} = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
@@ -54,5 +57,17 @@ router.get("/verify", verificarAutenticacion, authController.verify);
  * @access  Privado (requiere JWT)
  */
 router.post("/logout", verificarAutenticacion, authController.logout);
+
+/**
+ * @route   PUT /api/auth/reset-password
+ * @desc    Restablecer contraseña por DNI (Admin)
+ * @access  Privado (ADMIN)
+ */
+router.put(
+  "/reset-password",
+  verificarAutenticacion,
+  verificarRol("ADMIN"),
+  authController.resetPassword,
+);
 
 module.exports = router;

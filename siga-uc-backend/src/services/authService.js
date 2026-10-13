@@ -147,8 +147,35 @@ const getPerfil = async (id_usuario) => {
   };
 };
 
+/**
+ * Restablecer contraseña por DNI (uso del Admin)
+ * @param {string} dni - DNI del usuario
+ * @returns {Promise<object>}
+ */
+const resetPassword = async (dni) => {
+  if (!dni || dni.length !== 8) {
+    const error = new Error("DNI inválido");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const usuario = await usuarioDao.resetPasswordByDni(dni);
+
+  if (!usuario) {
+    const error = new Error("Usuario no encontrado");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
+    usuario,
+    password_temporal: "UC" + dni,
+  };
+};
+
 module.exports = {
   login,
   verificarToken,
   getPerfil,
+  resetPassword,
 };

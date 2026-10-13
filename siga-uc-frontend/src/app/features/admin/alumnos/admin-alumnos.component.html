@@ -102,6 +102,8 @@
             <td>
               <div class="action-icons">
                 <i class="fa-solid fa-eye" (click)="verDetalle(alumno)" title="Ver Ficha"></i>
+                <i class="fa-solid fa-pen-to-square" (click)="abrirModalEditar(alumno)" title="Editar Ficha"></i>
+                <i class="fa-solid fa-key" (click)="abrirModalPassword(alumno)" title="Restablecer Contraseña"></i>
                 <i class="fa-solid fa-user-slash" (click)="abrirModalRetiro(alumno)" title="Registrar Retiro"></i>
               </div>
             </td>
@@ -337,6 +339,141 @@
       <button class="btn-danger" (click)="confirmarRetiro()">
         <i class="fa-solid fa-user-slash"></i> Confirmar Retiro
       </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- MODAL EDITAR FICHA -->
+<!-- ============================================================ -->
+@if (modalEditar() && alumnoEditando()) {
+<div class="modal-overlay" (click)="cerrarModalEditar()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-pen-to-square"></i> Editar Ficha del Estudiante</h3>
+      <button class="modal-close" (click)="cerrarModalEditar()">&times;</button>
+    </div>
+    <div class="modal-body">
+      @if (errorEdicion()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorEdicion() }}
+      </div>
+      }
+
+      <div class="ficha-header" style="padding-bottom: 12px;">
+        <div class="ficha-avatar">
+          {{ alumnoEditando()!.nombres.charAt(0) }}{{ alumnoEditando()!.apellidos.charAt(0) }}
+        </div>
+        <div>
+          <h4>{{ alumnoEditando()!.nombre_completo }}</h4>
+          <p class="ficha-codigo">{{ alumnoEditando()!.codigo_estudiante }} — DNI: {{ alumnoEditando()!.dni }}</p>
+        </div>
+      </div>
+
+      <form>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombres *</label>
+            <input type="text" [(ngModel)]="formEditar.nombres" name="edit_nombres" />
+          </div>
+          <div class="form-group">
+            <label>Apellidos *</label>
+            <input type="text" [(ngModel)]="formEditar.apellidos" name="edit_apellidos" />
+          </div>
+          <div class="form-group">
+            <label>Fecha de Nacimiento</label>
+            <input type="date" [(ngModel)]="formEditar.fecha_nacimiento" name="edit_fecha" />
+          </div>
+          <div class="form-group">
+            <label>Grado</label>
+            <select [(ngModel)]="formEditar.id_grado" name="edit_grado">
+              @for (g of grados(); track g.id_grado) {
+              <option [value]="g.id_grado">{{ g.nombre_grado }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Condición</label>
+            <select [(ngModel)]="formEditar.condicion" name="edit_condicion">
+              <option value="Regular">Regular</option>
+              <option value="Traslado">Traslado</option>
+            </select>
+          </div>
+          @if (formEditar.condicion === 'Traslado') {
+          <div class="form-group">
+            <label>Colegio de Procedencia</label>
+            <input type="text" [(ngModel)]="formEditar.colegio_procedencia" name="edit_colegio" />
+          </div>
+          }
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalEditar()">Cancelar</button>
+      <button class="btn-primary" [disabled]="guardandoEdicion()" (click)="guardarEdicion()">
+        @if (guardandoEdicion()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-save"></i> Guardar Cambios
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- MODAL RESTABLECER CONTRASEÑA -->
+<!-- ============================================================ -->
+@if (modalPassword() && alumnoPassword()) {
+<div class="modal-overlay" (click)="cerrarModalPassword()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header" style="background: #F59E0B;">
+      <h3><i class="fa-solid fa-key"></i> Restablecer Contraseña</h3>
+      <button class="modal-close" (click)="cerrarModalPassword()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="ficha-header" style="padding-bottom: 12px;">
+        <div class="ficha-avatar" style="background: #F59E0B;">
+          {{ alumnoPassword()!.nombres.charAt(0) }}{{ alumnoPassword()!.apellidos.charAt(0) }}
+        </div>
+        <div>
+          <h4>{{ alumnoPassword()!.nombre_completo }}</h4>
+          <p class="ficha-codigo">DNI: {{ alumnoPassword()!.dni }}</p>
+        </div>
+      </div>
+
+      @if (!passwordTemporal()) {
+      <p style="color: #64748B; font-size: 0.9rem; line-height: 1.6;">
+        Se generará una <strong>nueva contraseña temporal</strong> para este estudiante.
+        El alumno deberá cambiarla en su próximo inicio de sesión.
+      </p>
+      <div class="info-box" style="background: #FFFBEB; border-color: #FDE68A; color: #B45309;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <p><strong>Importante:</strong> La contraseña actual será reemplazada inmediatamente.</p>
+      </div>
+      } @else {
+      <div class="password-result">
+        <div class="password-label">✅ Nueva contraseña temporal:</div>
+        <div class="password-value">{{ passwordTemporal() }}</div>
+        <p class="password-hint">Cópiala y entrégala al estudiante. Esta es la única vez que se mostrará.</p>
+      </div>
+      }
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalPassword()">Cerrar</button>
+      @if (!passwordTemporal()) {
+      <button class="btn-primary" style="background: #F59E0B;" [disabled]="restableciendo()"
+        (click)="confirmarRestablecer()">
+        @if (restableciendo()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Procesando...
+        } @else {
+        <i class="fa-solid fa-key"></i> Restablecer Contraseña
+        }
+      </button>
+      }
     </div>
   </div>
 </div>
