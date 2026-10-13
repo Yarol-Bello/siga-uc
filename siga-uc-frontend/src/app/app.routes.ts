@@ -75,5 +75,24 @@ export const routes: Routes = [
       ),
   },
 
+  // SECRETARÍA
+  {
+    path: 'secretaria',
+    canActivate: [authGuard, roleGuard(['SECRETARIA'])],
+    loadComponent: () =>
+      import('./features/secretaria/layout/secretaria-layout.component').then(
+        (m) => m.SecretariaLayoutComponent,
+      ),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/secretaria/dashboard/secretaria-dashboard.component').then(
+            (m) => m.SecretariaDashboardComponent,
+          ),
+      },
+    ],
+  },
+
   { path: '**', redirectTo: 'login' },
 ];
