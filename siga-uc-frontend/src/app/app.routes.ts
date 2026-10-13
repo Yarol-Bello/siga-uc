@@ -40,6 +40,14 @@ export const routes: Routes = [
             (m) => m.AdminReportesComponent,
           ),
       },
+
+      {
+        path: 'personal',
+        loadComponent: () =>
+          import('./features/admin/personal/admin-personal.component').then(
+            (m) => m.AdminPersonalComponent,
+          ),
+      },
     ],
   },
 
