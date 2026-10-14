@@ -1,0 +1,275 @@
+================================================================================
+   SIGA-UC — SISTEMA INTEGRADO DE GESTIÓN ACADÉMICA
+   MAPEO COMPLETO DE ENDPOINTS (API REST)
+================================================================================
+
+Proyecto : siga-uc
+Backend  : siga-uc-backend (Node.js 20 + Express 5.3)
+Base URL : http://localhost:3000        (desarrollo)
+           https://api.unioncientifica.edu.pe  (producción futura)
+Prefijo  : Todas las rutas de negocio inician en /api
+Fuente   : siga-uc-backend/src/app.js + siga-uc-backend/src/routes/*.js
+Generado : 14/10/2026
+Total    : 97 endpoints
+
+--------------------------------------------------------------------------------
+LEYENDA DE ACCESO
+--------------------------------------------------------------------------------
+[Público]    No requiere token.
+[Autenticado] Requiere token JWT válido (cualquier rol autenticado).
+[ADMIN]      Solo rol ADMIN.
+[SECRETARIA] Solo rol SECRETARIA.
+[DOCENTE]    Solo rol DOCENTE.
+[ADMIN/SECRETARIA]  Roles ADMIN o SECRETARIA.
+[ADMIN/DOCENTE]     Roles ADMIN o DOCENTE.
+[ADMIN/DOCENTE/ESTUDIANTE] Cualquier usuario autenticado (la validación de
+              propiedad del recurso se hace en el controlador).
+
+Formato de respuesta (envoltorio uniforme en utils/response.js):
+  { "success": boolean, "message": string, "data": any }
+
+================================================================================
+1. GENERAL Y SALUD (app.js)
+================================================================================
+Metodo  Ruta                Descripcion                                Acceso
+------  ------------------  -----------------------------------------  ----------
+GET     /                   Raíz del servidor (bienvenida + versión)    [Público]
+GET     /api/health         Health check (app, versión, ambiente)      [Público]
+
+================================================================================
+2. AUTENTICACIÓN (routes/authRoutes.js → /api/auth)
+================================================================================
+Metodo  Ruta                          Descripcion                        Acceso
+------  ----------------------------  ---------------------------------  ----------
+POST    /api/auth/login               Login con DNI + password, emite    [Público]
+                                      JWT (expira en 8h)
+GET     /api/auth/perfil              Perfil del usuario autenticado     [Autenticado]
+GET     /api/auth/verify              Verificar validez del token        [Autenticado]
+POST    /api/auth/logout              Cerrar sesión                      [Autenticado]
+PUT     /api/auth/reset-password      Restablecer contraseña por DNI     [ADMIN]
+POST    /api/auth/recuperar-password  Solicitar recuperación (correo)    [Público]
+GET     /api/auth/validar-token/:token  Validar token de recuperación    [Público]
+POST    /api/auth/restablecer-password  Restablecer contraseña con      [Público]
+                                      token
+
+================================================================================
+3. GESTIÓN ACADÉMICA (routes/academicoRoutes.js → /api)
+   Grados, horarios, cursos, competencias y escala de calificación
+================================================================================
+Metodo  Ruta                              Descripcion                    Acceso
+------  --------------------------------  -----------------------------  ----------
+GET     /api/grados                       Listar grados                  [Autenticado]
+GET     /api/grados/:id                   Obtener grado por ID           [Autenticado]
+GET     /api/horarios/grado/:id_grado     Horarios de un grado           [Autenticado]
+GET     /api/cursos                       Listar cursos                  [Autenticado]
+GET     /api/cursos/:id                   Obtener curso por ID           [Autenticado]
+GET     /api/cursos/:id/competencias      Competencias de un curso       [Autenticado]
+GET     /api/escala-calificacion          Escala de calificación MINEDU  [Autenticado]
+
+================================================================================
+4. ALUMNOS (routes/alumnoRoutes.js → /api/alumnos)
+================================================================================
+Metodo  Ruta                    Descripcion                              Acceso
+------  ----------------------  ---------------------------------------  ----------
+GET     /api/alumnos            Listar alumnos (filtros por query)       [Autenticado]
+GET     /api/alumnos/dni/:dni   Buscar alumno por DNI                    [Autenticado]
+GET     /api/alumnos/:id        Obtener alumno por ID (ficha)            [Autenticado]
+POST    /api/alumnos            Crear alumno (matrícula)                 [ADMIN/SECRETARIA]
+PUT     /api/alumnos/:id        Actualizar alumno                        [ADMIN/SECRETARIA]
+PUT     /api/alumnos/:id/retirar  Retirar alumno (requiere motivo)       [ADMIN/SECRETARIA]
+
+Validaciones express-validator en POST: dni (8 dígitos numéricos), nombres,
+apellidos (obligatorios), fecha_nacimiento (fecha válida), id_grado (entero).
+
+================================================================================
+5. PERSONAL Y USUARIOS (routes/personalRoutes.js → /api/personal)
+================================================================================
+Metodo  Ruta                          Descripcion                        Acceso
+------  ----------------------------  ---------------------------------  ----------
+GET     /api/personal                  Listar personal                    [Autenticado]
+GET     /api/personal/roles            Listar roles disponibles           [Autenticado]
+GET     /api/personal/:id              Obtener personal por ID            [Autenticado]
+POST    /api/personal                  Crear personal (y su usuario)      [ADMIN]
+PUT     /api/personal/:id              Actualizar personal                [ADMIN]
+PUT     /api/personal/:id/cesar        Cesar personal                     [ADMIN]
+PUT     /api/personal/:id/reactivar    Reactivar personal                 [ADMIN]
+PUT     /api/personal/:id/reset-password  Resetear contraseña del usuario [ADMIN]
+
+================================================================================
+6. CARGA CURRICULAR (routes/cargaCurricularRoutes.js → /api/carga-curricular)
+================================================================================
+Metodo  Ruta                                  Descripcion                  Acceso
+------  ------------------------------------  ---------------------------  ----------
+GET     /api/carga-curricular                 Listar carga curricular      [Autenticado]
+GET     /api/carga-curricular/grado/:id       Listar por grado             [Autenticado]
+GET     /api/carga-curricular/grado/:id/tutor Obtener tutor del grado      [Autenticado]
+GET     /api/carga-curricular/docente/:id     Listar por docente           [Autenticado]
+GET     /api/carga-curricular/:id             Obtener asignación por ID    [Autenticado]
+POST    /api/carga-curricular                 Asignar docente a curso      [ADMIN]
+POST    /api/carga-curricular/tutor           Asignar tutor de grado       [ADMIN]
+PUT     /api/carga-curricular/:id             Actualizar asignación        [ADMIN]
+DELETE  /api/carga-curricular/:id             Eliminar asignación          [ADMIN]
+
+================================================================================
+7. ASISTENCIA (routes/asistenciaRoutes.js → /api/asistencias)
+================================================================================
+Metodo  Ruta                                        Descripcion              Acceso
+------  ------------------------------------------  -----------------------  ----------
+GET     /api/asistencias/curso/:id_curso/fecha/:fecha  Asistencia por curso  [Autenticado]
+                                                      y fecha
+GET     /api/asistencias/alumno/:id_alumno          Historial de alumno      [Autenticado]
+GET     /api/asistencias/alumno/:id_alumno/resumen  Resumen del alumno       [Autenticado]
+GET     /api/asistencias/personal/todos             Asistencia de personal   [Autenticado]
+GET     /api/asistencias/personal/resumen           Resumen de personal      [Autenticado]
+GET     /api/asistencias/personal/dni/:dni          Buscar personal por DNI  [Autenticado]
+POST    /api/asistencias/personal/marcar            Marcar asistencia        [ADMIN/SECRETARIA]
+                                                    personal (QR)
+POST    /api/asistencias                            Registrar asistencia     [ADMIN/DOCENTE]
+                                                    de alumno
+POST    /api/asistencias/masivo                     Registro masivo (P/T/F)  [ADMIN/DOCENTE]
+
+================================================================================
+8. CALIFICACIONES (routes/calificacionRoutes.js → /api/calificaciones)
+   Notas por competencias (metodología MINEDU: AD/A/B/C)
+================================================================================
+Metodo  Ruta                                                Descripcion    Acceso
+------  --------------------------------------------------  -------------  ----------
+GET     /api/calificaciones/alumno/:id_alumno/curso/:id_curso  Notas de     [Autenticado]
+                                                              alumno/curso
+GET     /api/calificaciones/curso/:id_curso/grado/:id_grado    Notas por    [Autenticado]
+                                                              curso y grado
+GET     /api/calificaciones/notas-finales/alumno/:id_alumno   Notas finales [Autenticado]
+                                                              (predominancia)
+POST    /api/calificaciones                                  Registrar     [ADMIN/DOCENTE]
+                                                              nota
+POST    /api/calificaciones/masivo                           Guardado      [ADMIN/DOCENTE]
+                                                              masivo de notas
+POST    /api/calificaciones/notas-finales                    Calcular nota [ADMIN/DOCENTE]
+                                                              final
+
+================================================================================
+9. TESORERÍA (routes/tesoreriaRoutes.js → /api/tesoreria)
+================================================================================
+Metodo  Ruta                              Descripcion                     Acceso
+------  --------------------------------  ------------------------------  ----------
+GET     /api/tesoreria/conceptos          Listar conceptos de pago        [Autenticado]
+GET     /api/tesoreria/pre-tickets        Listar pre-tickets              [Autenticado]
+GET     /api/tesoreria/pre-tickets/:id    Obtener pre-ticket              [Autenticado]
+POST    /api/tesoreria/pre-tickets        Crear pre-ticket                [ADMIN/SECRETARIA]
+GET     /api/tesoreria/pagos              Listar pagos                    [Autenticado]
+GET     /api/tesoreria/pagos/:id          Obtener pago (boleta)           [Autenticado]
+POST    /api/tesoreria/pagos              Registrar pago (genera boleta   [ADMIN/SECRETARIA]
+                                          electrónica + trigger a caja)
+GET     /api/tesoreria/pensiones/alumno/:id_alumno  Pensiones del alumno   [Autenticado]
+POST    /api/tesoreria/pensiones/generar  Generar pensiones del mes       [ADMIN/SECRETARIA]
+GET     /api/tesoreria/becas              Listar becas                    [Autenticado]
+POST    /api/tesoreria/becas              Aplicar beca                    [ADMIN]
+GET     /api/tesoreria/estadisticas       Estadísticas de cobranza        [Autenticado]
+
+================================================================================
+10. CAJA (routes/cajaRoutes.js → /api/caja)
+================================================================================
+Metodo  Ruta                          Descripcion                         Acceso
+------  ----------------------------  ----------------------------------  ----------
+GET     /api/caja/actual              Caja/apertura actualmente abierta   [Autenticado]
+GET     /api/caja/cajas               Listar cajas                        [Autenticado]
+GET     /api/caja/aperturas           Listar aperturas                    [Autenticado]
+GET     /api/caja/aperturas/:id       Obtener apertura por ID             [Autenticado]
+GET     /api/caja/movimientos/:id_apertura  Movimientos de una apertura   [Autenticado]
+GET     /api/caja/cierres             Listar cierres                      [Autenticado]
+POST    /api/caja/aperturar           Aperturar caja                      [ADMIN/SECRETARIA]
+POST    /api/caja/egresos             Registrar egreso                    [ADMIN/SECRETARIA]
+POST    /api/caja/cerrar              Cerrar caja (con arqueo)            [ADMIN/SECRETARIA]
+
+================================================================================
+11. REPORTES (routes/reporteRoutes.js → /api/reportes)
+================================================================================
+Metodo  Ruta                                      Descripcion              Acceso
+------  ----------------------------------------  -----------------------  ----------
+GET     /api/reportes/dashboard                   KPIs del dashboard       [ADMIN/SECRETARIA]
+GET     /api/reportes/cuadro-merito/:id_grado     Cuadro de mérito         [ADMIN/DOCENTE]
+GET     /api/reportes/alumnos-riesgo/:id_grado    Alumnos en riesgo        [ADMIN/DOCENTE]
+GET     /api/reportes/resumen-asistencia/:id_grado  Resumen de asistencia  [ADMIN/DOCENTE]
+GET     /api/reportes/libreta/:id_alumno          Libreta imprimible       [Autenticado]
+                                                  (ADMIN, DOCENTE o el
+                                                  propio ESTUDIANTE)
+GET     /api/reportes/auditoria-docentes/:id_grado  Auditoría de docentes  [ADMIN]
+                                                  (para SIAGIE)
+
+================================================================================
+12. AUDITORÍA Y ACTAS (routes/auditoriaRoutes.js → /api/auditoria)
+================================================================================
+Metodo  Ruta                          Descripcion                         Acceso
+------  ----------------------------  ----------------------------------  ----------
+GET     /api/auditoria                Listar bitácora (filtros por query)  [Autenticado]
+GET     /api/auditoria/modulos        Listar módulos auditados             [Autenticado]
+GET     /api/auditoria/estadisticas   Estadísticas de la bitácora          [Autenticado]
+GET     /api/auditoria/actas          Listar actas bimestrales             [Autenticado]
+GET     /api/auditoria/:id            Obtener registro de bitácora         [Autenticado]
+POST    /api/auditoria/actas/cerrar   Cerrar acta bimestral (hash de      [ADMIN]
+                                      integridad)
+
+================================================================================
+13. EXPORTACIÓN SIAGIE (routes/siagieRoutes.js → /api/siagie)
+================================================================================
+Metodo  Ruta                          Descripcion                         Acceso
+------  ----------------------------  ----------------------------------  ----------
+POST    /api/siagie/generar-excel     Generar Excel SIAGIE con notas      [ADMIN]
+                                      inyectadas. Usa multipart/form-data
+                                      con el campo "plantilla" (.xlsx/.xls,
+                                      máx. 10 MB) vía multer.
+
+================================================================================
+14. NOTIFICACIONES (routes/notificacionRoutes.js → /api/notificaciones)
+================================================================================
+Metodo  Ruta                              Descripcion                    Acceso
+------  --------------------------------  -----------------------------  ----------
+GET     /api/notificaciones               Listar mis notificaciones      [Autenticado]
+GET     /api/notificaciones/no-leidas     Contar no leídas (campanita)   [Autenticado]
+GET     /api/notificaciones/:id           Obtener notificación por ID    [Autenticado]
+PUT     /api/notificaciones/:id/leer      Marcar como leída              [Autenticado]
+PUT     /api/notificaciones/leer-todas    Marcar todas como leídas       [Autenticado]
+DELETE  /api/notificaciones/:id           Eliminar notificación          [Autenticado]
+POST    /api/notificaciones               Enviar notificación            [ADMIN/DOCENTE]
+                                          (a un usuario)
+POST    /api/notificaciones/masivo        Envío masivo                   [ADMIN]
+
+================================================================================
+RESUMEN ESTADÍSTICO
+================================================================================
+Total de endpoints .............. 97
+  - GET .......................... 60
+  - POST ......................... 25
+  - PUT .......................... 10
+  - DELETE .......................  2
+
+Endpoints públicos ...............  6  (login, recuperación de contraseña,
+                                         health, raíz)
+Endpoints solo con JWT ........... 43
+Endpoints restringidos por rol ... 48
+
+Archivos de rutas (13) en siga-uc-backend/src/routes/:
+  authRoutes.js, academicoRoutes.js, alumnoRoutes.js, personalRoutes.js,
+  cargaCurricularRoutes.js, asistenciaRoutes.js, calificacionRoutes.js,
+  tesoreriaRoutes.js, cajaRoutes.js, reporteRoutes.js, auditoriaRoutes.js,
+  siagieRoutes.js, notificacionRoutes.js
+
+================================================================================
+NOTAS TÉCNICAS
+================================================================================
+- Seguridad global: helmet, CORS (localhost:4200 y localhost:3000), JWT.
+- Middlewares por ruta: verificarAutenticacion y verificarRol(...) en
+  src/middlewares/authMiddleware.js.
+- Validación de entrada con express-validator en rutas críticas
+  (login, alumnos, recuperación de contraseña).
+- Módulos con router.use(verificarAutenticacion): todos excepto authRoutes
+  (las rutas públicas de login/recuperación están ahí).
+- Manejo de errores: 404 global para rutas no encontradas + handler global
+  de errores en app.js.
+- Orden importante en rutas con parámetros fijos: en auditoriaRoutes.js,
+  GET /api/auditoria/:id está después de las rutas fijas (/modulos,
+  /estadisticas, /actas), por lo que no hay conflictos de coincidencia.
+
+================================================================================
+   Fin del documento — SIGA-UC © 2026 Yarol Bello Coquil
+================================================================================
