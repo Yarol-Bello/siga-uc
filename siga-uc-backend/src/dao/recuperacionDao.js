@@ -7,8 +7,10 @@ const { query } = require("../config/database");
 
 /**
  * Crear un token de recuperación
+ * La fecha de expiración se calcula en PostgreSQL usando NOW() + INTERVAL '2 hours'
+ * para evitar desajustes de zona horaria entre Node.js y PostgreSQL.
  */
-const crearToken = async (id_usuario, token, fecha_expiracion) => {
+const crearToken = async (id_usuario, token) => {
   // Invalidar tokens anteriores del mismo usuario
   await query(
     `UPDATE recuperacion_password SET usado = TRUE WHERE id_usuario = $1 AND usado = FALSE`,
@@ -17,10 +19,10 @@ const crearToken = async (id_usuario, token, fecha_expiracion) => {
 
   const sql = `
     INSERT INTO recuperacion_password (id_usuario, token, fecha_expiracion)
-    VALUES ($1, $2, $3)
+    VALUES ($1, $2, NOW() + INTERVAL '2 hours')
     RETURNING *
   `;
-  const result = await query(sql, [id_usuario, token, fecha_expiracion]);
+  const result = await query(sql, [id_usuario, token]);
   return result.rows[0];
 };
 

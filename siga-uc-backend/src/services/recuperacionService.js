@@ -39,13 +39,10 @@ const solicitarRecuperacion = async (identificador) => {
   // 3. Generar token único
   const token = crypto.randomBytes(32).toString("hex");
 
-  // 4. Fecha de expiración (2 horas)
-  const fechaExpiracion = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  // 4. Guardar en BD (la fecha de expiración la calcula PostgreSQL con NOW() + INTERVAL '2 hours')
+  await recuperacionDao.crearToken(usuario.id_usuario, token);
 
-  // 5. Guardar en BD
-  await recuperacionDao.crearToken(usuario.id_usuario, token, fechaExpiracion);
-
-  // 6. Enviar correo
+  // 5. Enviar correo
   const urlBase = process.env.FRONTEND_URL || "http://localhost:4200";
   const enlace = `${urlBase}/reset-password?token=${token}`;
 
