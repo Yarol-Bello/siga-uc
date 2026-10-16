@@ -4,7 +4,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build && npm run postbuild",
+    "postbuild": "node -e \"const fs=require('fs');const p='dist/siga-uc-frontend/browser';fs.copyFileSync(p+'/index.html', p+'/404.html');console.log('404.html generado');\"",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
