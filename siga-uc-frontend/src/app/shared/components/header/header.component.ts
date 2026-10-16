@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificacionService, Notificacion } from '../../../core/services/notificacion.service';
-import { UiService } from '../../../core/services/ui.service';
 import { environment } from '../../../../environments/environment';
 
 /**
@@ -24,7 +23,6 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private notificacionService = inject(NotificacionService);
   private http = inject(HttpClient);
-  private uiService = inject(UiService);
 
   usuario = this.authService.usuario;
   noLeidas = this.notificacionService.noLeidas;
@@ -175,10 +173,5 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (horas < 24) return `Hace ${horas}h`;
     if (dias < 7) return `Hace ${dias}d`;
     return f.toLocaleDateString('es-PE');
-  }
-
-  /** Abre el sidebar en móvil (llamado desde el botón hamburguesa) */
-  abrirSidebar(): void {
-    this.uiService.abrirSidebar();
   }
 }

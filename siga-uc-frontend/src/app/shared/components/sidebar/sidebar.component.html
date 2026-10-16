@@ -1,13 +1,4 @@
-<!-- Overlay para móvil (se muestra cuando el sidebar está abierto) -->
-<div class="sidebar-overlay" [class.open]="sidebarAbierto()" (click)="cerrarSidebar()"></div>
-
-<!-- Sidebar principal -->
-<aside class="sidebar" [class.open]="sidebarAbierto()">
-  <!-- Botón de cerrar (solo visible en móvil) -->
-  <button class="sidebar-close-btn" (click)="cerrarSidebar()" aria-label="Cerrar menú">
-    <i class="fa-solid fa-xmark"></i>
-  </button>
-
+<aside class="sidebar">
   <div>
     <!-- BRAND -->
     <div class="sidebar-brand">
@@ -23,7 +14,7 @@
       @for (item of menuItems; track item.path) {
       <li>
         <a [routerLink]="item.path" routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: item.path === '/admin' }" (click)="cerrarSidebar()">
+          [routerLinkActiveOptions]="{ exact: item.path === '/admin' }">
           <i class="fa-solid" [ngClass]="item.icon"></i>
           {{ item.label }}
         </a>

@@ -2,7 +2,6 @@ import { Component, inject, Input } from '@angular/core';
 import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
-import { UiService } from '../../../core/services/ui.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -16,13 +15,10 @@ export class SidebarComponent {
 
   private authService = inject(AuthService);
   private router = inject(Router);
-  private uiService = inject(UiService);
 
   usuario = this.authService.usuario;
 
-  /** Estado del sidebar (móvil) */
-  sidebarAbierto = this.uiService.sidebarAbierto;
-
+  // 👇 AQUÍ ESTÁ EL ARRAY menuItems 👇
   menuItems = [
     { path: '/admin', label: 'Resumen Ejecutivo', icon: 'fa-chart-pie', roles: ['ADMIN'] },
     {
@@ -30,7 +26,7 @@ export class SidebarComponent {
       label: 'Padrón de Alumnos',
       icon: 'fa-users',
       roles: ['ADMIN', 'SECRETARIA'],
-    },
+    }, // ← ESTA LÍNEA
     {
       path: '/admin/personal',
       label: 'Personal & Usuarios',
@@ -75,11 +71,7 @@ export class SidebarComponent {
       roles: ['ADMIN'],
     },
   ];
-
-  /** Cierra el sidebar (móvil). Se llama al hacer clic en el overlay o en un link */
-  cerrarSidebar(): void {
-    this.uiService.cerrarSidebar();
-  }
+  // 👆 FIN DEL ARRAY 👆
 
   logout(): void {
     if (confirm('¿Está seguro de cerrar sesión?')) {
