@@ -4,7 +4,5 @@
  */
 export const environment = {
   production: true,
-  apiUrl: 'https://api.unioncientifica.edu.pe/api',
-  appName: 'SIGA-UC',
-  appVersion: '1.0.0',
+  apiUrl: 'https://siga-uc-api.onrender.com/api'
 };
