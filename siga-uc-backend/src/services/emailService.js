@@ -1,34 +1,34 @@
 /**
- * Servicio de Envío de Correos
- * SIGA-UC - Sistema Integrado de Gestión Académica
+ * Servicio de Envío de Correos - SIGA-UC
+ * Sistema Integrado de Gestión Académica
  *
- * Utiliza Nodemailer para enviar correos institucionales.
+ * Usa Resend (API HTTP) para funcionar tanto en local como en Render.
+ * Mantiene la misma interfaz pública que la versión anterior con Nodemailer.
  */
 
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const env = require("../config/env");
 
-// Configurar transporter SMTP
-const transporter = nodemailer.createTransport({
-  host: env.SMTP.HOST,
-  port: env.SMTP.PORT,
-  secure: env.SMTP.SECURE,
-  auth: {
-    user: env.SMTP.USER,
-    pass: env.SMTP.PASSWORD,
-  },
-});
+// Inicializar cliente de Resend
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Remitente por defecto (se configura con EMAIL_FROM en .env)
+const FROM_EMAIL = process.env.EMAIL_FROM || "SIGA-UC <onboarding@resend.dev>";
 
 /**
- * Verificar conexión SMTP al iniciar
+ * Verificar configuración de Resend al iniciar
  */
 const verificarConexion = async () => {
   try {
-    await transporter.verify();
-    console.log("✅ Servicio de correo SMTP conectado correctamente");
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error(
+        "RESEND_API_KEY no está configurada en las variables de entorno",
+      );
+    }
+    console.log("✅ Servicio de correo (Resend) configurado correctamente");
     return true;
   } catch (error) {
-    console.error("❌ Error al conectar SMTP:", error.message);
+    console.error("❌ Error al configurar Resend:", error.message);
     return false;
   }
 };
@@ -39,15 +39,21 @@ const verificarConexion = async () => {
  */
 const enviarCorreo = async ({ to, subject, html, text }) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"${env.SMTP.FROM_NAME}" <${env.SMTP.USER}>`,
-      to,
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: Array.isArray(to) ? to : [to],
       subject,
       text: text || "",
       html: html || "",
     });
-    console.log(`📧 Correo enviado a ${to}: ${info.messageId}`);
-    return { success: true, messageId: info.messageId };
+
+    if (error) {
+      console.error(`❌ Error al enviar correo a ${to}:`, error.message);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`📧 Correo enviado a ${to}: ${data.id}`);
+    return { success: true, messageId: data.id };
   } catch (error) {
     console.error(`❌ Error al enviar correo a ${to}:`, error.message);
     return { success: false, error: error.message };
@@ -55,7 +61,7 @@ const enviarCorreo = async ({ to, subject, html, text }) => {
 };
 
 /**
- * Plantilla HTML para notificaciones generales
+ * Plantilla HTML para notificaciones generales (se mantiene igual)
  */
 const plantillaNotificacion = (destinatario, asunto, cuerpo, remitente) => {
   return `
@@ -103,7 +109,6 @@ const plantillaNotificacion = (destinatario, asunto, cuerpo, remitente) => {
 
 /**
  * Enviar notificación con plantilla institucional
- * Usa el correo personal si existe, sino el institucional.
  */
 const enviarNotificacion = async ({
   to,
