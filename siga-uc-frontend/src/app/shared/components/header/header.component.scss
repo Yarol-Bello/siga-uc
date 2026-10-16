@@ -2,6 +2,44 @@
   display: block;
 }
 
+/* Botón hamburguesa: oculto en desktop */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: #800020;
+  cursor: pointer;
+  padding: 8px;
+  margin-right: 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    color: #600018;
+    background: rgba(128, 0, 32, 0.05);
+  }
+}
+
+/* Botón hamburguesa: oculto en desktop */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: #800020;
+  cursor: pointer;
+  padding: 8px;
+  margin-right: 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    color: #600018;
+    background: rgba(128, 0, 32, 0.05);
+  }
+}
+
 .main-header {
   background: #ffffff;
   padding: 18px 35px;
@@ -394,7 +432,7 @@
 
 .modal-body-compact {
   padding: 0 !important;
-  overflow: hidden !important; /* ❌ Sin scroll */
+  overflow: hidden !important;
   flex: 1;
 }
 
@@ -435,7 +473,6 @@
   border-bottom: 1px dashed #d4af37;
 }
 
-/* QR COMPACTO */
 .carne-qr-compact {
   background: white;
   padding: 8px;
@@ -452,7 +489,6 @@
   }
 }
 
-/* NOMBRE COMPACTO */
 .carne-nombre-compact {
   font-size: 0.9rem;
   font-weight: 800;
@@ -463,7 +499,6 @@
   padding: 0 4px;
 }
 
-/* ROL COMPACTO */
 .carne-rol-compact {
   display: inline-block;
   background: rgba(128, 0, 32, 0.1);
@@ -477,7 +512,6 @@
   margin: 0 auto;
 }
 
-/* DNI Y CÓDIGO (2 COLUMNAS) */
 .carne-datos-compact {
   display: flex;
   gap: 10px;
@@ -515,7 +549,6 @@
   }
 }
 
-/* INFORMACIÓN ADICIONAL (GRADO / ESPECIALIDAD) */
 .carne-footer-info {
   display: flex;
   align-items: center;
@@ -534,7 +567,6 @@
   }
 }
 
-/* FOOTER COMPACTO */
 .modal-footer-compact {
   padding: 12px 20px;
   background: #f8fafc;
@@ -545,7 +577,6 @@
   flex-shrink: 0;
 }
 
-/* BOTONES COMPACTOS */
 .btn-cerrar-carne {
   background: #e2e8f0;
   color: #1e293b;
@@ -587,5 +618,201 @@
 
   i {
     font-size: 0.9rem;
+  }
+}
+
+/* ============================================================ */
+/* RESPONSIVE - Header en móvil                                  */
+/* ============================================================ */
+
+@media (max-width: 1024px) {
+  .main-header {
+    padding: 14px 20px;
+  }
+
+  .header-title {
+    h2 {
+      font-size: 1.15rem;
+    }
+    p {
+      font-size: 0.75rem;
+    }
+  }
+
+  .user-profile-widget {
+    padding: 6px 12px;
+    gap: 10px;
+
+    .user-details .name {
+      font-size: 0.82rem;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .main-header {
+    padding: 12px 16px;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .mobile-menu-btn {
+    display: block;
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    flex: 1;
+    min-width: 0;
+
+    h2 {
+      font-size: 1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    p {
+      display: none;
+    }
+  }
+
+  .header-widgets {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .user-profile-widget {
+    padding: 4px;
+    background: none;
+    border: none;
+
+    .user-details {
+      display: none;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      font-size: 0.85rem;
+    }
+
+    &:hover {
+      background: rgba(128, 0, 32, 0.03);
+      border-radius: 50%;
+    }
+  }
+
+  .notification-bell-container .bell-icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .modal-container {
+    max-width: 95vw !important;
+    margin: 16px;
+  }
+
+  .modal-carne {
+    max-width: 95vw !important;
+  }
+}
+
+/* ============================================================ */
+/* RESPONSIVE - Header en móvil                                  */
+/* ============================================================ */
+
+@media (max-width: 1024px) {
+  .main-header {
+    padding: 14px 20px;
+  }
+
+  .header-title {
+    h2 {
+      font-size: 1.15rem;
+    }
+    p {
+      font-size: 0.75rem;
+    }
+  }
+
+  .user-profile-widget {
+    padding: 6px 12px;
+    gap: 10px;
+
+    .user-details .name {
+      font-size: 0.82rem;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .main-header {
+    padding: 12px 16px;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .mobile-menu-btn {
+    display: block;
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    flex: 1;
+    min-width: 0;
+
+    h2 {
+      font-size: 1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    p {
+      display: none;
+    }
+  }
+
+  .header-widgets {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .user-profile-widget {
+    padding: 4px;
+    background: none;
+    border: none;
+
+    .user-details {
+      display: none;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      font-size: 0.85rem;
+    }
+
+    &:hover {
+      background: rgba(128, 0, 32, 0.03);
+      border-radius: 50%;
+    }
+  }
+
+  .notification-bell-container .bell-icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .modal-container {
+    max-width: 95vw !important;
+    margin: 16px;
+  }
+
+  .modal-carne {
+    max-width: 95vw !important;
   }
 }

@@ -124,3 +124,97 @@
     }
   }
 }
+
+/* ============================================================ */
+/* RESPONSIVE - Sidebar como drawer en móvil                    */
+/* ============================================================ */
+
+/* TABLET (768px - 1024px) */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+    padding: 20px;
+  }
+
+  .sidebar-brand {
+    h3 {
+      font-size: 0.88rem;
+    }
+
+    p {
+      font-size: 0.68rem;
+    }
+  }
+
+  .sidebar-logo-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+}
+
+/* MÓVIL (hasta 768px) - Sidebar como drawer offcanvas */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1050;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+    padding: 20px;
+    width: 280px;
+  }
+
+  /* Cuando el sidebar está abierto */
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Overlay oscuro detrás del sidebar */
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease-in-out;
+  }
+
+  .sidebar-overlay.open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Botón de cerrar dentro del sidebar (solo móvil) */
+  .sidebar-close-btn {
+    display: flex !important;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 36px;
+    height: 36px;
+    background: #f1f5f9;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+
+    &:hover {
+      background: #e2e8f0;
+      color: #800020;
+    }
+  }
+}
+
+/* Botón de cerrar: oculto por defecto en desktop */
+.sidebar-close-btn {
+  display: none;
+}

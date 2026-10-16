@@ -1,4 +1,10 @@
 <header class="main-header">
+  <!-- BOTÓN HAMBURGUESA (solo visible en móvil) -->
+  <button class="mobile-menu-btn" (click)="abrirSidebar()" aria-label="Abrir menú">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+
+
   <div class="header-title">
     <h2>{{ titulo }}</h2>
     <p>{{ subtitulo }}</p>
