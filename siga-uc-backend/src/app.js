@@ -25,10 +25,16 @@ const app = express();
 // Seguridad HTTP
 app.use(helmet());
 
-// CORS (permitir frontend Angular en localhost:4200)
+// CORS (permitir frontend Angular en local y en producción)
+const allowedOrigins = [
+  "http://localhost:4200",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL, // se configura en Render
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: ["http://localhost:4200", "http://localhost:3000"],
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
@@ -155,10 +161,16 @@ const startServer = async () => {
     }
 
     //Verificar conexión SMTP
-    const emailService = require("./services/emailService");
-    await emailService.verificarConexion();
+    // Verificar conexión SMTP (no bloqueante: si falla, el servidor arranca igual)
+    try {
+      const emailService = require("./services/emailService");
+      await emailService.verificarConexion();
+    } catch (err) {
+      console.warn("⚠️  SMTP no disponible:", err.message);
+      console.warn("   El servidor arrancará igual, solo sin correos.\n");
+    }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log("═══════════════════════════════════════════════════");
       console.log(`   🎓 ${env.APP.NAME} v${env.APP.VERSION}`);
       console.log("═══════════════════════════════════════════════════");
