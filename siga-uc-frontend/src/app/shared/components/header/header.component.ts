@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificacionService, Notificacion } from '../../../core/services/notificacion.service';
 import { environment } from '../../../../environments/environment';
+import * as QRCode from 'qrcode';
 
 /**
  * Componente Header superior
@@ -130,7 +131,6 @@ export class HeaderComponent implements OnInit, OnDestroy {
           this.datosCarne.set(datos);
 
           const codigoQR = datos.credencial_qr?.codigo_qr || `SIGA-UC-${datos.dni}`;
-          const QRCode = await import('qrcode');
           const dataUrl = await QRCode.toDataURL(codigoQR, {
             width: 300,
             margin: 1,
