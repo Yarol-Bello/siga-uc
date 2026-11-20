@@ -131,7 +131,7 @@ const crear = async (data) => {
       data.apellidos,
       correoGenerado,
       data.correo_personal || null,
-      data.password || "UC2026*",
+      data.password || String(data.dni),
       data.telefono || null,
       data.id_rol,
     ]);
@@ -173,7 +173,7 @@ const crear = async (data) => {
       nombre_completo: `${data.nombres} ${data.apellidos}`,
       correo_institucional: correoGenerado,
       correo_personal: data.correo_personal || null,
-      password_temporal: data.password || "UC2026*",
+      password_temporal: data.password || String(data.dni),
     };
   } catch (error) {
     await client.query("ROLLBACK");
@@ -298,7 +298,7 @@ const reactivar = async (id_personal) => {
  * Restablecer contraseña
  */
 const resetPassword = async (id_usuario, dni) => {
-  const passwordTemporal = "UC" + dni;
+  const passwordTemporal = dni;
 
   await query(
     `

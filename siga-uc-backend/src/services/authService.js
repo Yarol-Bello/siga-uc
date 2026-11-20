@@ -173,7 +173,7 @@ const resetPassword = async (dni) => {
 
   return {
     usuario,
-    password_temporal: "UC" + dni,
+    password_temporal: dni,
   };
 };
 

@@ -69,7 +69,7 @@ export class AdminPersonalComponent implements OnInit {
     id_rol: 2,
     especialidad: '',
     cargo: '',
-    password: 'UC2026*',
+    password: '',
   };
 
   // Modal: Editar
@@ -165,7 +165,7 @@ export class AdminPersonalComponent implements OnInit {
       id_rol: 2,
       especialidad: '',
       cargo: '',
-      password: 'UC2026*',
+      password: '',
     };
     this.errorNuevo.set(null);
     this.modalNuevo.set(true);

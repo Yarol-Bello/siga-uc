@@ -155,7 +155,7 @@ const getPersonalInfo = async (id_usuario) => {
  * @returns {Promise<object>}
  */
 const resetPasswordByDni = async (dni) => {
-  const nuevaPassword = "UC" + dni;
+  const nuevaPassword = dni;
   const sql = `
     UPDATE usuarios 
     SET password_hash = crypt($1, gen_salt('bf', 10)),

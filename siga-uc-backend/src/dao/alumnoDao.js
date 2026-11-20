@@ -167,7 +167,7 @@ const crear = async (data) => {
       data.apellidos,
       correoGenerado,
       correoPersonal,
-      "UC" + data.dni,
+      String(data.dni),
       data.telefono || null,
     ]);
     const id_usuario = usuarioResult.rows[0].id_usuario;
@@ -221,7 +221,7 @@ const crear = async (data) => {
       codigo_estudiante: codigo,
       dni: data.dni,
       nombre_completo: `${data.nombres} ${data.apellidos}`,
-      password_temporal: "UC" + data.dni,
+      password_temporal: String(data.dni),
       correo_institucional: correoGenerado,
       correo_personal: correoPersonal,
     };
