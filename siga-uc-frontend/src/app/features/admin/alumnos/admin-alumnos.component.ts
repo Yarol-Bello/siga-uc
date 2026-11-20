@@ -20,6 +20,7 @@ interface Alumno {
   seccion: string;
   apoderado_nombre: string;
   apoderado_telefono: string;
+  correo_personal?: string | null;
 }
 
 interface Grado {
@@ -69,6 +70,7 @@ export class AdminAlumnosComponent implements OnInit {
     id_grado: '',
     condicion: 'Regular',
     colegio_procedencia: '',
+    correo_personal: '',
     apoderado: {
       nombres: '',
       apellidos: '',
@@ -155,6 +157,7 @@ export class AdminAlumnosComponent implements OnInit {
       id_grado: '',
       condicion: 'Regular',
       colegio_procedencia: '',
+      correo_personal: '',
       apoderado: { nombres: '', apellidos: '', telefono: '', correo: '' },
     };
     this.errorMatricula.set(null);
@@ -184,6 +187,13 @@ export class AdminAlumnosComponent implements OnInit {
       return;
     }
     if (
+      !this.nuevaMatricula.correo_personal ||
+      !this.nuevaMatricula.correo_personal.includes('@')
+    ) {
+      this.errorMatricula.set('Ingrese un correo personal válido para el alumno');
+      return;
+    }
+    if (
       !this.nuevaMatricula.apoderado.correo ||
       !this.nuevaMatricula.apoderado.correo.includes('@')
     ) {
@@ -203,6 +213,7 @@ export class AdminAlumnosComponent implements OnInit {
       id_grado: parseInt(this.nuevaMatricula.id_grado),
       condicion: this.nuevaMatricula.condicion,
       colegio_procedencia: this.nuevaMatricula.colegio_procedencia || null,
+      correo_personal: this.nuevaMatricula.correo_personal || null,
       apoderado: this.nuevaMatricula.apoderado.nombres ? this.nuevaMatricula.apoderado : null,
     };
 
@@ -296,6 +307,7 @@ export class AdminAlumnosComponent implements OnInit {
     id_grado: '',
     condicion: 'Regular',
     colegio_procedencia: '',
+    correo_personal: '',
   };
 
   abrirModalEditar(alumno: Alumno): void {
@@ -307,6 +319,7 @@ export class AdminAlumnosComponent implements OnInit {
       id_grado: alumno.id_grado,
       condicion: alumno.condicion || 'Regular',
       colegio_procedencia: '',
+      correo_personal: alumno.correo_personal || '',
     };
     this.errorEdicion.set(null);
     this.modalEditar.set(true);
@@ -320,6 +333,13 @@ export class AdminAlumnosComponent implements OnInit {
   guardarEdicion(): void {
     if (!this.formEditar.nombres || !this.formEditar.apellidos) {
       this.errorEdicion.set('Nombres y apellidos son obligatorios');
+      return;
+    }
+    if (
+      this.formEditar.correo_personal &&
+      !this.formEditar.correo_personal.includes('@')
+    ) {
+      this.errorEdicion.set('Ingrese un correo personal válido para el alumno');
       return;
     }
 
@@ -336,6 +356,7 @@ export class AdminAlumnosComponent implements OnInit {
       id_grado: parseInt(this.formEditar.id_grado),
       condicion: this.formEditar.condicion,
       colegio_procedencia: this.formEditar.colegio_procedencia || null,
+      correo_personal: this.formEditar.correo_personal || null,
     };
 
     this.http.put<any>(`${environment.apiUrl}/alumnos/${alumno.id_alumno}`, payload).subscribe({

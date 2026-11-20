@@ -215,6 +215,20 @@
             <input type="date" [(ngModel)]="nuevaMatricula.fecha_nacimiento" name="fecha_nacimiento" />
           </div>
           <div class="form-group">
+            <label>Correo Personal del Alumno *</label>
+            <input type="email" [(ngModel)]="nuevaMatricula.correo_personal" name="correo_personal"
+              placeholder="correo@gmail.com" required #correoAlumno="ngModel" />
+            @if (correoAlumno.invalid && correoAlumno.touched) {
+            <small style="color: #DC2626; font-size: 0.72rem;">
+              Ingrese un correo electrónico válido
+            </small>
+            } @else {
+            <small style="color: #64748B; font-size: 0.72rem;">
+              Se usará para recuperar la contraseña del alumno
+            </small>
+            }
+          </div>
+          <div class="form-group">
             <label>Nombres *</label>
             <input type="text" [(ngModel)]="nuevaMatricula.nombres" name="nombres" placeholder="Nombres completos" />
           </div>
@@ -284,7 +298,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="cerrarModalMatricula()">Cancelar</button>
-      <button class="btn-primary" [disabled]="guardando()" (click)="guardarMatricula()">
+      <button class="btn-primary" [disabled]="guardando() || correoAlumno.invalid" (click)="guardarMatricula()">
         @if (guardando()) {
         <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
         } @else {
@@ -390,6 +404,20 @@
             <input type="date" [(ngModel)]="formEditar.fecha_nacimiento" name="edit_fecha" />
           </div>
           <div class="form-group">
+            <label>Correo Personal del Alumno</label>
+            <input type="email" [(ngModel)]="formEditar.correo_personal" name="edit_correo_personal"
+              placeholder="correo@gmail.com" #correoEdit="ngModel" />
+            @if (correoEdit.invalid && correoEdit.touched) {
+            <small style="color: #DC2626; font-size: 0.72rem;">
+              Ingrese un correo electrónico válido
+            </small>
+            } @else {
+            <small style="color: #64748B; font-size: 0.72rem;">
+              Se usará para recuperar la contraseña del alumno
+            </small>
+            }
+          </div>
+          <div class="form-group">
             <label>Grado</label>
             <select [(ngModel)]="formEditar.id_grado" name="edit_grado">
               @for (g of grados(); track g.id_grado) {
@@ -415,7 +443,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="cerrarModalEditar()">Cancelar</button>
-      <button class="btn-primary" [disabled]="guardandoEdicion()" (click)="guardarEdicion()">
+      <button class="btn-primary" [disabled]="guardandoEdicion() || correoEdit.invalid" (click)="guardarEdicion()">
         @if (guardandoEdicion()) {
         <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
         } @else {

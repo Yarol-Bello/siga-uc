@@ -43,12 +43,14 @@ const listar = async (filtros = {}) => {
       a.fecha_nacimiento, a.condicion, a.estado_matricula,
       a.codigo_estudiante, a.anio_lectivo, a.id_grado,
       g.nombre_grado, g.seccion,
+      u.correo_personal,
       a.id_apoderado,
       ap.nombres || ' ' || ap.apellidos AS apoderado_nombre,
       ap.telefono AS apoderado_telefono,
       ap.correo AS apoderado_correo
     FROM alumnos a
     LEFT JOIN grados g ON g.id_grado = a.id_grado
+    LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
     LEFT JOIN apoderados ap ON ap.id_apoderado = a.id_apoderado
     ${whereClause}
     ORDER BY g.id_grado, a.apellidos, a.nombres
@@ -67,6 +69,7 @@ const findById = async (id) => {
       a.*,
       a.nombres || ' ' || a.apellidos AS nombre_completo,
       g.nombre_grado, g.seccion,
+      u.correo_personal,
       ap.nombres AS apoderado_nombres,
       ap.apellidos AS apoderado_apellidos,
       ap.dni AS apoderado_dni,
@@ -74,6 +77,7 @@ const findById = async (id) => {
       ap.correo AS apoderado_correo
     FROM alumnos a
     LEFT JOIN grados g ON g.id_grado = a.id_grado
+    LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
     LEFT JOIN apoderados ap ON ap.id_apoderado = a.id_apoderado
     WHERE a.id_alumno = $1
   `;
@@ -89,9 +93,11 @@ const findByDni = async (dni) => {
     SELECT 
       a.*,
       a.nombres || ' ' || a.apellidos AS nombre_completo,
-      g.nombre_grado, g.seccion
+      g.nombre_grado, g.seccion,
+      u.correo_personal
     FROM alumnos a
     LEFT JOIN grados g ON g.id_grado = a.id_grado
+    LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
     WHERE a.dni = $1
   `;
   const result = await query(sql, [dni]);
@@ -231,26 +237,52 @@ const crear = async (data) => {
  * Actualizar alumno
  */
 const actualizar = async (id, data) => {
-  const sql = `
-    UPDATE alumnos SET
-      nombres = COALESCE($1, nombres),
-      apellidos = COALESCE($2, apellidos),
-      fecha_nacimiento = COALESCE($3, fecha_nacimiento),
-      id_grado = COALESCE($4, id_grado),
-      condicion = COALESCE($5, condicion),
-      colegio_procedencia = COALESCE($6, colegio_procedencia)
-    WHERE id_alumno = $7 RETURNING *
-  `;
-  const result = await query(sql, [
-    data.nombres,
-    data.apellidos,
-    data.fecha_nacimiento,
-    data.id_grado,
-    data.condicion,
-    data.colegio_procedencia,
-    id,
-  ]);
-  return result.rows[0] || null;
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+
+    const sql = `
+      UPDATE alumnos SET
+        nombres = COALESCE($1, nombres),
+        apellidos = COALESCE($2, apellidos),
+        fecha_nacimiento = COALESCE($3, fecha_nacimiento),
+        id_grado = COALESCE($4, id_grado),
+        condicion = COALESCE($5, condicion),
+        colegio_procedencia = COALESCE($6, colegio_procedencia)
+      WHERE id_alumno = $7 RETURNING *
+    `;
+    const result = await client.query(sql, [
+      data.nombres,
+      data.apellidos,
+      data.fecha_nacimiento,
+      data.id_grado,
+      data.condicion,
+      data.colegio_procedencia,
+      id,
+    ]);
+    const alumno = result.rows[0];
+
+    if (!alumno) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    if (data.correo_personal !== undefined) {
+      await client.query(
+        `UPDATE usuarios SET correo_personal = $1 WHERE id_usuario = $2`,
+        [data.correo_personal || null, alumno.id_usuario],
+      );
+      alumno.correo_personal = data.correo_personal || null;
+    }
+
+    await client.query("COMMIT");
+    return alumno;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 /**
