@@ -11,6 +11,8 @@ interface Movimiento {
   monto: string;
   medio_pago: string;
   nro_comprobante: string;
+  nro_operacion?: string | null;
+  numero_boleta?: string | null;
   fecha_hora: string;
   usuario: string;
 }

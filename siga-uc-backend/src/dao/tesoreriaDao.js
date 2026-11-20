@@ -304,6 +304,7 @@ const listarPensionesAlumno = async (id_alumno, anioLectivo = 2026) => {
   const sql = `
     SELECT 
       p.id_pension, p.mes, p.monto_base, p.descuento, p.monto_final, p.estado,
+      c.id_concepto,
       c.nombre AS concepto_nombre, c.mes AS concepto_mes
     FROM pensiones p
     LEFT JOIN conceptos_pago c ON c.tipo = 'PENSION' AND c.mes = p.mes AND c.anio_lectivo = p.anio_lectivo
@@ -339,6 +340,7 @@ const generarPensionesMensuales = async (
         'PENDIENTE'
       FROM alumnos a
       WHERE a.estado_matricula = 'Matriculado' AND a.anio_lectivo = $1
+        AND a.fecha_creacion < (make_date($1::INT, $2::INT, 1) + INTERVAL '1 month')
       ON CONFLICT (id_alumno, anio_lectivo, mes) DO NOTHING
       RETURNING id_pension
     `;

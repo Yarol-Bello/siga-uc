@@ -12,6 +12,16 @@ interface Pension {
   descuento: string;
   monto_final: string;
   estado: string;
+  id_concepto?: number | null;
+  concepto_nombre?: string | null;
+}
+
+interface ConceptoDisponible {
+  id_concepto: number;
+  id_pension: number;
+  nombre: string;
+  monto: number;
+  mes: number;
 }
 
 interface AlumnoConPensiones {
@@ -66,6 +76,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
   modalCobro = signal(false);
   alumnoSeleccionado = signal<AlumnoConPensiones | null>(null);
   conceptoCobro = signal('');
+  conceptosDisponibles = signal<ConceptoDisponible[]>([]);
   montoCobro = signal<number>(250);
   formaPago = signal('Efectivo');
   nroOperacion = signal('');
@@ -197,11 +208,16 @@ export class SecretariaTesoreriaComponent implements OnInit {
       concepto !== undefined
         ? concepto.toLowerCase().includes('matrícula')
         : alumno.estado_matricula === 'PendientePago';
+    const disponibles = esMatricula
+      ? []
+      : this.obtenerConceptosDisponibles(alumno);
     const conceptoFinal =
       concepto ||
-      (esMatricula ? 'Matrícula Escolar 2026' : 'Pensión Octubre 2026');
-    const montoFinal = monto ?? 250;
+      (esMatricula ? 'Matrícula Escolar 2026' : disponibles[0]?.nombre || '');
+    const montoFinal =
+      monto ?? (esMatricula ? 250 : disponibles[0]?.monto ?? 250);
 
+    this.conceptosDisponibles.set(disponibles);
     this.alumnoSeleccionado.set(alumno);
     this.conceptoCobro.set(conceptoFinal);
     this.montoCobro.set(montoFinal);
@@ -210,6 +226,38 @@ export class SecretariaTesoreriaComponent implements OnInit {
     this.esCobroMatricula.set(esMatricula);
 
     this.modalCobro.set(true);
+  }
+
+  /**
+   * Solo devuelve pensiones pendientes que tengan concepto asociado.
+   */
+  private obtenerConceptosDisponibles(
+    alumno: AlumnoConPensiones,
+  ): ConceptoDisponible[] {
+    return alumno.pensiones
+      .filter((p) => p.estado !== 'PAGADO' && p.id_concepto)
+      .map((p) => ({
+        id_concepto: Number(p.id_concepto),
+        id_pension: p.id_pension,
+        nombre: p.concepto_nombre || `Pensión ${p.mes}/2026`,
+        monto: Number(p.monto_final) || 250,
+        mes: p.mes,
+      }))
+      .sort((a, b) => a.mes - b.mes);
+  }
+
+  cambiarConcepto(nombre: string): void {
+    this.conceptoCobro.set(nombre);
+    if (this.esCobroMatricula()) {
+      this.montoCobro.set(250);
+      return;
+    }
+    const concepto = this.conceptosDisponibles().find(
+      (c) => c.nombre === nombre,
+    );
+    if (concepto) {
+      this.montoCobro.set(concepto.monto);
+    }
   }
 
   cerrarModalCobro(): void {
@@ -230,37 +278,30 @@ export class SecretariaTesoreriaComponent implements OnInit {
       return;
     }
 
-    this.procesando.set(true);
-
-    // Mapeo de conceptos a sus IDs reales en la BD
-    const conceptosMap: { [key: string]: number } = {
-      'Matrícula Escolar 2026': 1,
-      'Pensión Octubre 2026': 9,
-      'Pensión Noviembre 2026': 10,
-      'Pensión Diciembre 2026': 11,
-    };
-
-    const idConcepto = conceptosMap[this.conceptoCobro()] || 9;
-
-    // 👇 BUSCAR LA PENSIÓN CORRESPONDIENTE
-    let idPension: number | null = null;
-    const match = this.conceptoCobro().match(/Pensión (\w+)/);
-
-    if (match) {
-      const mesesMap: { [key: string]: number } = {
-        Octubre: 10,
-        Noviembre: 11,
-        Diciembre: 12,
-      };
-      const mes = mesesMap[match[1]];
-
-      if (mes) {
-        const pension = alumno.pensiones.find((p) => p.mes === mes);
-        if (pension) {
-          idPension = pension.id_pension;
-        }
-      }
+    if (!this.conceptoCobro()) {
+      alert('No hay pensiones pendientes para este alumno');
+      return;
     }
+
+    const conceptoSeleccionado = this.conceptosDisponibles().find(
+      (c) => c.nombre === this.conceptoCobro(),
+    );
+    let idConcepto: number;
+    let idPension: number | null;
+
+    if (this.esCobroMatricula()) {
+      idConcepto = 1;
+      idPension = null;
+    } else {
+      if (!conceptoSeleccionado) {
+        alert('Seleccione una pensión pendiente');
+        return;
+      }
+      idConcepto = conceptoSeleccionado.id_concepto;
+      idPension = conceptoSeleccionado.id_pension;
+    }
+
+    this.procesando.set(true);
 
     const payload = {
       id_alumno: alumno.id_alumno,

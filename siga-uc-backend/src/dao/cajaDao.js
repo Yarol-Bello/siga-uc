@@ -208,10 +208,14 @@ const listarMovimientos = async (id_apertura) => {
       m.monto,
       m.medio_pago,
       m.nro_comprobante,
+      p.nro_operacion,
+      b.numero_boleta,
       m.fecha_hora,
       u.nombres || ' ' || u.apellidos AS usuario
     FROM movimientos_caja m
     LEFT JOIN usuarios u ON u.id_usuario = m.id_usuario
+    LEFT JOIN pagos p ON p.id_pago = m.id_pago
+    LEFT JOIN boletas_electronicas b ON b.id_pago = p.id_pago
     WHERE m.id_apertura = $1
     ORDER BY m.fecha_hora DESC
   `;
