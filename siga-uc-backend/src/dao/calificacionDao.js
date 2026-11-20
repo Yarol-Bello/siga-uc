@@ -259,35 +259,19 @@ const calcularNotaFinal = async (
   bimestre,
   anioLectivo,
 ) => {
+  // Fuente única de verdad: función SQL calcular_nota_final_area.
   const sql = `
-    SELECT 
-      COUNT(*) FILTER (WHERE calificacion = 'AD') AS total_ad,
-      COUNT(*) FILTER (WHERE calificacion = 'A') AS total_a,
-      COUNT(*) FILTER (WHERE calificacion = 'B') AS total_b,
-      COUNT(*) FILTER (WHERE calificacion = 'C') AS total_c
-    FROM calificaciones
-    WHERE id_alumno = $1
-      AND id_curso = $2
-      AND bimestre = $3
-      AND anio_lectivo = $4
+    SELECT public.calcular_nota_final_area(
+      $1::INT, $2::INT, $3::INT, $4::INT
+    ) AS nota_final
   `;
-  const result = await query(sql, [id_alumno, id_curso, bimestre, anioLectivo]);
-  const r = result.rows[0];
-
-  const totalAd = parseInt(r.total_ad);
-  const totalA = parseInt(r.total_a);
-  const totalB = parseInt(r.total_b);
-  const totalC = parseInt(r.total_c);
-
-  if (totalAd >= 2) return "AD";
-  if (totalA >= 2) return "A";
-  if (totalB >= 2) return "B";
-  if (totalC >= 2) return "C";
-  // Si ninguno tiene 2, usar la mejor calificación
-  if (totalAd >= 1) return "AD";
-  if (totalA >= 1) return "A";
-  if (totalB >= 1) return "B";
-  return "C";
+  const result = await query(sql, [
+    id_alumno,
+    id_curso,
+    bimestre,
+    anioLectivo,
+  ]);
+  return result.rows[0]?.nota_final || "C";
 };
 
 /**

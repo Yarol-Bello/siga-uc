@@ -6,6 +6,68 @@
 const calificacionDao = require("../dao/calificacionDao");
 const alumnoDao = require("../dao/alumnoDao");
 const cursoDao = require("../dao/cursoDao");
+const auditoriaDao = require("../dao/auditoriaDao");
+
+const verificarActaAbierta = async (idGrado, bimestre, anioLectivo) => {
+  if (!idGrado) return;
+
+  const cerrada = await auditoriaDao.actaEstaCerrada(
+    idGrado,
+    bimestre,
+    anioLectivo,
+  );
+
+  if (cerrada) {
+    const error = new Error(
+      "El acta ya está cerrada. No se pueden modificar las notas.",
+    );
+    error.statusCode = 409;
+    throw error;
+  }
+};
+
+const verificarActasAbiertas = async (registros) => {
+  const vistos = new Set();
+
+  for (const reg of registros) {
+    const idGrado = reg.id_grado;
+    const bimestre = reg.bimestre;
+    const anioLectivo = reg.anio_lectivo || 2026;
+
+    if (!idGrado) continue;
+
+    const clave = `${idGrado}-${bimestre}-${anioLectivo}`;
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+
+    await verificarActaAbierta(idGrado, bimestre, anioLectivo);
+  }
+};
+
+const recalcularNotaFinalSeguro = async (
+  id_alumno,
+  id_curso,
+  bimestre,
+  anioLectivo,
+  idGrado = null,
+) => {
+  try {
+    const saved = await calcularYGuardarNotaFinal(
+      id_alumno,
+      id_curso,
+      bimestre,
+      anioLectivo,
+      idGrado,
+    );
+    return { ok: true, nota_final: saved?.nota_final || null };
+  } catch (error) {
+    console.error(
+      `⚠️ No se pudo calcular la nota final (alumno ${id_alumno}, curso ${id_curso}, bimestre ${bimestre}):`,
+      error.message,
+    );
+    return { ok: false, error: error.message };
+  }
+};
 
 const obtenerPorAlumnoCurso = async (
   id_alumno,
@@ -76,7 +138,25 @@ const registrar = async (data) => {
     error.statusCode = 400;
     throw error;
   }
-  return await calificacionDao.registrar(data);
+
+  const anioLectivo = data.anio_lectivo || 2026;
+  await verificarActaAbierta(data.id_grado, data.bimestre, anioLectivo);
+
+  const saved = await calificacionDao.registrar(data);
+  const notaFinal = await recalcularNotaFinalSeguro(
+    data.id_alumno,
+    data.id_curso,
+    data.bimestre,
+    anioLectivo,
+    data.id_grado,
+  );
+
+  return {
+    ...saved,
+    nota_final: notaFinal.nota_final,
+    notas_finales_calculadas: notaFinal.ok ? 1 : 0,
+    notas_finales_errores: notaFinal.ok ? 0 : 1,
+  };
 };
 
 const registrarMasivo = async (registros) => {
@@ -85,7 +165,47 @@ const registrarMasivo = async (registros) => {
     error.statusCode = 400;
     throw error;
   }
-  return await calificacionDao.registrarMasivo(registros);
+
+  await verificarActasAbiertas(registros);
+
+  const result = await calificacionDao.registrarMasivo(registros);
+
+  const combinaciones = new Map();
+  registros.forEach((reg) => {
+    if (!reg.id_alumno || !reg.id_curso || !reg.bimestre) return;
+    const anioLectivo = reg.anio_lectivo || 2026;
+    const clave = `${reg.id_alumno}-${reg.id_curso}-${reg.bimestre}-${anioLectivo}`;
+    if (!combinaciones.has(clave)) {
+      combinaciones.set(clave, {
+        id_alumno: reg.id_alumno,
+        id_curso: reg.id_curso,
+        bimestre: reg.bimestre,
+        anio_lectivo: anioLectivo,
+        id_grado: reg.id_grado || null,
+      });
+    }
+  });
+
+  let calculadas = 0;
+  let errores = 0;
+
+  for (const combo of combinaciones.values()) {
+    const notaFinal = await recalcularNotaFinalSeguro(
+      combo.id_alumno,
+      combo.id_curso,
+      combo.bimestre,
+      combo.anio_lectivo,
+      combo.id_grado,
+    );
+    if (notaFinal.ok) calculadas++;
+    else errores++;
+  }
+
+  return {
+    ...result,
+    notas_finales_calculadas: calculadas,
+    notas_finales_errores: errores,
+  };
 };
 
 /**
@@ -96,7 +216,22 @@ const calcularYGuardarNotaFinal = async (
   id_curso,
   bimestre,
   anioLectivo,
+  idGrado = null,
 ) => {
+  let grado = idGrado;
+
+  if (!grado) {
+    const alumno = await alumnoDao.findById(id_alumno);
+    if (!alumno) {
+      const error = new Error("Alumno no encontrado");
+      error.statusCode = 404;
+      throw error;
+    }
+    grado = alumno.id_grado;
+  }
+
+  await verificarActaAbierta(grado, bimestre, anioLectivo);
+
   const notaFinal = await calificacionDao.calcularNotaFinal(
     id_alumno,
     id_curso,

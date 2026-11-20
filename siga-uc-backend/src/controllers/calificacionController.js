@@ -59,7 +59,7 @@ const registrarMasivo = async (req, res) => {
     return response.success(
       res,
       201,
-      `${result.insertados} calificaciones registradas`,
+      `${result.insertados} calificaciones registradas. ${result.notas_finales_calculadas || 0} notas finales calculadas.`,
       result,
     );
   } catch (error) {

@@ -176,11 +176,48 @@ const getEstadisticas = async () => {
   return result.rows[0];
 };
 
+const PERIODOS_POR_BIMESTRE = {
+  1: ["1er Bimestre", "1ro Bimestre", "I Bimestre", "1° Bimestre"],
+  2: ["2do Bimestre", "II Bimestre", "2° Bimestre"],
+  3: ["3er Bimestre", "3ro Bimestre", "III Bimestre", "3° Bimestre"],
+  4: ["4to Bimestre", "IV Bimestre", "4° Bimestre"],
+};
+
+/**
+ * Verifica si existe un acta CERRADA para el grado/bimestre/año.
+ * Las actas globales (id_grado NULL) se ignoran por decisión de negocio.
+ */
+const actaEstaCerrada = async (
+  id_grado,
+  bimestre,
+  anioLectivo = 2026,
+) => {
+  const grado = Number(id_grado);
+  const periodo = PERIODOS_POR_BIMESTRE[Number(bimestre)];
+
+  if (!grado || !periodo || periodo.length === 0) {
+    return false;
+  }
+
+  const sql = `
+    SELECT 1
+    FROM actas_bimestrales
+    WHERE id_grado = $1
+      AND anio_lectivo = $2
+      AND estado = 'CERRADO'
+      AND periodo::text ILIKE ANY($3::text[])
+    LIMIT 1
+  `;
+  const result = await query(sql, [grado, anioLectivo, periodo]);
+  return result.rows.length > 0;
+};
+
 module.exports = {
   listarBitacora,
   findBitacoraById,
   listarModulos,
   listarActas,
   cerrarActa,
+  actaEstaCerrada,
   getEstadisticas,
 };

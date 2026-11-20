@@ -216,7 +216,15 @@ export class DocenteNotasComponent implements OnInit {
       next: (res) => {
         this.guardando.set(false);
         if (res.success) {
-          this.mensajeExito.set(`✅ ${res.data.insertados} calificaciones guardadas exitosamente`);
+          const calculadas = res.data.notas_finales_calculadas || 0;
+          const errores = res.data.notas_finales_errores || 0;
+          this.mensajeExito.set(
+            `✅ ${res.data.insertados} calificaciones guardadas. ` +
+              `${calculadas} nota(s) final(es) calculada(s).` +
+              (errores > 0
+                ? ` ⚠️ ${errores} no se pudieron calcular.`
+                : ''),
+          );
           this.calificacionesModificadas = {};
           // Recargar después de 1.5s
           setTimeout(() => this.cargarCalificaciones(), 1500);
