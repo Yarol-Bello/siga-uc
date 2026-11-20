@@ -4,6 +4,7 @@
  */
 
 const { query, getClient } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 /**
  * Listar alumnos con filtros
@@ -196,7 +197,7 @@ const crear = async (data) => {
       data.colegio_procedencia || null,
       "PendientePago",
       codigo,
-      data.anio_lectivo || 2026,
+      data.anio_lectivo || getAnioLectivo(),
     ]);
     const id_alumno = alumnoResult.rows[0].id_alumno;
 
@@ -220,7 +221,7 @@ const crear = async (data) => {
        WHERE tipo = 'MATRICULA' AND anio_lectivo = $1
        ORDER BY id_concepto
        LIMIT 1`,
-      [data.anio_lectivo || 2026],
+      [data.anio_lectivo || getAnioLectivo()],
     );
     let idPreticket = null;
     if (conceptoResult.rows.length > 0) {

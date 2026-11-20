@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface Grado {
   id_grado: number;
@@ -68,6 +69,9 @@ interface LibretaData {
 })
 export class AdminReportesComponent implements OnInit {
   private http = inject(HttpClient);
+  private configuracion = inject(ConfiguracionService);
+
+  anioLectivo = this.configuracion.anioLectivo;
 
   // Estado general
   cargando = signal(true);
@@ -93,21 +97,31 @@ export class AdminReportesComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarGrados();
-    this.cargarAlumnos();
   }
 
   /**
    * Cargar grados disponibles
    */
   cargarGrados(): void {
-    this.http.get<any>(`${environment.apiUrl}/grados`).subscribe({
-      next: (res) => {
-        if (res.success) {
-          this.grados.set(res.data);
-        }
-      },
-      error: (err) => console.error('Error grados:', err),
-    });
+    this.http
+      .get<any>(`${environment.apiUrl}/grados`, {
+        params: { anio: this.anioLectivo() },
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.success && res.data.length > 0) {
+            this.grados.set(res.data);
+
+            const actual = this.gradoSeleccionado();
+            if (!res.data.some((g: Grado) => g.id_grado === actual)) {
+              this.gradoSeleccionado.set(res.data[0].id_grado);
+            }
+
+            this.cargarAlumnos();
+          }
+        },
+        error: (err) => console.error('Error grados:', err),
+      });
   }
 
   /**
@@ -155,7 +169,12 @@ export class AdminReportesComponent implements OnInit {
     this.error.set(null);
 
     this.http
-      .get<any>(`${environment.apiUrl}/alumnos?id_grado=${this.gradoSeleccionado()}&anio=2026`)
+      .get<any>(`${environment.apiUrl}/alumnos`, {
+        params: {
+          id_grado: this.gradoSeleccionado(),
+          anio: this.anioLectivo(),
+        },
+      })
       .subscribe({
         next: (res) => {
           if (res.success) this.alumnos.set(res.data);
@@ -178,7 +197,7 @@ export class AdminReportesComponent implements OnInit {
 
     this.http
       .get<any>(
-        `${environment.apiUrl}/reportes/cuadro-merito/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}`,
+        `${environment.apiUrl}/reportes/cuadro-merito/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}&anio=${this.anioLectivo()}`,
       )
       .subscribe({
         next: (res) => {
@@ -202,7 +221,7 @@ export class AdminReportesComponent implements OnInit {
 
     this.http
       .get<any>(
-        `${environment.apiUrl}/reportes/alumnos-riesgo/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}`,
+        `${environment.apiUrl}/reportes/alumnos-riesgo/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}&anio=${this.anioLectivo()}`,
       )
       .subscribe({
         next: (res) => {
@@ -227,7 +246,7 @@ export class AdminReportesComponent implements OnInit {
 
     this.http
       .get<any>(
-        `${environment.apiUrl}/reportes/libreta/${alumno.id_alumno}?bimestre=${this.bimestre()}`,
+        `${environment.apiUrl}/reportes/libreta/${alumno.id_alumno}?bimestre=${this.bimestre()}&anio=${this.anioLectivo()}`,
       )
       .subscribe({
         next: (res) => {

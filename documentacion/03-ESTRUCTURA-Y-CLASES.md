@@ -1,8 +1,7 @@
 # 03 — Estructura y Mapa de Clases
 
-> Conteo verificado el 19/11/2026: **61 archivos JS backend (~7,437 líneas)**,
-> **109 archivos frontend (~18,743 líneas, 44 TypeScript)**, **13 routers**,
-> **13 controladores**, **15 servicios** y **15 DAOs**.
+> Conteo verificado el 20/11/2026: **68 archivos JS backend**, **118 archivos frontend
+> (49 TypeScript)**, **14 routers**, **14 controladores**, **16 servicios** y **15 DAOs**.
 
 ## 1. Backend
 
@@ -10,17 +9,19 @@
 
 | Archivo | Responsabilidad |
 |---|---|
-| `src/app.js` | Crea Express, registra middlewares globales, 13 routers, health check, 404 y error handler; arranca en `0.0.0.0:PORT`; prueba BD y correo |
-| `src/config/env.js` | Carga `.env`, valida `DB_*` y `JWT_SECRET`, exporta configuración centralizada |
+| `src/app.js` | Crea Express, registra middlewares globales, 14 routers, health check, 404 y error handler; arranca en `0.0.0.0:PORT`; prueba BD y correo |
+| `src/config/env.js` | Carga `.env`, valida `DB_*`, `JWT_SECRET` y `ANIO_LECTIVO`, exporta configuración centralizada |
+| `src/config/academico.js` | Expone `getAnioLectivo()` desde `ANIO_LECTIVO` |
 | `src/config/database.js` | Pool `pg` (`max=20`), helper `query`, `getClient` transaccional, `testConnection` |
 | `src/middlewares/authMiddleware.js` | `verificarAutenticacion` (Bearer/JWT, estado y bloqueo por cambio de contraseña) y `verificarRol(...roles)` |
 | `src/utils/response.js` | `success`, `error`, `validationError`, `unauthorized`, `forbidden`, `notFound` |
 
-### 1.2 Routers (13)
+### 1.2 Routers (14)
 
 | Router | Prefijo | Endpoints | Rol de escritura |
 |---|---|---|---|
-| `authRoutes.js` | `/api/auth` | 8 | ADMIN para reset por DNI |
+| `authRoutes.js` | `/api/auth` | 9 | ADMIN para reset por DNI |
+| `configuracionRoutes.js` | `/api/configuracion` | 1 | Público (solo lectura) |
 | `academicoRoutes.js` | `/api` | 7 | Solo lectura |
 | `alumnoRoutes.js` | `/api/alumnos` | 6 | ADMIN/SECRETARIA |
 | `personalRoutes.js` | `/api/personal` | 8 | ADMIN |
@@ -34,15 +35,16 @@
 | `siagieRoutes.js` | `/api/siagie` | 1 | ADMIN |
 | `notificacionRoutes.js` | `/api/notificaciones` | 8 | ADMIN/DOCENTE; masivo ADMIN |
 
-### 1.3 Controladores (13)
+### 1.3 Controladores (14)
 
 | Controlador | Métodos | Notas |
 |---|---|---|
 | `authController.js` | `login`, `perfil`, `verify`, `logout`, `resetPassword`, `solicitarRecuperacion`, `validarToken`, `restablecerPassword`, `cambiarPassword` | `validationResult` en login y cambio de contraseña; recuperación delega a `recuperacionService` |
+| `configuracionController.js` | `obtener` | Devuelve el año lectivo activo |
 | `academicoController.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion`, `listarHorariosPorGrado` | Solo lectura |
 | `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda y año |
 | `personalController.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | Roles excluyen ESTUDIANTE |
-| `cargaCurricularController.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `crear`, `actualizar`, `eliminar`, `asignarTutor`, `getTutor` | `listarPorDocente` usa año por defecto 2026 |
+| `cargaCurricularController.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `crear`, `actualizar`, `eliminar`, `asignarTutor`, `getTutor` | `listarPorDocente` usa el año lectivo configurado |
 | `asistenciaController.js` | `obtenerPorCursoFecha`, `obtenerPorAlumno`, `obtenerResumenPorAlumno`, `registrar`, `registrarMasivo`, `listarAsistenciaPersonal`, `buscarPersonalPorDni`, `registrarAsistenciaPersonal`, `obtenerResumenAsistenciaPersonal` | Personal y alumnos separados |
 | `calificacionController.js` | `obtenerPorAlumnoCurso`, `obtenerPorCursoGrado`, `registrar`, `registrarMasivo`, `calcularNotaFinal`, `obtenerNotasFinales` | `calcularNotaFinal` expone el cálculo |
 | `tesoreriaController.js` | `listarConceptos`, `listarPreTickets`, `obtenerPreTicket`, `crearPreTicket`, `listarPagos`, `obtenerPago`, `registrarPago`, `listarPensionesAlumno`, `generarPensionesMes`, `listarBecas`, `aplicarBeca`, `getEstadisticas` | Inyecta `id_usuario` del token |
@@ -52,11 +54,12 @@
 | `siagieController.js` | `generarExcel` | Valida archivo/parámetros, borra temporal y descarga |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
-### 1.4 Servicios (15)
+### 1.4 Servicios (16)
 
 | Servicio | Métodos principales | Reglas que concentra |
 |---|---|---|
 | `authService.js` | `login`, `verificarToken`, `getPerfil`, `resetPassword`, `cambiarPassword` | Usuario activo, bcrypt, JWT, info adicional por rol, QR en perfil, cambio de contraseña con verificación de la actual |
+| `configuracionService.js` | `obtenerConfiguracion` | Año lectivo activo desde `ANIO_LECTIVO` |
 | `academicoService.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion`, `listarHorariosPorGrado` | 404 si no existe; agrega tutor/competencias |
 | `alumnoService.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | DNI único, campos obligatorios, no retirar dos veces |
 | `personalService.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | DNI de 8, cese con motivo, no cesar dos veces |
@@ -196,12 +199,12 @@ Convenciones:
 
 ```text
 app.js
-config/env.js, config/database.js
+config/env.js, config/academico.js, config/database.js
 middlewares/authMiddleware.js
 utils/response.js
-routes/ (13)
-controllers/ (13)
-services/ (15)
+routes/ (14)
+controllers/ (14)
+services/ (16)
 dao/ (15)
 ```
 
@@ -209,9 +212,9 @@ dao/ (15)
 
 ```text
 app.ts, app.html, app.scss, app.routes.ts, app.config.ts
-core/guards (2), core/interceptors (1), core/models (1), core/services (2)
+core/guards (2), core/interceptors (1), core/models (1), core/services (3)
 shared/components/header + sidebar + sidebar-docente + sidebar-estudiante + sidebar-secretaria
-features/auth (login, reset-password)
+features/auth (login, reset-password, cambiar-password)
 features/admin (dashboard, alumnos, personal, carga-curricular, asistencia-qr,
                  tesoreria, caja, siagie, reportes, auditoria)
 features/docente (dashboard, notas, asistencia, ficha-estudiante, reportes)

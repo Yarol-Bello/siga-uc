@@ -59,6 +59,7 @@ cambios y para pruebas de regresión.
 | 48 | Buzón | `HeaderComponent` | `GET /api/notificaciones`, `PUT /:id/leer`, `PUT /leer-todas` | `notificacionController` | `notificacionService` | `notificacionDao` | `notificaciones`, `usuarios` |
 | 49 | Carné QR | `HeaderComponent` | `GET /api/auth/perfil` | `authController.perfil` | `authService.getPerfil` | `usuarioDao.getCredencialQR` | `credenciales_qr`, `usuarios` |
 | 50 | Cambio de contraseña | `CambiarPasswordComponent` | `PUT /api/auth/cambiar-password` | `authController.cambiarPassword` | `authService.cambiarPassword` | `usuarioDao.getPasswordHashById`, `usuarioDao.actualizarPassword` | `usuarios` |
+| 51 | Año lectivo global | `ConfiguracionService` / app initializer | `GET /api/configuracion` | `configuracionController.obtener` | `configuracionService.obtenerConfiguracion` | `config/academico.getAnioLectivo` | `.env` (`ANIO_LECTIVO`) |
 
 ---
 

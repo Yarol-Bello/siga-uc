@@ -130,10 +130,11 @@ Notas:
 `app.js`:
 
 1. `dotenv.config()` antes de todo.
-2. `env.js` valida variables obligatorias y aborta si faltan (`DB_*`, `JWT_SECRET`).
+2. `env.js` valida variables obligatorias y aborta si faltan (`DB_*`, `JWT_SECRET`); lee
+   `ANIO_LECTIVO` con fallback al año calendario.
 3. Crea pool PostgreSQL (`max: 20`, timeout de conexión 5 s).
-4. Registra 13 routers.
-5. Define `GET /` y `GET /api/health`.
+4. Registra 14 routers.
+5. Define `GET /`, `GET /api/health` y `GET /api/configuracion`.
 6. Define 404 global y manejador de errores.
 7. `testConnection()` informa si la BD responde.
 8. Escucha en `0.0.0.0:PORT` (por defecto 3000).
@@ -242,11 +243,11 @@ siga-uc/
 │   ├── uploads/              # temporales SIAGIE y salidas
 │   └── src/
 │       ├── app.js
-│       ├── config/           # env.js, database.js
+│       ├── config/           # env.js, academico.js, database.js
 │       ├── middlewares/      # authMiddleware.js
-│       ├── routes/           # 13 routers
-│       ├── controllers/      # 13 controladores
-│       ├── services/         # 15 servicios
+│       ├── routes/           # 14 routers
+│       ├── controllers/      # 14 controladores
+│       ├── services/         # 16 servicios
 │       ├── dao/              # 15 DAOs
 │       └── utils/            # response.js
 └── siga-uc-frontend/

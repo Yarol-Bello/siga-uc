@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface Estadisticas {
   recaudado: { total: number; total_pagos: number };
@@ -31,6 +32,7 @@ interface PreTicket {
 })
 export class SecretariaDashboardComponent implements OnInit {
   private http = inject(HttpClient);
+  private configuracion = inject(ConfiguracionService);
 
   cargando = signal(true);
   error = signal<string | null>(null);
@@ -45,7 +47,7 @@ export class SecretariaDashboardComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
 
-    const anioActual = new Date().getFullYear();
+    const anioActual = this.configuracion.anioLectivo();
     const mesActual = new Date().getMonth() + 1;
 
     // Cargar estadísticas

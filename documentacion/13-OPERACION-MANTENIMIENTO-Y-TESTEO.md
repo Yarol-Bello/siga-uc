@@ -69,26 +69,37 @@ Respuesta esperada:
 
 ## 3. Preparación de un año lectivo nuevo
 
-El sistema tiene **2026 hardcodeado**. Para 2027 hay que revisar:
+El código ya no tiene el año hardcodeado. Para operar en 2027:
 
-| Lugar | Qué cambiar |
+1. Actualizar `ANIO_LECTIVO=2027` en el `.env` local y en las variables de Render.
+2. Reiniciar/redeployar el backend. El frontend **no requiere rebuild**: obtiene el año de
+   `GET /api/configuracion` al iniciar.
+3. Crear los datos del nuevo año: `grados`, `carga_curricular`, `tutores_grado` y
+   `conceptos_pago`.
+4. Preparar los conceptos de matrícula y pensiones con el script idempotente:
+
+   ```powershell
+   psql -U postgres -d siga_uc -v anio=2027 -f database/preparar_anio_lectivo.sql
+   ```
+
+   El script copia los conceptos del año anterior y no modifica los datos históricos.
+5. Verificar `GET /api/configuracion` → `{ "anio_lectivo": 2027 }`.
+6. Los datos de 2026 conservan su `anio_lectivo`; las consultas históricas siguen aceptando
+   `?anio=2026` en la API.
+
+| Lugar | Qué revisar |
 |---|---|
 | `grados` | Insertar grados del nuevo año |
-| `alumnos.anio_lectivo` | Nuevo año al matricular |
-| `carga_curricular.anio_lectivo` | Nuevas asignaciones |
+| `alumnos.anio_lectivo` | Se asigna al matricular con el año configurado |
+| `carga_curricular.anio_lectivo` | Nuevas asignaciones usan el año configurado |
 | `tutores_grado.anio_lectivo` | Nuevos tutores |
-| `conceptos_pago.anio_lectivo` | Matrícula y pensiones |
-| `calificaciones.anio_lectivo` | Registros del año |
-| `notas_finales_area.anio_lectivo` | Cálculos |
-| `pensiones.anio_lectivo` | Generación |
-| Controladores | Defaults `2026` |
-| DAOs | Defaults `2026` |
-| Frontend | `?anio=2026`, `anio_lectivo: 2026`, textos |
-| SIAGIE | Nombre de archivo y filtros |
-| Reportes | Defaults `2026` |
+| `conceptos_pago.anio_lectivo` | Script `preparar_anio_lectivo.sql` |
+| `calificaciones` / `notas_finales_area` | Se registran con el año configurado |
+| `pensiones.anio_lectivo` | Se generan con el año configurado |
+| Frontend / SIAGIE / reportes | Leen el año desde `ConfiguracionService` |
 
-**Recomendación:** centralizar el año en una tabla `configuracion` o variable de entorno y
-eliminar los literales.
+**Recomendación:** no volver a introducir literales `2026` en controllers, DAOs ni componentes;
+usar `getAnioLectivo()` en backend y `ConfiguracionService.anioLectivo` en frontend.
 
 ---
 

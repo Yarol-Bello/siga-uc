@@ -6,6 +6,7 @@
 const path = require("path");
 const fs = require("fs");
 const siagieService = require("../services/siagieService");
+const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
 /**
@@ -34,7 +35,7 @@ const generarExcel = async (req, res) => {
     const resultado = await siagieService.generarExcel({
       id_grado: parseInt(id_grado),
       bimestre: parseInt(bimestre),
-      anio_lectivo: parseInt(anio_lectivo) || 2026,
+      anio_lectivo: parseInt(anio_lectivo) || getAnioLectivo(),
       archivo_plantilla: req.file.path,
       id_usuario: req.usuario.id_usuario,
     });

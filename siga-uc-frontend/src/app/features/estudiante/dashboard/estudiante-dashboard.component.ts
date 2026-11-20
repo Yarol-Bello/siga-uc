@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface CursoConNotas {
   id_curso: number;
@@ -26,8 +27,10 @@ interface CursoConNotas {
 export class EstudianteDashboardComponent implements OnInit {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private configuracion = inject(ConfiguracionService);
 
   usuario = this.authService.usuario;
+  anioLectivo = this.configuracion.anioLectivo;
 
   cargando = signal(true);
   error = signal<string | null>(null);
@@ -50,7 +53,9 @@ export class EstudianteDashboardComponent implements OnInit {
     this.cargando.set(true);
 
     this.http
-      .get<any>(`${environment.apiUrl}/calificaciones/notas-finales/alumno/${id_alumno}`)
+      .get<any>(
+        `${environment.apiUrl}/calificaciones/notas-finales/alumno/${id_alumno}?anio=${this.anioLectivo()}`,
+      )
       .subscribe({
         next: (response) => {
           if (response.success) {

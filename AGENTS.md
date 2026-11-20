@@ -31,9 +31,8 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | No existen |
 
-**Conteos actuales:** 39 tablas · 97 endpoints · 4 roles · 13 routers · 13 controladores ·
-15 servicios · 15 DAOs · 61 archivos JS backend (~7,437 líneas) · 109 archivos frontend
-(~18,743 líneas, 44 TS).
+**Conteos actuales:** 39 tablas · 99 endpoints · 4 roles · 14 routers · 14 controladores ·
+16 servicios · 15 DAOs · 68 archivos JS backend · 118 archivos frontend (49 TS).
 
 ---
 
@@ -62,7 +61,7 @@ Requisitos: Node 20.20.2, PostgreSQL 18, Angular CLI 21.
 # Terminal 1 — Backend (http://localhost:3000)
 nvm use 20
 cd siga-uc-backend
-copy .env.example .env   # completar DB_*, JWT_SECRET y RESEND_API_KEY
+copy .env.example .env   # completar DB_*, JWT_SECRET, ANIO_LECTIVO y RESEND_API_KEY
 npm install
 npm run dev
 
@@ -114,8 +113,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 8. **Números de PostgreSQL:** usar `Number(x) || 0`.
 9. **Orden de rutas:** fijas antes de paramétricas (`/roles` antes de `/:id`; `reset-password`
    antes de `**`).
-10. **Año lectivo 2026 hardcodeado** en varios lugares. Cualquier cambio de año exige revisión
-    global.
+10. **Año lectivo configurable:** usar `ANIO_LECTIVO` y `getAnioLectivo()` en backend;
+    `ConfiguracionService` en frontend. No introducir literales `2026`. `?anio=YYYY` explícito
+    tiene prioridad para consultas históricas.
 11. **No cambiar el stack** sin justificación.
 12. **Commits:** `feat:`, `Fix:`, `Add:`, `DB:`, `docs:`, `chore:` + módulo + descripción en
     español, atómicos.
@@ -172,7 +172,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 39 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 97 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 99 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |

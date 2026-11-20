@@ -63,6 +63,9 @@ stateDiagram-v2
 > bloquea todos los endpoints salvo el cambio de contraseña, el perfil, la verificación de
 > token y el logout. El flag se limpia al cambiar la contraseña.
 
+> El año lectivo activo se configura con `ANIO_LECTIVO` (env) y se expone al frontend en
+> `GET /api/configuracion`; no hay año hardcodeado en la UI.
+
 ## 4. Matriz de permisos efectivos (API)
 
 Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus propios datos (cuando aplica)
@@ -70,6 +73,7 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 | Capacidad / módulo | ADMIN | SECRETARIA | DOCENTE | ESTUDIANTE |
 |---|---|---|---|---|
 | Login / logout / perfil | ✅ | ✅ | ✅ | ✅ |
+| Configuración del sistema (año lectivo) | Público | Público | Público | Público |
 | Cambiar contraseña propia | ✅ | ✅ | ✅ | ✅ |
 | Recuperar contraseña | ✅ | ✅ | ✅ | ✅ |
 | Dashboard ejecutivo (`/reportes/dashboard`) | ✅ | ✅ | ❌ | ❌ |

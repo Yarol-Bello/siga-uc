@@ -4,6 +4,7 @@
  */
 
 const calificacionService = require("../services/calificacionService");
+const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
 const obtenerPorAlumnoCurso = async (req, res) => {
@@ -15,7 +16,7 @@ const obtenerPorAlumnoCurso = async (req, res) => {
     const data = await calificacionService.obtenerPorAlumnoCurso(
       id_alumno,
       id_curso,
-      anio,
+      anio ? parseInt(anio) : getAnioLectivo(),
       idPersonal,
     );
     return response.success(res, 200, "Calificaciones obtenidas", data);
@@ -34,7 +35,7 @@ const obtenerPorCursoGrado = async (req, res) => {
       id_curso,
       id_grado,
       parseInt(bimestre),
-      anio ? parseInt(anio) : 2026,
+      anio ? parseInt(anio) : getAnioLectivo(),
       idPersonal,
     );
     return response.success(res, 200, "Calificaciones del aula", data);
@@ -75,7 +76,7 @@ const calcularNotaFinal = async (req, res) => {
       id_alumno,
       id_curso,
       bimestre,
-      anio || 2026,
+      anio || getAnioLectivo(),
     );
     return response.success(res, 200, "Nota final calculada", data);
   } catch (error) {
@@ -91,7 +92,7 @@ const obtenerNotasFinales = async (req, res) => {
       req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
     const data = await calificacionService.obtenerNotasFinales(
       id_alumno,
-      anio ? parseInt(anio) : 2026,
+      anio ? parseInt(anio) : getAnioLectivo(),
       idPersonal,
     );
     return response.success(res, 200, "Notas finales del alumno", data);

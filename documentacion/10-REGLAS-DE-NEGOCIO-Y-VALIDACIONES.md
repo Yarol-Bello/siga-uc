@@ -77,7 +77,7 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-46 | El horario debe tener `hora_fin > hora_inicio` | BD `CHECK` | Error |
 | RN-47 | Los días válidos son Lunes a Sábado | BD `CHECK` | Error |
 | RN-48 | Los bloques son CLASE, RECREO o ALMUERZO | BD `CHECK` | Error |
-| RN-49 | El año lectivo por defecto es 2026 | Controllers/DAOs/UI | Hardcodeado |
+| RN-49 | El año lectivo por defecto sale de `ANIO_LECTIVO` | `config/academico.js` + controllers/DAOs/UI | Configurable por `.env` |
 
 ## 6. Asistencia de alumnos
 
@@ -251,4 +251,4 @@ top = 10
 | RN-143 | El backend escucha en `0.0.0.0` | `app.js` |
 | RN-144 | CORS solo permite orígenes configurados | `app.js` |
 | RN-145 | Helmet está activo | `app.js` |
-| RN-146 | El año lectivo 2026 está hardcodeado | Múltiples archivos |
+| RN-146 | El año lectivo se configura con `ANIO_LECTIVO`; `?anio=YYYY` explícito tiene prioridad para consultas históricas | `.env` + controllers/DAOs | — |

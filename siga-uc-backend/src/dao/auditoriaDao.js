@@ -4,6 +4,7 @@
  */
 
 const { query } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 /**
  * Listar bitácora con filtros
@@ -190,7 +191,7 @@ const PERIODOS_POR_BIMESTRE = {
 const actaEstaCerrada = async (
   id_grado,
   bimestre,
-  anioLectivo = 2026,
+  anioLectivo = getAnioLectivo(),
 ) => {
   const grado = Number(id_grado);
   const periodo = PERIODOS_POR_BIMESTRE[Number(bimestre)];

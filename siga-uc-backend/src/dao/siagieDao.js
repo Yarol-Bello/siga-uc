@@ -7,6 +7,7 @@
  */
 
 const { query } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 /**
  * Obtener todas las notas de un grado en un bimestre específico
@@ -15,7 +16,7 @@ const { query } = require("../config/database");
 const obtenerNotasParaSIAGIE = async (
   id_grado,
   bimestre,
-  anioLectivo = 2026,
+  anioLectivo = getAnioLectivo(),
 ) => {
   const sql = `
     SELECT 

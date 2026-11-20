@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface Grado {
   id_grado: number;
@@ -50,6 +51,9 @@ interface Asignacion {
 })
 export class AdminCargaCurricularComponent implements OnInit {
   private http = inject(HttpClient);
+  private configuracion = inject(ConfiguracionService);
+
+  anioLectivo = this.configuracion.anioLectivo;
 
   // Estado principal
   cargando = signal(true);
@@ -89,17 +93,22 @@ export class AdminCargaCurricularComponent implements OnInit {
    * Cargar grados
    */
   cargarGrados(): void {
-    this.http.get<any>(`${environment.apiUrl}/grados`).subscribe({
-      next: (res) => {
-        if (res.success) {
-          this.grados.set(res.data);
-          if (res.data.length > 0) {
-            this.seleccionarGrado(res.data[1].id_grado); // Por defecto 2do Sec
+    this.http
+      .get<any>(`${environment.apiUrl}/grados`, {
+        params: { anio: this.anioLectivo() },
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.grados.set(res.data);
+            const gradoPorDefecto = res.data[1] || res.data[0];
+            if (gradoPorDefecto) {
+              this.seleccionarGrado(gradoPorDefecto.id_grado);
+            }
           }
-        }
-      },
-      error: (err) => console.error('Error grados:', err),
-    });
+        },
+        error: (err) => console.error('Error grados:', err),
+      });
   }
 
   /**
@@ -148,12 +157,16 @@ export class AdminCargaCurricularComponent implements OnInit {
     });
 
     // Cargar tutor del grado
-    this.http.get<any>(`${environment.apiUrl}/carga-curricular/grado/${idGrado}/tutor`).subscribe({
-      next: (res) => {
-        if (res.success) this.tutorActual.set(res.data);
-      },
-      error: () => this.tutorActual.set(null),
-    });
+    this.http
+      .get<any>(
+        `${environment.apiUrl}/carga-curricular/grado/${idGrado}/tutor?anio=${this.anioLectivo()}`,
+      )
+      .subscribe({
+        next: (res) => {
+          if (res.success) this.tutorActual.set(res.data);
+        },
+        error: () => this.tutorActual.set(null),
+      });
   }
 
   onGradoChange(idGrado: string): void {
@@ -235,7 +248,7 @@ export class AdminCargaCurricularComponent implements OnInit {
         id_grado: this.gradoSeleccionado(),
         id_curso: parseInt(this.formAsignar.id_curso),
         id_personal: parseInt(this.formAsignar.id_personal),
-        anio_lectivo: 2026,
+        anio_lectivo: this.anioLectivo(),
         horas_asignadas: parseInt(this.formAsignar.horas_asignadas),
       };
 
@@ -294,7 +307,7 @@ export class AdminCargaCurricularComponent implements OnInit {
     const payload = {
       id_grado: this.gradoSeleccionado(),
       id_personal: this.tutorSeleccionado(),
-      anio_lectivo: 2026,
+      anio_lectivo: this.anioLectivo(),
     };
 
     this.http.post<any>(`${environment.apiUrl}/carga-curricular/tutor`, payload).subscribe({

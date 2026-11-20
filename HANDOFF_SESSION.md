@@ -43,7 +43,7 @@ npm run dev
 
 - API local: `http://localhost:3000`
 - Health: `GET http://localhost:3000/api/health`
-- Requiere `.env` con `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`.
+- Requiere `.env` con `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET` y `ANIO_LECTIVO`.
 - Correo real: `RESEND_API_KEY`, `EMAIL_FROM`.
 - `.env.example` sigue mostrando SMTP; el servicio real es Resend.
 
@@ -79,7 +79,8 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
-| `(esta sesión)` | `fix(auth): forzar cambio de contraseña en primer inicio` |
+| `(sesión H12)` | `fix(config): centralizar año lectivo (H12)` |
+| `(sesión H18)` | `fix(auth): forzar cambio de contraseña en primer inicio` |
 | `d575319` | `feat(alumnos): agregar correo de alumno para recuperacion de contraseña` |
 | `12cbd22` | `fix(auth): usar DNI como contraseña por defecto en alumnos y personal` |
 | `81aa521` | `fix(tesoreria): corregir flujo de matricula, pagos, caja y kpis` |
@@ -170,6 +171,20 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 - Los alumnos y el personal nuevos se crean con `requiere_cambio_password = TRUE`.
 - Documentación actualizada: 05, 06, 07, 09, 10, 11, 15, AGENTS.md y este handoff.
 
+#### H12 — Año lectivo centralizado
+
+- `ANIO_LECTIVO=2026` en `.env`/`.env.example`; `env.js` lo valida y `config/academico.js`
+  expone `getAnioLectivo()`.
+- Nuevo `GET /api/configuracion` (público) devuelve `{ anio_lectivo }`.
+- Backend: controllers, services, DAOs y `authRoles` usan `getAnioLectivo()` como default.
+  `?anio=YYYY` explícito conserva prioridad para consultas históricas.
+- Frontend: `ConfiguracionService` carga el año con `provideAppInitializer` antes de renderizar;
+  fallback al año calendario si la API falla. Se reemplazaron los textos/parámetros `2026`.
+- Tesorería: la matrícula usa el `id_concepto`, nombre y monto reales del año; se eliminó
+  `idConcepto = 1` y los `250` hardcodeados. Las pensiones toman el monto del concepto.
+- `database/preparar_anio_lectivo.sql` copia conceptos del año anterior de forma idempotente
+  por nombre + año, sin tocar datos históricos.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -184,6 +199,10 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 - H18: 22/22 pruebas de API OK. Login con flag `TRUE` → módulos `403`; `/auth/perfil` y
   `/auth/logout` permitidos; validaciones 400; cambio exitoso → flag `FALSE`; login con la
   nueva contraseña y acceso normal. Usuario de prueba eliminado.
+- H12: 18/18 pruebas de integración OK con `ANIO_LECTIVO=2027`; `?anio=2026` mantiene
+  prioridad; alumno nuevo en 2027; pre-ticket y pensión con conceptos 2027; script de conceptos
+  idempotente (11 filas 2026 intactas). UI verificada con “Año Lectivo 2027” y matrícula 2027
+  usando el concepto real. Datos de prueba eliminados.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---
@@ -207,6 +226,8 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
     cambio en el primer inicio; no desactivar ese bloqueo.
 11. **Documentación:** `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` es la fuente de hallazgos/roadmap; `documentacion/06` roles; `04` BD; `05` API.
 12. **Commits:** semánticos, atómicos, en español, un solo commit por tarea.
+13. **Año lectivo:** no introducir literales `2026`. Backend: `getAnioLectivo()`; frontend:
+    `ConfiguracionService.anioLectivo`. Un `?anio=YYYY` explícito siempre tiene prioridad.
 
 ---
 
@@ -227,9 +248,10 @@ Implementado y probado:
 
 ### Siguiente: Fase 4 — Operación y calidad
 
+> H12 quedó completado. El siguiente pendiente es H25.
+
 Tomar como fuente `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`:
 
-- **H12:** año lectivo 2026 hardcodeado en controllers, DAOs, frontend, SIAGIE y reportes. Parametrizar.
 - **H25:** backups automáticos de PostgreSQL (script + tarea programada + prueba de restauración).
 - **H23:** paginación server-side en alumnos, personal, pagos, pre-tickets y bitácora.
 - **H24:** tests automatizados y CI/CD (unitarios de services, integración de endpoints, E2E de flujos críticos).
@@ -249,9 +271,9 @@ Copiar y pegar:
 ```text
 Estás retomando SIGA-UC (PostgreSQL 18 + Angular 21 + Node/Express). Antes de escribir código, lee HANDOFF_SESSION.md en la raíz y revisa documentacion/README.md, documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md, documentacion/11-SEGURIDAD-AUDITORIA-E-INTEGRIDAD.md y documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md.
 
-Contexto: Fase 1 (seguridad), Fase 2 (integridad académica) y H18 (cambio obligatorio de contraseña) ya están implementadas y commiteadas. La fuente de verdad es el código.
+Contexto: Fase 1 (seguridad), Fase 2 (integridad académica), H18 (cambio obligatorio de contraseña) y H12 (año lectivo centralizado) ya están implementadas y commiteadas. La fuente de verdad es el código.
 
-Comienza con la Fase 4, empezando por H12 (año lectivo 2026 hardcodeado). No cambies el esquema de la BD, no rompas el JSON { success, message, ... }, usa parches quirúrgicos y entrega commits atómicos.
+Comienza con la Fase 4, empezando por H25 (backups automáticos de PostgreSQL). No cambies el esquema de la BD, no rompas el JSON { success, message, ... }, usa parches quirúrgicos y entrega commits atómicos.
 
 Al terminar, actualiza HANDOFF_SESSION.md con el nuevo estado y el siguiente pendiente del roadmap.
 ```

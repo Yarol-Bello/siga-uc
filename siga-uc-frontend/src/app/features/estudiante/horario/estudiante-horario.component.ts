@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface Horario {
   id_horario: number;
@@ -39,8 +40,10 @@ interface BloqueHorario {
 export class EstudianteHorarioComponent implements OnInit {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private configuracion = inject(ConfiguracionService);
 
   usuario = this.authService.usuario;
+  anioLectivo = this.configuracion.anioLectivo;
 
   // Estado
   cargando = signal(true);

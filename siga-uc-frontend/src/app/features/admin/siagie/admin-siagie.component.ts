@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface Grado {
   id_grado: number;
@@ -38,6 +39,9 @@ interface AuditoriaDocente {
 })
 export class AdminSiagieComponent implements OnInit {
   private http = inject(HttpClient);
+  private configuracion = inject(ConfiguracionService);
+
+  anioLectivo = this.configuracion.anioLectivo;
 
   // Estado
   cargando = signal(true);
@@ -58,27 +62,35 @@ export class AdminSiagieComponent implements OnInit {
   }
 
   cargarGrados(): void {
-    this.http.get<any>(`${environment.apiUrl}/grados`).subscribe({
-      next: (res) => {
-        if (res.success) {
-          this.grados.set(res.data);
-          if (res.data.length > 0) {
-            this.cargarAuditoria();
+    this.http
+      .get<any>(`${environment.apiUrl}/grados`, {
+        params: { anio: this.anioLectivo() },
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.grados.set(res.data);
+            if (res.data.length > 0) {
+              const actual = this.gradoSeleccionado();
+              if (!res.data.some((g: Grado) => g.id_grado === actual)) {
+                this.gradoSeleccionado.set(res.data[0].id_grado);
+              }
+              this.cargarAuditoria();
+            }
           }
-        }
-      },
-      error: (err) => {
-        console.error('Error grados:', err);
-        this.cargando.set(false);
-      },
-    });
+        },
+        error: (err) => {
+          console.error('Error grados:', err);
+          this.cargando.set(false);
+        },
+      });
   }
 
   cargarAuditoria(): void {
     this.cargando.set(true);
     this.error.set(null);
 
-    const url = `${environment.apiUrl}/reportes/auditoria-docentes/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}`;
+    const url = `${environment.apiUrl}/reportes/auditoria-docentes/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}&anio=${this.anioLectivo()}`;
 
     this.http.get<any>(url).subscribe({
       next: (res) => {
@@ -119,7 +131,7 @@ export class AdminSiagieComponent implements OnInit {
     alert(
       '📥 Descargando plantilla oficial del SIAGIE desde el portal del MINEDU...\n\n' +
         'El archivo se guardará como:\n' +
-        'PLANTILLA_SIAGIE_2026.xlsx\n\n' +
+        `PLANTILLA_SIAGIE_${this.anioLectivo()}.xlsx\n\n` +
         'Una vez descargada, cárgala aquí para mapear las columnas.',
     );
   }
@@ -154,7 +166,7 @@ export class AdminSiagieComponent implements OnInit {
     formData.append('plantilla', archivo);
     formData.append('id_grado', this.gradoSeleccionado().toString());
     formData.append('bimestre', this.bimestre().toString());
-    formData.append('anio_lectivo', '2026');
+    formData.append('anio_lectivo', this.anioLectivo().toString());
 
     this.http
       .post(`${environment.apiUrl}/siagie/generar-excel`, formData, { responseType: 'blob' })
@@ -163,7 +175,7 @@ export class AdminSiagieComponent implements OnInit {
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `SIAGIE_BIM${this.bimestre()}_2026.xlsx`;
+          link.download = `SIAGIE_BIM${this.bimestre()}_${this.anioLectivo()}.xlsx`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -256,7 +268,7 @@ export class AdminSiagieComponent implements OnInit {
         const cuerpo =
           `Estimado(a) Prof. ${item.docente_nombre},\n\n` +
           `Te recordamos que tienes notas pendientes de registrar en el curso de ${item.nombre_curso} ` +
-          `para el ${gradoNombre} — ${this.getBimestreTexto()} 2026.\n\n` +
+          `para el ${gradoNombre} — ${this.getBimestreTexto()} ${this.anioLectivo()}.\n\n` +
           `📊 Alumnos pendientes: ${pendientes} de ${totalAlumnos} ` +
           `(${item.porcentaje || 0}% completado)\n\n` +
           `Por favor, ingresa al módulo "Registro de Notas" para completar las calificaciones ` +

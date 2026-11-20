@@ -1,9 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface Pension {
   id_pension: number;
@@ -14,6 +15,15 @@ interface Pension {
   estado: string;
   id_concepto?: number | null;
   concepto_nombre?: string | null;
+}
+
+interface ConceptoPago {
+  id_concepto: number;
+  nombre: string;
+  monto_base: string | number;
+  tipo: string;
+  mes: number | null;
+  anio_lectivo: number;
 }
 
 interface ConceptoDisponible {
@@ -46,6 +56,8 @@ interface PreTicket {
   alumno_nombre: string;
   nombre_grado: string;
   concepto_nombre: string;
+  id_concepto?: number;
+  concepto_tipo?: string;
 }
 
 /**
@@ -61,12 +73,19 @@ interface PreTicket {
 })
 export class SecretariaTesoreriaComponent implements OnInit {
   private http = inject(HttpClient);
+  private configuracion = inject(ConfiguracionService);
+
+  anioLectivo = this.configuracion.anioLectivo;
 
   // Estado principal
   cargando = signal(true);
   error = signal<string | null>(null);
   alumnos = signal<AlumnoConPensiones[]>([]);
   preTickets = signal<PreTicket[]>([]);
+  conceptosPago = signal<ConceptoPago[]>([]);
+  conceptoMatricula = computed(
+    () => this.conceptosPago().find((c) => c.tipo === 'MATRICULA') || null,
+  );
 
   // Filtros
   busqueda = signal('');
@@ -77,7 +96,9 @@ export class SecretariaTesoreriaComponent implements OnInit {
   alumnoSeleccionado = signal<AlumnoConPensiones | null>(null);
   conceptoCobro = signal('');
   conceptosDisponibles = signal<ConceptoDisponible[]>([]);
-  montoCobro = signal<number>(250);
+  montoCobro = signal<number>(0);
+  idConceptoSeleccionado = signal<number | null>(null);
+  idPensionSeleccionada = signal<number | null>(null);
   formaPago = signal('Efectivo');
   nroOperacion = signal('');
   procesando = signal(false);
@@ -110,13 +131,15 @@ export class SecretariaTesoreriaComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
 
+    const anio = this.anioLectivo();
+
     // Cargar alumnos
-    this.http.get<any>(`${environment.apiUrl}/alumnos?anio=2026`).subscribe({
+    this.http.get<any>(`${environment.apiUrl}/alumnos?anio=${anio}`).subscribe({
       next: (res) => {
         if (res.success) {
           const alumnosData = res.data;
           // Cargar pensiones de cada alumno
-          this.cargarPensiones(alumnosData);
+          this.cargarPensiones(alumnosData, anio);
         } else {
           this.error.set('No se pudieron cargar los alumnos');
           this.cargando.set(false);
@@ -136,15 +159,27 @@ export class SecretariaTesoreriaComponent implements OnInit {
       },
       error: (err) => console.error('Error pre-tickets:', err),
     });
+
+    // Cargar conceptos del año lectivo activo
+    this.http
+      .get<any>(`${environment.apiUrl}/tesoreria/conceptos?anio=${anio}`)
+      .subscribe({
+        next: (res) => {
+          if (res.success) this.conceptosPago.set(res.data);
+        },
+        error: (err) => console.error('Error conceptos:', err),
+      });
   }
 
   /**
    * Cargar pensiones de cada alumno
    */
-  cargarPensiones(alumnosData: any[]): void {
+  cargarPensiones(alumnosData: any[], anio: number): void {
     const promesas = alumnosData.map((alumno) =>
       this.http
-        .get<any>(`${environment.apiUrl}/tesoreria/pensiones/alumno/${alumno.id_alumno}`)
+        .get<any>(
+          `${environment.apiUrl}/tesoreria/pensiones/alumno/${alumno.id_alumno}?anio=${anio}`,
+        )
         .toPromise()
         .then((res) => ({
           ...alumno,
@@ -203,24 +238,60 @@ export class SecretariaTesoreriaComponent implements OnInit {
     alumno: AlumnoConPensiones,
     concepto?: string,
     monto?: number,
+    idConcepto?: number,
+    tipoConcepto?: string,
   ): void {
+    const matricula = this.conceptoMatricula();
     const esMatricula =
-      concepto !== undefined
-        ? concepto.toLowerCase().includes('matrícula')
-        : alumno.estado_matricula === 'PendientePago';
+      tipoConcepto === 'MATRICULA' ||
+      (tipoConcepto === undefined &&
+        concepto !== undefined &&
+        concepto.toLowerCase().includes('matrícula')) ||
+      (tipoConcepto === undefined &&
+        concepto === undefined &&
+        alumno.estado_matricula === 'PendientePago');
+
     const disponibles = esMatricula
       ? []
       : this.obtenerConceptosDisponibles(alumno);
-    const conceptoFinal =
-      concepto ||
-      (esMatricula ? 'Matrícula Escolar 2026' : disponibles[0]?.nombre || '');
-    const montoFinal =
-      monto ?? (esMatricula ? 250 : disponibles[0]?.monto ?? 250);
+
+    let conceptoFinal: string;
+    let montoFinal: number;
+    let idConceptoFinal: number | null;
+    let idPensionFinal: number | null = null;
+
+    if (esMatricula) {
+      idConceptoFinal = idConcepto ?? matricula?.id_concepto ?? null;
+      conceptoFinal = concepto || matricula?.nombre || '';
+      montoFinal = monto ?? Number(matricula?.monto_base || 0);
+
+      if (!idConceptoFinal || !conceptoFinal || montoFinal <= 0) {
+        alert(
+          `No hay un concepto de matrícula configurado para el año lectivo ${this.anioLectivo()}.`,
+        );
+        return;
+      }
+    } else {
+      const seleccionado =
+        disponibles.find((c) => c.nombre === concepto) || disponibles[0];
+
+      idConceptoFinal = idConcepto ?? seleccionado?.id_concepto ?? null;
+      idPensionFinal = seleccionado?.id_pension ?? null;
+      conceptoFinal = concepto || seleccionado?.nombre || '';
+      montoFinal = monto ?? seleccionado?.monto ?? 0;
+
+      if (!idConceptoFinal || !conceptoFinal) {
+        alert('No hay pensiones pendientes con concepto para este alumno.');
+        return;
+      }
+    }
 
     this.conceptosDisponibles.set(disponibles);
     this.alumnoSeleccionado.set(alumno);
     this.conceptoCobro.set(conceptoFinal);
     this.montoCobro.set(montoFinal);
+    this.idConceptoSeleccionado.set(idConceptoFinal);
+    this.idPensionSeleccionada.set(idPensionFinal);
     this.formaPago.set('Efectivo');
     this.nroOperacion.set('');
     this.esCobroMatricula.set(esMatricula);
@@ -239,8 +310,10 @@ export class SecretariaTesoreriaComponent implements OnInit {
       .map((p) => ({
         id_concepto: Number(p.id_concepto),
         id_pension: p.id_pension,
-        nombre: p.concepto_nombre || `Pensión ${p.mes}/2026`,
-        monto: Number(p.monto_final) || 250,
+        nombre:
+          p.concepto_nombre ||
+          `Pensión ${p.mes}/${this.anioLectivo()}`,
+        monto: Number(p.monto_final) || Number(p.monto_base) || 0,
         mes: p.mes,
       }))
       .sort((a, b) => a.mes - b.mes);
@@ -248,15 +321,22 @@ export class SecretariaTesoreriaComponent implements OnInit {
 
   cambiarConcepto(nombre: string): void {
     this.conceptoCobro.set(nombre);
+
     if (this.esCobroMatricula()) {
-      this.montoCobro.set(250);
+      const matricula = this.conceptoMatricula();
+      this.montoCobro.set(Number(matricula?.monto_base || 0));
+      this.idConceptoSeleccionado.set(matricula?.id_concepto ?? null);
+      this.idPensionSeleccionada.set(null);
       return;
     }
+
     const concepto = this.conceptosDisponibles().find(
       (c) => c.nombre === nombre,
     );
     if (concepto) {
       this.montoCobro.set(concepto.monto);
+      this.idConceptoSeleccionado.set(concepto.id_concepto);
+      this.idPensionSeleccionada.set(concepto.id_pension);
     }
   }
 
@@ -283,22 +363,17 @@ export class SecretariaTesoreriaComponent implements OnInit {
       return;
     }
 
-    const conceptoSeleccionado = this.conceptosDisponibles().find(
-      (c) => c.nombre === this.conceptoCobro(),
-    );
-    let idConcepto: number;
-    let idPension: number | null;
+    const idConcepto = this.idConceptoSeleccionado();
+    const idPension = this.idPensionSeleccionada();
 
-    if (this.esCobroMatricula()) {
-      idConcepto = 1;
-      idPension = null;
-    } else {
-      if (!conceptoSeleccionado) {
-        alert('Seleccione una pensión pendiente');
-        return;
-      }
-      idConcepto = conceptoSeleccionado.id_concepto;
-      idPension = conceptoSeleccionado.id_pension;
+    if (!idConcepto) {
+      alert('Seleccione un concepto válido');
+      return;
+    }
+
+    if (this.montoCobro() <= 0) {
+      alert('El monto del concepto no es válido');
+      return;
     }
 
     this.procesando.set(true);
@@ -388,7 +463,13 @@ export class SecretariaTesoreriaComponent implements OnInit {
       (a) => a.id_alumno === preTicket.id_alumno,
     );
     if (alumno) {
-      this.abrirCobro(alumno, preTicket.concepto_nombre, parseFloat(preTicket.monto));
+      this.abrirCobro(
+        alumno,
+        preTicket.concepto_nombre,
+        parseFloat(preTicket.monto),
+        preTicket.id_concepto,
+        preTicket.concepto_tipo,
+      );
     } else {
       alert('No se encontró el alumno en el padrón');
     }

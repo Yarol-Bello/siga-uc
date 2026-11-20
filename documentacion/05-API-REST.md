@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **97 endpoints** — 60 GET, 25 POST, 10 PUT, 2 DELETE
+**Total verificado:** **99 endpoints** — 61 GET, 25 POST, 10 PUT, 2 DELETE
 
 ---
 
@@ -56,6 +56,7 @@ Error:
 |---|---|---|---|
 | GET | `/` | Público | Bienvenida + versión |
 | GET | `/api/health` | Público | Health check (`app`, `version`, `environment`, `timestamp`) |
+| GET | `/api/configuracion` | Público | Año lectivo activo para backend y frontend (`anio_lectivo`) |
 
 ---
 
@@ -374,7 +375,7 @@ Respuesta: acta con `estado = CERRADO`, `fecha_cierre`, `cerrado_por`, `hash_int
 - `plantilla`: `.xlsx`/`.xls`, máx. 10 MB.
 - `id_grado`: entero.
 - `bimestre`: 1–4.
-- `anio_lectivo`: entero (default 2026).
+- `anio_lectivo`: entero (default `ANIO_LECTIVO`).
 
 Respuesta: archivo `SIAGIE_<grado>_BIM<n>_<año>.xlsx`.
 
@@ -411,8 +412,8 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 
 | Módulo | Endpoints |
 |---|---|
-| Generales | 2 |
-| Auth | 8 |
+| Generales | 3 |
+| Auth | 9 |
 | Académico | 7 |
 | Alumnos | 6 |
 | Personal | 8 |
@@ -425,23 +426,23 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 | Auditoría | 6 |
 | SIAGIE | 1 |
 | Notificaciones | 8 |
-| **Total** | **97** |
+| **Total** | **99** |
 
 | Verbo | Cantidad |
 |---|---|
-| GET | 60 |
+| GET | 61 |
 | POST | 25 |
 | PUT | 10 |
 | DELETE | 2 |
 
 Acceso:
-- **Públicos:** 6 (raíz, health, login, recuperar, validar token, restablecer).
-- **Solo JWT (sin rol específico):** 56.
+- **Públicos:** 7 (raíz, health, configuración, login, recuperar, validar token, restablecer).
+- **Solo JWT (sin rol específico):** 57.
 - **Restringidos por rol:** 35.
-- Total único: 97.
+- Total único: 99.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo correcto, revisando `verificarRol(...)` en los 13 routers, es 56/35.
+> El conteo correcto, revisando `verificarRol(...)` en los 14 routers, es 57/35.
 
 ---
 

@@ -4,6 +4,7 @@
  */
 
 const { query, getClient } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 /**
  * Obtener calificaciones de un alumno en un curso (por competencias)
@@ -11,7 +12,7 @@ const { query, getClient } = require("../config/database");
 const obtenerPorAlumnoCurso = async (
   id_alumno,
   id_curso,
-  anioLectivo = 2026,
+  anioLectivo = getAnioLectivo(),
   idPersonal = null,
 ) => {
   const sql = `
@@ -62,7 +63,7 @@ const obtenerPorCursoGrado = async (
   id_curso,
   id_grado,
   bimestre,
-  anioLectivo = 2026,
+  anioLectivo = getAnioLectivo(),
   idPersonal = null,
 ) => {
   // 1. Obtener competencias del curso
@@ -183,7 +184,7 @@ const registrar = async (data) => {
     data.id_personal,
     data.id_grado,
     data.bimestre,
-    data.anio_lectivo || 2026,
+    data.anio_lectivo || getAnioLectivo(),
     data.calificacion,
     data.modificado_por || null,
   ]);
@@ -221,7 +222,7 @@ const registrarMasivo = async (registros) => {
           reg.id_personal,
           reg.id_grado,
           reg.bimestre,
-          reg.anio_lectivo || 2026,
+          reg.anio_lectivo || getAnioLectivo(),
           reg.calificacion,
           reg.modificado_por || null,
         ]);
@@ -292,7 +293,7 @@ const guardarNotaFinal = async (data) => {
     data.id_alumno,
     data.id_curso,
     data.bimestre,
-    data.anio_lectivo || 2026,
+    data.anio_lectivo || getAnioLectivo(),
     data.nota_final,
     data.calculo_automatico !== false,
   ]);
@@ -304,7 +305,7 @@ const guardarNotaFinal = async (data) => {
  */
 const obtenerNotasFinales = async (
   id_alumno,
-  anioLectivo = 2026,
+  anioLectivo = getAnioLectivo(),
   idPersonal = null,
 ) => {
   const sql = `
@@ -339,7 +340,7 @@ const obtenerNotasFinales = async (
  */
 const obtenerConclusiones = async (
   id_alumno,
-  anioLectivo = 2026,
+  anioLectivo = getAnioLectivo(),
   idPersonal = null,
 ) => {
   const sql = `

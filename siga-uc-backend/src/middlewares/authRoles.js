@@ -5,6 +5,7 @@
 
 const response = require("../utils/response");
 const autorizacionDao = require("../dao/autorizacionDao");
+const { getAnioLectivo } = require("../config/academico");
 
 const obtenerAnio = (req) => {
   const body = req.body || {};
@@ -12,9 +13,9 @@ const obtenerAnio = (req) => {
     req.query.anio ||
     body.anio_lectivo ||
     body.anio ||
-    new Date().getFullYear();
+    getAnioLectivo();
   const anio = parseInt(valor, 10);
-  return Number.isNaN(anio) ? new Date().getFullYear() : anio;
+  return Number.isNaN(anio) ? getAnioLectivo() : anio;
 };
 
 /**

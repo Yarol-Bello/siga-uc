@@ -79,6 +79,10 @@ app.get("/", (req, res) => {
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
 
+// Rutas de configuración pública (año lectivo activo)
+const configuracionRoutes = require("./routes/configuracionRoutes");
+app.use("/api/configuracion", configuracionRoutes);
+
 // Rutas de gestión académica (grados, cursos, competencias)
 const academicoRoutes = require("./routes/academicoRoutes");
 app.use("/api", academicoRoutes);

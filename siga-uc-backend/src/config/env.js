@@ -27,11 +27,29 @@ if (missingVars.length > 0) {
   process.exit(1);
 }
 
+// Año lectivo activo (configurable por despliegue)
+const anioLectivoConfigurado = Number.parseInt(process.env.ANIO_LECTIVO, 10);
+const anioLectivoValido =
+  Number.isInteger(anioLectivoConfigurado) &&
+  anioLectivoConfigurado >= 2000 &&
+  anioLectivoConfigurado <= 2100;
+
+const ANIO_LECTIVO = anioLectivoValido
+  ? anioLectivoConfigurado
+  : new Date().getFullYear();
+
+if (!anioLectivoValido) {
+  console.warn(
+    `⚠️ ANIO_LECTIVO no configurado o inválido. Usando año calendario: ${ANIO_LECTIVO}`,
+  );
+}
+
 // Exportar configuración centralizada
 module.exports = {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: parseInt(process.env.PORT) || 3000,
   TZ: process.env.TZ || "America/Lima",
+  ANIO_LECTIVO,
 
   DB: {
     HOST: process.env.DB_HOST,

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface Competencia {
   id_competencia: number;
@@ -44,6 +45,7 @@ interface CursoAsignado {
 export class DocenteNotasComponent implements OnInit {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private configuracion = inject(ConfiguracionService);
 
   usuario = this.authService.usuario;
 
@@ -204,7 +206,7 @@ export class DocenteNotasComponent implements OnInit {
         id_personal,
         id_grado: curso.id_grado,
         bimestre: this.bimestre(),
-        anio_lectivo: 2026,
+        anio_lectivo: this.configuracion.anioLectivo(),
         calificacion: this.calificacionesModificadas[key],
       });
     });

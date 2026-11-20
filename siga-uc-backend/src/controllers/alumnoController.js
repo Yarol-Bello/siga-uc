@@ -5,6 +5,7 @@
 
 const { validationResult } = require("express-validator");
 const alumnoService = require("../services/alumnoService");
+const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
 /**
@@ -16,7 +17,9 @@ const listar = async (req, res) => {
       id_grado: req.query.id_grado ? parseInt(req.query.id_grado) : null,
       estado_matricula: req.query.estado_matricula || null,
       search: req.query.search || null,
-      anio_lectivo: req.query.anio ? parseInt(req.query.anio) : 2026,
+      anio_lectivo: req.query.anio
+        ? parseInt(req.query.anio)
+        : getAnioLectivo(),
     };
     const alumnos = await alumnoService.listar(filtros);
     return response.success(

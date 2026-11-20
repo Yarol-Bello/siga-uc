@@ -7,6 +7,7 @@ const calificacionDao = require("../dao/calificacionDao");
 const alumnoDao = require("../dao/alumnoDao");
 const cursoDao = require("../dao/cursoDao");
 const auditoriaDao = require("../dao/auditoriaDao");
+const { getAnioLectivo } = require("../config/academico");
 
 const verificarActaAbierta = async (idGrado, bimestre, anioLectivo) => {
   if (!idGrado) return;
@@ -32,7 +33,7 @@ const verificarActasAbiertas = async (registros) => {
   for (const reg of registros) {
     const idGrado = reg.id_grado;
     const bimestre = reg.bimestre;
-    const anioLectivo = reg.anio_lectivo || 2026;
+    const anioLectivo = reg.anio_lectivo || getAnioLectivo();
 
     if (!idGrado) continue;
 
@@ -139,7 +140,7 @@ const registrar = async (data) => {
     throw error;
   }
 
-  const anioLectivo = data.anio_lectivo || 2026;
+  const anioLectivo = data.anio_lectivo || getAnioLectivo();
   await verificarActaAbierta(data.id_grado, data.bimestre, anioLectivo);
 
   const saved = await calificacionDao.registrar(data);
@@ -173,7 +174,7 @@ const registrarMasivo = async (registros) => {
   const combinaciones = new Map();
   registros.forEach((reg) => {
     if (!reg.id_alumno || !reg.id_curso || !reg.bimestre) return;
-    const anioLectivo = reg.anio_lectivo || 2026;
+    const anioLectivo = reg.anio_lectivo || getAnioLectivo();
     const clave = `${reg.id_alumno}-${reg.id_curso}-${reg.bimestre}-${anioLectivo}`;
     if (!combinaciones.has(clave)) {
       combinaciones.set(clave, {

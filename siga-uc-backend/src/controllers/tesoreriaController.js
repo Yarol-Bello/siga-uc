@@ -4,13 +4,14 @@
  */
 
 const tesoreriaService = require("../services/tesoreriaService");
+const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
 const listarConceptos = async (req, res) => {
   try {
     const { anio } = req.query;
     const data = await tesoreriaService.listarConceptos(
-      anio ? parseInt(anio) : 2026,
+      anio ? parseInt(anio) : getAnioLectivo(),
     );
     return response.success(res, 200, "Conceptos obtenidos", data);
   } catch (error) {
@@ -97,7 +98,7 @@ const listarPensionesAlumno = async (req, res) => {
     const { anio } = req.query;
     const data = await tesoreriaService.listarPensionesAlumno(
       req.params.id_alumno,
-      anio ? parseInt(anio) : 2026,
+      anio ? parseInt(anio) : getAnioLectivo(),
     );
     return response.success(res, 200, "Pensiones del alumno", data);
   } catch (error) {
@@ -108,10 +109,16 @@ const listarPensionesAlumno = async (req, res) => {
 const generarPensionesMes = async (req, res) => {
   try {
     const { anio, mes, monto_base } = req.body;
+    const anioFinal = anio ? parseInt(anio) : getAnioLectivo();
+    const montoFinal =
+      monto_base !== undefined && monto_base !== null && monto_base !== ""
+        ? Number(monto_base)
+        : undefined;
+
     const data = await tesoreriaService.generarPensionesMes(
-      anio || 2026,
+      anioFinal,
       mes,
-      monto_base || 250.0,
+      montoFinal,
     );
     return response.success(
       res,
@@ -152,7 +159,7 @@ const getEstadisticas = async (req, res) => {
   try {
     const anio = req.query.anio
       ? parseInt(req.query.anio)
-      : new Date().getFullYear();
+      : getAnioLectivo();
     const mes = req.query.mes
       ? parseInt(req.query.mes)
       : new Date().getMonth() + 1;

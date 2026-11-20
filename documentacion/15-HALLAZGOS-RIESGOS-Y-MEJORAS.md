@@ -5,7 +5,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 (S = <1 día, M = 1–3 días, L = >3 días).
 
 > **Actualización 20/11/2026:** H18 (cambio obligatorio de contraseña) quedó resuelto con
-> endpoint autenticado, pantalla `/cambiar-password` y bloqueo backend.
+> endpoint autenticado, pantalla `/cambiar-password` y bloqueo backend. H12 (año lectivo y
+> conceptos hardcodeados) quedó resuelto con `ANIO_LECTIVO`, `GET /api/configuracion` y
+> conceptos dinámicos.
 
 ---
 
@@ -125,7 +127,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Mostrar `errores[]`; usar savepoints o validación previa |
 | Esfuerzo | S |
 
-### H12 — Año 2026 y conceptos hardcodeados
+### H12 — Año 2026 y conceptos hardcodeados (resuelto)
 
 | Campo | Detalle |
 |---|---|
@@ -134,6 +136,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | El sistema no opera correctamente en 2027 sin cambios de código |
 | Recomendación | Configuración global de año lectivo y mapeo dinámico de conceptos |
 | Esfuerzo | M |
+| Estado | ✅ Resuelto (20/11/2026): `ANIO_LECTIVO` + `GET /api/configuracion` + conceptos dinámicos y script idempotente |
 
 ### H13 — Resumen de asistencia ignora el año
 
@@ -422,7 +425,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 2. H25 backups automáticos.
 3. H23 paginación.
 4. H11 errores visibles en lotes.
-5. H12 año lectivo configurable.
+5. ~~H12 año lectivo configurable~~ ✅
 6. H27/H26 documentación y `.env.example`.
 7. H05 mapeo SIAGIE configurable.
 8. H34 PDFs reales.

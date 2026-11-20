@@ -101,6 +101,16 @@ Todas las rutas usan `loadComponent` (lazy loading).
 | `establecerRequiereCambioPassword(valor)` | Actualiza el flag en signal + `localStorage` |
 | `getDashboardUrl()` | Devuelve `/admin`, `/secretaria`, `/docente` o `/estudiante` |
 
+`ConfiguracionService`:
+
+| Método / propiedad | Efecto |
+|---|---|
+| `anioLectivo` | Signal con el año lectivo activo; fallback `new Date().getFullYear()` |
+| `cargar()` | `GET /api/configuracion`; se ejecuta en `provideAppInitializer` antes de renderizar las vistas |
+
+> El año lectivo no se define en `environment.ts` ni en componentes: se obtiene del backend al
+> iniciar la app. Cambiarlo en 2027 solo requiere actualizar `ANIO_LECTIVO` y reiniciar el API.
+
 `Usuario`:
 
 ```ts
@@ -307,16 +317,17 @@ del rol original; el backend debe permitir ambos roles.
   fallback SPA en Render.
 - `fileReplacements` en `angular.json` cambia el environment en producción.
 - No hay variables de entorno inyectadas en runtime; cambiar la URL exige rebuild.
+- El año lectivo sí es runtime: `ConfiguracionService` lo obtiene de `GET /api/configuracion`.
 
 ## 11. Deuda y mejoras de frontend
 
 1. Extraer servicios por feature (hoy `HttpClient` directo en componentes).
 2. Centralizar manejo de errores/401 y refresh de sesión.
 3. Reemplazar `alert/confirm` por componentes accesibles.
-4. Implementar pantalla de cambio de contraseña obligatorio.
+4. ~~Implementar pantalla de cambio de contraseña obligatorio.~~ ✅ (H18)
 5. Añadir paginación real (hoy listas completas).
 6. Evitar N+1 en tesorería (cargar pensiones en un endpoint agregado).
-7. Parametrizar año lectivo y conceptos (hoy hardcodeados).
+7. ~~Parametrizar año lectivo y conceptos (hoy hardcodeados).~~ ✅ (H12: `ANIO_LECTIVO` + `GET /api/configuracion`).
 8. Añadir botón “Calcular notas finales” y “Cerrar acta” con bloqueo real.
 9. Mejorar responsive del sidebar.
 10. Cambiar el título de `index.html` a “SIGA-UC”.

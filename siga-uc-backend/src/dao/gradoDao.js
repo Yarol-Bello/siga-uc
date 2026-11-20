@@ -4,13 +4,14 @@
  */
 
 const { query } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 /**
  * Listar todos los grados del año lectivo actual
- * @param {number} anioLectivo - Año lectivo (ej: 2026)
+ * @param {number} anioLectivo - Año lectivo configurado
  * @returns {Promise<Array>}
  */
-const listar = async (anioLectivo = 2026) => {
+const listar = async (anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       g.id_grado,

@@ -4,11 +4,12 @@
  */
 
 const { query, getClient } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 // ============================================================
 // CONCEPTOS DE PAGO
 // ============================================================
-const listarConceptos = async (anioLectivo = 2026) => {
+const listarConceptos = async (anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT id_concepto, nombre, monto_base, tipo, mes, anio_lectivo
     FROM conceptos_pago
@@ -22,6 +23,20 @@ const listarConceptos = async (anioLectivo = 2026) => {
 const findConceptoById = async (id) => {
   const sql = `SELECT * FROM conceptos_pago WHERE id_concepto = $1`;
   const result = await query(sql, [id]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Buscar el concepto de pensión de un mes/año
+ */
+const findConceptoPension = async (anioLectivo, mes) => {
+  const sql = `
+    SELECT id_concepto, nombre, monto_base
+    FROM conceptos_pago
+    WHERE tipo = 'PENSION' AND mes = $1 AND anio_lectivo = $2
+    LIMIT 1
+  `;
+  const result = await query(sql, [mes, anioLectivo]);
   return result.rows[0] || null;
 };
 
@@ -300,7 +315,7 @@ const registrarPago = async (data) => {
 // ============================================================
 // PENSIONES
 // ============================================================
-const listarPensionesAlumno = async (id_alumno, anioLectivo = 2026) => {
+const listarPensionesAlumno = async (id_alumno, anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       p.id_pension, p.mes, p.monto_base, p.descuento, p.monto_final, p.estado,
@@ -315,11 +330,7 @@ const listarPensionesAlumno = async (id_alumno, anioLectivo = 2026) => {
   return result.rows;
 };
 
-const generarPensionesMensuales = async (
-  anioLectivo,
-  mes,
-  montoBase = 250.0,
-) => {
+const generarPensionesMensuales = async (anioLectivo, mes, montoBase) => {
   const client = await getClient();
   try {
     await client.query("BEGIN");
@@ -423,7 +434,7 @@ const getEstadisticasMes = async (anioLectivo, mes) => {
   return result.rows[0];
 };
 
-const getPendientesCobro = async (anioLectivo = 2026) => {
+const getPendientesCobro = async (anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       COUNT(*) AS total_pendientes,
@@ -439,6 +450,7 @@ module.exports = {
   // Conceptos
   listarConceptos,
   findConceptoById,
+  findConceptoPension,
   // Pre-tickets
   listarPreTickets,
   findPreTicketById,

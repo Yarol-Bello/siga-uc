@@ -4,11 +4,12 @@
  */
 
 const { query } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 /**
  * Dashboard ejecutivo (para M1A-Resumen Ejecutivo)
  */
-const getDashboardEjecutivo = async (anioLectivo = 2026) => {
+const getDashboardEjecutivo = async (anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       (SELECT COUNT(*) FROM alumnos WHERE estado_matricula = 'Matriculado' AND anio_lectivo = $1) AS total_alumnos,
@@ -27,7 +28,7 @@ const getDashboardEjecutivo = async (anioLectivo = 2026) => {
 /**
  * Alumnos con bajo rendimiento (nota C en 2 o más competencias)
  */
-const getAlumnosRiesgo = async (id_grado, bimestre, anioLectivo = 2026) => {
+const getAlumnosRiesgo = async (id_grado, bimestre, anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       a.id_alumno,
@@ -59,7 +60,7 @@ const getAlumnosRiesgo = async (id_grado, bimestre, anioLectivo = 2026) => {
 /**
  * Cuadro de mérito por grado (top alumnos por promedio)
  */
-const getCuadroMerito = async (id_grado, bimestre, anioLectivo = 2026) => {
+const getCuadroMerito = async (id_grado, bimestre, anioLectivo = getAnioLectivo()) => {
   const sql = `
     WITH notas_alumno AS (
       SELECT 
@@ -100,7 +101,7 @@ const getCuadroMerito = async (id_grado, bimestre, anioLectivo = 2026) => {
 /**
  * Libreta completa de un alumno (notas + conclusiones + asistencia)
  */
-const getLibretaAlumno = async (id_alumno, bimestre, anioLectivo = 2026) => {
+const getLibretaAlumno = async (id_alumno, bimestre, anioLectivo = getAnioLectivo()) => {
   // 1. Datos del alumno
   const alumnoSql = `
     SELECT 
@@ -173,7 +174,7 @@ const getLibretaAlumno = async (id_alumno, bimestre, anioLectivo = 2026) => {
 /**
  * Resumen de asistencia por grado
  */
-const getResumenAsistenciaGrado = async (id_grado, anioLectivo = 2026) => {
+const getResumenAsistenciaGrado = async (id_grado, anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       a.id_alumno, a.dni,
@@ -201,7 +202,7 @@ const getResumenAsistenciaGrado = async (id_grado, anioLectivo = 2026) => {
  * Auditoría de carga de notas por docentes (para SIAGIE)
  * Muestra quién ya completó y quién está pendiente
  */
-const getAuditoriaDocentes = async (id_grado, bimestre, anioLectivo = 2026) => {
+const getAuditoriaDocentes = async (id_grado, bimestre, anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       c.id_curso,

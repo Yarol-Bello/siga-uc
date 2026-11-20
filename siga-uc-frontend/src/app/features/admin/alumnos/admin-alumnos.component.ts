@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface Alumno {
   id_alumno: number;
@@ -42,6 +43,9 @@ interface Grado {
 })
 export class AdminAlumnosComponent implements OnInit {
   private http = inject(HttpClient);
+  private configuracion = inject(ConfiguracionService);
+
+  anioLectivo = this.configuracion.anioLectivo;
 
   // Estado principal
   cargando = signal(true);
@@ -95,7 +99,7 @@ export class AdminAlumnosComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
 
-    const params: any = { anio: 2026 };
+    const params: any = { anio: this.anioLectivo() };
     if (this.filtroGrado()) params.id_grado = this.filtroGrado();
     if (this.filtroEstado()) params.estado_matricula = this.filtroEstado();
     if (this.busqueda()) params.search = this.busqueda();
@@ -114,11 +118,15 @@ export class AdminAlumnosComponent implements OnInit {
   }
 
   cargarGrados(): void {
-    this.http.get<any>(`${environment.apiUrl}/grados`).subscribe({
-      next: (res) => {
-        if (res.success) this.grados.set(res.data);
-      },
-    });
+    this.http
+      .get<any>(`${environment.apiUrl}/grados`, {
+        params: { anio: this.anioLectivo() },
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.success) this.grados.set(res.data);
+        },
+      });
   }
 
   aplicarFiltros(): void {

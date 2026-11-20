@@ -4,6 +4,7 @@
  */
 
 const cargaCurricularService = require("../services/cargaCurricularService");
+const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
 const listar = async (req, res) => {
@@ -14,7 +15,9 @@ const listar = async (req, res) => {
         ? parseInt(req.query.id_personal)
         : null,
       id_curso: req.query.id_curso ? parseInt(req.query.id_curso) : null,
-      anio_lectivo: req.query.anio ? parseInt(req.query.anio) : 2026,
+      anio_lectivo: req.query.anio
+        ? parseInt(req.query.anio)
+        : getAnioLectivo(),
     };
     const data = await cargaCurricularService.listar(filtros);
     return response.success(

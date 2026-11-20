@@ -4,6 +4,7 @@
  */
 
 const { query } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 const getContextoUsuario = async (id_usuario) => {
   const sql = `
@@ -28,7 +29,7 @@ const docenteTieneCurso = async (
   id_personal,
   id_curso,
   id_grado = null,
-  anio_lectivo = 2026,
+  anio_lectivo = getAnioLectivo(),
 ) => {
   const params = [id_personal, id_curso, anio_lectivo];
   let filtroGrado = "";
@@ -84,7 +85,7 @@ const docenteTieneAlumnoPorDni = async (id_personal, dni) => {
 const docenteTieneGrado = async (
   id_personal,
   id_grado,
-  anio_lectivo = 2026,
+  anio_lectivo = getAnioLectivo(),
 ) => {
   const sql = `
     SELECT 1

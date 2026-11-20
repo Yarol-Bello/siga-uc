@@ -4,6 +4,7 @@
  */
 
 const { query, getClient } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 /**
  * Listar toda la carga curricular (con filtros)
@@ -111,7 +112,7 @@ const listarPorGrado = async (id_grado) => {
 /**
  * Listar cursos de un docente
  */
-const listarPorDocente = async (id_personal, anioLectivo = 2026) => {
+const listarPorDocente = async (id_personal, anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       cc.id_carga,
@@ -135,7 +136,7 @@ const listarPorDocente = async (id_personal, anioLectivo = 2026) => {
 /**
  * Obtener el tutor de un grado
  */
-const getTutor = async (id_grado, anioLectivo = 2026) => {
+const getTutor = async (id_grado, anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       tg.id_tutor,
@@ -168,7 +169,7 @@ const crear = async (data) => {
     data.id_grado,
     data.id_curso,
     data.id_personal,
-    data.anio_lectivo || 2026,
+    data.anio_lectivo || getAnioLectivo(),
     data.horas_asignadas || null,
   ]);
   return result.rows[0];
@@ -209,7 +210,7 @@ const asignarTutor = async (data) => {
     // Eliminar tutor anterior
     await client.query(
       `DELETE FROM tutores_grado WHERE id_grado = $1 AND anio_lectivo = $2`,
-      [data.id_grado, data.anio_lectivo || 2026],
+      [data.id_grado, data.anio_lectivo || getAnioLectivo()],
     );
 
     // Insertar nuevo tutor
@@ -221,7 +222,7 @@ const asignarTutor = async (data) => {
     const result = await client.query(sql, [
       data.id_grado,
       data.id_personal,
-      data.anio_lectivo || 2026,
+      data.anio_lectivo || getAnioLectivo(),
     ]);
 
     await client.query("COMMIT");

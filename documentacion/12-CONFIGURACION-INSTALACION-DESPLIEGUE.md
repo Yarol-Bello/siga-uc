@@ -35,6 +35,7 @@ desactualizado** (habla de SMTP; el código usa Resend).
 | `DB_NAME` | **Sí** | PostgreSQL |
 | `JWT_SECRET` | **Sí** | Firma de tokens |
 | `JWT_EXPIRES_IN` | No (default `8h`) | Expiración |
+| `ANIO_LECTIVO` | Recomendada (default año calendario) | Año lectivo activo |
 | `APP_NAME` | No (`SIGA-UC`) | Health/branding |
 | `APP_VERSION` | No (`1.0.0`) | Health |
 | `TZ` | No (`America/Lima`) | Zona horaria |
@@ -65,6 +66,8 @@ DB_NAME=siga_uc
 JWT_SECRET=una_clave_larga_y_aleatoria
 JWT_EXPIRES_IN=8h
 
+ANIO_LECTIVO=2026
+
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 EMAIL_FROM=SIGA-UC <no-reply@tudominio.com>
 
@@ -73,8 +76,9 @@ APP_VERSION=1.0.0
 TZ=America/Lima
 ```
 
-> `env.js` aborta el arranque si falta `DB_*` o `JWT_SECRET`. No exige Resend; si falta, el
-> servidor arranca y solo fallan los correos.
+> `env.js` aborta el arranque si falta `DB_*` o `JWT_SECRET`. `ANIO_LECTIVO` es opcional: si
+> falta o es inválido, usa el año calendario actual y emite un warning. No exige Resend; si
+> falta, el servidor arranca y solo fallan los correos.
 
 ---
 

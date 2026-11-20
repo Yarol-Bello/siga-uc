@@ -6,6 +6,7 @@
 const tesoreriaDao = require("../dao/tesoreriaDao");
 const cajaDao = require("../dao/cajaDao");
 const alumnoDao = require("../dao/alumnoDao");
+const { getAnioLectivo } = require("../config/academico");
 
 const listarConceptos = async (anioLectivo) => {
   return await tesoreriaDao.listarConceptos(anioLectivo);
@@ -116,12 +117,36 @@ const generarPensionesMes = async (anioLectivo, mes, montoBase) => {
     error.statusCode = 400;
     throw error;
   }
+
+  const anio = anioLectivo || getAnioLectivo();
+  let monto = montoBase;
+
+  // Si no se envía monto, se toma del concepto de pensión del año/mes.
+  if (monto === undefined || monto === null || monto === "") {
+    const concepto = await tesoreriaDao.findConceptoPension(anio, mes);
+    if (!concepto) {
+      const error = new Error(
+        `No existe concepto de pensión para el mes ${mes} del año ${anio}`,
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+    monto = concepto.monto_base;
+  }
+
+  const montoFinal = Number(monto);
+  if (!Number.isFinite(montoFinal) || montoFinal <= 0) {
+    const error = new Error("Monto de pensión inválido");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const total = await tesoreriaDao.generarPensionesMensuales(
-    anioLectivo,
+    anio,
     mes,
-    montoBase,
+    montoFinal,
   );
-  return { total_generados: total, mes, anio_lectivo: anioLectivo };
+  return { total_generados: total, mes, anio_lectivo: anio };
 };
 
 const listarBecas = async (filtros) => {
