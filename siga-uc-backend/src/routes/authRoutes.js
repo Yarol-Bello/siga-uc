@@ -10,6 +10,10 @@ const {
   verificarAutenticacion,
   verificarRol,
 } = require("../middlewares/authMiddleware");
+const {
+  loginLimiter,
+  recoveryLimiter,
+} = require("../middlewares/rateLimit");
 
 const router = express.Router();
 
@@ -20,6 +24,7 @@ const router = express.Router();
  */
 router.post(
   "/login",
+  loginLimiter,
   [
     body("dni")
       .notEmpty()
@@ -77,6 +82,7 @@ router.put(
  */
 router.post(
   "/recuperar-password",
+  recoveryLimiter,
   [body("identificador").notEmpty().withMessage("Debe enviar un DNI o correo")],
   authController.solicitarRecuperacion,
 );

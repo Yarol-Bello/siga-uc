@@ -10,10 +10,13 @@ const obtenerPorCursoFecha = async (req, res) => {
   try {
     const { id_curso, fecha } = req.params;
     const { id_grado } = req.query;
+    const idPersonal =
+      req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
     const data = await asistenciaService.obtenerPorCursoFecha(
       id_curso,
       fecha,
       id_grado,
+      idPersonal,
     );
     return response.success(
       res,
@@ -33,9 +36,12 @@ const obtenerPorAlumno = async (req, res) => {
       desde: req.query.desde || null,
       hasta: req.query.hasta || null,
     };
+    const idPersonal =
+      req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
     const data = await asistenciaService.obtenerPorAlumno(
       req.params.id_alumno,
       filtros,
+      idPersonal,
     );
     return response.success(
       res,
@@ -50,8 +56,11 @@ const obtenerPorAlumno = async (req, res) => {
 
 const obtenerResumenPorAlumno = async (req, res) => {
   try {
+    const idPersonal =
+      req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
     const data = await asistenciaService.obtenerResumenPorAlumno(
       req.params.id_alumno,
+      idPersonal,
     );
     return response.success(res, 200, "Resumen de asistencia", data);
   } catch (error) {

@@ -18,6 +18,11 @@ const response = require("./utils/response");
 // Crear aplicación Express
 const app = express();
 
+// Detrás de proxy (Render) para que rate-limit use la IP real
+if (env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 // ============================================================
 // MIDDLEWARES GLOBALES
 // ============================================================
@@ -133,14 +138,23 @@ app.use((req, res) => {
 
 // Manejo global de errores
 app.use((err, req, res, next) => {
-  console.error("❌ Error:", err.message);
+  const statusCode = err.status || err.statusCode || 500;
+
+  console.error("❌ Error:", err.code || "", err.message);
   console.error(err.stack);
 
-  response.error(
+  if (statusCode >= 500) {
+    return response.error(
+      res,
+      500,
+      "Ocurrió un error interno en el servidor",
+    );
+  }
+
+  return response.error(
     res,
-    err.status || 500,
+    statusCode,
     err.message || "Error interno del servidor",
-    env.NODE_ENV === "development" ? err.stack : null,
   );
 });
 

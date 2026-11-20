@@ -4,12 +4,13 @@
  */
 
 const authService = require("../services/authService");
+const autorizacionDao = require("../dao/autorizacionDao");
 const response = require("../utils/response");
 
 /**
- * Verificar que el usuario esté autenticado (JWT válido)
+ * Verificar que el usuario esté autenticado (JWT válido + estado activo).
  */
-const verificarAutenticacion = (req, res, next) => {
+const verificarAutenticacion = async (req, res, next) => {
   try {
     // Obtener token del header Authorization
     const authHeader = req.headers.authorization;
@@ -28,15 +29,27 @@ const verificarAutenticacion = (req, res, next) => {
 
     // Verificar y decodificar token
     const decoded = authService.verificarToken(token);
-    req.usuario = decoded;
 
+    // Revalidar estado y obtener contexto (id_personal / id_alumno)
+    const contexto = await autorizacionDao.getContextoUsuario(
+      decoded.id_usuario,
+    );
+
+    if (!contexto || contexto.estado !== "ACTIVO") {
+      return response.unauthorized(
+        res,
+        "Sesión inválida o usuario inactivo. Inicie sesión nuevamente.",
+      );
+    }
+
+    req.usuario = { ...decoded, ...contexto };
     next();
   } catch (error) {
     if (error.statusCode) {
       return response.error(res, error.statusCode, error.message);
     }
     console.error("❌ Error en autenticación:", error);
-    return response.unauthorized(res, "Error de autenticación");
+    return response.error(res, 500, "Error interno del servidor");
   }
 };
 

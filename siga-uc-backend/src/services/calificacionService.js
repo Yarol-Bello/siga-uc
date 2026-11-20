@@ -7,7 +7,12 @@ const calificacionDao = require("../dao/calificacionDao");
 const alumnoDao = require("../dao/alumnoDao");
 const cursoDao = require("../dao/cursoDao");
 
-const obtenerPorAlumnoCurso = async (id_alumno, id_curso, anioLectivo) => {
+const obtenerPorAlumnoCurso = async (
+  id_alumno,
+  id_curso,
+  anioLectivo,
+  idPersonal = null,
+) => {
   const alumno = await alumnoDao.findById(id_alumno);
   if (!alumno) {
     const error = new Error("Alumno no encontrado");
@@ -24,6 +29,7 @@ const obtenerPorAlumnoCurso = async (id_alumno, id_curso, anioLectivo) => {
     id_alumno,
     id_curso,
     anioLectivo,
+    idPersonal,
   );
 };
 
@@ -32,6 +38,7 @@ const obtenerPorCursoGrado = async (
   id_grado,
   bimestre,
   anioLectivo,
+  idPersonal = null,
 ) => {
   if (!bimestre || bimestre < 1 || bimestre > 4) {
     const error = new Error("Bimestre inválido (1-4)");
@@ -43,6 +50,7 @@ const obtenerPorCursoGrado = async (
     id_grado,
     bimestre,
     anioLectivo,
+    idPersonal,
   );
 };
 
@@ -106,7 +114,11 @@ const calcularYGuardarNotaFinal = async (
   return saved;
 };
 
-const obtenerNotasFinales = async (id_alumno, anioLectivo) => {
+const obtenerNotasFinales = async (
+  id_alumno,
+  anioLectivo,
+  idPersonal = null,
+) => {
   const alumno = await alumnoDao.findById(id_alumno);
   if (!alumno) {
     const error = new Error("Alumno no encontrado");
@@ -117,10 +129,12 @@ const obtenerNotasFinales = async (id_alumno, anioLectivo) => {
   const notas = await calificacionDao.obtenerNotasFinales(
     id_alumno,
     anioLectivo,
+    idPersonal,
   );
   const conclusiones = await calificacionDao.obtenerConclusiones(
     id_alumno,
     anioLectivo,
+    idPersonal,
   );
 
   // Agrupar notas por curso

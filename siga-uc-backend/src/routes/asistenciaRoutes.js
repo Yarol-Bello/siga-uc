@@ -7,8 +7,13 @@ const express = require("express");
 const asistenciaController = require("../controllers/asistenciaController");
 const {
   verificarAutenticacion,
-  verificarRol,
 } = require("../middlewares/authMiddleware");
+const {
+  checkRole,
+  checkAlumnoPropio,
+  checkCursoDocente,
+  checkCursosDocenteBody,
+} = require("../middlewares/authRoles");
 
 const router = express.Router();
 
@@ -20,26 +25,44 @@ router.use(verificarAutenticacion);
 // ============================================================
 router.get(
   "/curso/:id_curso/fecha/:fecha",
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkCursoDocente,
   asistenciaController.obtenerPorCursoFecha,
 );
-router.get("/alumno/:id_alumno", asistenciaController.obtenerPorAlumno);
+router.get(
+  "/alumno/:id_alumno",
+  checkRole(["ADMIN", "DOCENTE", "ESTUDIANTE"]),
+  checkAlumnoPropio,
+  asistenciaController.obtenerPorAlumno,
+);
 router.get(
   "/alumno/:id_alumno/resumen",
+  checkRole(["ADMIN", "DOCENTE", "ESTUDIANTE"]),
+  checkAlumnoPropio,
   asistenciaController.obtenerResumenPorAlumno,
 );
 
 // ============================================================
 // ASISTENCIA DE PERSONAL (QR)
 // ============================================================
-router.get("/personal/todos", asistenciaController.listarAsistenciaPersonal);
+router.get(
+  "/personal/todos",
+  checkRole(["ADMIN", "SECRETARIA"]),
+  asistenciaController.listarAsistenciaPersonal,
+);
 router.get(
   "/personal/resumen",
+  checkRole(["ADMIN", "SECRETARIA"]),
   asistenciaController.obtenerResumenAsistenciaPersonal,
 );
-router.get("/personal/dni/:dni", asistenciaController.buscarPersonalPorDni);
+router.get(
+  "/personal/dni/:dni",
+  checkRole(["ADMIN", "SECRETARIA"]),
+  asistenciaController.buscarPersonalPorDni,
+);
 router.post(
   "/personal/marcar",
-  verificarRol("ADMIN", "SECRETARIA"),
+  checkRole(["ADMIN", "SECRETARIA"]),
   asistenciaController.registrarAsistenciaPersonal,
 );
 
@@ -48,12 +71,14 @@ router.post(
 // ============================================================
 router.post(
   "/",
-  verificarRol("ADMIN", "DOCENTE"),
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkCursoDocente,
   asistenciaController.registrar,
 );
 router.post(
   "/masivo",
-  verificarRol("ADMIN", "DOCENTE"),
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkCursosDocenteBody,
   asistenciaController.registrarMasivo,
 );
 

@@ -7,8 +7,12 @@ const express = require("express");
 const reporteController = require("../controllers/reporteController");
 const {
   verificarAutenticacion,
-  verificarRol,
 } = require("../middlewares/authMiddleware");
+const {
+  checkRole,
+  checkAlumnoPropio,
+  checkGradoDocente,
+} = require("../middlewares/authRoles");
 
 const router = express.Router();
 
@@ -18,34 +22,42 @@ router.use(verificarAutenticacion);
 // Dashboard (solo ADMIN y SECRETARIA)
 router.get(
   "/dashboard",
-  verificarRol("ADMIN", "SECRETARIA"),
+  checkRole(["ADMIN", "SECRETARIA"]),
   reporteController.getDashboard,
 );
 
 // Reportes académicos
 router.get(
   "/cuadro-merito/:id_grado",
-  verificarRol("ADMIN", "DOCENTE"),
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkGradoDocente,
   reporteController.getCuadroMerito,
 );
 router.get(
   "/alumnos-riesgo/:id_grado",
-  verificarRol("ADMIN", "DOCENTE"),
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkGradoDocente,
   reporteController.getAlumnosRiesgo,
 );
 router.get(
   "/resumen-asistencia/:id_grado",
-  verificarRol("ADMIN", "DOCENTE"),
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkGradoDocente,
   reporteController.getResumenAsistencia,
 );
 
-// Libreta (accesible por ADMIN, DOCENTE y el propio ESTUDIANTE)
-router.get("/libreta/:id_alumno", reporteController.getLibreta);
+// Libreta (ADMIN, DOCENTE o el propio ESTUDIANTE)
+router.get(
+  "/libreta/:id_alumno",
+  checkRole(["ADMIN", "DOCENTE", "ESTUDIANTE"]),
+  checkAlumnoPropio,
+  reporteController.getLibreta,
+);
 
 // Auditoría de docentes (para SIAGIE)
 router.get(
   "/auditoria-docentes/:id_grado",
-  verificarRol("ADMIN"),
+  checkRole(["ADMIN"]),
   reporteController.getAuditoriaDocentes,
 );
 

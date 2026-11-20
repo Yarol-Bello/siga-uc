@@ -8,8 +8,12 @@ const { body } = require("express-validator");
 const alumnoController = require("../controllers/alumnoController");
 const {
   verificarAutenticacion,
-  verificarRol,
 } = require("../middlewares/authMiddleware");
+const {
+  checkRole,
+  checkAlumnoPropio,
+  checkAlumnoPorDni,
+} = require("../middlewares/authRoles");
 
 const router = express.Router();
 
@@ -17,18 +21,28 @@ const router = express.Router();
 router.use(verificarAutenticacion);
 
 // ============================================================
-// CONSULTAS (todos los roles autenticados)
+// CONSULTAS
 // ============================================================
-router.get("/", alumnoController.listar);
-router.get("/dni/:dni", alumnoController.buscarPorDni);
-router.get("/:id", alumnoController.obtener);
+router.get("/", checkRole(["ADMIN", "SECRETARIA"]), alumnoController.listar);
+router.get(
+  "/dni/:dni",
+  checkRole(["ADMIN", "SECRETARIA", "DOCENTE", "ESTUDIANTE"]),
+  checkAlumnoPorDni,
+  alumnoController.buscarPorDni,
+);
+router.get(
+  "/:id",
+  checkRole(["ADMIN", "SECRETARIA", "DOCENTE", "ESTUDIANTE"]),
+  checkAlumnoPropio,
+  alumnoController.obtener,
+);
 
 // ============================================================
 // MODIFICACIONES (solo ADMIN y SECRETARIA)
 // ============================================================
 router.post(
   "/",
-  verificarRol("ADMIN", "SECRETARIA"),
+  checkRole(["ADMIN", "SECRETARIA"]),
   [
     body("dni")
       .isLength({ min: 8, max: 8 })
@@ -44,13 +58,13 @@ router.post(
 
 router.put(
   "/:id",
-  verificarRol("ADMIN", "SECRETARIA"),
+  checkRole(["ADMIN", "SECRETARIA"]),
   alumnoController.actualizar,
 );
 
 router.put(
   "/:id/retirar",
-  verificarRol("ADMIN", "SECRETARIA"),
+  checkRole(["ADMIN", "SECRETARIA"]),
   [body("motivo_retiro").notEmpty().withMessage("Motivo obligatorio")],
   alumnoController.retirar,
 );

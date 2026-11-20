@@ -7,13 +7,14 @@ const express = require("express");
 const auditoriaController = require("../controllers/auditoriaController");
 const {
   verificarAutenticacion,
-  verificarRol,
 } = require("../middlewares/authMiddleware");
+const { checkRole } = require("../middlewares/authRoles");
 
 const router = express.Router();
 
-// Todas las rutas requieren autenticación
+// Todas las rutas requieren autenticación y rol ADMIN
 router.use(verificarAutenticacion);
+router.use(checkRole(["ADMIN"]));
 
 // ============================================================
 // CONSULTAS
@@ -29,7 +30,6 @@ router.get("/:id", auditoriaController.obtenerBitacora);
 // ============================================================
 router.post(
   "/actas/cerrar",
-  verificarRol("ADMIN"),
   auditoriaController.cerrarActa,
 );
 

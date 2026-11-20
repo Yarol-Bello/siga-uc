@@ -7,13 +7,14 @@ const express = require("express");
 const tesoreriaController = require("../controllers/tesoreriaController");
 const {
   verificarAutenticacion,
-  verificarRol,
 } = require("../middlewares/authMiddleware");
+const { checkRole } = require("../middlewares/authRoles");
 
 const router = express.Router();
 
-// Todas las rutas requieren autenticación
+// Todas las rutas requieren autenticación y roles ADMIN/SECRETARIA
 router.use(verificarAutenticacion);
+router.use(checkRole(["ADMIN", "SECRETARIA"]));
 
 // ============================================================
 // CONCEPTOS
@@ -27,7 +28,6 @@ router.get("/pre-tickets", tesoreriaController.listarPreTickets);
 router.get("/pre-tickets/:id", tesoreriaController.obtenerPreTicket);
 router.post(
   "/pre-tickets",
-  verificarRol("ADMIN", "SECRETARIA"),
   tesoreriaController.crearPreTicket,
 );
 
@@ -38,7 +38,6 @@ router.get("/pagos", tesoreriaController.listarPagos);
 router.get("/pagos/:id", tesoreriaController.obtenerPago);
 router.post(
   "/pagos",
-  verificarRol("ADMIN", "SECRETARIA"),
   tesoreriaController.registrarPago,
 );
 
@@ -51,7 +50,6 @@ router.get(
 );
 router.post(
   "/pensiones/generar",
-  verificarRol("ADMIN", "SECRETARIA"),
   tesoreriaController.generarPensionesMes,
 );
 
@@ -59,7 +57,7 @@ router.post(
 // BECAS
 // ============================================================
 router.get("/becas", tesoreriaController.listarBecas);
-router.post("/becas", verificarRol("ADMIN"), tesoreriaController.aplicarBeca);
+router.post("/becas", checkRole(["ADMIN"]), tesoreriaController.aplicarBeca);
 
 // ============================================================
 // ESTADÍSTICAS

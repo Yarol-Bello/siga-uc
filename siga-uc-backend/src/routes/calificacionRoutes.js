@@ -7,8 +7,13 @@ const express = require("express");
 const calificacionController = require("../controllers/calificacionController");
 const {
   verificarAutenticacion,
-  verificarRol,
 } = require("../middlewares/authMiddleware");
+const {
+  checkRole,
+  checkAlumnoPropio,
+  checkCursoDocente,
+  checkCursosDocenteBody,
+} = require("../middlewares/authRoles");
 
 const router = express.Router();
 
@@ -20,14 +25,21 @@ router.use(verificarAutenticacion);
 // ============================================================
 router.get(
   "/alumno/:id_alumno/curso/:id_curso",
+  checkRole(["ADMIN", "DOCENTE", "ESTUDIANTE"]),
+  checkAlumnoPropio,
+  checkCursoDocente,
   calificacionController.obtenerPorAlumnoCurso,
 );
 router.get(
   "/curso/:id_curso/grado/:id_grado",
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkCursoDocente,
   calificacionController.obtenerPorCursoGrado,
 );
 router.get(
   "/notas-finales/alumno/:id_alumno",
+  checkRole(["ADMIN", "DOCENTE", "ESTUDIANTE"]),
+  checkAlumnoPropio,
   calificacionController.obtenerNotasFinales,
 );
 
@@ -36,17 +48,20 @@ router.get(
 // ============================================================
 router.post(
   "/",
-  verificarRol("ADMIN", "DOCENTE"),
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkCursoDocente,
   calificacionController.registrar,
 );
 router.post(
   "/masivo",
-  verificarRol("ADMIN", "DOCENTE"),
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkCursosDocenteBody,
   calificacionController.registrarMasivo,
 );
 router.post(
   "/notas-finales",
-  verificarRol("ADMIN", "DOCENTE"),
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkCursoDocente,
   calificacionController.calcularNotaFinal,
 );
 

@@ -10,10 +10,13 @@ const obtenerPorAlumnoCurso = async (req, res) => {
   try {
     const { id_alumno, id_curso } = req.params;
     const { anio } = req.query;
+    const idPersonal =
+      req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
     const data = await calificacionService.obtenerPorAlumnoCurso(
       id_alumno,
       id_curso,
       anio,
+      idPersonal,
     );
     return response.success(res, 200, "Calificaciones obtenidas", data);
   } catch (error) {
@@ -25,11 +28,14 @@ const obtenerPorCursoGrado = async (req, res) => {
   try {
     const { id_curso, id_grado } = req.params;
     const { bimestre = 1, anio } = req.query;
+    const idPersonal =
+      req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
     const data = await calificacionService.obtenerPorCursoGrado(
       id_curso,
       id_grado,
       parseInt(bimestre),
       anio ? parseInt(anio) : 2026,
+      idPersonal,
     );
     return response.success(res, 200, "Calificaciones del aula", data);
   } catch (error) {
@@ -81,9 +87,12 @@ const obtenerNotasFinales = async (req, res) => {
   try {
     const { id_alumno } = req.params;
     const { anio } = req.query;
+    const idPersonal =
+      req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
     const data = await calificacionService.obtenerNotasFinales(
       id_alumno,
       anio ? parseInt(anio) : 2026,
+      idPersonal,
     );
     return response.success(res, 200, "Notas finales del alumno", data);
   } catch (error) {

@@ -23,6 +23,15 @@ const error = (
   message = "Error interno del servidor",
   errors = null,
 ) => {
+  const esErrorServidor = statusCode >= 500;
+
+  if (esErrorServidor) {
+    // No exponer mensajes de SQL/PostgreSQL al cliente.
+    console.error("❌ Error 500:", message);
+    message = "Ocurrió un error interno en el servidor";
+    errors = null;
+  }
+
   return res.status(statusCode).json({
     success: false,
     message,

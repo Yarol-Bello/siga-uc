@@ -12,6 +12,7 @@ const obtenerPorAlumnoCurso = async (
   id_alumno,
   id_curso,
   anioLectivo = 2026,
+  idPersonal = null,
 ) => {
   const sql = `
     SELECT 
@@ -33,9 +34,23 @@ const obtenerPorAlumnoCurso = async (
       AND cal.id_alumno = $1
       AND cal.anio_lectivo = $3
     WHERE comp.id_curso = $2
+      AND (
+        $4::INT IS NULL
+        OR EXISTS (
+          SELECT 1 FROM carga_curricular cc
+          WHERE cc.id_personal = $4
+            AND cc.id_curso = $2
+            AND cc.anio_lectivo = $3
+        )
+      )
     ORDER BY comp.orden, cal.bimestre
   `;
-  const result = await query(sql, [id_alumno, id_curso, anioLectivo]);
+  const result = await query(sql, [
+    id_alumno,
+    id_curso,
+    anioLectivo,
+    idPersonal,
+  ]);
   return result.rows;
 };
 
@@ -48,6 +63,7 @@ const obtenerPorCursoGrado = async (
   id_grado,
   bimestre,
   anioLectivo = 2026,
+  idPersonal = null,
 ) => {
   // 1. Obtener competencias del curso
   const competenciasSql = `
@@ -67,9 +83,24 @@ const obtenerPorCursoGrado = async (
       a.codigo_estudiante
     FROM alumnos a
     WHERE a.id_grado = $1 AND a.estado_matricula = 'Matriculado'
+      AND (
+        $2::INT IS NULL
+        OR EXISTS (
+          SELECT 1 FROM carga_curricular cc
+          WHERE cc.id_personal = $2
+            AND cc.id_curso = $3
+            AND cc.id_grado = $1
+            AND cc.anio_lectivo = $4
+        )
+      )
     ORDER BY a.apellidos, a.nombres
   `;
-  const alumnosResult = await query(alumnosSql, [id_grado]);
+  const alumnosResult = await query(alumnosSql, [
+    id_grado,
+    idPersonal,
+    id_curso,
+    anioLectivo,
+  ]);
   const alumnos = alumnosResult.rows;
 
   // 3. Obtener calificaciones registradas
@@ -85,12 +116,23 @@ const obtenerPorCursoGrado = async (
       AND cal.id_alumno IN (
         SELECT id_alumno FROM alumnos WHERE id_grado = $4 AND estado_matricula = 'Matriculado'
       )
+      AND (
+        $5::INT IS NULL
+        OR EXISTS (
+          SELECT 1 FROM carga_curricular cc
+          WHERE cc.id_personal = $5
+            AND cc.id_curso = $1
+            AND cc.id_grado = $4
+            AND cc.anio_lectivo = $3
+        )
+      )
   `;
   const calificacionesResult = await query(calificacionesSql, [
     id_curso,
     bimestre,
     anioLectivo,
     id_grado,
+    idPersonal,
   ]);
   const calificacionesMap = {};
   calificacionesResult.rows.forEach((c) => {
@@ -276,7 +318,11 @@ const guardarNotaFinal = async (data) => {
 /**
  * Obtener notas finales de un alumno
  */
-const obtenerNotasFinales = async (id_alumno, anioLectivo = 2026) => {
+const obtenerNotasFinales = async (
+  id_alumno,
+  anioLectivo = 2026,
+  idPersonal = null,
+) => {
   const sql = `
     SELECT 
       nf.id_nota_final,
@@ -289,16 +335,29 @@ const obtenerNotasFinales = async (id_alumno, anioLectivo = 2026) => {
     FROM notas_finales_area nf
     INNER JOIN cursos c ON c.id_curso = nf.id_curso
     WHERE nf.id_alumno = $1 AND nf.anio_lectivo = $2
+      AND (
+        $3::INT IS NULL
+        OR EXISTS (
+          SELECT 1 FROM carga_curricular cc
+          WHERE cc.id_personal = $3
+            AND cc.id_curso = nf.id_curso
+            AND cc.anio_lectivo = $2
+        )
+      )
     ORDER BY c.area_academica, c.nombre_curso, nf.bimestre
   `;
-  const result = await query(sql, [id_alumno, anioLectivo]);
+  const result = await query(sql, [id_alumno, anioLectivo, idPersonal]);
   return result.rows;
 };
 
 /**
  * Obtener conclusión descriptiva
  */
-const obtenerConclusiones = async (id_alumno, anioLectivo = 2026) => {
+const obtenerConclusiones = async (
+  id_alumno,
+  anioLectivo = 2026,
+  idPersonal = null,
+) => {
   const sql = `
     SELECT 
       cd.id_conclusion,
@@ -312,9 +371,18 @@ const obtenerConclusiones = async (id_alumno, anioLectivo = 2026) => {
     LEFT JOIN personal p ON p.id_personal = cd.id_personal
     LEFT JOIN usuarios u ON u.id_usuario = p.id_usuario
     WHERE cd.id_alumno = $1 AND cd.anio_lectivo = $2
+      AND (
+        $3::INT IS NULL
+        OR EXISTS (
+          SELECT 1 FROM carga_curricular cc
+          WHERE cc.id_personal = $3
+            AND cc.id_curso = cd.id_curso
+            AND cc.anio_lectivo = $2
+        )
+      )
     ORDER BY c.nombre_curso, cd.bimestre
   `;
-  const result = await query(sql, [id_alumno, anioLectivo]);
+  const result = await query(sql, [id_alumno, anioLectivo, idPersonal]);
   return result.rows;
 };
 

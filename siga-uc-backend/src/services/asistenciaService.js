@@ -6,26 +6,40 @@
 const asistenciaDao = require("../dao/asistenciaDao");
 const alumnoDao = require("../dao/alumnoDao");
 
-const obtenerPorCursoFecha = async (id_curso, fecha, id_grado) => {
+const obtenerPorCursoFecha = async (
+  id_curso,
+  fecha,
+  id_grado,
+  idPersonal = null,
+) => {
   if (!id_curso || !fecha || !id_grado) {
     const error = new Error("Faltan parámetros: id_curso, fecha, id_grado");
     error.statusCode = 400;
     throw error;
   }
-  return await asistenciaDao.obtenerPorCursoFecha(id_curso, fecha, id_grado);
+  return await asistenciaDao.obtenerPorCursoFecha(
+    id_curso,
+    fecha,
+    id_grado,
+    idPersonal,
+  );
 };
 
-const obtenerPorAlumno = async (id_alumno, filtros) => {
+const obtenerPorAlumno = async (id_alumno, filtros, idPersonal = null) => {
   const alumno = await alumnoDao.findById(id_alumno);
   if (!alumno) {
     const error = new Error("Alumno no encontrado");
     error.statusCode = 404;
     throw error;
   }
-  return await asistenciaDao.obtenerPorAlumno(id_alumno, filtros);
+  return await asistenciaDao.obtenerPorAlumno(
+    id_alumno,
+    filtros,
+    idPersonal,
+  );
 };
 
-const obtenerResumenPorAlumno = async (id_alumno) => {
+const obtenerResumenPorAlumno = async (id_alumno, idPersonal = null) => {
   const alumno = await alumnoDao.findById(id_alumno);
   if (!alumno) {
     const error = new Error("Alumno no encontrado");
@@ -33,8 +47,14 @@ const obtenerResumenPorAlumno = async (id_alumno) => {
     throw error;
   }
 
-  const resumen = await asistenciaDao.obtenerResumenPorAlumno(id_alumno);
-  const estadisticas = await asistenciaDao.obtenerEstadisticasAlumno(id_alumno);
+  const resumen = await asistenciaDao.obtenerResumenPorAlumno(
+    id_alumno,
+    idPersonal,
+  );
+  const estadisticas = await asistenciaDao.obtenerEstadisticasAlumno(
+    id_alumno,
+    idPersonal,
+  );
 
   return {
     alumno: {
