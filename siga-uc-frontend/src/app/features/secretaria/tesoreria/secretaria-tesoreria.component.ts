@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 interface Pension {
@@ -21,12 +22,14 @@ interface AlumnoConPensiones {
   nombre_completo: string;
   codigo_estudiante: string;
   nombre_grado: string;
+  estado_matricula: string;
   pensiones: Pension[];
   estado_general: string;
 }
 
 interface PreTicket {
   id_preticket: number;
+  id_alumno: number;
   monto: string;
   estado: string;
   fecha_emision: string;
@@ -103,6 +106,9 @@ export class SecretariaTesoreriaComponent implements OnInit {
           const alumnosData = res.data;
           // Cargar pensiones de cada alumno
           this.cargarPensiones(alumnosData);
+        } else {
+          this.error.set('No se pudieron cargar los alumnos');
+          this.cargando.set(false);
         }
       },
       error: (err) => {
@@ -132,20 +138,30 @@ export class SecretariaTesoreriaComponent implements OnInit {
         .then((res) => ({
           ...alumno,
           pensiones: res?.data || [],
-          estado_general: this.calcularEstadoGeneral(res?.data || []),
+          estado_general: this.calcularEstadoGeneral(
+            res?.data || [],
+            alumno.estado_matricula,
+          ),
         })),
     );
 
-    Promise.all(promesas).then((alumnosConPensiones) => {
-      this.alumnos.set(alumnosConPensiones);
-      this.cargando.set(false);
-    });
+    Promise.all(promesas)
+      .then((alumnosConPensiones) => {
+        this.alumnos.set(alumnosConPensiones);
+        this.cargando.set(false);
+      })
+      .catch((err) => {
+        console.error('Error al cargar pensiones:', err);
+        this.error.set('No se pudieron cargar las pensiones');
+        this.cargando.set(false);
+      });
   }
 
   /**
    * Calcular estado general de un alumno
    */
-  calcularEstadoGeneral(pensiones: Pension[]): string {
+  calcularEstadoGeneral(pensiones: Pension[], estadoMatricula: string): string {
+    if (estadoMatricula === 'PendientePago') return 'Pendiente de Pago';
     if (pensiones.length === 0) return 'Sin datos';
     const pendientes = pensiones.filter((p) => p.estado === 'PENDIENTE').length;
     if (pendientes === 0) return 'Al Día';
@@ -174,16 +190,23 @@ export class SecretariaTesoreriaComponent implements OnInit {
    */
   abrirCobro(
     alumno: AlumnoConPensiones,
-    concepto: string = 'Pensión Octubre 2026',
-    monto: number = 250,
+    concepto?: string,
+    monto?: number,
   ): void {
+    const esMatricula =
+      concepto !== undefined
+        ? concepto.toLowerCase().includes('matrícula')
+        : alumno.estado_matricula === 'PendientePago';
+    const conceptoFinal =
+      concepto ||
+      (esMatricula ? 'Matrícula Escolar 2026' : 'Pensión Octubre 2026');
+    const montoFinal = monto ?? 250;
+
     this.alumnoSeleccionado.set(alumno);
-    this.conceptoCobro.set(concepto);
-    this.montoCobro.set(monto);
+    this.conceptoCobro.set(conceptoFinal);
+    this.montoCobro.set(montoFinal);
     this.formaPago.set('Efectivo');
     this.nroOperacion.set('');
-
-    const esMatricula = concepto.toLowerCase().includes('matrícula');
     this.esCobroMatricula.set(esMatricula);
 
     this.modalCobro.set(true);
@@ -201,7 +224,8 @@ export class SecretariaTesoreriaComponent implements OnInit {
     const alumno = this.alumnoSeleccionado();
     if (!alumno) return;
 
-    if (!this.nroOperacion()) {
+    const esEfectivo = this.formaPago() === 'Efectivo';
+    if (!esEfectivo && !this.nroOperacion().trim()) {
       alert('Ingrese el número de operación / voucher');
       return;
     }
@@ -244,31 +268,33 @@ export class SecretariaTesoreriaComponent implements OnInit {
       id_pension: idPension, // 👈 Enviar el id_pension al backend
       monto: this.montoCobro(),
       forma_pago: this.formaPago(),
-      nro_operacion: this.nroOperacion(),
+      nro_operacion: esEfectivo ? null : this.nroOperacion().trim(),
     };
 
-    this.http.post<any>(`${environment.apiUrl}/tesoreria/pagos`, payload).subscribe({
-      next: (res) => {
-        this.procesando.set(false);
-        if (res.success) {
-          alert(
-            `✅ Cobro registrado exitosamente\n\n` +
-              `Estudiante: ${alumno.nombre_completo}\n` +
-              `Concepto: ${this.conceptoCobro()}\n` +
-              `Monto: S/ ${this.montoCobro()}\n` +
-              `Forma de pago: ${this.formaPago()}\n` +
-              `Boleta: ${res.data.boleta.numero_boleta}`,
-          );
-          this.cerrarModalCobro();
-          this.cargarDatos();
-        }
-      },
-      error: (err) => {
-        this.procesando.set(false);
-        console.error('❌ Error:', err);
-        alert('Error al procesar el cobro: ' + (err.error?.message || 'Error desconocido'));
-      },
-    });
+    this.http
+      .post<any>(`${environment.apiUrl}/tesoreria/pagos`, payload)
+      .pipe(finalize(() => this.procesando.set(false)))
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            alert(
+              `✅ Cobro registrado exitosamente\n\n` +
+                `Estudiante: ${alumno.nombre_completo}\n` +
+                `Concepto: ${this.conceptoCobro()}\n` +
+                `Monto: S/ ${this.montoCobro()}\n` +
+                `Forma de pago: ${this.formaPago()}\n` +
+                `N° operación: ${res.data.pago?.nro_operacion || '-'}\n` +
+                `Boleta: ${res.data.boleta.numero_boleta}`,
+            );
+            this.cerrarModalCobro();
+            this.cargarDatos();
+          }
+        },
+        error: (err) => {
+          console.error('❌ Error:', err);
+          alert('Error al procesar el cobro: ' + (err.error?.message || 'Error desconocido'));
+        },
+      });
   }
 
   /**
@@ -306,6 +332,8 @@ export class SecretariaTesoreriaComponent implements OnInit {
         return 'con-deuda';
       case 'Moroso':
         return 'moroso';
+      case 'Pendiente de Pago':
+        return 'con-deuda';
       default:
         return 'sin-datos';
     }
@@ -315,8 +343,9 @@ export class SecretariaTesoreriaComponent implements OnInit {
    * Cobrar un pre-ticket desde el dashboard
    */
   cobrarPreticket(preTicket: PreTicket): void {
-    // Buscar el alumno por nombre en el padrón
-    const alumno = this.alumnos().find((a) => a.nombre_completo === preTicket.alumno_nombre);
+    const alumno = this.alumnos().find(
+      (a) => a.id_alumno === preTicket.id_alumno,
+    );
     if (alumno) {
       this.abrirCobro(alumno, preTicket.concepto_nombre, parseFloat(preTicket.monto));
     } else {

@@ -4,6 +4,7 @@
  */
 
 const tesoreriaDao = require("../dao/tesoreriaDao");
+const cajaDao = require("../dao/cajaDao");
 const alumnoDao = require("../dao/alumnoDao");
 
 const listarConceptos = async (anioLectivo) => {
@@ -52,6 +53,27 @@ const registrarPago = async (data) => {
   if (!data.id_alumno || !data.id_concepto || !data.monto || !data.forma_pago) {
     const error = new Error(
       "Faltan campos: id_alumno, id_concepto, monto, forma_pago",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (typeof data.nro_operacion === "string") {
+    data.nro_operacion = data.nro_operacion.trim();
+  }
+
+  if (data.forma_pago !== "Efectivo" && !data.nro_operacion) {
+    const error = new Error(
+      "El número de operación es obligatorio para pagos no efectivos",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const cajaAbierta = await cajaDao.obtenerCajaAbierta();
+  if (!cajaAbierta) {
+    const error = new Error(
+      "No hay una caja abierta. Aperture una caja antes de registrar pagos.",
     );
     error.statusCode = 400;
     throw error;

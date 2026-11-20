@@ -204,9 +204,14 @@ CREATE FUNCTION public.trg_pago_a_caja() RETURNS trigger
 DECLARE
     v_apertura INT;
 BEGIN
-    SELECT id_apertura INTO v_apertura
-    FROM aperturas_caja
-    ORDER BY fecha_apertura DESC LIMIT 1;
+    SELECT ap.id_apertura INTO v_apertura
+    FROM aperturas_caja ap
+    WHERE NOT EXISTS (
+        SELECT 1 FROM cierres_caja cc
+        WHERE cc.id_apertura = ap.id_apertura
+    )
+    ORDER BY ap.fecha_apertura DESC
+    LIMIT 1;
 
     IF v_apertura IS NOT NULL THEN
         INSERT INTO movimientos_caja (

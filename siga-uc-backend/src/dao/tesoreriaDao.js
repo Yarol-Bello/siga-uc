@@ -185,6 +185,40 @@ const registrarPago = async (data) => {
   try {
     await client.query("BEGIN");
 
+    // 0. Resolver pre-ticket pendiente y número de operación interno
+    let idPreticket = data.id_preticket || null;
+    if (!idPreticket) {
+      const preticketResult = await client.query(
+        `SELECT id_preticket
+         FROM pre_tickets
+         WHERE id_alumno = $1::INT
+           AND id_concepto = $2::INT
+           AND estado = 'PENDIENTE'
+         ORDER BY fecha_emision DESC
+         LIMIT 1
+         FOR UPDATE`,
+        [data.id_alumno, data.id_concepto],
+      );
+      idPreticket = preticketResult.rows[0]?.id_preticket || null;
+    }
+
+    let nroOperacion = data.nro_operacion || null;
+    if (data.forma_pago === "Efectivo") {
+      const anioResult = await client.query(
+        "SELECT EXTRACT(YEAR FROM NOW())::int AS anio",
+      );
+      const anio = anioResult.rows[0].anio;
+      const prefijo = `EFECTIVO-${anio}-`;
+      const secuenciaResult = await client.query(
+        `SELECT COALESCE(MAX(CAST(SPLIT_PART(nro_operacion, '-', 3) AS INTEGER)), 0) + 1 AS siguiente
+         FROM pagos
+         WHERE nro_operacion LIKE $1
+           AND nro_operacion ~ '^EFECTIVO-[0-9]{4}-[0-9]+$'`,
+        [`${prefijo}%`],
+      );
+      nroOperacion = `${prefijo}${String(secuenciaResult.rows[0].siguiente).padStart(3, "0")}`;
+    }
+
     // 1. Crear pago (casteando los parámetros NULLables)
     const pagoSql = `
       INSERT INTO pagos (
@@ -198,12 +232,12 @@ const registrarPago = async (data) => {
     `;
     const pagoResult = await client.query(pagoSql, [
       data.id_alumno,
-      data.id_preticket || null,
+      idPreticket,
       data.id_pension || null,
       data.id_concepto,
       data.monto,
       data.forma_pago,
-      data.nro_operacion || null,
+      nroOperacion,
       data.id_usuario_cobrador,
     ]);
     const pago = pagoResult.rows[0];
@@ -230,10 +264,10 @@ const registrarPago = async (data) => {
     const boleta = boletaResult.rows[0];
 
     // 4. Actualizar pre-ticket si aplica
-    if (data.id_preticket) {
+    if (idPreticket) {
       await client.query(
         `UPDATE pre_tickets SET estado = 'PAGADO', fecha_pago = NOW() WHERE id_preticket = $1::INT`,
-        [data.id_preticket],
+        [idPreticket],
       );
     }
 

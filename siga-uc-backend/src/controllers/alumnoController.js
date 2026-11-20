@@ -70,7 +70,10 @@ const crear = async (req, res) => {
       );
     }
 
-    const result = await alumnoService.crear(req.body);
+    const result = await alumnoService.crear({
+      ...req.body,
+      id_usuario_emite: req.usuario.id_usuario,
+    });
     return response.success(
       res,
       201,

@@ -213,10 +213,37 @@ const crear = async (data) => {
       [id_usuario, data.dni],
     );
 
+    // 9. Crear pre-ticket de matrícula pendiente
+    const conceptoResult = await client.query(
+      `SELECT id_concepto, monto_base
+       FROM conceptos_pago
+       WHERE tipo = 'MATRICULA' AND anio_lectivo = $1
+       ORDER BY id_concepto
+       LIMIT 1`,
+      [data.anio_lectivo || 2026],
+    );
+    let idPreticket = null;
+    if (conceptoResult.rows.length > 0) {
+      const concepto = conceptoResult.rows[0];
+      const preticketResult = await client.query(
+        `INSERT INTO pre_tickets (id_alumno, id_concepto, monto, estado, id_usuario_emite)
+         VALUES ($1, $2, $3, 'PENDIENTE', $4)
+         RETURNING id_preticket`,
+        [
+          id_alumno,
+          concepto.id_concepto,
+          concepto.monto_base,
+          data.id_usuario_emite || null,
+        ],
+      );
+      idPreticket = preticketResult.rows[0].id_preticket;
+    }
+
     await client.query("COMMIT");
 
     return {
       id_alumno,
+      id_preticket: idPreticket,
       id_usuario,
       codigo_estudiante: codigo,
       dni: data.dni,
