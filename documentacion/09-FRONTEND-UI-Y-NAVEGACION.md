@@ -206,7 +206,7 @@ Cada layout contiene:
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
 | `AdminSiagieComponent` | `GET /grados`, `GET /reportes/auditoria-docentes/:id`, `POST /siagie/generar-excel`, `GET /personal/:id`, `POST /notificaciones` |
-| `AdminReportesComponent` | `GET /grados`, `GET /alumnos`, `GET /reportes/cuadro-merito/:id`, `/alumnos-riesgo/:id`, `/libreta/:id` |
+| `AdminReportesComponent` | `GET /grados`, `GET /alumnos`, `GET /reportes/cuadro-merito/:id`, `/alumnos-riesgo/:id`, `/libreta/:id`, `/libreta/:id/pdf` |
 | `AdminAuditoriaComponent` | `GET /auditoria`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar` |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id` |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo` |
@@ -292,7 +292,8 @@ del rol original; el backend debe permitir ambos roles.
 - **Dashboard Admin:** tarjetas KPI, sin gráficos.
 - **Tablas:** badges por estado, acciones a la derecha, sticky en tablas anchas.
 - **Formularios:** validación local + mensajes inline; muchos usan `alert()`/`confirm()`.
-- **Impresión:** libreta y carné usan `window.print()`.
+- **Impresión:** el carné usa `window.print()`; la libreta se descarga como PDF real desde
+  `GET /reportes/libreta/:id/pdf` (PDFKit) y muestra error inline si falla.
 - **Responsive:** Bootstrap; se intentó un sidebar drawer y se revirtió
   (`Revert "feat(frontend): sidebar responsive..."`). En móvil la navegación puede ser
   incómoda.

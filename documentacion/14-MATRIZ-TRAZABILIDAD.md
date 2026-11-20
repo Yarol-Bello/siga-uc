@@ -60,6 +60,7 @@ cambios y para pruebas de regresión.
 | 49 | Carné QR | `HeaderComponent` | `GET /api/auth/perfil` | `authController.perfil` | `authService.getPerfil` | `usuarioDao.getCredencialQR` | `credenciales_qr`, `usuarios` |
 | 50 | Cambio de contraseña | `CambiarPasswordComponent` | `PUT /api/auth/cambiar-password` | `authController.cambiarPassword` | `authService.cambiarPassword` | `usuarioDao.getPasswordHashById`, `usuarioDao.actualizarPassword` | `usuarios` |
 | 51 | Año lectivo global | `ConfiguracionService` / app initializer | `GET /api/configuracion` | `configuracionController.obtener` | `configuracionService.obtenerConfiguracion` | `config/academico.getAnioLectivo` | `.env` (`ANIO_LECTIVO`) |
+| 52 | PDF de libreta | `AdminReportesComponent` | `GET /api/reportes/libreta/:id_alumno/pdf` | `reporteController.getLibretaPdf` | `reporteService.getLibreta` + `libretaPdfService.generarLibretaPdf` | `reporteDao.getLibretaAlumno` | `alumnos`, `cursos`, `notas_finales_area`, `conclusiones_descriptivas`, `asistencia_alumnos`, `tutores_grado` |
 
 ---
 

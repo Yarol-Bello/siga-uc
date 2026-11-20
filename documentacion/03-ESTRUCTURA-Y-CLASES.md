@@ -1,7 +1,7 @@
 # 03 — Estructura y Mapa de Clases
 
-> Conteo verificado el 20/11/2026: **68 archivos JS backend**, **118 archivos frontend
-> (49 TypeScript)**, **14 routers**, **14 controladores**, **16 servicios** y **15 DAOs**.
+> Conteo verificado el 20/11/2026: **69 archivos JS backend**, **118 archivos frontend
+> (49 TypeScript)**, **14 routers**, **14 controladores**, **17 servicios** y **15 DAOs**.
 
 ## 1. Backend
 
@@ -30,7 +30,7 @@
 | `calificacionRoutes.js` | `/api/calificaciones` | 6 | ADMIN/DOCENTE |
 | `tesoreriaRoutes.js` | `/api/tesoreria` | 12 | ADMIN/SECRETARIA; becas ADMIN |
 | `cajaRoutes.js` | `/api/caja` | 9 | ADMIN/SECRETARIA |
-| `reporteRoutes.js` | `/api/reportes` | 6 | Solo lectura con roles |
+| `reporteRoutes.js` | `/api/reportes` | 7 | Solo lectura con roles |
 | `auditoriaRoutes.js` | `/api/auditoria` | 6 | Cierre de acta: ADMIN |
 | `siagieRoutes.js` | `/api/siagie` | 1 | ADMIN |
 | `notificacionRoutes.js` | `/api/notificaciones` | 8 | ADMIN/DOCENTE; masivo ADMIN |
@@ -49,12 +49,12 @@
 | `calificacionController.js` | `obtenerPorAlumnoCurso`, `obtenerPorCursoGrado`, `registrar`, `registrarMasivo`, `calcularNotaFinal`, `obtenerNotasFinales` | `calcularNotaFinal` expone el cálculo |
 | `tesoreriaController.js` | `listarConceptos`, `listarPreTickets`, `obtenerPreTicket`, `crearPreTicket`, `listarPagos`, `obtenerPago`, `registrarPago`, `listarPensionesAlumno`, `generarPensionesMes`, `listarBecas`, `aplicarBeca`, `getEstadisticas` | Inyecta `id_usuario` del token |
 | `cajaController.js` | `obtenerCajaAbierta`, `listarCajas`, `listarAperturas`, `obtenerApertura`, `aperturar`, `listarMovimientos`, `registrarEgreso`, `cerrar`, `listarCierres` | Inyecta usuario de apertura/egreso/cierre |
-| `reporteController.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getResumenAsistencia`, `getAuditoriaDocentes` | KPIs y reportes |
+| `reporteController.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getLibretaPdf`, `getResumenAsistencia`, `getAuditoriaDocentes` | KPIs, reportes y PDF de libreta |
 | `auditoriaController.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `getEstadisticas` | Inyecta `cerrado_por` |
 | `siagieController.js` | `generarExcel` | Valida archivo/parámetros, borra temporal y descarga |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
-### 1.4 Servicios (16)
+### 1.4 Servicios (17)
 
 | Servicio | Métodos principales | Reglas que concentra |
 |---|---|---|
@@ -69,6 +69,7 @@
 | `tesoreriaService.js` | `listarConceptos`, `listarPreTickets`, `obtenerPreTicket`, `crearPreTicket`, `listarPagos`, `obtenerPago`, `registrarPago`, `listarPensionesAlumno`, `generarPensionesMes`, `listarBecas`, `aplicarBeca`, `getEstadisticas` | Alumno/concepto existen, mes 1–12, tipo de concepto |
 | `cajaService.js` | `obtenerCajaAbierta`, `listarCajas`, `listarAperturas`, `obtenerApertura`, `aperturar`, `listarMovimientos`, `registrarEgreso`, `cerrar`, `listarCierres` | Montos no negativos, caja abierta |
 | `reporteService.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getResumenAsistencia`, `getAuditoriaDocentes` | Parámetros obligatorios |
+| `libretaPdfService.js` | `generarLibretaPdf` | PDFKit, Helvetica, A4, tabla paginada y pie de página |
 | `auditoriaService.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `getEstadisticas` | Periodo/año/Usuario de cierre |
 | `siagieService.js` | `generarExcel` | Detecta encabezados, inyecta notas, guarda archivo, audita exportación |
 | `notificacionService.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Correo no bloqueante, propiedad del destinatario |
@@ -204,7 +205,7 @@ middlewares/authMiddleware.js
 utils/response.js
 routes/ (14)
 controllers/ (14)
-services/ (16)
+services/ (17)
 dao/ (15)
 ```
 

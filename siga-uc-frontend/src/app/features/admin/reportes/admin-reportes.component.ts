@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
@@ -94,6 +95,8 @@ export class AdminReportesComponent implements OnInit {
   modalLibreta = signal(false);
   libretaData = signal<LibretaData | null>(null);
   cargandoLibreta = signal(false);
+  generandoPdf = signal(false);
+  errorPdf = signal<string | null>(null);
 
   ngOnInit(): void {
     this.cargarGrados();
@@ -243,6 +246,7 @@ export class AdminReportesComponent implements OnInit {
     this.modalLibreta.set(true);
     this.cargandoLibreta.set(true);
     this.libretaData.set(null);
+    this.errorPdf.set(null);
 
     this.http
       .get<any>(
@@ -264,6 +268,108 @@ export class AdminReportesComponent implements OnInit {
   cerrarModalLibreta(): void {
     this.modalLibreta.set(false);
     this.libretaData.set(null);
+    this.errorPdf.set(null);
+  }
+
+  /**
+   * Descargar la libreta como PDF real generado por el backend.
+   */
+  descargarLibretaPdf(): void {
+    const data = this.libretaData();
+
+    // Evita doble clic / doble petición.
+    if (!data?.alumno || this.generandoPdf()) return;
+
+    const idAlumno = data.alumno.id_alumno;
+    const bimestre = this.bimestre();
+    const anio = this.anioLectivo();
+
+    this.generandoPdf.set(true);
+    this.errorPdf.set(null);
+
+    this.http
+      .get(`${environment.apiUrl}/reportes/libreta/${idAlumno}/pdf`, {
+        params: { bimestre, anio },
+        observe: 'response',
+        responseType: 'blob',
+      })
+      .pipe(finalize(() => this.generandoPdf.set(false)))
+      .subscribe({
+        next: (response) => {
+          const blob = response.body;
+          if (!blob) {
+            this.errorPdf.set(
+              'No se pudo generar la libreta en PDF. Intente nuevamente.',
+            );
+            return;
+          }
+
+          const fileName =
+            this.extraerNombreArchivo(
+              response.headers.get('content-disposition'),
+            ) ||
+            `libreta_${data.alumno.dni || idAlumno}_BIM${bimestre}_${anio}.pdf`;
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        },
+        error: async (error) => {
+          const mensaje = await this.obtenerMensajeErrorPdf(error);
+          this.errorPdf.set(mensaje);
+        },
+      });
+  }
+
+  private extraerNombreArchivo(
+    contentDisposition: string | null,
+  ): string | null {
+    if (!contentDisposition) return null;
+
+    const match = /filename\*?=(?:UTF-8'')?["']?([^;"']+)/i.exec(
+      contentDisposition,
+    );
+
+    if (!match?.[1]) return null;
+
+    try {
+      return decodeURIComponent(match[1].trim());
+    } catch {
+      return match[1].trim();
+    }
+  }
+
+  private async obtenerMensajeErrorPdf(error: any): Promise<string> {
+    const body = error?.error;
+
+    if (body instanceof Blob) {
+      try {
+        const texto = await body.text();
+        const json = JSON.parse(texto);
+        if (json?.message) return json.message;
+      } catch {
+        // El cuerpo no era JSON; se usa el mensaje por estado.
+      }
+    } else if (body?.message) {
+      return body.message;
+    }
+
+    if (error?.status === 401) {
+      return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+    }
+    if (error?.status === 403) {
+      return 'No tienes permisos para descargar esta libreta.';
+    }
+    if (error?.status === 404) {
+      return 'No se encontró la libreta del alumno.';
+    }
+
+    return 'No se pudo generar la libreta en PDF. Intente nuevamente.';
   }
 
   /**

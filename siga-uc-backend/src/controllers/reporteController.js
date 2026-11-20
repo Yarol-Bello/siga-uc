@@ -4,6 +4,7 @@
  */
 
 const reporteService = require("../services/reporteService");
+const libretaPdfService = require("../services/libretaPdfService");
 const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
@@ -64,6 +65,51 @@ const getLibreta = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/reportes/libreta/:id_alumno/pdf
+ * Genera y descarga la libreta en PDF.
+ */
+const getLibretaPdf = async (req, res) => {
+  try {
+    const { id_alumno } = req.params;
+    const { bimestre = 1, anio } = req.query;
+    const bimestreNumero = parseInt(bimestre);
+    const anioLectivo = anio ? parseInt(anio) : getAnioLectivo();
+
+    const data = await reporteService.getLibreta(
+      id_alumno,
+      bimestreNumero,
+      anioLectivo,
+    );
+
+    if (!data?.alumno) {
+      return response.notFound(res, "Alumno no encontrado");
+    }
+
+    const buffer = await libretaPdfService.generarLibretaPdf(data);
+
+    const dni = String(data.alumno.dni || "alumno").replace(
+      /[^0-9A-Za-z_-]/g,
+      "",
+    );
+    const fileName = `libreta_${dni}_BIM${bimestreNumero}_${anioLectivo}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("Cache-Control", "no-store");
+
+    return res.send(buffer);
+  } catch (error) {
+    console.error("❌ Error al generar PDF de libreta:", error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.statusCode ? error.message : "No se pudo generar la libreta en PDF",
+    );
+  }
+};
+
 const getResumenAsistencia = async (req, res) => {
   try {
     const { id_grado } = req.params;
@@ -101,6 +147,7 @@ module.exports = {
   getAlumnosRiesgo,
   getCuadroMerito,
   getLibreta,
+  getLibretaPdf,
   getResumenAsistencia,
   getAuditoriaDocentes,
 };

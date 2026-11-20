@@ -48,6 +48,12 @@ router.get(
 
 // Libreta (ADMIN, DOCENTE o el propio ESTUDIANTE)
 router.get(
+  "/libreta/:id_alumno/pdf",
+  checkRole(["ADMIN", "DOCENTE", "ESTUDIANTE"]),
+  checkAlumnoPropio,
+  reporteController.getLibretaPdf,
+);
+router.get(
   "/libreta/:id_alumno",
   checkRole(["ADMIN", "DOCENTE", "ESTUDIANTE"]),
   checkAlumnoPropio,

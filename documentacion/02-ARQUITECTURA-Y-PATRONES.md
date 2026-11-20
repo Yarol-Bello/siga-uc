@@ -247,7 +247,7 @@ siga-uc/
 │       ├── middlewares/      # authMiddleware.js
 │       ├── routes/           # 14 routers
 │       ├── controllers/      # 14 controladores
-│       ├── services/         # 16 servicios
+│       ├── services/         # 17 servicios
 │       ├── dao/              # 15 DAOs
 │       └── utils/            # response.js
 └── siga-uc-frontend/

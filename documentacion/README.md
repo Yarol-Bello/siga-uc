@@ -24,7 +24,7 @@
 | Entender capas, patrones y ciclo de una petición | `02-ARQUITECTURA-Y-PATRONES.md` |
 | Ubicar archivos, controladores, servicios y DAOs | `03-ESTRUCTURA-Y-CLASES.md` |
 | Conocer las 39 tablas, relaciones, triggers y seeds | `04-BASE-DE-DATOS.md` |
-| Consumir o auditar la API (99 endpoints) | `05-API-REST.md` |
+| Consumir o auditar la API (100 endpoints) | `05-API-REST.md` |
 | Ver roles, usuarios semilla y matriz de permisos | `06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Reproducir el recorrido completo de cada rol | `07-FLUJOS-POR-ROL.md` |
 | Entender un proceso de negocio de inicio a fin | `08-PROCESOS-DE-NEGOCIO.md` |
@@ -47,7 +47,7 @@
 | Paneles frontend | 4 + autenticación |
 | Tablas PostgreSQL | 39 |
 | Funciones + triggers | 11 objetos (6 funciones, 5 triggers) |
-| Endpoints REST | 99 (61 GET, 25 POST, 10 PUT, 2 DELETE) |
+| Endpoints REST | 100 (62 GET, 25 POST, 11 PUT, 2 DELETE) |
 | Routers backend | 13 |
 | Controladores backend | 13 |
 | Servicios backend | 15 |
@@ -84,7 +84,7 @@ La carpeta `docs/` de la raíz conserva documentación operativa:
 - `docs/INSTALACION.md` — instalación local (tiene datos desactualizados de SMTP y “26 tablas”).
 - `docs/GUIA_TESTEO.md` — checklist manual por rol.
 - `docs/CREDENCIALES.md` — credenciales de prueba.
-- `docs/MAPEO_ENDPOINTS.txt` — mapeo previo de endpoints (histórico; el conteo vigente es 99).
+- `docs/MAPEO_ENDPOINTS.txt` — mapeo previo de endpoints (histórico; el conteo vigente es 100).
 
 Este conjunto nuevo (`documentacion/`) amplía y corrige ese material.
 

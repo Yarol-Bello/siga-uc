@@ -105,8 +105,12 @@
 .btn-primary {
   background: #800020;
   color: white;
-  &:hover {
+  &:hover:not(:disabled) {
     background: #600018;
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 
