@@ -58,6 +58,7 @@ cambios y para pruebas de regresión.
 | 47 | Campanita | `HeaderComponent` | `GET /api/notificaciones/no-leidas` | `notificacionController.contarNoLeidas` | `notificacionService.contarNoLeidas` | `notificacionDao.contarNoLeidas` | `notificaciones` |
 | 48 | Buzón | `HeaderComponent` | `GET /api/notificaciones`, `PUT /:id/leer`, `PUT /leer-todas` | `notificacionController` | `notificacionService` | `notificacionDao` | `notificaciones`, `usuarios` |
 | 49 | Carné QR | `HeaderComponent` | `GET /api/auth/perfil` | `authController.perfil` | `authService.getPerfil` | `usuarioDao.getCredencialQR` | `credenciales_qr`, `usuarios` |
+| 50 | Cambio de contraseña | `CambiarPasswordComponent` | `PUT /api/auth/cambiar-password` | `authController.cambiarPassword` | `authService.cambiarPassword` | `usuarioDao.getPasswordHashById`, `usuarioDao.actualizarPassword` | `usuarios` |
 
 ---
 

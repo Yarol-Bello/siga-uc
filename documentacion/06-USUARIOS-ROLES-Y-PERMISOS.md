@@ -54,13 +54,14 @@ stateDiagram-v2
 
 | Colectivo | Contraseña | Se fuerza cambio |
 |---|---|---|
-| Admin/Secretaría/Docentes creados desde UI | `UC2026*` | No automáticamente |
-| Alumno matriculado | `UC<DNI>` | No |
-| Reset por Admin/Personal | `UC<DNI>` | Marca `requiere_cambio_password = TRUE` |
-| Recuperación por correo | La elige el usuario | Se limpia la marca |
+| Admin/Secretaría/Docentes creados desde UI | `UC2026*` o la definida al crear | Sí (H18) |
+| Alumno matriculado | `UC<DNI>` | Sí (H18) |
+| Reset por Admin/Personal | `UC<DNI>` | Sí: marca `requiere_cambio_password = TRUE` |
+| Recuperación por correo | La elige el usuario | No: se limpia la marca |
 
-> `requiere_cambio_password` se guarda y se devuelve al frontend, pero **no existe pantalla
-> obligatoria de cambio**. El login no bloquea por ese flag.
+> Si `requiere_cambio_password = TRUE`, el login redirige a `/cambiar-password` y el backend
+> bloquea todos los endpoints salvo el cambio de contraseña, el perfil, la verificación de
+> token y el logout. El flag se limpia al cambiar la contraseña.
 
 ## 4. Matriz de permisos efectivos (API)
 
@@ -69,6 +70,7 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 | Capacidad / módulo | ADMIN | SECRETARIA | DOCENTE | ESTUDIANTE |
 |---|---|---|---|---|
 | Login / logout / perfil | ✅ | ✅ | ✅ | ✅ |
+| Cambiar contraseña propia | ✅ | ✅ | ✅ | ✅ |
 | Recuperar contraseña | ✅ | ✅ | ✅ | ✅ |
 | Dashboard ejecutivo (`/reportes/dashboard`) | ✅ | ✅ | ❌ | ❌ |
 | Alumnos: listar / ver / buscar | ✅ | ✅ | 👁 | 👁 |
@@ -113,6 +115,7 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 |---|---|---|---|---|---|
 | `/login` | Login | Público | Público | Público | Público |
 | `/reset-password` | Reset | Público | Público | Público | Público |
+| `/cambiar-password` | Cambio obligatorio/voluntario | Autenticado | Autenticado | Autenticado | Autenticado |
 | `/admin` | Dashboard | ✅ | ❌ | ❌ | ❌ |
 | `/admin/alumnos` | Padrón | ✅ | ❌ | ❌ | ❌ |
 | `/admin/personal` | Personal | ✅ | ❌ | ❌ | ❌ |
@@ -225,6 +228,7 @@ Si un usuario intenta una ruta de otro rol, `roleGuard` lo devuelve a su dashboa
    la UI, porque el backend valida el JWT, pero un token de rol superior sigue mandando.
 4. **Reset por DNI:** el Admin puede resetear cualquier cuenta conociendo el DNI, sin
    confirmación adicional ni auditoría.
-5. **`requiere_cambio_password` no aplicado:** no hay flujo forzado de cambio.
+5. **`requiere_cambio_password`:** ya se aplica en frontend (redirección) y backend (403). El
+   cambio voluntario también está disponible en `/cambiar-password`.
 6. **Envío de notificaciones:** ADMIN y DOCENTE pueden enviar a cualquier usuario; no se
    valida relación docente-alumno.

@@ -7,6 +7,14 @@ const authService = require("../services/authService");
 const autorizacionDao = require("../dao/autorizacionDao");
 const response = require("../utils/response");
 
+// Rutas permitidas mientras el usuario debe cambiar su contraseña.
+const RUTAS_PERMITIDAS_CAMBIO_PASSWORD = new Set([
+  "/api/auth/cambiar-password",
+  "/api/auth/logout",
+  "/api/auth/perfil",
+  "/api/auth/verify",
+]);
+
 /**
  * Verificar que el usuario esté autenticado (JWT válido + estado activo).
  */
@@ -43,6 +51,22 @@ const verificarAutenticacion = async (req, res, next) => {
     }
 
     req.usuario = { ...decoded, ...contexto };
+
+    // Si el usuario tiene una contraseña temporal, solo puede cambiarla
+    // (y consultar su perfil o cerrar sesión) hasta que la actualice.
+    if (contexto.requiere_cambio_password) {
+      const rutaActual = (req.originalUrl || "").split("?")[0].replace(/\/+$/, "");
+
+      if (!RUTAS_PERMITIDAS_CAMBIO_PASSWORD.has(rutaActual)) {
+        return response.error(
+          res,
+          403,
+          "Debe cambiar su contraseña antes de continuar.",
+          { codigo: "CAMBIO_PASSWORD_REQUERIDO" },
+        );
+      }
+    }
+
     next();
   } catch (error) {
     if (error.statusCode) {

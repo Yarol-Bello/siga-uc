@@ -120,9 +120,9 @@ const crear = async (data) => {
     const usuarioSql = `
       INSERT INTO usuarios (
         dni, nombres, apellidos, correo_institucional, correo_personal,
-        password_hash, telefono, id_rol, estado
+        password_hash, telefono, id_rol, estado, requiere_cambio_password
       )
-      VALUES ($1, $2, $3, $4, $5, crypt($6, gen_salt('bf', 10)), $7, $8, 'ACTIVO')
+      VALUES ($1, $2, $3, $4, $5, crypt($6, gen_salt('bf', 10)), $7, $8, 'ACTIVO', TRUE)
       RETURNING id_usuario
     `;
     const usuarioResult = await client.query(usuarioSql, [

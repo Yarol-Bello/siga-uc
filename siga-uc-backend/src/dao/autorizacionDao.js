@@ -11,6 +11,7 @@ const getContextoUsuario = async (id_usuario) => {
       u.id_usuario,
       u.dni,
       u.estado,
+      u.requiere_cambio_password,
       p.id_personal,
       a.id_alumno
     FROM usuarios u

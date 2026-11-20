@@ -4,6 +4,9 @@ Resultado del análisis del código el 19/11/2026. **No se modificó la aplicaci
 hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 (S = <1 día, M = 1–3 días, L = >3 días).
 
+> **Actualización 20/11/2026:** H18 (cambio obligatorio de contraseña) quedó resuelto con
+> endpoint autenticado, pantalla `/cambiar-password` y bloqueo backend.
+
 ---
 
 ## 1. Hallazgos críticos y altos
@@ -182,7 +185,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Mensaje genérico al cliente; detalle solo en logs |
 | Esfuerzo | S |
 
-### H18 — `requiere_cambio_password` no se aplica
+### H18 — Cambio obligatorio de contraseña (resuelto)
 
 | Campo | Detalle |
 |---|---|
@@ -191,6 +194,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Contraseñas temporales pueden quedar indefinidamente |
 | Recomendación | Pantalla obligatoria post-login y bloqueo de otras rutas |
 | Esfuerzo | M |
+| Estado | ✅ Resuelto (20/11/2026): endpoint `PUT /api/auth/cambiar-password`, pantalla `/cambiar-password`, redirect en guards y bloqueo API |
 
 ### H19 — Retiro no congela expediente ni usuario
 
@@ -392,7 +396,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 1. H01 autorización por pertenencia/rol en GET.
 2. H02 revalidar estado del usuario.
 3. H03 rate limiting.
-4. H18 cambio obligatorio de contraseña.
+4. ~~H18 cambio obligatorio de contraseña~~ ✅
 5. H07 auditoría de eventos críticos.
 6. H17 mensajes de error seguros.
 

@@ -3,7 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LoginRequest, Usuario } from '../models/usuario.model';
+import {
+  LoginRequest,
+  CambiarPasswordRequest,
+  Usuario,
+} from '../models/usuario.model';
 
 /**
  * Servicio de Autenticación
@@ -100,6 +104,61 @@ export class AuthService {
    */
   getPerfil(): Observable<any> {
     return this.http.get<any>(`${this.API_URL}/perfil`);
+  }
+
+  /**
+   * Cambiar la contraseña del usuario autenticado
+   */
+  cambiarPassword(data: CambiarPasswordRequest): Observable<any> {
+    return this.http.put<any>(`${this.API_URL}/cambiar-password`, data);
+  }
+
+  /**
+   * Verificar si el usuario debe cambiar su contraseña
+   */
+  requiereCambioPassword(): boolean {
+    return this.usuarioActual()?.requiere_cambio_password === true;
+  }
+
+  /**
+   * Marcar la contraseña como actualizada (flag FALSE)
+   */
+  marcarPasswordCambiada(): void {
+    this.establecerRequiereCambioPassword(false);
+  }
+
+  /**
+   * Actualizar el flag de cambio obligatorio en el usuario actual
+   */
+  establecerRequiereCambioPassword(valor: boolean): void {
+    const usuario = this.usuarioActual();
+    if (!usuario) return;
+
+    const actualizado: Usuario = {
+      ...usuario,
+      requiere_cambio_password: valor,
+    };
+
+    localStorage.setItem(this.USER_KEY, JSON.stringify(actualizado));
+    this.usuarioActual.set(actualizado);
+  }
+
+  /**
+   * Ruta del dashboard según el rol actual
+   */
+  getDashboardUrl(): string {
+    switch (this.usuarioActual()?.rol) {
+      case 'ADMIN':
+        return '/admin';
+      case 'DOCENTE':
+        return '/docente';
+      case 'ESTUDIANTE':
+        return '/estudiante';
+      case 'SECRETARIA':
+        return '/secretaria';
+      default:
+        return '/login';
+    }
   }
 
   // ============================================================

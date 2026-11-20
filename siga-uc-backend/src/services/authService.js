@@ -177,9 +177,87 @@ const resetPassword = async (dni) => {
   };
 };
 
+/**
+ * Cambiar la contraseña de un usuario autenticado
+ * @param {number} id_usuario - ID del usuario autenticado
+ * @param {string} passwordActual - Contraseña actual en texto plano
+ * @param {string} passwordNueva - Nueva contraseña en texto plano
+ * @param {string} confirmarPassword - Confirmación de la nueva contraseña
+ * @returns {Promise<object>} Datos del usuario actualizado
+ */
+const cambiarPassword = async (
+  id_usuario,
+  passwordActual,
+  passwordNueva,
+  confirmarPassword,
+) => {
+  if (!passwordActual || !passwordNueva || !confirmarPassword) {
+    const error = new Error("Debe completar todos los campos");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (passwordNueva.length < 6) {
+    const error = new Error(
+      "La nueva contraseña debe tener al menos 6 caracteres",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (passwordNueva !== confirmarPassword) {
+    const error = new Error("Las contraseñas no coinciden");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (passwordNueva === passwordActual) {
+    const error = new Error(
+      "La nueva contraseña debe ser diferente a la actual",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const passwordHash = await usuarioDao.getPasswordHashById(id_usuario);
+
+  if (!passwordHash) {
+    const error = new Error("Usuario no encontrado");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const passwordValida = await bcrypt.compare(passwordActual, passwordHash);
+
+  if (!passwordValida) {
+    const error = new Error("La contraseña actual es incorrecta");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const usuarioActualizado = await usuarioDao.actualizarPassword(
+    id_usuario,
+    passwordNueva,
+  );
+
+  if (!usuarioActualizado) {
+    const error = new Error("Usuario no encontrado");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
+    usuario: {
+      ...usuarioActualizado,
+      requiere_cambio_password: false,
+    },
+  };
+};
+
 module.exports = {
   login,
   verificarToken,
   getPerfil,
   resetPassword,
+  cambiarPassword,
 };

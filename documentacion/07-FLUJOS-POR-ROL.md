@@ -17,7 +17,7 @@ proceso) y `05-API-REST.md` (contrato técnico).
 | 3 | Clic “Ingresar” | `POST /api/auth/login` |
 | 4 | — | Backend busca por DNI, verifica estado `ACTIVO`, compara bcrypt, actualiza `ultimo_login`, firma JWT |
 | 5 | — | Frontend guarda `siga_uc_token` y `siga_uc_user` en `localStorage` |
-| 6 | — | Redirección por rol: `/admin`, `/secretaria`, `/docente`, `/estudiante` |
+| 6 | — | Si `requiere_cambio_password = true` → `/cambiar-password`; si no, redirección por rol: `/admin`, `/secretaria`, `/docente`, `/estudiante` |
 | 7 | Ve layout con header + sidebar | Header carga contador de no leídas y arranca polling cada 30 s |
 
 ### 0.2 Navegación protegida
@@ -25,9 +25,23 @@ proceso) y `05-API-REST.md` (contrato técnico).
 ```text
 Ruta solicitada
   → authGuard: ¿token existe y no expiró?  ──no──> /login?returnUrl=...
+              ¿requiere cambio de contraseña? ──sí──> /cambiar-password
   → roleGuard: ¿rol autorizado?            ──no──> dashboard de su rol
   → carga lazy del componente
 ```
+
+### 0.2.1 Cambio obligatorio de contraseña
+
+1. El login devuelve `requiere_cambio_password`.
+2. Si es `TRUE`, el frontend redirige a `/cambiar-password` y `authGuard`/`roleGuard` bloquean
+   los módulos.
+3. La API también bloquea: cualquier endpoint autenticado fuera de la allowlist responde `403`
+   con `errors.codigo = "CAMBIO_PASSWORD_REQUERIDO"`.
+4. El usuario envía `password_actual`, `password_nueva` (≥6) y `confirmar_password` a
+   `PUT /api/auth/cambiar-password`.
+5. El backend verifica la actual con bcrypt, actualiza el hash con `crypt` y pone
+   `requiere_cambio_password = FALSE`.
+6. El frontend actualiza `localStorage`, marca el flag como `false` y redirige al dashboard.
 
 ### 0.3 Header (todos los roles)
 
@@ -505,7 +519,7 @@ sequenceDiagram
 
 | Punto | Riesgo |
 |---|---|
-| Login | No fuerza cambio de contraseña aunque `requiere_cambio_password=true` |
+| Login | Si `requiere_cambio_password=true`, redirige a `/cambiar-password` y la API bloquea los módulos |
 | Matrícula | El alumno queda `PendientePago`; si nadie cobra, no aparece en asistencia/notas |
 | Edición de alumno | No sincroniza nombres/correo con `usuarios` |
 | Retiro | No desactiva usuario ni congela expediente |

@@ -81,6 +81,7 @@ const findById = async (id) => {
       u.telefono,
       u.estado,
       u.ultimo_login,
+      u.requiere_cambio_password,
       r.id_rol,
       r.nombre_rol
     FROM usuarios u
@@ -90,6 +91,22 @@ const findById = async (id) => {
   `;
   const result = await query(sql, [id]);
   return result.rows[0] || null;
+};
+
+/**
+ * Obtener únicamente el hash de contraseña de un usuario
+ * @param {number} id_usuario - ID del usuario
+ * @returns {Promise<string|null>}
+ */
+const getPasswordHashById = async (id_usuario) => {
+  const sql = `
+    SELECT password_hash
+    FROM usuarios
+    WHERE id_usuario = $1
+    LIMIT 1
+  `;
+  const result = await query(sql, [id_usuario]);
+  return result.rows[0]?.password_hash || null;
 };
 
 /**
@@ -234,6 +251,7 @@ module.exports = {
   findByDni,
   findByCorreo,
   findById,
+  getPasswordHashById,
   updateUltimoLogin,
   getAlumnoInfo,
   getPersonalInfo,

@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(esta sesión)` | `fix(auth): forzar cambio de contraseña en primer inicio` |
 | `d575319` | `feat(alumnos): agregar correo de alumno para recuperacion de contraseña` |
 | `12cbd22` | `fix(auth): usar DNI como contraseña por defecto en alumnos y personal` |
 | `81aa521` | `fix(tesoreria): corregir flujo de matricula, pagos, caja y kpis` |
@@ -152,6 +153,23 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   - Notas individuales, masivas y upsert de nota final → `409`.
 - Frontend docente muestra cuántas notas finales se calcularon.
 
+#### H18 — Cambio obligatorio de contraseña
+
+- Nuevo endpoint `PUT /api/auth/cambiar-password` (autenticado). Valida contraseña actual con
+  `bcrypt.compare`, nueva ≥ 6, confirmación y que sea distinta de la actual. Hashea con
+  `crypt(..., gen_salt('bf',10))` y pone `requiere_cambio_password = FALSE`.
+- `authMiddleware.verificarAutenticacion` bloquea todos los endpoints autenticados si el flag es
+  `TRUE`, salvo `/auth/cambiar-password`, `/auth/logout`, `/auth/perfil` y `/auth/verify`.
+  Responde `403` con `errors.codigo = "CAMBIO_PASSWORD_REQUERIDO"`.
+- Nuevo componente standalone `/cambiar-password` con formulario (actual, nueva, confirmar),
+  validaciones, mostrar/ocultar y cierre de sesión.
+- `authGuard` y `roleGuard` redirigen a `/cambiar-password` si el flag está activo. El login
+  también redirige allí antes de elegir el dashboard por rol.
+- `authInterceptor` detecta el `403` del backend, actualiza el flag local y redirige.
+- `AuthService` actualiza `localStorage` tras el cambio y expone `getDashboardUrl()`.
+- Los alumnos y el personal nuevos se crean con `requiere_cambio_password = TRUE`.
+- Documentación actualizada: 05, 06, 07, 09, 10, 11, 15, AGENTS.md y este handoff.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -163,6 +181,10 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 - H04: guardado individual/masivo → `notas_finales_area` poblada.
 - H06: acta específica cerrada → 409 en nota individual y nota final; no se guardaron datos.
 - Los datos de prueba usados para H04/H06 fueron eliminados.
+- H18: 22/22 pruebas de API OK. Login con flag `TRUE` → módulos `403`; `/auth/perfil` y
+  `/auth/logout` permitidos; validaciones 400; cambio exitoso → flag `FALSE`; login con la
+  nueva contraseña y acceso normal. Usuario de prueba eliminado.
+- `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---
 
@@ -181,7 +203,8 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 7. **Autorización en backend, no solo UI.** `checkRole`/ownership y filtros SQL; no confiar en que Angular oculta módulos.
 8. **Contexto del usuario:** `req.usuario.id_alumno` e `id_personal` se obtienen en la revalidación H02. No confiar solo en IDs de la URL/body.
 9. **Rate limit:** `app.set("trust proxy", 1)` solo en producción. No probar 6 logins desde la misma IP en desarrollo sin reiniciar el backend, porque queda bloqueada 15 min.
-10. **Contraseñas:** el DNI por defecto es una regla solicitada, pero es débil. H18 debe forzar el cambio.
+10. **Contraseñas:** el DNI por defecto es una regla solicitada, pero es débil. H18 ya fuerza el
+    cambio en el primer inicio; no desactivar ese bloqueo.
 11. **Documentación:** `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` es la fuente de hallazgos/roadmap; `documentacion/06` roles; `04` BD; `05` API.
 12. **Commits:** semánticos, atómicos, en español, un solo commit por tarea.
 
@@ -189,31 +212,20 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 ## 4. PENDIENTES (ROADMAP)
 
-### Siguiente inmediato: H18 — Cambio obligatorio de contraseña
+### H18 — Cambio obligatorio de contraseña (completado 20/11/2026)
 
-**Problema:** `requiere_cambio_password` se guarda y se devuelve en el login, pero no existe pantalla ni bloqueo. Los usuarios con contraseña temporal (DNI/reset) pueden seguir usando el sistema sin cambiarla.
+Implementado y probado:
 
-**Prompt exacto para la nueva sesión:**
+- Endpoint `PUT /api/auth/cambiar-password` con verificación de contraseña actual, nueva ≥ 6,
+  confirmación, hash con `crypt` y limpieza del flag.
+- Bloqueo backend con `403 CAMBIO_PASSWORD_REQUERIDO` y allowlist de perfil, verify, logout y
+  cambio de contraseña.
+- Pantalla `/cambiar-password`, redirección desde login y guards, actualización de
+  `localStorage`, manejo del `403` en el interceptor.
+- Alumnos y personal nuevos creados con `requiere_cambio_password = TRUE`.
+- Pruebas API 22/22 OK y build Angular OK.
 
-```text
-Lee HANDOFF_SESSION.md y la documentación en documentacion/ (especialmente 06-USUARIOS-ROLES-Y-PERMISOS.md, 11-SEGURIDAD-AUDITORIA-E-INTEGRIDAD.md y 15-HALLAZGOS-RIESGOS-Y-MEJORAS.md).
-
-Implementa el hallazgo H18: cambio obligatorio de contraseña.
-Objetivo: si usuarios.requiere_cambio_password = TRUE, el usuario no puede usar los módulos normales hasta cambiar su contraseña.
-
-Requisitos:
-1. Backend: agregar endpoint para cambiar contraseña autenticado (verificar contraseña actual, nueva >= 6, confirmar, hashear con bcrypt/crypt, poner requiere_cambio_password = FALSE).
-2. Login: seguir devolviendo requiere_cambio_password; el frontend debe redirigir a /cambiar-password cuando sea TRUE.
-3. Frontend Angular: crear pantalla/componente de cambio obligatorio, protegerlo con authGuard, y hacer que authGuard/roleGuard redirijan allí si el flag está activo. Actualizar localStorage del usuario tras el cambio.
-4. No permitir navegar a /admin, /docente, /estudiante ni /secretaria mientras el flag sea TRUE.
-5. No cambiar el esquema de la BD ni el formato JSON { success, message, ... }.
-6. Cambios quirúrgicos, sin refactors masivos.
-7. Probar login con un usuario que tenga el flag TRUE, cambio exitoso, flag FALSE y acceso normal.
-8. Actualizar documentacion/ (como mínimo 06 y 15) y AGENTS.md si aplica.
-9. Un solo commit: "fix(auth): forzar cambio de contraseña en primer inicio".
-```
-
-### Después: Fase 4 — Operación y calidad
+### Siguiente: Fase 4 — Operación y calidad
 
 Tomar como fuente `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`:
 
@@ -237,9 +249,9 @@ Copiar y pegar:
 ```text
 Estás retomando SIGA-UC (PostgreSQL 18 + Angular 21 + Node/Express). Antes de escribir código, lee HANDOFF_SESSION.md en la raíz y revisa documentacion/README.md, documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md, documentacion/11-SEGURIDAD-AUDITORIA-E-INTEGRIDAD.md y documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md.
 
-Contexto: Fase 1 (seguridad) y Fase 2 (integridad académica) ya están implementadas y commiteadas. La fuente de verdad es el código.
+Contexto: Fase 1 (seguridad), Fase 2 (integridad académica) y H18 (cambio obligatorio de contraseña) ya están implementadas y commiteadas. La fuente de verdad es el código.
 
-Comienza directamente con el hallazgo H18: cambio obligatorio de contraseña. Sigue el prompt H18 definido en HANDOFF_SESSION.md. No cambies el esquema de la BD, no rompas el JSON { success, message, ... }, usa parches quirúrgicos y entrega un solo commit con el mensaje indicado.
+Comienza con la Fase 4, empezando por H12 (año lectivo 2026 hardcodeado). No cambies el esquema de la BD, no rompas el JSON { success, message, ... }, usa parches quirúrgicos y entrega commits atómicos.
 
-Al terminar, actualiza HANDOFF_SESSION.md con el nuevo estado y el siguiente pendiente del roadmap (Fase 4).
+Al terminar, actualiza HANDOFF_SESSION.md con el nuevo estado y el siguiente pendiente del roadmap.
 ```

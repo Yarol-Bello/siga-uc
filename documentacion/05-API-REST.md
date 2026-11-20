@@ -59,7 +59,7 @@ Error:
 
 ---
 
-## 3. Autenticación — `/api/auth` (8)
+## 3. Autenticación — `/api/auth` (9)
 
 | # | Método | Ruta | Acceso | Descripción | Body / params |
 |---|---|---|---|---|---|
@@ -67,10 +67,15 @@ Error:
 | 2 | GET | `/api/auth/perfil` | Autenticado | Perfil + `info_adicional` + `credencial_qr` | — |
 | 3 | GET | `/api/auth/verify` | Autenticado | Verifica token y devuelve payload | — |
 | 4 | POST | `/api/auth/logout` | Autenticado | Logout lógico (el cliente borra token) | — |
-| 5 | PUT | `/api/auth/reset-password` | ADMIN | Restablece contraseña por DNI a `UC<DNI>` | `{ dni }` |
-| 6 | POST | `/api/auth/recuperar-password` | Público | Solicita token por correo | `{ identificador }` (DNI o correo) |
-| 7 | GET | `/api/auth/validar-token/:token` | Público | Valida token de recuperación | path |
-| 8 | POST | `/api/auth/restablecer-password` | Público | Cambia contraseña con token | `{ token, password }` (≥6) |
+| 5 | PUT | `/api/auth/cambiar-password` | Autenticado | Cambia la contraseña propia; exige la actual y limpia `requiere_cambio_password` | `{ password_actual, password_nueva, confirmar_password }` (≥6) |
+| 6 | PUT | `/api/auth/reset-password` | ADMIN | Restablece contraseña por DNI a `UC<DNI>` | `{ dni }` |
+| 7 | POST | `/api/auth/recuperar-password` | Público | Solicita token por correo | `{ identificador }` (DNI o correo) |
+| 8 | GET | `/api/auth/validar-token/:token` | Público | Valida token de recuperación | path |
+| 9 | POST | `/api/auth/restablecer-password` | Público | Cambia contraseña con token | `{ token, password }` (≥6) |
+
+> Si `requiere_cambio_password = TRUE`, todos los endpoints autenticados salvo
+> `/auth/cambiar-password`, `/auth/logout`, `/auth/perfil` y `/auth/verify` responden `403`
+> con `errors.codigo = "CAMBIO_PASSWORD_REQUERIDO"`.
 
 **Login — respuesta:**
 

@@ -42,7 +42,6 @@ terceros.
 
 - Registrar LOGIN/LOGOUT en bitácora.
 - Rate limiting y bloqueo por intentos.
-- Forzar cambio de contraseña si `requiere_cambio_password`.
 
 ---
 
@@ -121,6 +120,7 @@ terceros.
 7. Inserta `usuarios`:
    - rol ESTUDIANTE (subconsulta por nombre),
    - contraseña `UC<DNI>` con bcrypt,
+   - `requiere_cambio_password = TRUE`,
    - estado ACTIVO.
 8. Genera código `EST-XXX`:
    - `MAX(CAST(SUBSTRING(codigo_estudiante FROM 5) AS INTEGER)) + 1`,

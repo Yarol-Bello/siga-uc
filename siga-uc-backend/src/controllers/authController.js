@@ -169,6 +169,44 @@ const restablecerPassword = async (req, res) => {
   }
 };
 
+/**
+ * PUT /api/auth/cambiar-password
+ * Cambiar la contraseña del usuario autenticado
+ */
+const cambiarPassword = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return response.validationError(
+        res,
+        errors.array().map((e) => ({ campo: e.path, mensaje: e.msg })),
+      );
+    }
+
+    const { password_actual, password_nueva, confirmar_password } = req.body;
+
+    const resultado = await authService.cambiarPassword(
+      req.usuario.id_usuario,
+      password_actual,
+      password_nueva,
+      confirmar_password,
+    );
+
+    return response.success(
+      res,
+      200,
+      "Contraseña actualizada correctamente",
+      resultado,
+    );
+  } catch (error) {
+    if (error.statusCode) {
+      return response.error(res, error.statusCode, error.message);
+    }
+    console.error("❌ Error al cambiar contraseña:", error);
+    return response.error(res, 500, "Error interno del servidor");
+  }
+};
+
 module.exports = {
   login,
   perfil,
@@ -178,4 +216,5 @@ module.exports = {
   solicitarRecuperacion,
   validarToken,
   restablecerPassword,
+  cambiarPassword,
 };

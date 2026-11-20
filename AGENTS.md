@@ -158,7 +158,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - `reporteDao.getResumenAsistenciaGrado` **ignora el año**.
 - El SIAGIE solo detecta cursos con prefijos `ARITM`, `ALGEBRA`, `COMUNIC`, `FISICA`.
 - Los IDs de conceptos de tesorería y los meses Oct–Dic están hardcodeados en el frontend.
-- `requiere_cambio_password` se guarda, pero **no se fuerza** el cambio.
+- Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
+  `/cambiar-password`.
 - No hay tests automatizados; el testeo es manual (`docs/GUIA_TESTEO.md`).
 
 ---

@@ -57,6 +57,32 @@ router.get("/perfil", verificarAutenticacion, authController.perfil);
 router.get("/verify", verificarAutenticacion, authController.verify);
 
 /**
+ * @route   PUT /api/auth/cambiar-password
+ * @desc    Cambiar la contraseña del usuario autenticado
+ * @access  Privado (requiere JWT)
+ */
+router.put(
+  "/cambiar-password",
+  verificarAutenticacion,
+  [
+    body("password_actual")
+      .notEmpty()
+      .withMessage("La contraseña actual es obligatoria"),
+    body("password_nueva")
+      .notEmpty()
+      .withMessage("La nueva contraseña es obligatoria")
+      .isLength({ min: 6 })
+      .withMessage("La nueva contraseña debe tener al menos 6 caracteres"),
+    body("confirmar_password")
+      .notEmpty()
+      .withMessage("Debe confirmar la nueva contraseña")
+      .custom((value, { req }) => value === req.body.password_nueva)
+      .withMessage("Las contraseñas no coinciden"),
+  ],
+  authController.cambiarPassword,
+);
+
+/**
  * @route   POST /api/auth/logout
  * @desc    Cerrar sesión
  * @access  Privado (requiere JWT)

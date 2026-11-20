@@ -64,6 +64,12 @@ export class LoginComponent {
       next: (response) => {
         console.log('✅ Login exitoso:', response.data.usuario);
 
+        // Si tiene una contraseña temporal, forzar el cambio antes de entrar
+        if (response.data.usuario.requiere_cambio_password) {
+          this.router.navigate(['/cambiar-password']);
+          return;
+        }
+
         // Redirigir según el rol
         const rol = response.data.usuario.rol;
         switch (rol) {

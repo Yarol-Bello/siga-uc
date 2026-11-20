@@ -19,7 +19,12 @@ código. No es una auditoría formal; es un mapa para priorizar mejoras.
 | Rate limiting | No existe | **Brecha** |
 | Bloqueo por intentos | No existe | **Brecha** |
 | MFA | No existe | Fuera de alcance |
-| Cambio obligatorio | Flag en BD, sin pantalla | **Brecha** |
+| Cambio obligatorio | Flag en BD + pantalla `/cambiar-password` + bloqueo API | Implementado (H18) |
+
+> **H18:** mientras `requiere_cambio_password = TRUE`, el backend solo permite
+> `/auth/cambiar-password`, `/auth/logout`, `/auth/perfil` y `/auth/verify`. El resto responde
+> `403` con `errors.codigo = "CAMBIO_PASSWORD_REQUERIDO"`. El frontend redirige a
+> `/cambiar-password` y actualiza el flag en `localStorage` tras el cambio.
 
 ### Flujo de recuperación
 
@@ -289,7 +294,7 @@ El detalle y las recomendaciones están en `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`.
 - [ ] Añadir rate limiting en `/auth/login`, `/auth/recuperar-password` y validación de token.
 - [ ] Añadir autorización por pertenencia en GET sensibles.
 - [ ] Revalidar estado del usuario en el middleware.
-- [ ] Implementar cambio obligatorio de contraseña.
+- [x] Implementar cambio obligatorio de contraseña.
 - [ ] Auditar login, pagos, caja y matrícula.
 - [ ] Bloquear edición de notas con acta cerrada.
 - [ ] Verificar backups y restauración.

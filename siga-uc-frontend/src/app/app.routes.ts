@@ -18,6 +18,15 @@ export const routes: Routes = [
       ),
   },
 
+  {
+    path: 'cambiar-password',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/auth/cambiar-password/cambiar-password.component').then(
+        (m) => m.CambiarPasswordComponent,
+      ),
+  },
+
   // ADMIN
   {
     path: 'admin',

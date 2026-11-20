@@ -20,7 +20,7 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-09 | El rol se toma del token, no de la BD en cada petición | `authMiddleware` | — |
 | RN-10 | Un usuario cesado no puede iniciar sesión | `authService` | 403 |
 | RN-11 | El logout es local; no invalida el token en servidor | `AuthService.logout` | — |
-| RN-12 | `requiere_cambio_password` no bloquea el login | Auth + UI | — |
+| RN-12 | Si `requiere_cambio_password = TRUE`, el login redirige a `/cambiar-password` y la API bloquea los demás endpoints | Auth + `authMiddleware` + UI | `403` con `errors.codigo = "CAMBIO_PASSWORD_REQUERIDO"` |
 
 ## 2. Correos
 

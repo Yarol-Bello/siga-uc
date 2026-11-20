@@ -24,6 +24,12 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface CambiarPasswordRequest {
+  password_actual: string;
+  password_nueva: string;
+  confirmar_password: string;
+}
+
 export interface LoginResponse {
   usuario: Usuario;
   token: string;

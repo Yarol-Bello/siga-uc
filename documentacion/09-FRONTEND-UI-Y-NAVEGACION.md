@@ -27,6 +27,7 @@ index.html
 | `''` | redirect `/login` | — | — |
 | `login` | `LoginComponent` | — | Auth |
 | `reset-password` | `ResetPasswordComponent` | — | Auth |
+| `cambiar-password` | `CambiarPasswordComponent` | `authGuard` | Auth |
 | `admin` | `AdminLayoutComponent` | `authGuard`, `roleGuard(['ADMIN'])` | Admin |
 | `admin` (hijo `''`) | `DashboardComponent` | hereda | Admin |
 | `admin/alumnos` | `AdminAlumnosComponent` | hereda | Admin |
@@ -63,9 +64,11 @@ Todas las rutas usan `loadComponent` (lazy loading).
 - Decodifica el payload del JWT con `atob` y compara `exp`.
 - Si expiró, limpia sesión y redirige a `/login?returnUrl=...`.
 - Si el token está corrupto, devuelve `false` (sin logout explícito).
+- Si `requiere_cambio_password` es `TRUE` y la ruta no es `/cambiar-password`, redirige allí.
 
 ### `roleGuard(['ROL'])`
 - Si no está autenticado → `/login`.
+- Si `requiere_cambio_password` es `TRUE` → `/cambiar-password`.
 - Si el rol no está permitido → dashboard del rol real:
   - DOCENTE → `/docente`
   - ESTUDIANTE → `/estudiante`
@@ -75,6 +78,8 @@ Todas las rutas usan `loadComponent` (lazy loading).
 ### `authInterceptor`
 - Lee `siga_uc_token`.
 - Si existe, clona la petición con `Authorization: Bearer`.
+- Si recibe `403` con `errors.codigo = "CAMBIO_PASSWORD_REQUERIDO"`, marca el flag en el usuario
+  local y redirige a `/cambiar-password`.
 - No maneja 401 globalmente; cada componente muestra su error.
 
 ## 4. Sesión y modelos
@@ -90,6 +95,11 @@ Todas las rutas usan `loadComponent` (lazy loading).
 | `getUsuarioActual()` | Signal actual |
 | `tieneRol(roles)` | Compara rol |
 | `getPerfil()` | `GET /auth/perfil` |
+| `cambiarPassword(data)` | `PUT /auth/cambiar-password` |
+| `requiereCambioPassword()` | Lee el flag del usuario actual |
+| `marcarPasswordCambiada()` | Pone el flag en `false` y actualiza `localStorage` |
+| `establecerRequiereCambioPassword(valor)` | Actualiza el flag en signal + `localStorage` |
+| `getDashboardUrl()` | Devuelve `/admin`, `/secretaria`, `/docente` o `/estudiante` |
 
 `Usuario`:
 
@@ -178,6 +188,7 @@ Cada layout contiene:
 |---|---|
 | `LoginComponent` | `POST /auth/login`, `POST /auth/recuperar-password` |
 | `ResetPasswordComponent` | `GET /auth/validar-token/:token`, `POST /auth/restablecer-password` |
+| `CambiarPasswordComponent` | `PUT /auth/cambiar-password` |
 | `HeaderComponent` | `GET /notificaciones/no-leidas`, `GET /notificaciones`, `PUT /:id/leer`, `PUT /leer-todas`, `GET /auth/perfil` |
 | `DashboardComponent` | `GET /reportes/dashboard` |
 | `AdminAlumnosComponent` | `GET /alumnos`, `GET /grados`, `POST /alumnos`, `PUT /alumnos/:id`, `PUT /alumnos/:id/retirar`, `PUT /auth/reset-password` |

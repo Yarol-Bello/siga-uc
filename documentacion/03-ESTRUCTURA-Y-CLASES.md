@@ -13,7 +13,7 @@
 | `src/app.js` | Crea Express, registra middlewares globales, 13 routers, health check, 404 y error handler; arranca en `0.0.0.0:PORT`; prueba BD y correo |
 | `src/config/env.js` | Carga `.env`, valida `DB_*` y `JWT_SECRET`, exporta configuración centralizada |
 | `src/config/database.js` | Pool `pg` (`max=20`), helper `query`, `getClient` transaccional, `testConnection` |
-| `src/middlewares/authMiddleware.js` | `verificarAutenticacion` (Bearer/JWT) y `verificarRol(...roles)` |
+| `src/middlewares/authMiddleware.js` | `verificarAutenticacion` (Bearer/JWT, estado y bloqueo por cambio de contraseña) y `verificarRol(...roles)` |
 | `src/utils/response.js` | `success`, `error`, `validationError`, `unauthorized`, `forbidden`, `notFound` |
 
 ### 1.2 Routers (13)
@@ -38,7 +38,7 @@
 
 | Controlador | Métodos | Notas |
 |---|---|---|
-| `authController.js` | `login`, `perfil`, `verify`, `logout`, `resetPassword`, `solicitarRecuperacion`, `validarToken`, `restablecerPassword` | `validationResult` en login; recuperación delega a `recuperacionService` |
+| `authController.js` | `login`, `perfil`, `verify`, `logout`, `resetPassword`, `solicitarRecuperacion`, `validarToken`, `restablecerPassword`, `cambiarPassword` | `validationResult` en login y cambio de contraseña; recuperación delega a `recuperacionService` |
 | `academicoController.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion`, `listarHorariosPorGrado` | Solo lectura |
 | `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda y año |
 | `personalController.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | Roles excluyen ESTUDIANTE |
@@ -56,7 +56,7 @@
 
 | Servicio | Métodos principales | Reglas que concentra |
 |---|---|---|
-| `authService.js` | `login`, `verificarToken`, `getPerfil`, `resetPassword` | Usuario activo, bcrypt, JWT, info adicional por rol, QR en perfil |
+| `authService.js` | `login`, `verificarToken`, `getPerfil`, `resetPassword`, `cambiarPassword` | Usuario activo, bcrypt, JWT, info adicional por rol, QR en perfil, cambio de contraseña con verificación de la actual |
 | `academicoService.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion`, `listarHorariosPorGrado` | 404 si no existe; agrega tutor/competencias |
 | `alumnoService.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | DNI único, campos obligatorios, no retirar dos veces |
 | `personalService.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | DNI de 8, cese con motivo, no cesar dos veces |

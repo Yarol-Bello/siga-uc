@@ -19,6 +19,12 @@ export const roleGuard = (rolesPermitidos: string[]): CanActivateFn => {
       return false;
     }
 
+    // Si debe cambiar su contraseña, no puede acceder a módulos normales
+    if (authService.requiereCambioPassword()) {
+      router.navigate(['/cambiar-password']);
+      return false;
+    }
+
     // Verificar si el usuario tiene uno de los roles permitidos
     if (authService.tieneRol(rolesPermitidos)) {
       return true;
