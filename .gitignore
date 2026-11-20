@@ -19,6 +19,8 @@ siga-uc-frontend/node_modules/
 database/siga_uc_backup.sql
 *.backup
 *.dump
+siga-uc-backend/backups/
+backups/
 
 # ============================================================
 # UPLOADS TEMPORALES (ignorar contenido, mantener estructura)

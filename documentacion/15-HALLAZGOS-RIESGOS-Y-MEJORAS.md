@@ -7,7 +7,8 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > **Actualización 20/11/2026:** H18 (cambio obligatorio de contraseña) quedó resuelto con
 > endpoint autenticado, pantalla `/cambiar-password` y bloqueo backend. H12 (año lectivo y
 > conceptos hardcodeados) quedó resuelto con `ANIO_LECTIVO`, `GET /api/configuracion` y
-> conceptos dinámicos.
+> conceptos dinámicos. H25 (backup) quedó resuelto con `npm run backup`, script Node y guía de
+> programación en Render/Supabase.
 
 ---
 
@@ -259,7 +260,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Unit tests de services, integración de endpoints, E2E de flujos críticos, GitHub Actions |
 | Esfuerzo | L |
 
-### H25 — Sin backup automatizado
+### H25 — Sin backup automatizado (resuelto)
 
 | Campo | Detalle |
 |---|---|
@@ -268,6 +269,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Pérdida de datos ante incidente |
 | Recomendación | Tarea diaria + retención + prueba de restauración |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (20/11/2026): `scripts/backup.js`, `npm run backup`, `.gitignore` y documentación Render/Supabase |
 
 ---
 
@@ -422,7 +424,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 ### Fase 4 — Operación y calidad (2–3 semanas)
 
 1. H24 tests + CI.
-2. H25 backups automáticos.
+2. ~~H25 backups automáticos~~ ✅
 3. H23 paginación.
 4. H11 errores visibles en lotes.
 5. ~~H12 año lectivo configurable~~ ✅

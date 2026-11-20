@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H25)` | `feat(infra): script de backup automatico de PostgreSQL (H25)` |
 | `(sesión H12)` | `fix(config): centralizar año lectivo (H12)` |
 | `(sesión H18)` | `fix(auth): forzar cambio de contraseña en primer inicio` |
 | `d575319` | `feat(alumnos): agregar correo de alumno para recuperacion de contraseña` |
@@ -185,6 +186,17 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 - `database/preparar_anio_lectivo.sql` copia conceptos del año anterior de forma idempotente
   por nombre + año, sin tocar datos históricos.
 
+#### H25 — Backup automatizado
+
+- Nuevo `siga-uc-backend/scripts/backup.js` y comando `npm run backup`.
+- Usa `DATABASE_URL` si existe; si no, `DB_*`. Soporta `DB_SSL=true` y `BACKUP_DIR`.
+- Genera `backup_siga_uc_YYYY-MM-DD_HH-mm-ss.sql` en `siga-uc-backend/backups/`.
+- Si `pg_dump` no está instalado, muestra un mensaje amigable con instrucciones.
+- `.gitignore` excluye `siga-uc-backend/backups/`.
+- `documentacion/12` documenta ejecución local, Render Cron Job, disco persistente y Supabase
+  (conexión directa/session pooler, no transaction pooler).
+- Sin escrituras ni borrados en la base de datos.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -203,6 +215,9 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   prioridad; alumno nuevo en 2027; pre-ticket y pensión con conceptos 2027; script de conceptos
   idempotente (11 filas 2026 intactas). UI verificada con “Año Lectivo 2027” y matrícula 2027
   usando el concepto real. Datos de prueba eliminados.
+- H25: `npm run backup` generó un `.sql` de 143.6 KB; restauración en `siga_uc_restore_test`
+  devolvió 39 tablas, 33 usuarios y 24 alumnos; luego se eliminó la BD de prueba. También se
+  probaron `DATABASE_URL`, `BACKUP_DIR`, el mensaje amigable sin `pg_dump` y `git check-ignore`.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---
@@ -228,6 +243,9 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 12. **Commits:** semánticos, atómicos, en español, un solo commit por tarea.
 13. **Año lectivo:** no introducir literales `2026`. Backend: `getAnioLectivo()`; frontend:
     `ConfiguracionService.anioLectivo`. Un `?anio=YYYY` explícito siempre tiene prioridad.
+14. **Backups:** `npm run backup` genera `.sql` en `siga-uc-backend/backups/` (ignorado). No
+    commitear datos personales. En Render se requiere `pg_dump` y disco persistente o subida
+    externa.
 
 ---
 
@@ -248,11 +266,10 @@ Implementado y probado:
 
 ### Siguiente: Fase 4 — Operación y calidad
 
-> H12 quedó completado. El siguiente pendiente es H25.
+> H12 y H25 quedaron completados. El siguiente pendiente es H23.
 
 Tomar como fuente `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`:
 
-- **H25:** backups automáticos de PostgreSQL (script + tarea programada + prueba de restauración).
 - **H23:** paginación server-side en alumnos, personal, pagos, pre-tickets y bitácora.
 - **H24:** tests automatizados y CI/CD (unitarios de services, integración de endpoints, E2E de flujos críticos).
 - **H11:** visibilizar errores de guardados masivos (hoy la UI solo muestra insertados).
@@ -271,9 +288,9 @@ Copiar y pegar:
 ```text
 Estás retomando SIGA-UC (PostgreSQL 18 + Angular 21 + Node/Express). Antes de escribir código, lee HANDOFF_SESSION.md en la raíz y revisa documentacion/README.md, documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md, documentacion/11-SEGURIDAD-AUDITORIA-E-INTEGRIDAD.md y documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md.
 
-Contexto: Fase 1 (seguridad), Fase 2 (integridad académica), H18 (cambio obligatorio de contraseña) y H12 (año lectivo centralizado) ya están implementadas y commiteadas. La fuente de verdad es el código.
+Contexto: Fase 1 (seguridad), Fase 2 (integridad académica), H18 (cambio obligatorio de contraseña), H12 (año lectivo centralizado) y H25 (backup automatizado) ya están implementadas y commiteadas. La fuente de verdad es el código.
 
-Comienza con la Fase 4, empezando por H25 (backups automáticos de PostgreSQL). No cambies el esquema de la BD, no rompas el JSON { success, message, ... }, usa parches quirúrgicos y entrega commits atómicos.
+Comienza con la Fase 4, empezando por H23 (paginación server-side). No cambies el esquema de la BD, no rompas el JSON { success, message, ... }, usa parches quirúrgicos y entrega commits atómicos.
 
 Al terminar, actualiza HANDOFF_SESSION.md con el nuevo estado y el siguiente pendiente del roadmap.
 ```

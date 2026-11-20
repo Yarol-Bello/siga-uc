@@ -81,6 +81,13 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 Health check: `GET http://localhost:3000/api/health`.
 
+Backup de la base (requiere `pg_dump`):
+
+```powershell
+cd siga-uc-backend
+npm run backup   # genera backups/backup_siga_uc_YYYY-MM-DD_HH-mm-ss.sql
+```
+
 > `.env.example` todavía muestra SMTP. El correo real usa `RESEND_API_KEY` y `EMAIL_FROM`.
 
 ---

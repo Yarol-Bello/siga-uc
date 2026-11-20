@@ -52,7 +52,7 @@ Respuesta esperada:
 
 | Tarea | Frecuencia | Responsable | Comando/acción |
 |---|---|---|---|
-| Backup completo | Diario | TI | `pg_dump` |
+| Backup completo | Diario | TI | `npm run backup` (`scripts/backup.js`) |
 | Verificar backup | Semanal | TI | Restaurar en entorno de prueba |
 | Revisar logs de error | Diario | TI | Consola/plataforma |
 | Revisar usuarios inactivos | Mensual | Admin | Módulo Personal |

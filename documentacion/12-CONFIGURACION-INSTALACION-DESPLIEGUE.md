@@ -41,6 +41,9 @@ desactualizado** (habla de SMTP; el código usa Resend).
 | `TZ` | No (`America/Lima`) | Zona horaria |
 | `RESEND_API_KEY` | Para correos | API Resend |
 | `EMAIL_FROM` | Para correos | Remitente verificado |
+| `DATABASE_URL` | Opcional (backup) | Cadena completa; prioridad sobre `DB_*` |
+| `DB_SSL` | Opcional (backup) | `true` fuerza `sslmode=require` |
+| `BACKUP_DIR` | Opcional (backup) | Carpeta de salida; default `siga-uc-backend/backups` |
 
 ### 2.2 Variables heredadas (SMTP)
 
@@ -62,6 +65,11 @@ DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=tu_password
 DB_NAME=siga_uc
+
+# Opcional para backup (ver sección 9)
+DATABASE_URL=
+DB_SSL=false
+BACKUP_DIR=
 
 JWT_SECRET=una_clave_larga_y_aleatoria
 JWT_EXPIRES_IN=8h
@@ -253,7 +261,9 @@ tiene otro nombre.
 - [ ] Frontend apunta a la API correcta.
 - [ ] Fallback SPA configurado.
 - [ ] HTTPS activo.
-- [ ] Backup inicial.
+- [ ] Backup inicial ejecutado (`npm run backup`).
+- [ ] Cron Job diario 02:00 y disco persistente o almacenamiento externo configurado.
+- [ ] Restauración de prueba verificada.
 - [ ] Smoke test por rol.
 
 ---
@@ -277,25 +287,123 @@ en modo prueba. Para producción, verificar dominio.
 
 ## 9. Backups
 
-### Manual
+### 9.1 Backup local
+
+El script genera un `.sql` en `siga-uc-backend/backups/` y **no modifica ni borra datos** de la
+base:
 
 ```powershell
-pg_dump -U postgres -h localhost -d siga_uc -F c -f "backup_siga_uc_$(Get-Date -Format yyyyMMdd).dump"
+cd siga-uc-backend
+npm run backup
 ```
 
-### Restauración
+Salida esperada:
+
+```text
+💾 Generando backup de localhost:5432/siga_uc...
+   Destino: ...\siga-uc-backend\backups\backup_siga_uc_2026-11-20_02-00-00.sql
+✅ Backup generado: backup_siga_uc_2026-11-20_02-00-00.sql (143.6 KB)
+```
+
+- Nombre seguro para Windows/Linux/macOS: `backup_siga_uc_YYYY-MM-DD_HH-mm-ss.sql`.
+- Usa `DATABASE_URL` si está definido; si no, `DB_*`.
+- Si `pg_dump` no está instalado, muestra un mensaje indicando instalar PostgreSQL Client.
+- La carpeta `siga-uc-backend/backups/` está excluida por `.gitignore`.
+
+### 9.2 Restauración de prueba
+
+Se recomienda restaurar en una base desechable, nunca directamente sobre producción:
 
 ```powershell
-pg_restore -U postgres -h localhost -d siga_uc --clean --if-exists backup.dump
+createdb -U postgres siga_uc_restore_test
+psql -U postgres -d siga_uc_restore_test -f backups\backup_siga_uc_2026-11-20_02-00-00.sql
+psql -U postgres -d siga_uc_restore_test -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';"
+dropdb -U postgres siga_uc_restore_test
 ```
 
-### Recomendaciones
+La restauración de prueba debe devolver **39 tablas** y datos en `usuarios`, `alumnos`, etc.
 
-- Programar tarea diaria (Task Scheduler / cron).
-- Guardar fuera del servidor (S3, Drive, etc.).
-- Probar restauración periódicamente.
-- Cifrar backups (contienen datos personales).
-- No versionar `siga_uc_backup.sql`.
+### 9.3 Variables para Supabase
+
+En `.env` (local) o en las variables de Render:
+
+```env
+# Opción 1: cadena de conexión (recomendada para Supabase)
+DATABASE_URL=postgresql://postgres.<proyecto>:<password>@<host>:5432/postgres?sslmode=require
+
+# Opción 2: variables individuales
+DB_HOST=<host>
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=<password>
+DB_NAME=postgres
+DB_SSL=true
+
+# Opcional: carpeta de salida (por defecto siga-uc-backend/backups)
+BACKUP_DIR=
+```
+
+> Para `pg_dump` usar la **conexión directa o session pooler** de Supabase (puerto 5432).
+> Evitar el transaction pooler (puerto 6543): puede no soportar `pg_dump`.
+> Si usas `DATABASE_URL`, no hace falta duplicar `DB_*` para el backup.
+
+### 9.4 Render: Cron Job diario a las 02:00
+
+1. Crear un **Render Cron Job** (no un Web Service) con schedule `0 2 * * *` y zona
+   `America/Lima`.
+2. Comando: `npm run backup`.
+3. El entorno debe incluir `postgresql-client` (`pg_dump`). Si la imagen nativa de Render no lo
+   trae, usar un Dockerfile con:
+
+   ```dockerfile
+   FROM node:20-bookworm-slim
+   RUN apt-get update && apt-get install -y postgresql-client \
+       && rm -rf /var/lib/apt/lists/*
+   WORKDIR /app
+   COPY package*.json ./
+   RUN npm ci --omit=dev
+   COPY . .
+   CMD ["npm", "run", "backup"]
+   ```
+
+   > Este Dockerfile va en `siga-uc-backend/` y el **Root Directory** del servicio debe ser
+   > `siga-uc-backend`.
+
+   > La versión de `pg_dump` debe ser **igual o superior** a la del servidor (Supabase). Si
+   > Debian instala PostgreSQL 15 y Supabase usa 17, instalar `postgresql-client-17` desde el
+   > repositorio oficial de PostgreSQL (PGDG).
+
+4. **Disco persistente:** el filesystem de Render es efímero. Agregar un **Persistent Disk** y
+   montarlo, por ejemplo, en `/var/data/siga-uc-backups`; luego definir:
+
+   ```env
+   BACKUP_DIR=/var/data/siga-uc-backups
+   ```
+
+   Sin disco persistente (o sin subir el archivo a S3/Supabase Storage/Drive), el backup se
+   pierde en el siguiente redeploy/restart.
+
+5. Configurar `DATABASE_URL` de Supabase con `sslmode=require`. Si el Cron Job no tiene acceso
+   a la red privada de Supabase, usar la conexión pública/directa.
+
+> Los backups gestionados/PITR de Supabase dependen del plan. Este Cron Job es un complemento,
+> no un reemplazo de las copias gestionadas del proveedor.
+
+### 9.5 Alternativa local: Programador de tareas de Windows
+
+Crear una tarea diaria a las 02:00:
+
+- Programa: `npm.cmd`
+- Argumentos: `run backup`
+- Iniciar en: `C:\ruta\a\siga-uc\siga-uc-backend`
+
+### 9.6 Seguridad y retención
+
+- Los `.sql` contienen datos personales: restringir permisos y considerar cifrado en reposo.
+- No subir `backups/` a Git; ya está en `.gitignore`.
+- El script **no elimina backups anteriores**. La retención se gestiona manualmente o con una
+  tarea externa (por ejemplo, borrar archivos con más de 30 días).
+- Probar la restauración periódicamente (semanal o mensual).
 
 ---
 
