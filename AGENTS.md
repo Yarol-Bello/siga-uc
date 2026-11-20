@@ -1,416 +1,200 @@
-# AGENTS.md — Contexto del Proyecto SIGA-UC
+# AGENTS.md — SIGA-UC (resumen operativo)
 
-> **Propósito**: Que cualquier asistente de IA (o desarrollador) tenga TODO el contexto del
-> sistema al instante, sin volver a preguntar. Orientado a ayudar en: **documentación**,
-> **mejoras** y **nuevas funcionalidades**.
->
-> **⚠️ FUENTE DE VERDAD TÉCNICA = EL CÓDIGO** (`C:\Users\yarol\Documents\Proyectos\siga-uc`).
-> Si este archivo y el código difieren, EL CÓDIGO manda. Este archivo se actualiza con él.
->
-> **Documentos externos** (en `C:\Users\yarol\Documents\PROYECTOS_OPENCOUDE\PROYECTO JS\`):
-> - `DOCUMENTO MAESTRO DEFINITIVO - SIGA-UC.txt` → contexto histórico detallado (útil para
->   decisiones pasadas y lecciones aprendidas), pero su conteo de tablas/endpoints está
->   desactualizado.
-> - `AVANCE - JS - SEMANA 05.pdf` → SOLO es válido para **contexto de negocio** (nombre del
->   proyecto, empresa, problema, objetivos). El resto (alcance de 4 módulos, stack "React",
->   cifras de planificación) está **SUPERADO** por el proyecto real.
-> - `CHAT1–4.txt` → consolidados históricos de desarrollo.
-> - `ESTRUCTURA INTEGRAL DEL CICLO DE VIDA... .docx` → guía/rúbrica del curso.
+> Documentación detallada: **`documentacion/README.md`**.
+> Fuente de verdad: **el código** (`siga-uc-backend`, `siga-uc-frontend`) y
+> `database/siga_uc.sql`. Si este resumen difiere del código, manda el código.
 
 ---
 
-## 1. Contexto de Negocio (de donde proviene el proyecto)
+## 1. Qué es
 
-| Elemento | Detalle |
-|----------|---------|
-| **Proyecto** | SIGA-UC — Sistema Integrado de Gestión Académica |
-| **Institución** | I.E.P. Unión Científica — Huancayo, Junín, Perú (~150 estudiantes, 17 docentes, 5 directivos) |
-| **Origen académico** | Proyecto final del curso *JavaScript Avanzado* — Escuela Profesional de Ingeniería de Sistemas e Informática (2026). Docente: Mg. Mora Bonilla, Anthony |
-| **Equipo** | Yarol Bello Coquil (Product Owner/PM), Alexander Grados Castro (Arquitecto/Backend), Franz Roger Ramón Ayala (Frontend), Jeanfranco Jesús Ramos Uñaupe (Analista/QA) |
-| **Repo** | `https://github.com/Yarol-Bello/siga-uc.git` (rama `main`) |
-| **Estado actual** | ~99% funcional. Los 4 paneles (Admin, Docente, Estudiante, Secretaría) están al 100%. Faltan: documentación final, despliegue en producción y mejoras evolutivas |
+**SIGA-UC** — Sistema Integrado de Gestión Académica de la I.E.P. Unión Científica
+(Huancayo, Junín, Perú). Digitaliza matrícula, notas por competencias MINEDU, asistencia QR,
+tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 
-### El problema que resuelve (según el acta de constitución)
-La I.E. operaba con **Excel aislados, listas en papel y software monousuario** en secretaría:
-- **200 horas-hombre/mes** de transcripción manual de datos.
-- **8% de actas** con errores de digitación.
-- **10 días** para emitir libretas.
-- **Cero concurrencia** (un usuario a la vez en el sistema monousuario).
-
-### Objetivos originales (medibles)
-- **OE1**: Reducir 70% el tiempo de registro de notas.
-- **OE2**: Asistencia en <5 clics con 95% de precisión.
-- **OE3**: 3 perfiles con segregación total de acceso (el sistema real tiene 4: ADMIN, DOCENTE, SECRETARIA, ESTUDIANTE).
-- **OE4**: Libretas/PDF en <30 s.
-- **OE5**: Autenticación robusta y control por roles.
-
-> Nota: el alcance inicial eran 4 módulos y declaraba "fuera de alcance" tesorería, SIAGIE y
-> pasarelas de pago. **El proyecto real superó ese alcance** (ya incluye Tesorería, Caja,
-> SIAGIE, notificaciones, auditoría, carné QR). Solo la **pasarela de pago en línea** sigue
-> fuera de alcance (posible mejora futura, ver §13).
+- Repo: `https://github.com/Yarol-Bello/siga-uc.git` (rama `main`)
+- Ruta local: `C:\Users\yarol\Documents\Proyectos\siga-uc`
+- Estado: funcional; pendiente documentación final, despliegue y mejoras.
 
 ---
 
-## 2. Qué es SIGA-UC (funcionalidades actuales)
+## 2. Stack real (verificado)
 
-Aplicación web full-stack que digitaliza los procesos académicos y administrativos del colegio:
+| Capa | Tecnología |
+|---|---|
+| Frontend | Angular 21.2 standalone + signals + Bootstrap 5 + FontAwesome 7 + qrcode |
+| Backend | Node.js 20 + Express 5 (CommonJS) |
+| Base de datos | PostgreSQL 18.4 (`pgcrypto`, `unaccent`, `uuid-ossp`) |
+| Auth | JWT 8 h + bcrypt coste 10 |
+| Correo | **Resend** (API HTTP), no Nodemailer/SMTP |
+| Excel | ExcelJS + Multer (SIAGIE) |
+| SQL | Crudo parametrizado (sin ORM) |
+| Tests/CI/Docker | No existen |
 
-- Gestión de alumnos, apoderados, matrículas y retiros.
-- Gestión de personal docente y administrativo (cese, reactivación).
-- Carga curricular y horarios.
-- **Notas por competencias MINEDU** (AD/A/B/C) con cálculo de nota final por predominancia.
-- Control de asistencia (P/T/F) con **carné digital QR** (estudiantes y personal).
-- Tesorería: pensiones, becas, pre-tickets, pagos y boletas electrónicas.
-- Cuadre de caja diario (apertura/egresos/cierre con arqueo y estado CUADRADO/SOBRANTE/FALTANTE).
-- Reportes: libretas imprimibles, cuadro de mérito, alumnos en riesgo.
-- **Exportación SIAGIE** (MINEDU): inyecta notas en plantillas oficiales .xlsx.
-- Notificaciones internas (campanita + buzón tipo Gmail) + correos reales (SMTP Gmail).
-- Auditoría (bitácora con JSONB) y cierre de actas bimestrales con hash de integridad.
-- Recuperación de contraseña por correo con tokens.
-
-**Identidad visual**: guindo `#800020`, dorado `#D4AF37`, naranja Secretaría `#B45309`,
-fondos `#F8FAFC` / `#fffbeb`.
+**Conteos actuales:** 39 tablas · 97 endpoints · 4 roles · 13 routers · 13 controladores ·
+15 servicios · 15 DAOs · 61 archivos JS backend (~7,437 líneas) · 109 archivos frontend
+(~18,743 líneas, 44 TS).
 
 ---
 
-## 3. Stack Tecnológico
+## 3. Estructura
 
-| Capa | Tecnología | Versión |
-|------|-----------|---------|
-| Frontend | Angular (standalone + signals + SCSS) + Bootstrap + FontAwesome | 21.2.26 / 5.x |
-| Backend | Node.js + Express (CommonJS) | 20.20.2 LTS / 5.3.0 |
-| Base de datos | PostgreSQL (pgcrypto, uuid-ossp, unaccent) | 18.4 |
-| Auth | JWT (expira 8h) + bcrypt (cost 10) | 9.x / 6.x |
-| Correos | Nodemailer + Gmail SMTP (App Password) | 10.x |
-| Excel | ExcelJS + Multer (subida de plantillas) | 4.x / 1.x |
-| QR | qrcode (generado en el frontend) | 1.x |
-| Validación | express-validator | 7.x |
-| Seguridad | helmet + CORS | 8.x |
-| Dev | nodemon (backend), Angular CLI (frontend) | — |
-
-**NO se usa** (decisiones conscientes): ORM (SQL crudo parametrizado), Docker, CI/CD,
-WebSocket/chat en tiempo real, tests automatizados. El testing es manual vía
-`docs/GUIA_TESTEO.md`.
-
----
-
-## 4. Estructura del Proyecto (monorepositorio)
-
-```
-C:\Users\yarol\Documents\Proyectos\siga-uc\
-├── database/                  # Scripts SQL
-│   ├── siga_uc.sql            # Esquema completo SIN datos (versionado)
-│   ├── siga_uc_backup.sql     # Backup completo (ignorado por Git)
-│   ├── siga_uc_completo.sql   # Esquema + 517 INSERTs de prueba
-│   └── README.md              # Doc del modelo de datos
-├── docs/                      # INSTALACION.md, GUIA_TESTEO.md, CREDENCIALES.md,
-│                              # MAPEO_ENDPOINTS.txt
-├── AGENTS.md                  # ← este archivo
-├── siga-uc-backend/           # API REST
-│   ├── .env / .env.example
-│   ├── uploads/               # SIAGIE y temporales (ignorado en Git)
-│   └── src/
-│       ├── app.js             # Servidor + registro de 13 rutas + errores globales
-│       ├── config/            # database.js (pool pg), env.js (valida .env y aborta si falta)
-│       ├── routes/            # 13 archivos (auth, academico, alumno, personal, ...)
-│       ├── controllers/       # 14 controladores HTTP
-│       ├── services/          # 17 servicios (lógica de negocio)
-│       ├── dao/               # 16 DAOs (SQL crudo parametrizado $1, $2...)
-│       ├── middlewares/       # authMiddleware.js (verificarAutenticacion + verificarRol)
-│       └── utils/response.js  # Respuestas uniformes {success, message, data}
-└── siga-uc-frontend/          # SPA Angular
-    └── src/app/
-        ├── core/              # guards/ (auth, rol), interceptors/ (JWT),
-        │                      # services/ (auth, notificacion), models/ (usuario)
-        ├── shared/components/ # header (campanita + carné QR), 4 sidebars por rol
-        ├── features/          # admin/ (10 módulos), docente/ (5), estudiante/ (3),
-        │                      # secretaria/ (5), auth/ (login, reset-password),
-        │                      # en-construccion/
-        ├── app.routes.ts      # Rutas lazy loading por rol con guards
-        ├── app.config.ts      # provideHttpClient(withInterceptors([authInterceptor]))
-        └── environments/       # environment.ts (dev: localhost:3000),
-                               # environment.prod.ts (producción)
+```text
+siga-uc/
+├── database/          siga_uc.sql (esquema), siga_uc_completo.sql (seeds)
+├── docs/              documentación operativa previa (parcialmente desactualizada)
+├── documentacion/     documentación detallada y vigente
+├── siga-uc-backend/   API REST
+└── siga-uc-frontend/  SPA Angular
 ```
 
-**Escala actual**: ~7,400 líneas backend (61 archivos JS) · ~18,800 líneas frontend (47
-archivos TS/HTML/SCSS) · 53 commits con convención semántica.
+Backend: `routes → controllers → services → DAOs → PostgreSQL`.
+Frontend: `core/` (guards, interceptor, servicios), `shared/` (header, sidebars),
+`features/` (admin, docente, estudiante, secretaria, auth).
 
 ---
 
-## 5. Arquitectura
+## 4. Cómo ejecutar
 
-### Backend — MVC + DAO (por módulo)
-```
-Routes → Controllers → Services → DAOs → PostgreSQL
-```
-- **Routes**: endpoints + `express-validator` + `verificarAutenticacion` / `verificarRol(...)`.
-- **Controllers**: reciben HTTP, validan `validationResult`, llaman al servicio, responden con
-  `utils/response.js`.
-- **Services**: lógica de negocio (`siagieService`, `emailService`, `recuperacionService`,
-  `authService`, `tesoreriaService`, `cajaService`, etc.).
-- **DAOs**: SQL crudo con `$1, $2...` (sin inyección SQL), pueden construir `WHERE` dinámico.
+Requisitos: Node 20.20.2, PostgreSQL 18, Angular CLI 21.
 
-### Frontend — Angular 21 standalone + signals
-- **Routing**: lazy loading (`loadComponent`) por rol: `/admin`, `/docente`, `/estudiante`,
-  `/secretaria` con layouts propios.
-- **Guards**: `authGuard` + `roleGuard(['ADMIN'])` etc.
-- **Interceptor JWT** (`auth.interceptor.ts`, HttpInterceptorFn): añade
-  `Authorization: Bearer <token>`; token en `localStorage` (`siga_uc_token`).
-- **Signals** para todo estado reactivo; `inject()` en vez de constructor.
-- **Modales**: `@if (senal())` + `.modal-overlay` con `stopPropagation()`.
-- **Patrón Wrapper** (DRY) para módulos compartidos entre roles (componente standalone de ~10
-  líneas que renderiza el original):
-  - `AdminTesoreriaComponent` → `SecretariaTesoreriaComponent`
-  - `AdminCajaComponent` → `SecretariaCajaComponent`
-  - `SecretariaPadronComponent` → `AdminAlumnosComponent`
-  - `SecretariaAsistenciaQrComponent` → `AdminAsistenciaQrComponent`
-
-### Flujo de autenticación
-1. Login (DNI + password) → `bcrypt.compare()` → JWT con payload
-   `{ id_usuario, dni, nombre_completo, correo, id_rol, rol }`.
-2. Frontend guarda token en `localStorage`; interceptor lo adjunta a cada petición.
-3. `verificarAutenticacion` extrae/valida el token; `verificarRol(...roles)` valida permisos.
-
----
-
-## 6. Roles y Módulos
-
-| Rol | Módulos (frontend) | Acceso backend típico |
-|-----|--------------------|-----------------------|
-| **ADMIN** | Dashboard, Alumnos, Personal, Carga Curricular, Asistencia QR, Tesorería(wrapper), Caja(wrapper), SIAGIE, Reportes, Auditoría | Control total |
-| **SECRETARIA** | Dashboard, Padrón(wrapper), Tesorería, Caja, Asistencia QR(wrapper) | Padrón, finanzas, QR |
-| **DOCENTE** | Dashboard, Notas, Asistencia, Ficha Estudiante, Reportes de Aula | Registro académico |
-| **ESTUDIANTE** | Dashboard, Mi Asistencia, Horario | Solo consulta |
-
-La restricción de rol es en backend (`verificarRol`) y en frontend (`roleGuard`). Donde dos
-roles aplican, el backend no restringe; la separación es de UI por panel.
-
----
-
-## 7. Base de Datos (39 tablas — esquema actual en `database/siga_uc.sql`)
-
-> ⚠️ El documento maestro dice "26 tablas"; el esquema real vigente tiene **39**. Verificar
-> siempre contra el SQL.
-
-| Módulo | Tablas |
-|--------|--------|
-| Seguridad (8) | `roles`, `usuarios`, `recuperacion_password`, `personal`, `asistencia_personal`, `bitacora_auditoria`, `notificaciones`, `credenciales_qr` |
-| Curricular (7) | `grados`, `cursos`, `competencias`, `carga_curricular`, `tutores_grado`, `horarios`, `escala_calificacion` |
-| Alumnos (3) | `apoderados`, `alumnos`, `expediente_alumno` |
-| Asistencia (2) | `asistencia_alumnos`, `resumen_asistencia_curso` |
-| Calificaciones (5) | `calificaciones`, `notas_finales_area`, `conclusiones_descriptivas`, `actas_bimestrales`, `libretas` |
-| Tesorería (6) | `conceptos_pago`, `becas`, `pensiones`, `pre_tickets`, `pagos`, `boletas_electronicas` |
-| Caja (4) | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` |
-| SIAGIE (2) | `exportaciones_siagie`, `estado_carga_docentes` |
-| Reportes (2) | `cuadro_merito`, `alumnos_riesgo` |
-
-**Triggers y funciones (11 objetos)** — lógica de negocio embebida:
-- `trg_actualizar_timestamp()` — auto-update `fecha_actualizacion`.
-- `trg_auditar_calificacion()` — auditoría en bitácora al modificar notas.
-- `trg_actualizar_preticket()` — marca pre-ticket PAGADO al insertar pago.
-- `trg_actualizar_pension()` — marca pensión PAGADA (por `id_pension` o concepto+mes).
-- `trg_pago_a_caja()` — registra automáticamente ingreso en `movimientos_caja`.
-- `calcular_nota_final_area()` — nota final por **predominancia** (AD > A > B > C).
-
-**Reglas de negocio en BD**:
-- Escala `AD/A/B/C` (CHECK). Asistencia `P/T/F`. Actas `ABIERTO/CERRADO`. Caja
-  `CUADRADO/SOBRANTE/FALTANTE`.
-- Auditoría con `valor_anterior`/`valor_nuevo` en **JSONB**.
-- `ON CONFLICT (...) DO UPDATE` para upserts (asistencia/calificaciones masivas).
-- Casteo explícito de parámetros NULLables (`$1::INT`, `$2::DECIMAL`).
-- Datos de prueba: 517 registros en `siga_uc_completo.sql` (21 alumnos, 29 usuarios, etc.).
-- ~40 índices btree sobre DNI, fechas, estados.
-
----
-
-## 8. API REST (97 endpoints — detalle en `docs/MAPEO_ENDPOINTS.txt`)
-
-**Prefijos (montados en `app.js`)**:
-```
-GET  /                 GET  /api/health
-/api/auth              /api (grados, cursos, horarios, escala)
-/api/alumnos           /api/personal
-/api/carga-curricular  /api/asistencias
-/api/calificaciones    /api/tesoreria
-/api/caja              /api/reportes
-/api/auditoria         /api/siagie (POST /generar-excel, multipart)
-/api/notificaciones
-```
-
-**Distribución**: 60 GET · 25 POST · 10 PUT · 2 DELETE · 6 públicos · 43 solo JWT · 48 por rol.
-
-**Respuesta uniforme** (`utils/response.js`): `{ success, message, data }` con métodos
-`success()`, `error()`, `validationError()`, `unauthorized()`, `forbidden()`, `notFound()`.
-
-**Endpoints destacados por lógica**:
-- `POST /api/alumnos` → matrícula **transaccional** (apoderado → usuario → alumno → expediente
-  → credencial QR); genera código `EST-XXX`; contraseña temporal `UC+DNI`.
-- `POST /api/tesoreria/pagos` → pago **transaccional** (pago → boleta electrónica →
-  actualiza pre-ticket/pensión vía trigger → actualiza matrícula si es matrícula).
-- `POST /api/caja/cerrar` → cálculo `efectivo_esperado = monto_inicial + ingresos - egresos`;
-  `diferencia = fisico - esperado` → CUADRADO/SOBRANTE/FALTANTE.
-- `POST /api/siagie/generar-excel` → sube plantilla .xlsx (multer, 10MB), detecta fila de
-  encabezados ("DNI"/"DOCUMENTO") y columnas por prefijos (ARITM, ALGEBRA, COMUNIC, FISICA),
-  inyecta notas cruzando por DNI, descarga `SIAGIE_{grado}_BIM{bim}_{anio}.xlsx`.
-- `POST /api/auth/recuperar-password` → token 64 chars, expira 2h, un solo uso, invalida
-  anteriores, **no revela existencia** del usuario.
-
----
-
-## 9. Reglas Críticas (RESPETAR SIEMPRE)
-
-1. **MVC+DAO obligatorio** en backend. No saltear capas al agregar endpoints.
-2. **`correo_personal` (real) vs `correo_institucional` (decorativo)**:
-   - Institucional (@unioncientifica.edu.pe): ficticio, solo carnés/reportes.
-   - Personal: real, para correos (notificaciones, recuperación).
-   - Envío: `correo_personal || correo_institucional`. Sin correo → solo notificación en BD.
-   - **Al agregar columnas a `usuarios`, incluirlas en TODOS los SELECT del DAO**
-     (`findByDni`, `findByCorreo`, `findById`, ...).
-3. **`Number()` en frontend**: PostgreSQL devuelve números/`COUNT(*)` como string →
-   siempre `Number(x) || 0` antes de operar.
-4. **Orden de rutas**: específicas ANTES de paramétricas (`/personal/todos` antes de
-   `/personal/dni/:dni` y `/:id`). En Angular, `reset-password` ANTES de `**`.
-5. **Modales**: envueltos en `@if (senal())` + `.modal-overlay` con `stopPropagation()`.
-6. **Loading en errores**: desactivar PRIMERO en el bloque `error:`
-   (`this.guardando.set(false)`).
-7. **Triggers con IDs explícitos**: enviar `id_pension` desde el frontend (más robusto).
-8. **Correos no bloqueantes**: fallo SMTP no impide guardar la notificación (try/catch).
-9. **No revelar existencia de usuarios** en recuperación de contraseña.
-10. **Commits**: `feat:/Fix:/Add:/DB:/docs:/chore:` + descripción en español con módulo,
-    atómicos.
-11. **NO cambiar el stack sin justificación.** Ante un bug, revisar §10 primero.
-12. **Terminal nueva**: `nvm use 20` antes de node/npm/ng.
-13. **Arquitectura de correos**: el backend llama a `emailService` tras guardar en BD;
-    `emailService.verificarConexion()` se ejecuta al arrancar el servidor.
-
----
-
-## 10. Correcciones Históricas (verificar antes de diagnosticar)
-
-| Área | Problema → Solución |
-|------|---------------------|
-| BD | `correo_personal` agregado a `usuarios`; `ON CONFLICT` en asistencia; casteo `::INT` en pagos |
-| Backend | `correo_personal` faltante en SELECTs de `usuarioDao` → correos a direcciones ficticias → agregar en `findByDni/findByCorreo/findById` |
-| Frontend | Strings de PostgreSQL sin `Number()`; `import 'zone.js'` primera línea de `main.ts`; `rootDir: "./src"` en `tsconfig.app.json` para environments |
-| Rutas | Ruta registrada sin existir el componente (rompe build); ruta después de `**` pierde query params |
-| Carné QR | Backend devuelve `nombres`+`apellidos` (no `nombre_completo`) y `nombre_rol` (no `rol`) → construir en template |
-| SIAGIE | Totales como string → `Number()`; limpiar archivo al cambiar filtros (`limpiarArchivo()`) |
-| SMTP | Error 535 → App Password con espacios (regenerar 16 chars sin espacios) |
-| UI | Columna de acciones oculta por scroll → `position: sticky; right: 0` |
-| Compilación | Componente importado sin archivo → crear wrapper o el componente |
-
----
-
-## 11. Cómo Ejecutar
-
-```cmd
-:: Requisitos: PostgreSQL corriendo (Get-Service *postgres* → Running)
-:: En CADA terminal nueva:
+```powershell
+# Terminal 1 — Backend (http://localhost:3000)
 nvm use 20
-
-:: Terminal 1 — Backend (puerto 3000)
-cd C:\Users\yarol\Documents\Proyectos\siga-uc\siga-uc-backend
+cd siga-uc-backend
+copy .env.example .env   # completar DB_*, JWT_SECRET y RESEND_API_KEY
 npm install
-npm run dev          # nodemon → http://localhost:3000
-# Debe mostrar: ✅ Servicio de correo SMTP conectado correctamente
+npm run dev
 
-:: Terminal 2 — Frontend (puerto 4200)
-cd C:\Users\yarol\Documents\Proyectos\siga-uc\siga-uc-frontend
+# Terminal 2 — Frontend (http://localhost:4200)
+cd siga-uc-frontend
 npm install
-ng serve             # → http://localhost:4200
+ng serve
 ```
 
-**.env** (`siga-uc-backend/.env`, ver `.env.example`): `PORT`, `NODE_ENV`,
-`DB_HOST/PORT/USER/PASSWORD/NAME`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `SMTP_HOST/PORT/USER/
-PASSWORD`, `TZ=America/Lima`. `env.js` aborta si falta una requerida.
+Base de datos:
 
-**Base de datos**: crear `siga_uc` → ejecutar `database/siga_uc.sql` (esquema) +
-`siga_uc_completo.sql` (datos) o restaurar el backup.
+```powershell
+createdb -U postgres siga_uc
+psql -U postgres -d siga_uc -f database/siga_uc.sql
+psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
+```
 
-**CORS**: permite `localhost:4200` y `localhost:3000`.
+Health check: `GET http://localhost:3000/api/health`.
 
----
-
-## 12. Credenciales de Prueba
-
-(Detalle en `docs/CREDENCIALES.md`)
-
-| Rol | DNI | Contraseña |
-|-----|-----|-----------|
-| Administrador | 74829102 | `UC2026*` |
-| Secretaría | 40596837 | `UC2026*` |
-| Docentes | 10293847, 20394812, 30192847, 50182736 | `UC2026*` |
-| Estudiantes | 75918234, 74829103, 76829401 | `UC + DNI` (ej. `UC75918234`) |
-| Estudiantes generados | 70000001–70000015 | `UC + DNI` |
+> `.env.example` todavía muestra SMTP. El correo real usa `RESEND_API_KEY` y `EMAIL_FROM`.
 
 ---
 
-## 13. Estado Actual y Pendientes
+## 5. Roles
 
-### Hecho (100%)
-- Los 4 paneles completos: Admin (10 módulos), Docente (5), Estudiante (3), Secretaría (5).
-- Módulos compartidos (wrappers), SIAGIE real, notificaciones SMTP, campanita + buzón,
-  carné digital QR, recuperación de contraseña, auditoría + actas con hash.
+| Rol | ID | Acceso |
+|---|---|---|
+| ADMIN | 1 | Todos los módulos |
+| DOCENTE | 2 | Cursos, notas, asistencia, ficha, reportes de aula |
+| SECRETARIA | 3 | Padrón, tesorería, caja, QR de personal |
+| ESTUDIANTE | 4 | Notas, asistencia y horario propios |
 
-### Pendiente (por prioridad)
-| # | Tarea | Prioridad | Estimación |
-|---|-------|-----------|-----------|
-| 1 | Documentación (Manual de Usuario + Manual Técnico) | 🔴 Alta | ~2–3 h |
-| 2 | Despliegue en producción (backend+BD en cloud tipo Railway/Render; frontend en Vercel/Netlify) | 🟡 Media | ~4–6 h |
-| 3 | CORS/dominios productivos + HTTPS + dominio personalizado | 🟡 Media | ~1 h |
-| 4 | `pg_dump` automatizado para respaldos diarios | 🟢 Baja | ~30 min |
-| 5 | Descarga real de PDFs (Reportes y Caja) | 🟢 Baja | ~3 h |
-| 6 | Tests automatizados (hoy no existen) | 🟢 Baja | — |
-| 7 | Integración pasarela de pago (Culqi/Niubiz/Izipay) — fase evolutiva | 🟢 Baja | — |
-
-### Mejoras menores detectadas en revisión de código
-- `database/README.md` dice "26 tablas" → actualizar a 39.
-- Archivo vacío `siga-uc-frontend/src/app/features/secretaria/tesoreria/secretaria-tes` → eliminar.
-- `docs/MAPEO_ENDPOINTS.txt` y `AGENTS.md` sin commitear (untracked).
+Credenciales de prueba: `docs/CREDENCIALES.md`.
+Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 
 ---
 
-## 14. Cómo Ayudar (guía para el asistente)
+## 6. Reglas críticas para cambios
 
-Cuando el usuario pida:
-
-### 📄 Documentación del sistema
-- El sistema necesita: **Manual de Usuario** (por rol, con capturas, procedimientos paso a
-  paso) y **Manual Técnico** (arquitectura, BD, API, configuración, mantenimiento).
-- Base existente: `docs/INSTALACION.md`, `docs/GUIA_TESTEO.md` (checklist por rol de 342
-  líneas), `docs/CREDENCIALES.md`, `docs/MAPEO_ENDPOINTS.txt`, `AGENTS.md`.
-- Plantilla/rúbrica del curso (§ docx del ciclo de vida): si se necesita entregar formato
-  académico, incluye: arquitectura, componentes, navegación, interfaces, modelado de datos,
-  diagramas UML, estándares de desarrollo, documentación de API, ADR, plan de pruebas,
-  manuales y FAQ.
-- Usar español, tono técnico-académico, identidad guindo/dorado en plantillas de correo.
-
-### 🔧 Mejoras al sistema existente
-- Respetar patrón MVC+DAO y convenciones (§9). Verificar correcciones históricas (§10) antes
-  de proponer fixes.
-- Mantener formato de respuesta `{success, message, data}` y seguridad JWT/roles.
-- Al tocar BD: revisar triggers/funciones existentes antes de duplicar lógica en JS.
-
-### ✨ Nuevas funcionalidades (ideas coherentes con el dominio)
-- **Pasarela de pago en línea** (Culqi/Niubiz/Izipay) para pensiones/matrículas — la única
-  "fuera de alcance" que queda, natural como evolución.
-- **Generación de PDFs reales** (libretas, boletas, actas) con pdfkit/puppeteer.
-- **Dashboard con gráficos** (chart.js ya está en dependencias) para notas/asistencia/finanzas.
-- **Exportación a Excel/PDF** de reportes y listados.
-- **Gestión de horarios completa** (hoy solo consulta por grado).
-- **Modulo de admisión/prospectos**.
-- **Backup/restauración automatizados** y métricas de uso.
-- **App móvil** o PWA para consulta de estudiantes (calificaciones, asistencia).
-- Para cualquier nueva feature: definir primero el rol que la usa, los endpoints necesarios,
-  las tablas implicadas y el impacto en auditoría/seguridad.
-
-### 🐛 Reporte de bugs
-1. Verificar §10 (correcciones históricas) — puede estar ya resuelto.
-2. Reproducir con credenciales de §12.
-3. Revisar backend (DAO/SQL) vs frontend (Number(), orden de rutas, modales).
-4. Corregir siguiendo convenciones; commit atómico.
+1. **MVC + DAO obligatorio** en backend. No saltar capas.
+2. **SQL parametrizado** (`$1, $2...`). Nunca concatenar valores.
+3. **Transacciones** (`getClient` + `BEGIN/COMMIT/ROLLBACK`) en operaciones multi-tabla.
+4. **Respuesta uniforme:** `{ success, message, data, timestamp }`.
+5. **Correo real = `correo_personal || correo_institucional`.** El institucional es decorativo.
+6. **JWT + roles:** `verificarAutenticacion` en todos los routers; `verificarRol(...)` en
+   escrituras y reportes.
+7. **Frontend:** signals, `inject()`, modales con `@if` + `.modal-overlay` +
+   `stopPropagation()`, loading apagado primero en `error:`.
+8. **Números de PostgreSQL:** usar `Number(x) || 0`.
+9. **Orden de rutas:** fijas antes de paramétricas (`/roles` antes de `/:id`; `reset-password`
+   antes de `**`).
+10. **Año lectivo 2026 hardcodeado** en varios lugares. Cualquier cambio de año exige revisión
+    global.
+11. **No cambiar el stack** sin justificación.
+12. **Commits:** `feat:`, `Fix:`, `Add:`, `DB:`, `docs:`, `chore:` + módulo + descripción en
+    español, atómicos.
 
 ---
 
-*Archivo generado el 14/10/2026. Actualizarlo cada vez que el código cambie significativamente
-(nuevas tablas, endpoints, módulos o reglas).*
+## 7. Mapa rápido de módulos
+
+| Módulo | Backend | Frontend |
+|---|---|---|
+| Auth | `authRoutes/Controller/Service` | `features/auth`, `core/services/auth.service` |
+| Alumnos | `alumnoRoutes/Controller/Service/Dao` | `admin/alumnos`, `secretaria/padron` |
+| Personal | `personalRoutes/...` | `admin/personal` |
+| Carga curricular | `cargaCurricularRoutes/...` | `admin/carga-curricular` |
+| Asistencia | `asistenciaRoutes/...` | `docente/asistencia`, `admin/asistencia-qr`, `estudiante/asistencia` |
+| Calificaciones | `calificacionRoutes/...` | `docente/notas`, `estudiante/dashboard`, `docente/ficha` |
+| Tesorería | `tesoreriaRoutes/...` | `secretaria/tesoreria` (wrapper admin) |
+| Caja | `cajaRoutes/...` | `secretaria/caja` (wrapper admin) |
+| Reportes | `reporteRoutes/...` | `admin/reportes`, `docente/reportes` |
+| Auditoría | `auditoriaRoutes/...` | `admin/auditoria` |
+| SIAGIE | `siagieRoutes/...` | `admin/siagie` |
+| Notificaciones | `notificacionRoutes/...` | header + `core/services/notificacion.service` |
+
+---
+
+## 8. Trampas conocidas (revisar antes de diagnosticar)
+
+- La documentación antigua decía 26 tablas; son **39**.
+- El correo es **Resend**, no SMTP/Nodemailer.
+- La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
+  `Matriculado`.
+- El retiro **no** congela el expediente ni desactiva al usuario (aunque el mensaje lo diga).
+- **No hay cálculo automático de nota final** desde la UI; sin `notas_finales_area`, los
+  reportes y SIAGIE salen vacíos.
+- El **cierre de acta no bloquea** la edición de notas.
+- La **bitácora solo se alimenta** automáticamente desde calificaciones; el resto no se audita.
+- Los **GET son amplios**: cualquier autenticado puede consultar alumnos, pagos, caja y
+  bitácora. La UI oculta, la API no.
+- El trigger de pagos imputa a la **última apertura de caja**, aunque esté cerrada.
+- `reporteDao.getResumenAsistenciaGrado` **ignora el año**.
+- El SIAGIE solo detecta cursos con prefijos `ARITM`, `ALGEBRA`, `COMUNIC`, `FISICA`.
+- Los IDs de conceptos de tesorería y los meses Oct–Dic están hardcodeados en el frontend.
+- `requiere_cambio_password` se guarda, pero **no se fuerza** el cambio.
+- No hay tests automatizados; el testeo es manual (`docs/GUIA_TESTEO.md`).
+
+---
+
+## 9. Dónde está cada detalle
+
+| Tema | Documento |
+|---|---|
+| Visión, alcance, glosario | `documentacion/01-VISION-GENERAL-Y-ALCANCE.md` |
+| Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
+| Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
+| 39 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
+| 97 endpoints y permisos | `documentacion/05-API-REST.md` |
+| Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
+| Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
+| Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |
+| Frontend, rutas, componentes | `documentacion/09-FRONTEND-UI-Y-NAVEGACION.md` |
+| Reglas y validaciones | `documentacion/10-REGLAS-DE-NEGOCIO-Y-VALIDACIONES.md` |
+| Seguridad y auditoría | `documentacion/11-SEGURIDAD-AUDITORIA-E-INTEGRIDAD.md` |
+| Instalación y despliegue | `documentacion/12-CONFIGURACION-INSTALACION-DESPLIEGUE.md` |
+| Operación, backup, testeo | `documentacion/13-OPERACION-MANTENIMIENTO-Y-TESTEO.md` |
+| Trazabilidad UI→BD | `documentacion/14-MATRIZ-TRAZABILIDAD.md` |
+| Hallazgos y roadmap | `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` |
+
+---
+
+## 10. Protocolo para un asistente de IA
+
+1. Antes de proponer cambios, leer el documento temático correspondiente.
+2. Verificar el código real; no confiar en `docs/` ni en el `AGENTS.md` histórico.
+3. No cambiar el stack ni introducir ORM/Docker/tests sin pedido explícito.
+4. Respetar MVC+DAO, transacciones, respuestas uniformes y roles.
+5. Si se toca la BD, revisar triggers/funciones antes de duplicar lógica.
+6. Si se agrega un endpoint: ruta → validador → controlador → servicio → DAO → permiso →
+   documentación.
+7. Si se agrega una columna a `usuarios`, incluirla en todos los SELECT de `usuarioDao`.
+8. Mantener el español en mensajes, documentación y commits.
+9. Actualizar `documentacion/` y este resumen cuando cambie el sistema.
+10. No asumir que la UI refleja los permisos reales: revisar el router y el middleware.

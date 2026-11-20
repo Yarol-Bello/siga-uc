@@ -1,0 +1,465 @@
+# 05 — API REST
+
+**Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
+**Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
+**Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
+**Total verificado:** **97 endpoints** — 60 GET, 25 POST, 10 PUT, 2 DELETE
+
+---
+
+## 1. Convenciones
+
+### 1.1 Respuesta uniforme
+
+```json
+{ "success": true, "message": "Operación exitosa", "data": {}, "timestamp": "2026-11-19T..." }
+```
+
+Error:
+
+```json
+{ "success": false, "message": "Descripción del error", "errors": null, "timestamp": "..." }
+```
+
+### 1.2 Códigos HTTP
+
+| Código | Uso |
+|---|---|
+| 200 | Consulta/actualización exitosa |
+| 201 | Creación exitosa |
+| 400 | Validación o regla de negocio |
+| 401 | Token ausente, inválido o expirado |
+| 403 | Rol no autorizado o usuario no activo |
+| 404 | Recurso no encontrado |
+| 409 | Conflicto (DNI duplicado, caja ya abierta) |
+| 500 | Error interno |
+
+### 1.3 Leyenda de acceso
+
+| Leyenda | Significado |
+|---|---|
+| **Público** | Sin token |
+| **Autenticado** | Cualquier usuario con JWT válido |
+| **ADMIN** | Solo rol ADMIN |
+| **ADMIN/SECRETARIA** | Ambos roles |
+| **ADMIN/DOCENTE** | Ambos roles |
+| **ADMIN/DOCENTE/ESTUDIANTE** | Cualquiera autenticado; la UI restringe |
+
+> **Importante:** “Autenticado” no significa “solo sus datos”. Salvo notificaciones y
+> libretas, la mayoría de GET no valida pertenencia. Ver `15-HALLAZGOS`.
+
+---
+
+## 2. Generales
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/` | Público | Bienvenida + versión |
+| GET | `/api/health` | Público | Health check (`app`, `version`, `environment`, `timestamp`) |
+
+---
+
+## 3. Autenticación — `/api/auth` (8)
+
+| # | Método | Ruta | Acceso | Descripción | Body / params |
+|---|---|---|---|---|---|
+| 1 | POST | `/api/auth/login` | Público | Login DNI + contraseña; emite JWT 8 h | `{ dni, password }` |
+| 2 | GET | `/api/auth/perfil` | Autenticado | Perfil + `info_adicional` + `credencial_qr` | — |
+| 3 | GET | `/api/auth/verify` | Autenticado | Verifica token y devuelve payload | — |
+| 4 | POST | `/api/auth/logout` | Autenticado | Logout lógico (el cliente borra token) | — |
+| 5 | PUT | `/api/auth/reset-password` | ADMIN | Restablece contraseña por DNI a `UC<DNI>` | `{ dni }` |
+| 6 | POST | `/api/auth/recuperar-password` | Público | Solicita token por correo | `{ identificador }` (DNI o correo) |
+| 7 | GET | `/api/auth/validar-token/:token` | Público | Valida token de recuperación | path |
+| 8 | POST | `/api/auth/restablecer-password` | Público | Cambia contraseña con token | `{ token, password }` (≥6) |
+
+**Login — respuesta:**
+
+```json
+{
+  "success": true,
+  "message": "Login exitoso",
+  "data": {
+    "usuario": {
+      "id_usuario": 1, "dni": "74829102", "nombres": "Yarol", "apellidos": "Bello Coquil",
+      "nombre_completo": "Yarol Bello Coquil", "correo_institucional": "...",
+      "telefono": "...", "rol": "ADMIN", "id_rol": 1,
+      "requiere_cambio_password": false,
+      "info_adicional": null
+    },
+    "token": "eyJ...",
+    "expires_in": "8h"
+  }
+}
+```
+
+**Reglas:** DNI de 8 dígitos numéricos; contraseña ≥6; usuario `ACTIVO`; bcrypt;
+actualiza `ultimo_login`; `info_adicional` = alumno (ESTUDIANTE) o personal (DOCENTE/SECRETARIA).
+
+**Recuperación:** token aleatorio de 64 hex, expira en 2 h, un solo uso, invalida tokens
+anteriores. Respuesta genérica; si el usuario existe pero no tiene correo devuelve
+`{ tieneCorreo: false }`.
+
+---
+
+## 4. Gestión académica — `/api` (7)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 9 | GET | `/api/grados?anio=2026` | Autenticado | Grados del año con total de alumnos |
+| 10 | GET | `/api/grados/:id` | Autenticado | Grado + tutor |
+| 11 | GET | `/api/horarios/grado/:id_grado` | Autenticado | Horario del grado ordenado por día/hora |
+| 12 | GET | `/api/cursos` | Autenticado | Cursos + total de competencias |
+| 13 | GET | `/api/cursos/:id` | Autenticado | Curso + competencias |
+| 14 | GET | `/api/cursos/:id/competencias` | Autenticado | Competencias del curso |
+| 15 | GET | `/api/escala-calificacion` | Autenticado | Escala AD/A/B/C |
+
+---
+
+## 5. Alumnos — `/api/alumnos` (6)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 16 | GET | `/api/alumnos?anio=&id_grado=&estado_matricula=&search=` | Autenticado | Lista con apoderado y grado |
+| 17 | GET | `/api/alumnos/dni/:dni` | Autenticado | Busca por DNI |
+| 18 | GET | `/api/alumnos/:id` | Autenticado | Ficha completa |
+| 19 | POST | `/api/alumnos` | ADMIN/SECRETARIA | Matrícula transaccional |
+| 20 | PUT | `/api/alumnos/:id` | ADMIN/SECRETARIA | Actualiza datos |
+| 21 | PUT | `/api/alumnos/:id/retirar` | ADMIN/SECRETARIA | Retiro con motivo |
+
+**POST body:**
+
+```json
+{
+  "dni": "70000001",
+  "nombres": "Luis",
+  "apellidos": "García",
+  "fecha_nacimiento": "2010-04-11",
+  "id_grado": 1,
+  "condicion": "Regular",
+  "colegio_procedencia": null,
+  "anio_lectivo": 2026,
+  "apoderado": {
+    "nombres": "María", "apellidos": "Quispe", "dni": "12345678",
+    "telefono": "999999999", "correo": "madre@correo.com"
+  }
+}
+```
+
+**Respuesta 201:** `id_alumno`, `id_usuario`, `codigo_estudiante`, `dni`,
+`nombre_completo`, `password_temporal` (`UC<DNI>`), `correo_institucional`, `correo_personal`.
+
+**Efectos:** crea apoderado (opcional), usuario STUDENT, alumno `PendientePago`, expediente y
+credencial QR. **El alumno no queda matriculado hasta pagar matrícula.**
+
+**Retiro body:** `{ motivo_retiro, fecha_retiro, colegio_destino, resolucion_directoral }`.
+
+---
+
+## 6. Personal — `/api/personal` (8)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 22 | GET | `/api/personal?id_rol=&estado=&search=` | Autenticado | Lista personal con rol |
+| 23 | GET | `/api/personal/roles` | Autenticado | Roles disponibles (excluye ESTUDIANTE) |
+| 24 | GET | `/api/personal/:id` | Autenticado | Detalle por `id_personal` |
+| 25 | POST | `/api/personal` | ADMIN | Crea usuario + personal + QR |
+| 26 | PUT | `/api/personal/:id` | ADMIN | Actualiza datos y rol |
+| 27 | PUT | `/api/personal/:id/cesar` | ADMIN | Cese con motivo |
+| 28 | PUT | `/api/personal/:id/reactivar` | ADMIN | Reactiva usuario y limpia cese |
+| 29 | PUT | `/api/personal/:id/reset-password` | ADMIN | Restablece a `UC<DNI>` |
+
+**POST body:** `{ dni, nombres, apellidos, correo_institucional?, correo_personal, telefono, id_rol, especialidad, cargo, fecha_ingreso, password? }`.
+Si no se envía contraseña: `UC2026*`. Genera QR según rol.
+
+> Orden de rutas: `/roles` está antes de `/:id`, evitando colisión.
+
+---
+
+## 7. Carga curricular — `/api/carga-curricular` (9)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 30 | GET | `/api/carga-curricular?id_grado=&id_personal=&id_curso=&anio=` | Autenticado | Lista asignaciones |
+| 31 | GET | `/api/carga-curricular/grado/:id` | Autenticado | Cursos/docentes del grado |
+| 32 | GET | `/api/carga-curricular/grado/:id/tutor` | Autenticado | Tutor del grado |
+| 33 | GET | `/api/carga-curricular/docente/:id` | Autenticado | Cursos del docente (año 2026 por defecto) |
+| 34 | GET | `/api/carga-curricular/:id` | Autenticado | Asignación por ID |
+| 35 | POST | `/api/carga-curricular` | ADMIN | Crea asignación |
+| 36 | POST | `/api/carga-curricular/tutor` | ADMIN | Asigna/reemplaza tutor |
+| 37 | PUT | `/api/carga-curricular/:id` | ADMIN | Cambia docente/horas |
+| 38 | DELETE | `/api/carga-curricular/:id` | ADMIN | Elimina asignación |
+
+**POST body:** `{ id_grado, id_curso, id_personal, anio_lectivo, horas_asignadas }`.
+UNIQUE (`id_grado`, `id_curso`, `anio_lectivo`).
+
+**Tutor body:** `{ id_grado, id_personal, anio_lectivo }`; reemplaza al anterior del mismo
+grado/año en una transacción.
+
+---
+
+## 8. Asistencias — `/api/asistencias` (9)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 39 | GET | `/api/asistencias/curso/:id_curso/fecha/:fecha?id_grado=` | Autenticado | Lista de alumnos + asistencia del día |
+| 40 | GET | `/api/asistencias/alumno/:id_alumno?id_curso=&desde=&hasta=` | Autenticado | Historial del alumno |
+| 41 | GET | `/api/asistencias/alumno/:id_alumno/resumen` | Autenticado | Resumen global + por curso |
+| 42 | GET | `/api/asistencias/personal/todos?fecha=` | Autenticado | Personal activo + marcación del día |
+| 43 | GET | `/api/asistencias/personal/resumen?fecha=` | Autenticado | Totales Puntual/Tardanza/Falta |
+| 44 | GET | `/api/asistencias/personal/dni/:dni` | Autenticado | Busca personal por DNI |
+| 45 | POST | `/api/asistencias/personal/marcar` | ADMIN/SECRETARIA | Marca asistencia de personal |
+| 46 | POST | `/api/asistencias` | ADMIN/DOCENTE | Registra/actualiza una asistencia |
+| 47 | POST | `/api/asistencias/masivo` | ADMIN/DOCENTE | Upsert masivo |
+
+**POST individual:** `{ id_alumno, id_curso, id_personal, id_grado, fecha, dia_semana, estado: "P|T|F", observacion?, justificada?, motivo_justificacion? }`.
+
+**Masivo:** `{ registros: [ ... ] }` → `{ insertados, errores[] }`.
+
+**Personal:** `{ id_personal, fecha, hora_ingreso, estado: "Puntual|Tardanza|Falta", observacion? }`.
+
+---
+
+## 9. Calificaciones — `/api/calificaciones` (6)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 48 | GET | `/api/calificaciones/alumno/:id_alumno/curso/:id_curso?anio=` | Autenticado | Notas por competencia/bimestre |
+| 49 | GET | `/api/calificaciones/curso/:id_curso/grado/:id_grado?bimestre=&anio=` | Autenticado | Matriz competencias × alumnos |
+| 50 | GET | `/api/calificaciones/notas-finales/alumno/:id_alumno?anio=` | Autenticado | Notas finales agrupadas + conclusiones |
+| 51 | POST | `/api/calificaciones` | ADMIN/DOCENTE | Registra/actualiza una nota |
+| 52 | POST | `/api/calificaciones/masivo` | ADMIN/DOCENTE | Upsert masivo |
+| 53 | POST | `/api/calificaciones/notas-finales` | ADMIN/DOCENTE | Calcula y guarda nota final |
+
+**POST body:** `{ id_alumno, id_curso, id_competencia, id_personal, id_grado, bimestre, anio_lectivo, calificacion, modificado_por?, justificacion_modificacion? }`.
+
+**Nota final body:** `{ id_alumno, id_curso, bimestre, anio }`.
+
+**Respuesta matriz (GET 49):**
+
+```json
+{
+  "competencias": [{ "id_competencia": 5, "nombre_competencia": "...", "orden": 1 }],
+  "alumnos": [{
+    "id_alumno": 1, "dni": "...", "nombre_completo": "...", "codigo_estudiante": "EST-041",
+    "calificaciones": [{ "id_competencia": 5, "nombre_competencia": "...", "calificacion": "AD" }]
+  }]
+}
+```
+
+---
+
+## 10. Tesorería — `/api/tesoreria` (12)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 54 | GET | `/api/tesoreria/conceptos?anio=` | Autenticado | Conceptos del año |
+| 55 | GET | `/api/tesoreria/pre-tickets?estado=&id_alumno=` | Autenticado | Lista pre-tickets |
+| 56 | GET | `/api/tesoreria/pre-tickets/:id` | Autenticado | Detalle |
+| 57 | POST | `/api/tesoreria/pre-tickets` | ADMIN/SECRETARIA | Crea pre-ticket `PENDIENTE` |
+| 58 | GET | `/api/tesoreria/pagos?id_alumno=&desde=&hasta=` | Autenticado | Lista pagos + boleta |
+| 59 | GET | `/api/tesoreria/pagos/:id` | Autenticado | Detalle de pago/boleta |
+| 60 | POST | `/api/tesoreria/pagos` | ADMIN/SECRETARIA | Pago + boleta + efectos |
+| 61 | GET | `/api/tesoreria/pensiones/alumno/:id_alumno?anio=` | Autenticado | Pensiones del alumno |
+| 62 | POST | `/api/tesoreria/pensiones/generar` | ADMIN/SECRETARIA | Genera pensiones del mes |
+| 63 | GET | `/api/tesoreria/becas?activo=` | Autenticado | Lista becas |
+| 64 | POST | `/api/tesoreria/becas` | ADMIN | Aplica beca |
+| 65 | GET | `/api/tesoreria/estadisticas?anio=&mes=` | Autenticado | Recaudación y pendientes |
+
+**Pre-ticket body:** `{ id_alumno, id_concepto, monto }`.
+
+**Pago body:**
+
+```json
+{
+  "id_alumno": 1,
+  "id_concepto": 9,
+  "id_preticket": null,
+  "id_pension": 42,
+  "monto": 250,
+  "forma_pago": "Efectivo",
+  "nro_operacion": "OP-123"
+}
+```
+
+**Respuesta 201:** `{ pago, boleta }` con `numero_boleta` `B001-XXXXXX`.
+
+**Efectos:** pago `PAGADO`; boleta `ACEPTADO`; pre-ticket/pensión `PAGADO` (DAO + trigger);
+movimiento de caja `INGRESO` (trigger); si el concepto es `MATRICULA`, alumno pasa a
+`Matriculado`.
+
+**Pensiones generar body:** `{ anio, mes, monto_base }` (monto_base por defecto 250).
+
+**Beca body:** `{ id_alumno, tipo, porcentaje_descuento, monto_descuento, fecha_inicio, fecha_fin }`.
+
+---
+
+## 11. Caja — `/api/caja` (9)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 66 | GET | `/api/caja/actual` | Autenticado | Apertura abierta + totales |
+| 67 | GET | `/api/caja/cajas` | Autenticado | Cajas registradas |
+| 68 | GET | `/api/caja/aperturas?desde=&hasta=` | Autenticado | Historial de aperturas |
+| 69 | GET | `/api/caja/aperturas/:id` | Autenticado | Detalle de apertura |
+| 70 | GET | `/api/caja/movimientos/:id_apertura` | Autenticado | Movimientos |
+| 71 | GET | `/api/caja/cierres` | Autenticado | Historial de cierres |
+| 72 | POST | `/api/caja/aperturar` | ADMIN/SECRETARIA | Abre caja |
+| 73 | POST | `/api/caja/egresos` | ADMIN/SECRETARIA | Registra egreso |
+| 74 | POST | `/api/caja/cerrar` | ADMIN/SECRETARIA | Cierra con arqueo |
+
+**Aperturar body:** `{ monto_inicial, observaciones?, id_caja? }`. Si no hay caja, crea
+“Caja Principal”. Rechaza si ya hay una apertura sin cierre.
+
+**Egreso body:** `{ concepto, monto, nro_comprobante? }`.
+
+**Cerrar body:** `{ efectivo_fisico }`.
+
+**Cálculo:** `efectivo_esperado = monto_inicial + ingresos_efectivo - egresos`;
+`diferencia = efectivo_fisico - efectivo_esperado`;
+`estado`: `CUADRADO` si |dif| ≤ 0.01, `SOBRANTE` si > 0.01, `FALTANTE` si < -0.01.
+
+---
+
+## 12. Reportes — `/api/reportes` (6)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 75 | GET | `/api/reportes/dashboard?anio=` | ADMIN/SECRETARIA | KPIs ejecutivos |
+| 76 | GET | `/api/reportes/cuadro-merito/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Top 10 por promedio ponderado |
+| 77 | GET | `/api/reportes/alumnos-riesgo/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Alumnos con 2+ cursos en C |
+| 78 | GET | `/api/reportes/resumen-asistencia/:id_grado?anio=` | ADMIN/DOCENTE | Asistencia por alumno |
+| 79 | GET | `/api/reportes/libreta/:id_alumno?bimestre=&anio=` | Autenticado | Libreta completa |
+| 80 | GET | `/api/reportes/auditoria-docentes/:id_grado?bimestre=&anio=` | ADMIN | Avance de notas por docente |
+
+**Dashboard data:** `total_alumnos`, `total_personal`, `recaudacion_anual`,
+`pre_tickets_pendientes`, `monto_pendiente`, `total_retirados`, `total_grados`, `total_cursos`.
+
+**Mérito:** AD=4, A=3, B=2, C=1; promedio ponderado; top 10.
+
+**Libreta:** alumno, tutor, notas por curso, conclusión y resumen de asistencia.
+
+---
+
+## 13. Auditoría — `/api/auditoria` (6)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 81 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=` | Autenticado | Bitácora (máx. 200) |
+| 82 | GET | `/api/auditoria/modulos` | Autenticado | Módulos distintos |
+| 83 | GET | `/api/auditoria/estadisticas` | Autenticado | Totales por acción |
+| 84 | GET | `/api/auditoria/actas` | Autenticado | Actas bimestrales |
+| 85 | GET | `/api/auditoria/:id` | Autenticado | Detalle de registro |
+| 86 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra acta con hash |
+
+**Cerrar acta body:** `{ periodo, anio_lectivo, id_grado }`.
+Respuesta: acta con `estado = CERRADO`, `fecha_cierre`, `cerrado_por`, `hash_integridad`
+(MD5 de periodo + año + NOW + grado).
+
+> `GET /api/auditoria/:id` está después de las rutas fijas para evitar colisiones.
+
+---
+
+## 14. SIAGIE — `/api/siagie` (1)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 87 | POST | `/api/siagie/generar-excel` | ADMIN | Inyecta notas en plantilla y descarga |
+
+`multipart/form-data`:
+- `plantilla`: `.xlsx`/`.xls`, máx. 10 MB.
+- `id_grado`: entero.
+- `bimestre`: 1–4.
+- `anio_lectivo`: entero (default 2026).
+
+Respuesta: archivo `SIAGIE_<grado>_BIM<n>_<año>.xlsx`.
+
+**Lógica:** valida grado; obtiene notas finales; lee la primera hoja; detecta fila de
+encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`, `ALGEBRA`,
+`COMUNIC`, `FISICA`; si no detecta, usa fila 5/columna 3; cruza por DNI; escribe; guarda en
+`uploads/siagie`; registra en `exportaciones_siagie`; elimina temporal.
+
+---
+
+## 15. Notificaciones — `/api/notificaciones` (8)
+
+| # | Método | Ruta | Acceso | Descripción |
+|---|---|---|---|---|
+| 88 | GET | `/api/notificaciones?leido=` | Autenticado | Mis notificaciones |
+| 89 | GET | `/api/notificaciones/no-leidas` | Autenticado | Contador para campanita |
+| 90 | GET | `/api/notificaciones/:id` | Autenticado | Detalle propio |
+| 91 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
+| 92 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
+| 93 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
+| 94 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
+| 95 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a varios |
+
+**Crear body:** `{ id_usuario_destino, asunto, cuerpo }`.
+**Masivo body:** `{ destinos: [id_usuario,...], asunto, cuerpo }`.
+
+> `POST` guarda primero en BD y luego intenta correo a
+> `correo_personal || correo_institucional`; si falla el correo, no revierte.
+> El masivo **no envía correos** (solo persiste). Ver hallazgos.
+
+---
+
+## 16. Resumen y conteo
+
+| Módulo | Endpoints |
+|---|---|
+| Generales | 2 |
+| Auth | 8 |
+| Académico | 7 |
+| Alumnos | 6 |
+| Personal | 8 |
+| Carga curricular | 9 |
+| Asistencias | 9 |
+| Calificaciones | 6 |
+| Tesorería | 12 |
+| Caja | 9 |
+| Reportes | 6 |
+| Auditoría | 6 |
+| SIAGIE | 1 |
+| Notificaciones | 8 |
+| **Total** | **97** |
+
+| Verbo | Cantidad |
+|---|---|
+| GET | 60 |
+| POST | 25 |
+| PUT | 10 |
+| DELETE | 2 |
+
+Acceso:
+- **Públicos:** 6 (raíz, health, login, recuperar, validar token, restablecer).
+- **Solo JWT (sin rol específico):** 56.
+- **Restringidos por rol:** 35.
+- Total único: 97.
+
+> El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
+> El conteo correcto, revisando `verificarRol(...)` en los 13 routers, es 56/35.
+
+---
+
+## 17. Ejemplos rápidos
+
+```bash
+# Login
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"dni\":\"74829102\",\"password\":\"UC2026*\"}"
+
+# Listar alumnos
+curl http://localhost:3000/api/alumnos?anio=2026 \
+  -H "Authorization: Bearer $TOKEN"
+
+# Registrar pago
+curl -X POST http://localhost:3000/api/tesoreria/pagos \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"id_alumno\":1,\"id_concepto\":9,\"id_pension\":10,\"monto\":250,\"forma_pago\":\"Efectivo\"}"
+
+# SIAGIE
+curl -X POST http://localhost:3000/api/siagie/generar-excel \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "plantilla=@PLANTILLA_SIAGIE.xlsx" -F "id_grado=2" -F "bimestre=2" \
+  -o SIAGIE.xlsx
+```
