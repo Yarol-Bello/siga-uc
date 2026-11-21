@@ -1,37 +1,101 @@
 /**
  * Configuración de la conexión a PostgreSQL
  * SIGA-UC - Sistema Integrado de Gestión Académica
+ *
+ * Soporta dos formas de conexión, igual que scripts/backup.js:
+ *  1. DATABASE_URL (tiene prioridad).
+ *  2. Variables DB_* como fallback.
+ *
+ * SSL: se activa con DB_SSL=true o si DATABASE_URL incluye
+ * sslmode=require|verify-ca|verify-full. Nunca se registran credenciales.
  */
 
 const { Pool } = require("pg");
 require("dotenv").config();
 
+const esProduccion = process.env.NODE_ENV === "production";
+
+const parseEnteroPositivo = (valor, defecto) => {
+  const numero = Number.parseInt(valor, 10);
+  return Number.isInteger(numero) && numero > 0 ? numero : defecto;
+};
+
+const databaseUrl = (process.env.DATABASE_URL || "").trim();
+const sslPorUrl = /[?&]sslmode=(require|verify-ca|verify-full)/i.test(
+  databaseUrl,
+);
+const sslActivo =
+  String(process.env.DB_SSL).toLowerCase() === "true" || sslPorUrl;
+
 // Configuración del pool de conexiones
-const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: parseInt(process.env.DB_PORT) || 5432,
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME || "siga_uc",
+const configuracionPool = {
+  max: parseEnteroPositivo(process.env.DB_POOL_MAX, 20),
+  idleTimeoutMillis: parseEnteroPositivo(
+    process.env.DB_IDLE_TIMEOUT_MS,
+    30000,
+  ),
+  connectionTimeoutMillis: parseEnteroPositivo(
+    process.env.DB_CONNECTION_TIMEOUT_MS,
+    5000,
+  ),
+};
 
-  // Configuración del pool
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+if (databaseUrl) {
+  configuracionPool.connectionString = databaseUrl;
+} else {
+  configuracionPool.host = process.env.DB_HOST || "localhost";
+  configuracionPool.port = parseInt(process.env.DB_PORT) || 5432;
+  configuracionPool.user = process.env.DB_USER || "postgres";
+  configuracionPool.password = process.env.DB_PASSWORD;
+  configuracionPool.database = process.env.DB_NAME || "siga_uc";
+}
 
-// Evento: cuando se establece una conexión
-pool.on("connect", () => {
-  console.log(
-    "✅ Conectado a PostgreSQL - Base de datos:",
-    process.env.DB_NAME,
-  );
-});
+if (sslActivo) {
+  // Supabase y otros proveedores usan certificados gestionados; se cifra la
+  // conexión sin exigir una CA local.
+  configuracionPool.ssl = { rejectUnauthorized: false };
+}
 
-// Evento: cuando ocurre un error en el pool
+const pool = new Pool(configuracionPool);
+
+const describirError = (error) => {
+  if (!error) return "error desconocido";
+  if (error.code && !error.message) return error.code;
+  return error.code ? `${error.code}: ${error.message}` : error.message;
+};
+
+/**
+ * Descripción segura de la conexión (sin usuario ni contraseña).
+ */
+const describirConexion = () => {
+  if (databaseUrl) {
+    try {
+      const url = new URL(databaseUrl);
+      const base = url.pathname.replace(/^\//, "") || "postgres";
+      return `${base}@${url.hostname}:${url.port || 5432} (DATABASE_URL)`;
+    } catch {
+      return "DATABASE_URL (formato no reconocido)";
+    }
+  }
+
+  return `${process.env.DB_NAME || "siga_uc"}@${process.env.DB_HOST || "localhost"}:${process.env.DB_PORT || 5432}`;
+};
+
+// Evento: cuando se establece una conexión (solo en desarrollo, para no
+// ensuciar los logs de producción con una línea por conexión nueva).
+if (!esProduccion) {
+  pool.on("connect", () => {
+    console.log("✅ Conectado a PostgreSQL -", describirConexion());
+  });
+}
+
+// Evento: error en un cliente inactivo del pool. Un fallo transitorio NO debe
+// tumbar la API: se registra y el pool recicla la conexión.
 pool.on("error", (err) => {
-  console.error("❌ Error inesperado en el pool de PostgreSQL:", err.message);
-  process.exit(-1);
+  console.error(
+    "❌ Error inesperado en el pool de PostgreSQL (la API sigue activa):",
+    describirError(err),
+  );
 });
 
 /**
@@ -43,15 +107,18 @@ const query = async (text, params) => {
     const result = await pool.query(text, params);
     const duration = Date.now() - start;
 
-    if (process.env.NODE_ENV === "development") {
+    if (!esProduccion) {
       console.log(
         `📊 Query ejecutada en ${duration}ms | Filas: ${result.rowCount}`,
       );
+    } else if (duration > 500) {
+      const sql = String(text).replace(/\s+/g, " ").slice(0, 200);
+      console.warn(`🐢 Query lenta (${duration}ms): ${sql}`);
     }
 
     return result;
   } catch (error) {
-    console.error("❌ Error en consulta SQL:", error.message);
+    console.error("❌ Error en consulta SQL:", describirError(error));
     throw error;
   }
 };
@@ -73,12 +140,44 @@ const testConnection = async () => {
       "SELECT NOW() as ahora, version() as version",
     );
     console.log("✅ Test de conexión exitoso");
+    console.log("   Conexión:", describirConexion());
     console.log("   Hora del servidor:", result.rows[0].ahora);
     console.log("   Versión PostgreSQL:", result.rows[0].version.split(",")[0]);
     return true;
   } catch (error) {
-    console.error("❌ Fallo en la conexión a PostgreSQL:", error.message);
+    console.error(
+      "❌ Fallo en la conexión a PostgreSQL:",
+      describirError(error),
+    );
     return false;
+  }
+};
+
+/**
+ * Healthcheck corto para /api/health. No bloquea más de `timeoutMs`.
+ */
+const checkDatabase = async (timeoutMs = 2000) => {
+  let timer = null;
+
+  try {
+    await Promise.race([
+      pool.query("SELECT 1"),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("timeout de conexión a la BD")),
+          timeoutMs,
+        );
+      }),
+    ]);
+    return true;
+  } catch (error) {
+    console.error(
+      "❌ Healthcheck de base de datos:",
+      describirError(error),
+    );
+    return false;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 };
 
@@ -87,4 +186,6 @@ module.exports = {
   query,
   getClient,
   testConnection,
+  checkDatabase,
+  describirConexion,
 };

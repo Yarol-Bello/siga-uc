@@ -5,15 +5,19 @@
 
 require("dotenv").config();
 
-// Variables requeridas (obligatorias)
-const requiredEnvVars = [
-  "DB_HOST",
-  "DB_PORT",
-  "DB_USER",
-  "DB_PASSWORD",
-  "DB_NAME",
-  "JWT_SECRET",
-];
+const databaseUrl = (process.env.DATABASE_URL || "").trim();
+
+// Variables requeridas (obligatorias). Con DATABASE_URL no hacen falta las DB_*.
+const requiredEnvVars = ["JWT_SECRET"];
+if (!databaseUrl) {
+  requiredEnvVars.push(
+    "DB_HOST",
+    "DB_PORT",
+    "DB_USER",
+    "DB_PASSWORD",
+    "DB_NAME",
+  );
+}
 
 // Validar que existan las variables requeridas
 const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
@@ -24,7 +28,48 @@ if (missingVars.length > 0) {
   console.error(
     "\n💡 Copia el archivo .env.example a .env y completa los valores.",
   );
+  console.error(
+    "   También puedes definir DATABASE_URL en lugar de las variables DB_*.",
+  );
   process.exit(1);
+}
+
+// ============================================================
+// VALIDACIONES DE PRODUCCIÓN
+// ============================================================
+const esProduccion = (process.env.NODE_ENV || "development") === "production";
+const jwtSecret = process.env.JWT_SECRET || "";
+const secretoDeEjemplo =
+  /cambiar|ejemplo|example|changeme|tu_clave|una_clave_larga/i.test(jwtSecret);
+
+if (esProduccion && (jwtSecret.length < 32 || secretoDeEjemplo)) {
+  console.error(
+    "❌ NODE_ENV=production requiere un JWT_SECRET de al menos 32 caracteres y distinto de los valores de ejemplo.",
+  );
+  process.exit(1);
+}
+
+if (esProduccion && !process.env.FRONTEND_URL) {
+  console.error(
+    "❌ NODE_ENV=production requiere FRONTEND_URL (CORS y enlaces de recuperación).",
+  );
+  console.error(
+    "   Sin esa variable CORS solo permitiría localhost y el frontend no podría autenticarse.",
+  );
+  process.exit(1);
+}
+
+// ============================================================
+// ZONA HORARIA
+// ============================================================
+// TZ no se aplica desde JavaScript: Node toma la zona del sistema/proceso al
+// arrancar. Debe definirse como variable de entorno del proceso (en Render:
+// Environment > TZ=America/Lima), no dentro del código.
+const zonaProceso = Intl.DateTimeFormat().resolvedOptions().timeZone;
+if (zonaProceso !== "America/Lima") {
+  console.warn(
+    `⚠️ Zona horaria del proceso: ${zonaProceso}. Se recomienda TZ=America/Lima como variable de entorno del proceso (en Render, no en JS).`,
+  );
 }
 
 // Año lectivo activo (configurable por despliegue)
@@ -52,11 +97,16 @@ module.exports = {
   ANIO_LECTIVO,
 
   DB: {
+    URL: databaseUrl || null,
+    SSL:
+      String(process.env.DB_SSL).toLowerCase() === "true" ||
+      /[?&]sslmode=(require|verify-ca|verify-full)/i.test(databaseUrl),
     HOST: process.env.DB_HOST,
     PORT: parseInt(process.env.DB_PORT),
     USER: process.env.DB_USER,
     PASSWORD: process.env.DB_PASSWORD,
     NAME: process.env.DB_NAME,
+    POOL_MAX: parseInt(process.env.DB_POOL_MAX) || 20,
   },
 
   JWT: {

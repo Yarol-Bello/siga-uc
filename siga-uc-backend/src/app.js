@@ -10,9 +10,15 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const crypto = require("crypto");
 
 const env = require("./config/env");
-const { testConnection } = require("./config/database");
+const {
+  testConnection,
+  checkDatabase,
+  pool,
+  describirConexion,
+} = require("./config/database");
 const response = require("./utils/response");
 
 // Crear aplicación Express
@@ -22,6 +28,14 @@ const app = express();
 if (env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
+
+// Identificador corto por petición. Se usa solo en logs (morgan y errores);
+// no se agrega al JSON de respuesta.
+app.use((req, res, next) => {
+  req.id = crypto.randomBytes(4).toString("hex");
+  res.setHeader("X-Request-Id", req.id);
+  next();
+});
 
 // ============================================================
 // MIDDLEWARES GLOBALES
@@ -50,7 +64,12 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Logger de peticiones HTTP
-if (env.NODE_ENV === "development") {
+if (env.NODE_ENV === "production") {
+  const formatoCombined =
+    ':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"';
+  morgan.token("reqid", (req) => req.id || "-");
+  app.use(morgan(`:reqid ${formatoCombined}`));
+} else {
   app.use(morgan("dev"));
 }
 
@@ -59,11 +78,23 @@ if (env.NODE_ENV === "development") {
 // ============================================================
 
 // Ruta de health check
-app.get("/api/health", (req, res) => {
-  response.success(res, 200, "SIGA-UC API funcionando correctamente", {
+app.get("/api/health", async (req, res) => {
+  const baseDatosOk = await checkDatabase(2000);
+
+  if (!baseDatosOk) {
+    return res.status(503).json({
+      success: false,
+      message: "Servicio no disponible: base de datos sin conexión",
+      errors: null,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return response.success(res, 200, "SIGA-UC API funcionando correctamente", {
     app: env.APP.NAME,
     version: env.APP.VERSION,
     environment: env.NODE_ENV,
+    database: "ok",
     timestamp: new Date().toISOString(),
   });
 });
@@ -145,7 +176,11 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   const statusCode = err.status || err.statusCode || 500;
 
-  console.error("❌ Error:", err.code || "", err.message);
+  console.error(
+    `❌ Error [req ${req.id || "-"}]:`,
+    err.code || "",
+    err.message,
+  );
   console.error(err.stack);
 
   if (statusCode >= 500) {
@@ -169,6 +204,39 @@ app.use((err, req, res, next) => {
 
 const PORT = env.PORT;
 
+let server = null;
+let cerrando = false;
+let finalizado = false;
+
+const cerrarServidor = (codigo = 0, motivo = "señal") => {
+  if (cerrando) return;
+  cerrando = true;
+
+  console.log(`\n👋 Cerrando SIGA-UC (${motivo})...`);
+
+  const finalizar = async () => {
+    if (finalizado) return;
+    finalizado = true;
+
+    try {
+      await pool.end();
+      console.log("✅ Pool de PostgreSQL cerrado.");
+    } catch (error) {
+      console.error("⚠️ Error al cerrar el pool:", error.message);
+    } finally {
+      process.exit(codigo);
+    }
+  };
+
+  if (server) {
+    server.close(() => finalizar());
+    // Salida ordenada aunque alguna conexión abierta demore el cierre.
+    setTimeout(finalizar, 5000).unref();
+  } else {
+    finalizar();
+  }
+};
+
 const startServer = async () => {
   try {
     console.log("\n🚀 Iniciando SIGA-UC Backend...\n");
@@ -181,7 +249,7 @@ const startServer = async () => {
     }
 
     // Arrancar el servidor PRIMERO (sin esperar al SMTP)
-    app.listen(PORT, "0.0.0.0", () => {
+    server = app.listen(PORT, "0.0.0.0", () => {
       console.log("═══════════════════════════════════════════════════");
       console.log(`   🎓 ${env.APP.NAME} v${env.APP.VERSION}`);
       console.log("═══════════════════════════════════════════════════");
@@ -189,9 +257,7 @@ const startServer = async () => {
       console.log(`   📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`   🌍 Ambiente:     ${env.NODE_ENV}`);
       console.log(`   🕐 Zona horaria: ${env.TZ}`);
-      console.log(
-        `   💾 BD:           ${env.DB.NAME}@${env.DB.HOST}:${env.DB.PORT}`,
-      );
+      console.log(`   💾 BD:           ${describirConexion()}`);
       console.log("═══════════════════════════════════════════════════\n");
 
       // Verificar conexión SMTP en SEGUNDO PLANO (no bloquea el arranque)
@@ -212,14 +278,20 @@ const startServer = async () => {
   }
 };
 
-process.on("SIGINT", () => {
-  console.log("\n\n👋 Cerrando servidor SIGA-UC...");
-  process.exit(0);
+process.on("SIGINT", () => cerrarServidor(0, "SIGINT"));
+
+process.on("SIGTERM", () => cerrarServidor(0, "SIGTERM"));
+
+process.on("unhandledRejection", (reason) => {
+  console.error(
+    "❌ Unhandled rejection (el proceso continúa):",
+    reason instanceof Error ? reason.stack || reason.message : reason,
+  );
 });
 
-process.on("SIGTERM", () => {
-  console.log("\n\n👋 Cerrando servidor SIGA-UC...");
-  process.exit(0);
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught exception:", error?.stack || error);
+  cerrarServidor(1, "uncaughtException");
 });
 
 startServer();

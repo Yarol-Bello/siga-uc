@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `chore(infra): endurecer conexion, logs y arranque para produccion` |
 | `(sesión H15)` | `fix(tesoreria,auth): exigir pago completo de pensiones y limitar validar-token (H09, H03)` |
 | `(sesión H15)` | `fix(alumnos): sincronizar estado de usuario al retirar y editar (H19, H20)` |
 | `(sesión H15)` | `feat(ui): paginacion server-side en alumnos y bitacora (H23)` |
@@ -262,6 +263,18 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 - `alumnoDao.actualizar` sincroniza `usuarios.nombres/apellidos` con `COALESCE` solo si el
   request envía esos campos, dentro de la misma transacción.
 
+#### Endurecimiento de producción (21/11/2026)
+
+- `database.js` soporta `DATABASE_URL` (SSL con `DB_SSL=true` o `sslmode=require`) y `DB_*`
+  como fallback; pool configurable con `DB_POOL_MAX`, `DB_IDLE_TIMEOUT_MS` y
+  `DB_CONNECTION_TIMEOUT_MS`. Un error del pool se registra y ya no mata la API.
+- `env.js` exige `JWT_SECRET` (≥32 caracteres en producción) y `FRONTEND_URL` en producción;
+  valida la zona horaria del proceso y avisa si no es `America/Lima`.
+- `/api/health` ejecuta `SELECT 1` con timeout de 2 s y responde 503 si la BD no contesta.
+- En producción: morgan `combined` con id corto de petición (también en errores), log de
+  queries >500 ms, `unhandledRejection` sin exit y `uncaughtException`/`SIGTERM` con cierre
+  ordenado del pool.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -316,6 +329,11 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   movimiento por S/250 en la apertura abierta, pensión PAGADO. Beca temporal (20 %): S/250
   rechazado y S/200 aceptado. Concepto no pensión: S/25 rechazado y S/29.999999 aceptado por
   redondeo. `validar-token` 6.ª petición → 429. Datos temporales eliminados.
+- Endurecimiento de producción: health 200 en development; instancia con `DB_PORT` cerrado →
+  health 503 y proceso vivo; `pool.emit('error')` registró el error y el proceso siguió;
+  producción abortó con JWT corto y también sin `FRONTEND_URL` (exit 1); TZ=UTC emitió el
+  warning; morgan `combined` mostró id de 8 caracteres y se registró una query de 723 ms;
+  `SIGTERM` cerró el pool (exit 0); `npm run backup` generó 143.7 KB. Backup de prueba eliminado.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

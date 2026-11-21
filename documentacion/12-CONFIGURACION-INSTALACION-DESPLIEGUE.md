@@ -27,22 +27,25 @@ desactualizado** (habla de SMTP; el código usa Resend).
 |---|---|---|
 | `NODE_ENV` | No (default `development`) | Morgan, mensajes de error |
 | `PORT` | No (default 3000) | Puerto API |
-| `FRONTEND_URL` | Recomendada | Enlaces de recuperación y CORS |
-| `DB_HOST` | **Sí** | PostgreSQL |
-| `DB_PORT` | **Sí** | PostgreSQL |
-| `DB_USER` | **Sí** | PostgreSQL |
-| `DB_PASSWORD` | **Sí** | PostgreSQL |
-| `DB_NAME` | **Sí** | PostgreSQL |
-| `JWT_SECRET` | **Sí** | Firma de tokens |
+| `FRONTEND_URL` | **Sí en producción** | CORS y enlaces de recuperación (en producción aborta si falta) |
+| `DB_HOST` | Sí, salvo `DATABASE_URL` | PostgreSQL |
+| `DB_PORT` | Sí, salvo `DATABASE_URL` | PostgreSQL |
+| `DB_USER` | Sí, salvo `DATABASE_URL` | PostgreSQL |
+| `DB_PASSWORD` | Sí, salvo `DATABASE_URL` | PostgreSQL |
+| `DB_NAME` | Sí, salvo `DATABASE_URL` | PostgreSQL |
+| `JWT_SECRET` | **Sí** | Firma de tokens; en producción exige ≥32 caracteres y valor no de ejemplo |
 | `JWT_EXPIRES_IN` | No (default `8h`) | Expiración |
 | `ANIO_LECTIVO` | Recomendada (default año calendario) | Año lectivo activo |
 | `APP_NAME` | No (`SIGA-UC`) | Health/branding |
 | `APP_VERSION` | No (`1.0.0`) | Health |
-| `TZ` | No (`America/Lima`) | Zona horaria |
+| `TZ` | Recomendada | Debe definirse en el proceso (Render > Environment), no en JS |
 | `RESEND_API_KEY` | Para correos | API Resend |
 | `EMAIL_FROM` | Para correos | Remitente verificado |
-| `DATABASE_URL` | Opcional (backup) | Cadena completa; prioridad sobre `DB_*` |
-| `DB_SSL` | Opcional (backup) | `true` fuerza `sslmode=require` |
+| `DATABASE_URL` | Opcional (API y backup) | Cadena completa; prioridad sobre `DB_*` |
+| `DB_SSL` | Opcional (API y backup) | `true` activa SSL; también se detecta `sslmode=require` en la URL |
+| `DB_POOL_MAX` | No (20) | Máximo de conexiones del pool |
+| `DB_IDLE_TIMEOUT_MS` | No (30000) | Cierre de conexiones inactivas |
+| `DB_CONNECTION_TIMEOUT_MS` | No (5000) | Timeout para obtener conexión |
 | `BACKUP_DIR` | Opcional (backup) | Carpeta de salida; default `siga-uc-backend/backups` |
 
 ### 2.2 Variables heredadas (SMTP)
@@ -84,9 +87,11 @@ APP_VERSION=1.0.0
 TZ=America/Lima
 ```
 
-> `env.js` aborta el arranque si falta `DB_*` o `JWT_SECRET`. `ANIO_LECTIVO` es opcional: si
-> falta o es inválido, usa el año calendario actual y emite un warning. No exige Resend; si
-> falta, el servidor arranca y solo fallan los correos.
+> `env.js` exige `JWT_SECRET` y, si no hay `DATABASE_URL`, las `DB_*`. En producción además
+> exige `FRONTEND_URL` y un `JWT_SECRET` de al menos 32 caracteres y distinto de los valores
+> de ejemplo. `TZ` **no** se aplica desde JavaScript: debe definirse como variable de entorno
+> del proceso (Render > Environment). El healthcheck consulta la BD y devuelve `503` si no
+> responde.
 
 ---
 
@@ -221,16 +226,27 @@ Debe estar `Running`.
 4. Start: `npm start`.
 5. Variables:
    - `NODE_ENV=production`
-   - `DB_*` del PostgreSQL gestionado
-   - `JWT_SECRET` seguro
-   - `FRONTEND_URL=https://tu-frontend`
+   - `DATABASE_URL` (recomendada) **o** `DB_*`; `DB_SSL=true` si el proveedor exige SSL
+   - `JWT_SECRET` de al menos 32 caracteres, distinto de los valores de ejemplo
+   - `FRONTEND_URL=https://tu-frontend` (**obligatoria**)
+   - `TZ=America/Lima` como variable del proceso
    - `RESEND_API_KEY`
    - `EMAIL_FROM`
-6. Health check: `/api/health`.
+6. Health check: `/api/health` (consulta `SELECT 1` con timeout de 2 s).
 7. El servidor escucha en `0.0.0.0` y usa `process.env.PORT`.
 
 **CORS:** `app.js` permite `localhost:4200`, `localhost:3000` y `process.env.FRONTEND_URL`.
 Configurar el dominio real en `FRONTEND_URL`.
+
+**Conexión BD:** `DATABASE_URL` tiene prioridad sobre `DB_*`; el SSL se activa con
+`DB_SSL=true` o con `sslmode=require|verify-ca|verify-full` en la URL. El pool usa
+`DB_POOL_MAX` (20), `DB_IDLE_TIMEOUT_MS` (30000) y `DB_CONNECTION_TIMEOUT_MS` (5000). Un error
+transitorio del pool se registra y **no** tumba la API.
+
+**Observabilidad:** en producción morgan usa `combined` con un id de petición de 8 caracteres
+también presente en los logs de error; se registran queries de más de 500 ms (sin parámetros).
+`unhandledRejection` se registra sin matar el proceso; `uncaughtException` y `SIGTERM` cierran
+el servidor y el pool de forma ordenada.
 
 **Base de datos:** crear instancia PostgreSQL, ejecutar `siga_uc.sql` (y seeds si es demo).
 Verificar extensiones.
@@ -424,7 +440,8 @@ Crear una tarea diaria a las 02:00:
 | Pantalla en blanco tras deploy | Falta fallback SPA | Configurar `404.html`/rewrite |
 | CORS bloqueado | Dominio no permitido | Ajustar `FRONTEND_URL` |
 | SIAGIE sin notas | No hay `notas_finales_area` | Calcular notas finales |
-| Fecha desfasada | Zona horaria | `TZ=America/Lima` |
+| Fecha desfasada | Zona horaria | `TZ=America/Lima` en el entorno del proceso (Render), no en JS |
+| `/api/health` responde 503 | La BD no responde en 2 s | Revisar credenciales, SSL (`DB_SSL`/`sslmode`) y conectividad |
 
 ---
 
