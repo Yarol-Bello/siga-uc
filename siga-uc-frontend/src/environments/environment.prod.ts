@@ -4,5 +4,5 @@
  */
 export const environment = {
   production: true,
-  apiUrl: 'https://siga-uc-api.onrender.com/api'
+  apiUrl: 'https://siga-uc-api-prod.onrender.com/api'
 };
