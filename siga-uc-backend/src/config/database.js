@@ -11,6 +11,8 @@
  */
 
 const { Pool } = require("pg");
+const fs = require("fs");
+const path = require("path");
 require("dotenv").config();
 
 const esProduccion = process.env.NODE_ENV === "production";
@@ -54,9 +56,24 @@ if (databaseUrl) {
 }
 
 if (sslActivo) {
-  // Supabase y otros proveedores usan certificados gestionados; se cifra la
-  // conexión sin exigir una CA local.
-  configuracionPool.ssl = { rejectUnauthorized: false };
+  // Verificación real del certificado: se usa la CA de Supabase (pública,
+  // versionada en certs/) o la ruta indicada en DB_SSL_CA.
+  const rutaCa =
+    process.env.DB_SSL_CA ||
+    path.join(__dirname, "..", "..", "certs", "supabase-ca.crt");
+
+  try {
+    configuracionPool.ssl = {
+      ca: fs.readFileSync(rutaCa, "utf8"),
+      rejectUnauthorized: true,
+    };
+  } catch {
+    console.error(
+      `❌ DB_SSL activo pero no se pudo leer la CA en ${rutaCa}. ` +
+        "Defina DB_SSL_CA con la ruta del certificado o desactive el SSL.",
+    );
+    process.exit(1);
+  }
 }
 
 const pool = new Pool(configuracionPool);

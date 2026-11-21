@@ -292,6 +292,11 @@ Configurar el dominio real en `FRONTEND_URL`.
 `DB_POOL_MAX` (20), `DB_IDLE_TIMEOUT_MS` (30000) y `DB_CONNECTION_TIMEOUT_MS` (5000). Un error
 transitorio del pool se registra y **no** tumba la API.
 
+**Verificación TLS:** con SSL activo el pool exige un certificado válido contra la CA
+indicada en `DB_SSL_CA` o, por defecto, `siga-uc-backend/certs/supabase-ca.crt` (CA pública
+de Supabase, versionada en el repo). Si la CA no se puede leer, el arranque aborta. No se
+usa `rejectUnauthorized: false`.
+
 **Observabilidad:** en producción morgan usa `combined` con un id de petición de 8 caracteres
 también presente en los logs de error; se registran queries de más de 500 ms (sin parámetros).
 `unhandledRejection` se registra sin matar el proceso; `uncaughtException` y `SIGTERM` cierran
@@ -421,6 +426,9 @@ DB_USER=postgres
 DB_PASSWORD=<password>
 DB_NAME=postgres
 DB_SSL=true
+
+# Opcional: ruta a la CA para verificar TLS (por defecto certs/supabase-ca.crt)
+DB_SSL_CA=
 
 # Opcional: carpeta de salida (por defecto siga-uc-backend/backups)
 BACKUP_DIR=

@@ -130,8 +130,8 @@ function detalleHttp(respuesta, datos = null) {
 }
 
 function credenciales(rol) {
-  const dni = process.env[`SMOKE_${rol}_DNI`];
-  const password = process.env[`SMOKE_${rol}_PASSWORD`];
+  const dni = (process.env[`SMOKE_${rol}_DNI`] || "").trim();
+  const password = (process.env[`SMOKE_${rol}_PASSWORD`] || "").trim();
 
   if (!dni || !password) {
     return {
