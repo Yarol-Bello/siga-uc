@@ -3,16 +3,16 @@
 Base de datos PostgreSQL 18 del Sistema Integrado de Gestión Académica de la
 I.E.P. Unión Científica.
 
-## Instalación nueva (secuencia oficial)
+## Dos escenarios de instalación
 
-`database/siga_uc_completo.sql` es un **dump completo**: crea el esquema (39 tablas),
-funciones, triggers, índices y carga los datos de ejemplo. **No se carga junto con
-`siga_uc.sql`.**
+### A. Desarrollo / demostración
+
+`siga_uc_completo.sql` es un **dump completo**: crea el esquema (39 tablas), funciones,
+triggers, índices y carga los **datos ficticios de demostración** (21 alumnos, apoderados,
+pagos y pensiones de ejemplo). **Nunca debe usarse como base de producción.**
 
 ```powershell
-# Windows / PowerShell
 createdb -U postgres siga_uc
-
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
@@ -20,30 +20,50 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 # ...y las migraciones futuras, en orden.
 ```
 
-```bash
-# Linux / macOS
-createdb -U postgres siga_uc
+### B. Producción (base nueva, sin datos ficticios)
 
-psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
+La base de producción se construye con **esquema + seed de catálogos + migraciones**:
+
+```powershell
+createdb -U postgres siga_uc
+psql -U postgres -d siga_uc -f database/siga_uc.sql
+psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 ```
 
-> Ejecutar `siga_uc.sql` antes del completo **falla**: el dump vuelve a crear
-> `calcular_nota_final_area`, triggers e índices que ya existirían.
+`seed_produccion.sql` crea únicamente catálogos y configuración: 4 roles, 5 grados, 11 cursos,
+29 competencias, escala AD/A/B/C, 11 conceptos de pago del año en curso, carga curricular
+inicial, una caja principal y **un único usuario ADMIN** con `requiere_cambio_password = TRUE`.
+No crea alumnos, apoderados, pagos, pensiones, calificaciones, asistencias, movimientos de
+caja, bitácora ni becas.
+
+- El DNI del administrador inicial es `74829102`.
+- La contraseña se pasa con `-v admin_password`; si falta o está vacía, el script aborta.
+- El admin debe cambiarla en el primer inicio de sesión.
+- El seed es idempotente: se puede volver a ejecutar sin duplicar catálogos.
+- La carga curricular inicial se asigna al administrador porque `id_personal` es NOT NULL;
+  al crear docentes reales, reasignarla desde el módulo correspondiente.
+
+> **No mezclar los escenarios.** `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes:
+> el dump completo ya trae esquema y datos de demo. Cargar ambos duplica objetos. El dump
+> de demo **no** debe usarse en producción porque contiene 21 alumnos ficticios y más de
+> 140 pensiones marcadas `PAGADO` sin un pago que las respalde (144 medidas por
+> `test:integridad` en la base local).
 
 ## Archivos
 
 | Archivo | Uso |
 |---|---|
-| `siga_uc_completo.sql` | **Instalación completa**: esquema + datos de ejemplo + funciones/índices. Es el archivo que se carga en una BD nueva. |
-| `siga_uc.sql` | **Referencia de esquema** (39 tablas, sin datos). Sirve para consultar/versionar la estructura; **no se carga junto con el completo**. |
-| `migracion_*.sql` | Parches **idempotentes** para bases existentes. Se aplican en orden después del dump o de la migración anterior. |
+| `siga_uc_completo.sql` | **Solo desarrollo/demo**: esquema + datos ficticios + funciones/índices. No usar en producción. |
+| `siga_uc.sql` | **Esquema base** (39 tablas, sin datos). Primer paso de una instalación de producción. |
+| `seed_produccion.sql` | **Catálogos y configuración** para producción + admin inicial. Requiere `-v admin_password`. |
+| `migracion_*.sql` | Parches **idempotentes** para bases existentes. Se aplican en orden después del esquema o de la migración anterior. |
 | `migracion_h32_anulacion_pagos.sql` | Añade campos de anulación en `pagos` y `ANULADO` en `boletas_electronicas`. |
 | `migracion_h10_h38_concurrencia_pagos.sql` | Crea `UNIQUE (serie, numero)` y `ux_pago_pension_activo` si no hay duplicados; avisa y omite el índice si los hay. |
 | `migracion_h07_auditoria.sql` | Índices `ix_bitacora_fecha` e `ix_bitacora_usuario` para la bitácora. |
-| `fix_tesoreria_pagos.sql` | **Histórico**: corrige el trigger de caja y genera pre-tickets de matrícula. Ya está incorporado en `siga_uc_completo.sql`; no se ejecuta en instalaciones nuevas. |
+| `fix_tesoreria_pagos.sql` | **Histórico**: corrige el trigger de caja y genera pre-tickets de matrícula. Ya está incorporado en el esquema actual (`siga_uc.sql`) y en el dump; no se ejecuta en instalaciones nuevas. |
 | `preparar_anio_lectivo.sql` | Utilidad idempotente para copiar conceptos `MATRICULA`/`PENSION` a un año nuevo (`-v anio=2027`). |
 | `siga_uc_backup.sql` | Backup local con datos. Ignorado por Git; no se usa para instalar. |
 
@@ -57,6 +77,19 @@ WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 -- Índice de doble pago (si no había duplicados históricos)
 SELECT indexname FROM pg_indexes
 WHERE indexname = 'ux_pago_pension_activo';
+
+-- Producción recién sembrada: 1 usuario y cero datos operativos
+SELECT
+  (SELECT COUNT(*) FROM usuarios) AS usuarios,
+  (SELECT COUNT(*) FROM alumnos) AS alumnos,
+  (SELECT COUNT(*) FROM pagos) AS pagos,
+  (SELECT COUNT(*) FROM pensiones) AS pensiones;
+```
+
+Además, desde `siga-uc-backend`:
+
+```powershell
+npm run test:integridad   # 10 invariantes; debe dar 10 PASS en una base de producción limpia
 ```
 
 ## Migraciones sobre una base existente
@@ -77,4 +110,5 @@ Las migraciones no eliminan datos ni vuelven a crear el esquema.
 | Extensiones | `pgcrypto`, `unaccent`, `uuid-ossp` |
 
 Los usuarios y contraseñas de ejemplo están en `docs/CREDENCIALES.md` y solo
-aplican a bases de demostración.
+aplican a bases de demostración. En producción no se cargan: el único usuario inicial
+es el admin creado por `seed_produccion.sql`, con contraseña temporal y cambio obligatorio.

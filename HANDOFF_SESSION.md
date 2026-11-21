@@ -3,11 +3,11 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit base de esta sesión:** `56dbf06 fix(scripts): smoke test sin credenciales debe fallar y persistir SMOKE_*`
-- **Commit de esta sesión:** `test(scripts): suites de integridad y e2e sobre base desechable`
+- **Commit base de esta sesión:** `1a332c0 test(scripts): suites de integridad y e2e sobre base desechable`
+- **Commit de esta sesión:** `feat(db): seed de produccion sin datos ficticios (H41)`
   (el hash exacto queda en `git log -1`).
-- **Estado:** smoke, integridad y E2E implementados y verificados; las credenciales locales
-  viven en `siga-uc-backend/.env` (ignorado); árbol limpio tras el commit.
+- **Estado:** seed de producción separado del demo, invariante 7 corregido y verificado;
+  árbol limpio tras el commit.
 
 ---
 
@@ -19,7 +19,7 @@
   - PostgreSQL 18 local, base `siga_uc`.
 - En **Render** hay una versión **ANTIGUA** con **DATOS DE PRUEBA**. **No hay datos reales.**
 - **No hay staging.**
-- La BD local se recreó con la secuencia oficial: **39 tablas** y el índice
+- La BD local de demo se recreó con la secuencia del dump: **39 tablas** y el índice
   `ux_pago_pension_activo` **existe** (verificado el 21/11/2026).
 - Datos locales tras la recreación: **21 alumnos, 29 usuarios, 10 pagos de seed
   (+1 pago de prueba existente), 180 pensiones, 0 pensiones duplicadas**.
@@ -36,9 +36,15 @@
 - `npm run test:e2e` (`scripts/test-e2e.js`): crea `siga_uc_e2e`, carga el dump y las
   migraciones, arranca el backend en el puerto 3101, ejecuta 14 flujos y elimina la base
   con `dropdb --force`. Verificado dos veces seguidas: **14 PASS, 0 FAIL** y exit 0.
-- Integridad local del 21/11/2026: **7 PASS, 3 FAIL** por datos de seed reales
-  (invariantes 4, 7 y 8: 5 pagos sin INGRESO, ADMIN sin alumno/personal y 144 pensiones
-  PAGADO sin pago). No son fallos de la suite.
+- Integridad local del 21/11/2026: **8 PASS, 2 FAIL** por datos de seed reales
+  (invariantes 4 y 8: 5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El
+  invariante 7 ya no marca al ADMIN: solo exige ficha a ESTUDIANTE (rol 4) y
+  DOCENTE (rol 2).
+- `database/seed_produccion.sql` crea solo catálogos, una caja y un ADMIN inicial
+  (`74829102`, `requiere_cambio_password=TRUE`) con contraseña recibida por
+  `-v admin_password`. En `siga_uc_prod_test`: **10 PASS, 0 FAIL**, **0 alumnos,
+  0 pagos, 0 pensiones, 1 usuario**. Login inicial bloqueado con
+  `CAMBIO_PASSWORD_REQUERIDO`; tras cambiarla, login y `/alumnos` funcionan.
 
 ---
 
@@ -70,6 +76,7 @@
 | H38 | Doble pago concurrente bloqueado | `c65770c` |
 | H39 | Fechas de negocio en hora de Lima | `399d35e` |
 | H40 | Secuencia de instalación corregida | `def839e` |
+| H41 | Seed de producción separado del dump demo; invariante 7 corregido | `feat(db): seed de produccion sin datos ficticios (H41)` |
 
 ---
 
@@ -110,10 +117,15 @@
 
 - El backend fija la sesión de PostgreSQL en `America/Lima`; el `TZ` del **proceso**
   también debe ser `America/Lima` en Render (variable de entorno, no en JS).
-- `siga_uc_completo.sql` es un **dump COMPLETO**: no cargarlo junto con `siga_uc.sql`.
-- Orden oficial: `siga_uc_completo.sql` → `migracion_h32_anulacion_pagos.sql` →
-  `migracion_h10_h38_concurrencia_pagos.sql` → `migracion_h07_auditoria.sql` →
-  migraciones futuras, en ese orden.
+- **Desarrollo/demo:** `siga_uc_completo.sql` (esquema + 21 alumnos ficticios +
+  ~146 pensiones PAGADO sin pago). **Nunca en producción.**
+- **Producción:** `siga_uc.sql` → `seed_produccion.sql` (con `-v admin_password`) →
+  `migracion_h32_anulacion_pagos.sql` → `migracion_h10_h38_concurrencia_pagos.sql` →
+  `migracion_h07_auditoria.sql` → migraciones futuras, en ese orden.
+- No mezclar ambos escenarios: `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes.
+- `seed_produccion.sql` crea una ficha `personal` mínima del admin porque
+  `carga_curricular.id_personal` es NOT NULL; la carga inicial queda asignada al admin
+  y debe reasignarse al crear docentes reales. Sigue habiendo **1 solo usuario**.
 - `express-rate-limit` usa memoria: reiniciar el backend limpia los contadores.
 - 5 fallos de login bloquean 15 min por IP; en red escolar compartida afecta a todos
   (H36, pendiente).
@@ -144,7 +156,9 @@
 
 ## 7. Próximo paso exacto
 
-1. **Ensayo de despliegue en el Render actual** con datos de prueba:
+1. **Ensayo de despliegue en el Render actual con el escenario de producción**:
+   - Crear la base con `siga_uc.sql` → `seed_produccion.sql` (`-v admin_password`) →
+     migraciones en orden. **No** usar `siga_uc_completo.sql`.
    - Configurar `NODE_ENV=production`, `FRONTEND_URL`, `TZ=America/Lima`,
      `JWT_SECRET` largo y la conexión (`DATABASE_URL`/`DB_SSL` o `DB_*`).
    - **Resend:** verificar el dominio con SPF/DKIM. Sin eso los correos solo llegan a
@@ -153,19 +167,14 @@
      `npm run backup` falla en producción y hay que usar los backups del proveedor.
    - **Frontend:** confirmar que `environment.prod.ts` apunta a la URL real del backend
      y que el build genera `404.html`.
-   - Aplicar las migraciones pendientes en orden.
+   - Entrar con el admin inicial (`74829102`) y cambiar la contraseña temporal.
+   - Ejecutar `npm run test:integridad` contra la base de Render: debe dar **10 PASS**.
    - Antes del ensayo, ejecutar localmente `npm run test:integridad` y
-     `npm run test:e2e`; ambos deben quedar sin FAIL (el E2E debe dar 14 PASS).
-   - Configurar en Render las variables `SMOKE_BASE_URL` y `SMOKE_*` (o pasarlas solo
-     al ejecutar; nunca commitearlas) y correr el smoke contra el ensayo:
-     ```powershell
-     $env:SMOKE_BASE_URL="https://<backend-de-ensayo>/api"
-     $env:SMOKE_ADMIN_DNI="<dni>"; $env:SMOKE_ADMIN_PASSWORD="<clave>"
-     $env:SMOKE_DOCENTE_DNI="<dni>"; $env:SMOKE_DOCENTE_PASSWORD="<clave>"
-     $env:SMOKE_ESTUDIANTE_DNI="<dni>"; $env:SMOKE_ESTUDIANTE_PASSWORD="<clave>"
-     cd siga-uc-backend
-     npm run smoke
-     ```
+     `npm run test:e2e`; el E2E debe dar 14 PASS.
+   - El smoke completo necesita cuentas DOCENTE/ESTUDIANTE reales; el seed de producción
+     solo trae el admin. Crear cuentas reales (o temporales) y recién entonces ejecutar
+     `npm run smoke` con `SMOKE_*` de ese entorno. Sin esas cuentas, el smoke será parcial
+     (exit 2) y no debe usarse como aceptación.
    - Criterio: **11 PASS, 0 FAIL, 0 SKIP**, exit code `0`. Un FAIL (exit 1) o un SKIP
      inesperado (exit 2) bloquea el ensayo. `SMOKE_ALLOW_SKIP=1` solo se usa para
      diagnósticos parciales, nunca como aceptación.
@@ -193,3 +202,15 @@ El primero confirma el commit; el segundo debe devolver **39** y
 `database: "ok"` **con el backend en marcha**; el cuarto debe terminar en
 **11 PASS, 0 FAIL**; el quinto puede reportar violaciones reales de seed; el sexto
 debe terminar en **14 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada.
+
+Para una base de **producción** nueva:
+
+```powershell
+createdb -U postgres siga_uc
+psql -U postgres -d siga_uc -f database/siga_uc.sql
+psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+cd siga-uc-backend; npm run test:integridad   # 10 PASS
+```

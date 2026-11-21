@@ -298,9 +298,11 @@ npm run test:integridad
 - **Cuándo:** después de restaurar un backup, antes de cada despliegue y semanalmente.
   En producción, usar preferentemente una conexión/replica de solo lectura.
 
-> En la base local del 21/11/2026 hay violaciones reales de seed en los invariantes 4, 7 y
-> 8 (pagos sin INGRESO, usuario ADMIN sin alumno/personal y pensiones PAGADO sin pago).
-> No son fallos de la suite: deben revisarse antes de cargar datos reales.
+> En la base local del 21/11/2026 hay violaciones reales de seed en los invariantes 4 y 8
+> (5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El invariante 7 solo exige ficha
+> a ESTUDIANTE/DOCENTE; ADMIN y SECRETARIA están exentos. No son fallos de la suite: deben
+> revisarse antes de cargar datos reales. Una base de producción sembrada con
+> `seed_produccion.sql` da **10 PASS**.
 
 #### `test:e2e` — base desechable
 

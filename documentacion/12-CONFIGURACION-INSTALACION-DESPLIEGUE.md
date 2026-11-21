@@ -97,10 +97,14 @@ TZ=America/Lima
 
 ## 3. Base de datos
 
-### 3.1 Instalación nueva (secuencia oficial)
+### 3.1 Instalación nueva — dos escenarios excluyentes
 
-`siga_uc_completo.sql` es un **dump completo**: esquema (39 tablas), datos de ejemplo,
-funciones, triggers e índices. No se carga junto con `siga_uc.sql`.
+#### A. Desarrollo / demostración
+
+`siga_uc_completo.sql` es un **dump completo**: esquema (39 tablas), funciones, triggers,
+índices y **datos ficticios de demostración** (21 alumnos, apoderados, pagos y pensiones de
+ejemplo). **Nunca debe usarse en producción**: contiene más de 140 pensiones marcadas
+`PAGADO` sin un pago que las respalde (144 medidas por `test:integridad` en la base local).
 
 ```powershell
 createdb -U postgres siga_uc
@@ -112,10 +116,28 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 # ...y las migraciones futuras, en orden.
 ```
 
-> **No** ejecutar `psql -f database/siga_uc.sql` antes del completo: es la referencia del
-> esquema, no un paso de instalación. Hacerlo provoca errores como
-> `ya existe una función «calcular_nota_final_area»`.
->
+#### B. Producción (base nueva, sin datos ficticios)
+
+```powershell
+createdb -U postgres siga_uc
+
+psql -U postgres -d siga_uc -f database/siga_uc.sql
+psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+# ...y las migraciones futuras, en orden.
+```
+
+`seed_produccion.sql` crea solo catálogos y configuración: roles, grados, cursos,
+competencias, escala AD/A/B/C, conceptos de pago del año en curso, carga curricular,
+una caja principal y **un único usuario ADMIN** (`74829102`) con
+`requiere_cambio_password = TRUE`. La contraseña se pasa con `-v admin_password`;
+si falta o está vacía, el script aborta. No crea alumnos, apoderados, pagos, pensiones,
+calificaciones, asistencias, movimientos, bitácora ni becas.
+
+> **No mezclar escenarios.** `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes:
+> cargar ambos duplica objetos (`ya existe una función «calcular_nota_final_area»`).
 > `fix_tesoreria_pagos.sql` es histórico y ya está incorporado en el dump; no se ejecuta
 > en instalaciones nuevas.
 
@@ -134,6 +156,23 @@ psql -U postgres -d siga_uc -c "SELECT indexname FROM pg_indexes WHERE indexname
 El índice de doble pago aparece si la base no tenía duplicados históricos; la migración
 avisa y lo omite si los encuentra.
 
+En una base de producción recién sembrada, verificar además:
+
+```sql
+SELECT
+  (SELECT COUNT(*) FROM usuarios) AS usuarios,   -- 1
+  (SELECT COUNT(*) FROM alumnos) AS alumnos,     -- 0
+  (SELECT COUNT(*) FROM pagos) AS pagos,         -- 0
+  (SELECT COUNT(*) FROM pensiones) AS pensiones; -- 0
+```
+
+Y ejecutar la suite de invariantes:
+
+```powershell
+cd siga-uc-backend
+npm run test:integridad   # 10 PASS, 0 FAIL
+```
+
 ### 3.5 Extensiones
 
 ```sql
@@ -142,7 +181,8 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 ```
 
-Ya están incluidas en el dump. `pgcrypto` es indispensable para `crypt()` y `gen_salt()`.
+`siga_uc.sql` y el dump ya las incluyen; `seed_produccion.sql` asegura `pgcrypto`
+(idempotente). `pgcrypto` es indispensable para `crypt()` y `gen_salt()`.
 
 ---
 
@@ -269,9 +309,12 @@ producción afecta a los valores **nuevos**, no a los ya guardados. El pool fija
 `timezone=America/Lima` y al arrancar se verifica con `SHOW timezone` (si no coincide, solo
 emite un warning).
 
-**Base de datos:** crear instancia PostgreSQL y ejecutar `siga_uc_completo.sql` (dump
-completo) seguido de las migraciones en orden. No cargar `siga_uc.sql` junto con el completo.
-Verificar extensiones.
+**Base de datos:** crear la instancia PostgreSQL y, en producción, ejecutar
+`database/siga_uc.sql` + `database/seed_produccion.sql` (con `-v admin_password`) +
+migraciones en orden. **No** cargar `siga_uc_completo.sql` en producción: es el dump de
+demo con alumnos y pensiones ficticias. Verificar extensiones y ejecutar
+`npm run test:integridad` antes de abrir el servicio. El admin inicial debe cambiar su
+contraseña en el primer login.
 
 ### 7.2 Frontend (Render Static Site / Vercel / Netlify)
 
@@ -289,10 +332,12 @@ tiene otro nombre.
 
 ### 7.3 Checklist de despliegue
 
-- [ ] PostgreSQL creado y con esquema.
+- [ ] PostgreSQL creado con `siga_uc.sql` + `seed_produccion.sql` + migraciones (sin dump demo).
+- [ ] `npm run test:integridad` → 10 PASS, 0 FAIL.
+- [ ] Confirmado: 0 alumnos, 0 pagos, 0 pensiones, 1 usuario.
+- [ ] Admin inicial cambió su contraseña temporal.
 - [ ] Variables de entorno cargadas.
 - [ ] `JWT_SECRET` distinto al de desarrollo.
-- [ ] Contraseñas semilla rotadas.
 - [ ] `FRONTEND_URL` y CORS correctos.
 - [ ] Resend verificado (dominio/remitente).
 - [ ] API responde `/api/health`.
@@ -476,8 +521,9 @@ Crear una tarea diaria a las 02:00:
 | `siga-uc-frontend/src/environments/environment.ts` | API local |
 | `siga-uc-frontend/src/environments/environment.prod.ts` | API producción |
 | `siga-uc-frontend/angular.json` | Build, budgets, fileReplacements |
-| `database/siga_uc_completo.sql` | Instalación completa (esquema + datos de ejemplo) |
-| `database/siga_uc.sql` | Referencia de esquema; no se carga con el completo |
+| `database/siga_uc_completo.sql` | Demo: esquema + datos ficticios; no usar en producción |
+| `database/siga_uc.sql` | Esquema base para producción (39 tablas, sin datos) |
+| `database/seed_produccion.sql` | Catálogos + admin inicial; requiere `-v admin_password` |
 | `database/migracion_*.sql` | Parches idempotentes para bases existentes |
 | `database/siga_uc_backup.sql` | Backup local (ignorado) |
 

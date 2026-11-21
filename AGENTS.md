@@ -1,8 +1,10 @@
 # AGENTS.md — SIGA-UC (resumen operativo)
 
 > Documentación detallada: **`documentacion/README.md`**.
-> Fuente de verdad: **el código** (`siga-uc-backend`, `siga-uc-frontend`) y
-> `database/siga_uc_completo.sql`. Si este resumen difiere del código, manda el código.
+> Fuente de verdad: **el código** (`siga-uc-backend`, `siga-uc-frontend`),
+> `database/siga_uc.sql` (esquema base) y `database/seed_produccion.sql` (catálogos).
+> `database/siga_uc_completo.sql` es solo el dump de demo. Si este resumen difiere del
+> código, manda el código.
 
 ---
 
@@ -41,7 +43,7 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 
 ```text
 siga-uc/
-├── database/          siga_uc_completo.sql (instalación), siga_uc.sql (referencia), migraciones
+├── database/          siga_uc.sql (esquema), seed_produccion.sql (producción), siga_uc_completo.sql (demo), migraciones
 ├── docs/              documentación operativa previa (parcialmente desactualizada)
 ├── documentacion/     documentación detallada y vigente
 ├── siga-uc-backend/   API REST
@@ -72,19 +74,30 @@ npm install
 ng serve
 ```
 
-Base de datos (instalación nueva, secuencia oficial):
+Base de datos — **dos escenarios excluyentes**:
 
 ```powershell
+# A) Desarrollo / demo (datos ficticios; NUNCA en producción)
 createdb -U postgres siga_uc
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+
+# B) Producción (catálogos + admin; sin datos ficticios)
+createdb -U postgres siga_uc
+psql -U postgres -d siga_uc -f database/siga_uc.sql
+psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 ```
 
-> `siga_uc_completo.sql` es un **dump completo** (esquema + datos + funciones + índices).
-> **No** cargar `siga_uc.sql` junto con él: es solo la referencia del esquema. Las
-> migraciones son idempotentes y se aplican en orden. Detalle en `database/README.md`.
+> `siga_uc_completo.sql` es el **dump de demo** (esquema + 21 alumnos ficticios +
+> pagos/pensiones de ejemplo). No usar en producción: contiene pensiones `PAGADO`
+> sin pago que las respalde. Producción usa `siga_uc.sql` + `seed_produccion.sql`,
+> que crea solo catálogos, una caja y un admin con cambio de contraseña obligatorio.
+> No mezclar ambos escenarios. Detalle en `database/README.md`.
 
 Health check: `GET http://localhost:3000/api/health`.
 
@@ -157,6 +170,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 
 ## 8. Trampas conocidas (revisar antes de diagnosticar)
 
+- `siga_uc_completo.sql` es **solo demo**: 21 alumnos ficticios y más de 140 pensiones
+  `PAGADO` sin pago. Producción se instala con `siga_uc.sql` + `seed_produccion.sql`.
+  No cargar ambos escenarios en la misma base.
 - La documentación antigua decía 26 tablas; son **39**.
 - El correo es **Resend**, no SMTP/Nodemailer.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a

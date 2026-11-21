@@ -311,21 +311,31 @@ async function main() {
     `,
   );
 
-  // 7. Todo usuario ACTIVO debe tener alumno o personal asociado.
+  // 7. Estudiantes y docentes activos deben tener su ficha asociada.
+  // ADMIN (1) y SECRETARIA (3) están exentos: no tienen ficha de alumno/personal.
   await verificarInvariante(
     7,
-    "Usuario ACTIVO sin alumno ni personal",
+    "Estudiante/Docente activo sin ficha asociada",
     `
       SELECT q.*, COUNT(*) OVER() AS _total
       FROM (
         SELECT u.id_usuario, u.dni, u.id_rol
         FROM usuarios u
         WHERE u.estado = 'ACTIVO'
-          AND NOT EXISTS (
-            SELECT 1 FROM alumnos a WHERE a.id_usuario = u.id_usuario
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM personal p WHERE p.id_usuario = u.id_usuario
+          AND (
+            (
+              u.id_rol = 4
+              AND NOT EXISTS (
+                SELECT 1 FROM alumnos a WHERE a.id_usuario = u.id_usuario
+              )
+            )
+            OR
+            (
+              u.id_rol = 2
+              AND NOT EXISTS (
+                SELECT 1 FROM personal p WHERE p.id_usuario = u.id_usuario
+              )
+            )
           )
       ) q
       ORDER BY q.id_usuario

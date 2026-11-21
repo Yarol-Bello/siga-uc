@@ -31,6 +31,13 @@ Estudiantes adicionales del seed: DNI `70000001` a `70000015`.
 Los estudiantes generados reciben una contraseña temporal derivada de su DNI y deben
 cambiarla cuando `requiere_cambio_password = TRUE`. No se documentan contraseñas aquí.
 
+## Producción
+
+`database/seed_produccion.sql` crea un único administrador inicial con DNI `74829102`,
+contraseña temporal definida al ejecutar `-v admin_password` y
+`requiere_cambio_password = TRUE`. La contraseña no se documenta aquí; el admin debe
+cambiarla en el primer inicio de sesión.
+
 ## Smoke test
 
 `npm run smoke` obtiene las credenciales de `siga-uc-backend/.env`; en una terminal nueva

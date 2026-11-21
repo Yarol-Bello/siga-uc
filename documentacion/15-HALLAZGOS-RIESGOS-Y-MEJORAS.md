@@ -475,9 +475,20 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Severidad | Alta |
 | Evidencia | AGENTS §4 y `documentacion/12` indicaban cargar `siga_uc.sql` y después `siga_uc_completo.sql`; este último es un dump completo (esquema + datos + funciones + índices) y falla con “ya existe una función «calcular_nota_final_area»” |
 | Impacto | Una instalación nueva siguiendo la documentación no funciona |
-| Recomendación | Una sola secuencia oficial: `siga_uc_completo.sql` + migraciones en orden; `siga_uc.sql` solo como referencia |
+| Recomendación | Dos secuencias excluyentes: demo (`siga_uc_completo.sql` + migraciones) y producción (`siga_uc.sql` + `seed_produccion.sql` + migraciones); nunca mezclarlas |
 | Esfuerzo | S |
-| Estado | ✅ Resuelto (21/11/2026): `database/README.md`, AGENTS §4, docs 04/12 y HANDOFF actualizados; instalación verificada en `siga_uc_install_test` con 39 tablas e índice `ux_pago_pension_activo` |
+| Estado | ✅ Resuelto (21/11/2026): `database/README.md`, AGENTS §4, docs 12 y HANDOFF actualizados; instalación de producción verificada en `siga_uc_prod_test` con 39 tablas e índice `ux_pago_pension_activo` |
+
+### H41 — Datos de demostración mezclados con la instalación de producción
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | `siga_uc_completo.sql` es el único dump documentado y contiene 21 alumnos ficticios y más de 140 pensiones `PAGADO` sin pago (144 medidas por `test:integridad`); usarlo en producción deja datos operativos falsos desde el día uno |
+| Impacto | Reportes, caja, pensiones y SIAGIE contaminados con información ficticia; difícil de distinguir y limpiar |
+| Recomendación | Separar el seed de demo del de producción: catálogos + un admin inicial, sin datos operativos |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): `database/seed_produccion.sql` (roles, grados, cursos, competencias, escala, conceptos, carga, caja y admin con cambio obligatorio); `test:integridad` corregido para no marcar al ADMIN; verificado en `siga_uc_prod_test` con 10 PASS y 0 alumnos/pagos/pensiones |
 
 ---
 
