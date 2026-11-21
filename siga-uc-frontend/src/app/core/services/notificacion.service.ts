@@ -14,7 +14,7 @@ export interface Notificacion {
 }
 
 export interface DestinatariosNotificacion {
-  tipo: 'TODOS' | 'GRADO' | 'ALUMNO';
+  tipo: 'TODOS' | 'PERSONAL' | 'ROL' | 'GRADO' | 'ALUMNO';
   id?: number | null;
 }
 
@@ -47,7 +47,7 @@ export class NotificacionService {
   }
 
   /**
-   * Enviar una notificación a TODOS, un GRADO o un ALUMNO.
+   * Enviar una notificación a TODOS, PERSONAL, un ROL, un GRADO o un ALUMNO.
    */
   enviarMasivo(payload: EnviarNotificacionRequest): Observable<any> {
     return this.http.post<any>(`${this.API_URL}/masivo`, payload);

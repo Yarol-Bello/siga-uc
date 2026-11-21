@@ -9,8 +9,10 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > conceptos hardcodeados) quedó resuelto con `ANIO_LECTIVO`, `GET /api/configuracion` y
 > conceptos dinámicos. H25 (backup) quedó resuelto con `npm run backup`, script Node y guía de
 > programación en Render/Supabase. H34 quedó resuelto: libretas, boletas y actas con PDFKit.
-> H15 quedó resuelto: mensajes personalizados con destinatarios TODOS/GRADO/ALUMNO y envío por
-> Resend sin perder la notificación si el correo falla.
+> H15 quedó resuelto: mensajes personalizados con destinatarios TODOS/GRADO/ALUMNO —luego
+> ampliados a PERSONAL/ROL— y envío por Resend sin perder la notificación si el correo falla.
+> **Ampliado 21/11/2026:** admite PERSONAL (ADMIN/DOCENTE/SECRETARIA) y ROL (1, 2 o 3), con
+> validación de rol, resumen real en la UI y auditoría con tipo/rol/total.
 > H23 quedó resuelto parcialmente: alumnos y bitácora ya tienen paginación server-side; faltan
 > personal, pagos y pre-tickets. H19 y H20 quedaron resueltos: el retiro desactiva al usuario y
 > congela el expediente en una transacción, y la edición sincroniza nombres/apellidos.
@@ -202,16 +204,16 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Unificar en una sola función/DAO documentado |
 | Esfuerzo | S |
 
-### H15 — Envío masivo de notificaciones no envía correos (resuelto)
+### H15 — Envío masivo de notificaciones (resuelto y ampliado)
 
 | Campo | Detalle |
 |---|---|
 | Severidad | Media |
-| Evidencia | Antes `notificacionService.crearMasivo` solo insertaba; ahora resuelve TODOS/GRADO/ALUMNO y envía correos con manejo de fallos |
+| Evidencia | Antes `notificacionService.crearMasivo` solo insertaba; ahora resuelve TODOS/PERSONAL/ROL/GRADO/ALUMNO y envía correos con manejo de fallos |
 | Impacto | El ADMIN cree que envió correos y solo llegó la campanita |
 | Recomendación | Reutilizar `crear` por destino o enviar en lote |
 | Esfuerzo | S |
-| Estado | ✅ Resuelto (20/11/2026): `POST /notificaciones/masivo`, destinatarios dinámicos y correos con `correos_enviados`/`correos_fallidos` |
+| Estado | ✅ Resuelto (20/11/2026) y ampliado (21/11/2026): `POST /notificaciones/masivo` con PERSONAL y ROL (roles 1-3), validación de ESTUDIANTE/rol inexistente (400), UI con select de roles y auditoría `ENVIAR` con tipo, `rol_nombre` y total |
 
 ### H16 — HTML del correo sin escapar
 

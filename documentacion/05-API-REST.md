@@ -435,13 +435,42 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 | 96 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
 | 97 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
 | 98 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
-| 99 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, un GRADO o un ALUMNO |
+| 99 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, PERSONAL, ROL, GRADO o ALUMNO |
 
 **Crear body:** `{ id_usuario_destino, asunto, cuerpo }`.
-**Masivo body:** `{ asunto, cuerpo, destinatarios: { tipo: "TODOS" | "GRADO" | "ALUMNO", id } }`.
-También acepta el formato anterior `{ destinos: [id_usuario,...], asunto, cuerpo }`.
 
-**Respuesta masiva:** `total_destinatarios`, `total_guardadas`, `correos_enviados`, `correos_fallidos`, `correos_sin_destino` y `total_enviadas`.
+**Masivo body:** `{ asunto, cuerpo, destinatarios: { tipo, id? } }`.
+
+Tipos de destinatario:
+
+| Tipo | `id` | Destinatarios |
+|---|---|---|
+| `TODOS` | No | Todos los usuarios `ACTIVO` (alumnos y personal) |
+| `PERSONAL` | No | Usuarios `ACTIVO` con rol ADMIN, DOCENTE o SECRETARIA |
+| `ROL` | Sí (`id_rol`) | Usuarios `ACTIVO` del rol indicado; solo roles 1, 2 o 3 |
+| `GRADO` | Sí (`id_grado`) | Alumnos activos del grado y año lectivo |
+| `ALUMNO` | Sí (`id_alumno`) | Un alumno activo concreto |
+
+```json
+{ "asunto": "Aviso", "cuerpo": "Mensaje", "destinatarios": { "tipo": "PERSONAL" } }
+```
+
+```json
+{ "asunto": "Aviso", "cuerpo": "Mensaje", "destinatarios": { "tipo": "ROL", "id": 2 } }
+```
+
+- `PERSONAL` no debe enviar `id`.
+- `ROL` valida que el rol exista y sea 1, 2 o 3. Para rol 4 (ESTUDIANTE) responde
+  `400` con `"Para estudiantes use TODOS, GRADO o ALUMNO."`; para un rol inexistente,
+  `400` con `"El rol <id> no existe. Para estudiantes use TODOS, GRADO o ALUMNO."`.
+- También acepta el formato anterior `{ destinos: [id_usuario,...], asunto, cuerpo }`.
+
+**Respuesta masiva (sin cambios):** `total_destinatarios`, `total_guardadas`,
+`correos_enviados`, `correos_fallidos`, `correos_sin_destino` y `total_enviadas`.
+
+**Auditoría:** cada envío masivo registra `accion = ENVIAR` en `bitacora_auditoria` con
+`tipo`, `total` y, cuando el tipo es `ROL`, `rol_nombre`. No se incluyen tokens ni
+contraseñas.
 
 > Ambos endpoints guardan primero en BD y luego intentan correo a
 > `correo_personal || correo_institucional`; si falla un correo, la notificación permanece y

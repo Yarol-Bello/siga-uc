@@ -130,8 +130,24 @@ const eliminar = async (id, id_usuario) => {
 };
 
 /**
+ * Buscar un rol por ID (para validar envíos por rol).
+ */
+const findRolById = async (id) => {
+  const sql = `
+    SELECT id_rol, nombre_rol
+    FROM roles
+    WHERE id_rol = $1
+    LIMIT 1
+  `;
+  const result = await query(sql, [id]);
+  return result.rows[0] || null;
+};
+
+/**
  * Listar destinatarios activos según el tipo de envío.
  * TODOS: todos los usuarios activos.
+ * PERSONAL: usuarios activos con rol ADMIN, DOCENTE o SECRETARIA.
+ * ROL: usuarios activos del rol indicado.
  * GRADO: alumnos activos del grado y año indicados.
  * ALUMNO: alumno activo por id_alumno.
  */
@@ -150,6 +166,42 @@ const listarDestinatarios = async ({ tipo, id, anioLectivo }) => {
       ORDER BY u.apellidos, u.nombres
     `;
     const result = await query(sql);
+    return result.rows;
+  }
+
+  if (tipo === "PERSONAL") {
+    const sql = `
+      SELECT
+        u.id_usuario,
+        u.dni,
+        u.nombres,
+        u.apellidos,
+        u.correo_personal,
+        u.correo_institucional
+      FROM usuarios u
+      WHERE u.estado = 'ACTIVO'
+        AND u.id_rol IN (1, 2, 3)
+      ORDER BY u.apellidos, u.nombres
+    `;
+    const result = await query(sql);
+    return result.rows;
+  }
+
+  if (tipo === "ROL") {
+    const sql = `
+      SELECT
+        u.id_usuario,
+        u.dni,
+        u.nombres,
+        u.apellidos,
+        u.correo_personal,
+        u.correo_institucional
+      FROM usuarios u
+      WHERE u.estado = 'ACTIVO'
+        AND u.id_rol = $1
+      ORDER BY u.apellidos, u.nombres
+    `;
+    const result = await query(sql, [id]);
     return result.rows;
   }
 
@@ -256,5 +308,6 @@ module.exports = {
   eliminar,
   listarDestinatarios,
   listarDestinatariosPorIds,
+  findRolById,
   crearMasivo,
 };

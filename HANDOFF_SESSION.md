@@ -3,11 +3,11 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit base de esta sesión:** `1a332c0 test(scripts): suites de integridad y e2e sobre base desechable`
-- **Commit de esta sesión:** `feat(db): seed de produccion sin datos ficticios (H41)`
+- **Commit base de esta sesión:** `41028ab feat(db): seed de produccion sin datos ficticios (H41)`
+- **Commit de esta sesión:** `feat(notificaciones): enviar avisos al personal y por rol`
   (el hash exacto queda en `git log -1`).
-- **Estado:** seed de producción separado del demo, invariante 7 corregido y verificado;
-  árbol limpio tras el commit.
+- **Estado:** notificaciones masivas ampliadas a PERSONAL y ROL, backend/UI verificados y
+  datos temporales eliminados; árbol limpio tras el commit.
 
 ---
 
@@ -45,6 +45,11 @@
   `-v admin_password`. En `siga_uc_prod_test`: **10 PASS, 0 FAIL**, **0 alumnos,
   0 pagos, 0 pensiones, 1 usuario**. Login inicial bloqueado con
   `CAMBIO_PASSWORD_REQUERIDO`; tras cambiarla, login y `/alumnos` funcionan.
+- `POST /api/notificaciones/masivo` acepta `TODOS`, `PERSONAL`, `ROL`, `GRADO` y
+  `ALUMNO`. En la demo: PERSONAL = 7, ROL DOCENTE = 5, ROL ADMIN = 1. `PERSONAL` no
+  envía `id`; `ROL` solo admite roles 1-3 y rechaza el 4 con
+  `"Para estudiantes use TODOS, GRADO o ALUMNO."`. La UI muestra las 5 opciones y el
+  select de roles; la auditoría `ENVIAR` guarda tipo, total y `rol_nombre`.
 
 ---
 
@@ -63,7 +68,7 @@
 | H10 | Numeraciones con advisory locks | `c65770c` |
 | H11 | Errores visibles en guardados masivos | `48d119a` |
 | H12 | Año lectivo y conceptos centralizados | `e483245` |
-| H15 | Notificaciones personalizadas + buscador de alumnos | `e099173`, `e793ee3` |
+| H15 | Notificaciones personalizadas + buscador + PERSONAL/ROL | `e099173`, `e793ee3`, `feat(notificaciones)` |
 | H17 | Errores SQL no expuestos | `b6f4a21` |
 | H18 | Cambio obligatorio de contraseña | `33be57a` |
 | H19 | Retiro desactiva usuario y congela expediente | `e5f7055` |
@@ -151,6 +156,16 @@
 - `npm run test:integridad` es de solo lectura y puede apuntar a producción mediante
   `DATABASE_URL`; no ejecutarlo con credenciales de escritura si se quiere una garantía
   adicional.
+- Notificaciones masivas: `PERSONAL` no lleva `id`; `ROL` exige `id` 1-3. El rol 4
+  (ESTUDIANTE) y los roles inexistentes responden `400`; para estudiantes se usa
+  `TODOS`, `GRADO` o `ALUMNO`. El endpoint `/masivo` es solo ADMIN: DOCENTE y
+  ESTUDIANTE reciben `403`.
+- La tabla `notificaciones` guarda una fila por usuario. Los correos se envían después
+  de guardar; si Resend falla, la notificación permanece y solo aumentan
+  `correos_fallidos`.
+- En los ensayos locales de notificaciones se arrancó el backend con
+  `RESEND_API_KEY=""` para no enviar correos reales; los residuos de notificaciones y
+  auditoría se eliminaron al terminar.
 
 ---
 

@@ -741,10 +741,23 @@ si no      → C
 
 ### P16.2 Envío masivo
 
-1. `POST /api/notificaciones/masivo` (ADMIN).
-2. Recibe `destinos[]`.
-3. Itera y crea una notificación por destino.
-4. **No envía correos** (usa el DAO directamente).
+1. `POST /api/notificaciones/masivo` (solo ADMIN).
+2. Recibe `{ asunto, cuerpo, destinatarios: { tipo, id? } }`; también acepta el
+   formato anterior `{ destinos: [] }`.
+3. Tipos y resolución de destinatarios activos:
+   - `TODOS`: todos los usuarios `ACTIVO`.
+   - `PERSONAL`: usuarios `ACTIVO` con rol ADMIN, DOCENTE o SECRETARIA.
+   - `ROL`: usuarios `ACTIVO` del `id_rol` indicado. Solo roles 1, 2 y 3; el rol 4
+     (ESTUDIANTE) o un rol inexistente responde `400` con
+     `"Para estudiantes use TODOS, GRADO o ALUMNO."`.
+   - `GRADO`: alumnos activos del grado y año lectivo.
+   - `ALUMNO`: un alumno activo concreto.
+4. Deduplica por `id_usuario` e inserta una fila en `notificaciones` por destinatario.
+5. Envía los correos de forma secuencial con `correo_personal || correo_institucional`.
+   Un fallo de Resend no revierte las notificaciones ya guardadas; se devuelven
+   `correos_enviados`, `correos_fallidos` y `correos_sin_destino`.
+6. Registra en `bitacora_auditoria` (`modulo = Notificaciones`, `accion = ENVIAR`) el
+   tipo, el total y, para `ROL`, el nombre del rol.
 
 ### P16.3 Lectura
 
@@ -774,7 +787,8 @@ si no      → C
 
 - Trigger de calificaciones.
 - Registros semilla.
-- No hay auditoría automática de login, matrícula, pagos, caja, personal ni notificaciones.
+- La bitácora cubre calificaciones, seguridad, pagos, caja, personal, notificaciones y
+  descargas. Las lecturas no se auditan.
 
 ### P17.2 Cierre de acta
 
@@ -830,6 +844,6 @@ revocación ni rotación. `credenciales_qr.activo` no se usa en la marcación.
 | P13 Tesorería base | Alta | Parcial | Sin UI de pre-tickets/becas/generación |
 | P14 Pago/boleta | Alta | Completo | Boleta simulada |
 | P15 Caja | Alta | Completo | Una sola caja global |
-| P16 Notificaciones | Media | Completo | Masivo sin correo |
+| P16 Notificaciones | Media | Completo | Masivo a TODOS/PERSONAL/ROL/GRADO/ALUMNO |
 | P17 Auditoría | Alta | Parcial | Solo calificaciones |
 | P18 QR | Media | Completo | Sin validación real |

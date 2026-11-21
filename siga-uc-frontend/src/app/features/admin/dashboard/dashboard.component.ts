@@ -22,6 +22,7 @@ import {
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
 import {
+  DestinatariosNotificacion,
   EnviarNotificacionRequest,
   NotificacionService,
 } from '../../../core/services/notificacion.service';
@@ -52,7 +53,12 @@ interface AlumnoNotif {
   seccion: string;
 }
 
-type TipoDestinatario = 'TODOS' | 'GRADO' | 'ALUMNO';
+interface RolNotif {
+  id_rol: number;
+  nombre_rol: string;
+}
+
+type TipoDestinatario = 'TODOS' | 'PERSONAL' | 'ROL' | 'GRADO' | 'ALUMNO';
 
 /**
  * Dashboard Ejecutivo del Administrador
@@ -85,13 +91,16 @@ export class DashboardComponent implements OnInit {
   modalNotificacion = signal(false);
   enviandoNotificacion = signal(false);
   cargandoDestinatarios = signal(false);
+  cargandoRoles = signal(false);
   errorNotificacion = signal<string | null>(null);
   exitoNotificacion = signal<string | null>(null);
   warningNotificacion = signal<string | null>(null);
 
   gradosNotif = signal<GradoNotif[]>([]);
+  rolesNotif = signal<RolNotif[]>([]);
   tipoDestinatario: TipoDestinatario = 'TODOS';
   gradoNotif: number | null = null;
+  rolNotif: number | null = null;
   alumnoNotif: number | null = null;
   asuntoNotif = '';
   cuerpoNotif = '';
@@ -209,6 +218,30 @@ export class DashboardComponent implements OnInit {
       });
   }
 
+  cargarRoles(): void {
+    if (this.rolesNotif().length > 0) return;
+
+    this.cargandoRoles.set(true);
+    this.http
+      .get<any>(`${environment.apiUrl}/personal/roles`)
+      .pipe(finalize(() => this.cargandoRoles.set(false)))
+      .subscribe({
+        next: (response) => {
+          const roles =
+            response?.success && Array.isArray(response.data)
+              ? response.data
+              : [];
+          this.rolesNotif.set(
+            roles.filter((rol: RolNotif) => Number(rol.id_rol) !== 4),
+          );
+        },
+        error: (err) => {
+          console.error('Error al cargar roles:', err);
+          this.errorNotificacion.set('No se pudieron cargar los roles.');
+        },
+      });
+  }
+
   onBuscarAlumno(valor: string): void {
     const texto = String(valor || '');
     this.alumnoNotif = null;
@@ -265,6 +298,7 @@ export class DashboardComponent implements OnInit {
   onTipoDestinatarioChange(tipo: TipoDestinatario): void {
     this.tipoDestinatario = tipo;
     this.gradoNotif = null;
+    this.rolNotif = null;
     this.alumnoNotif = null;
     this.errorNotificacion.set(null);
     this.exitoNotificacion.set(null);
@@ -276,6 +310,10 @@ export class DashboardComponent implements OnInit {
 
     if (tipo === 'GRADO') {
       this.cargarGrados();
+    }
+
+    if (tipo === 'ROL') {
+      this.cargarRoles();
     }
   }
 
@@ -306,20 +344,32 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
+    if (this.tipoDestinatario === 'ROL' && !this.rolNotif) {
+      this.errorNotificacion.set('Seleccione un rol.');
+      return;
+    }
+
     const idDestino =
       this.tipoDestinatario === 'GRADO'
         ? Number(this.gradoNotif)
         : this.tipoDestinatario === 'ALUMNO'
           ? Number(this.alumnoNotif)
-          : null;
+          : this.tipoDestinatario === 'ROL'
+            ? Number(this.rolNotif)
+            : null;
+
+    const destinatarios: DestinatariosNotificacion = {
+      tipo: this.tipoDestinatario,
+    };
+
+    if (this.tipoDestinatario !== 'PERSONAL') {
+      destinatarios.id = idDestino;
+    }
 
     const payload: EnviarNotificacionRequest = {
       asunto,
       cuerpo,
-      destinatarios: {
-        tipo: this.tipoDestinatario,
-        id: idDestino,
-      },
+      destinatarios,
     };
 
     this.enviandoNotificacion.set(true);
@@ -336,12 +386,12 @@ export class DashboardComponent implements OnInit {
           const sinDestino = Number(data.correos_sin_destino) || 0;
 
           this.exitoNotificacion.set(
-            `Notificación enviada a ${total} destinatario(s). ${enviados} correo(s) enviado(s).`,
+            `${total} destinatarios, ${enviados} correos enviados, ${fallidos} fallidos.`,
           );
 
-          if (fallidos > 0 || sinDestino > 0) {
+          if (sinDestino > 0) {
             this.warningNotificacion.set(
-              `${fallidos} correo(s) fallido(s) y ${sinDestino} sin correo registrado. La notificación sí quedó guardada en la campanita.`,
+              `${sinDestino} destinatario(s) sin correo registrado. La notificación sí quedó guardada en la campanita.`,
             );
           }
 
@@ -350,6 +400,7 @@ export class DashboardComponent implements OnInit {
           this.asuntoNotif = '';
           this.cuerpoNotif = '';
           this.gradoNotif = null;
+          this.rolNotif = null;
           this.limpiarBuscadorAlumno();
           this.tipoDestinatario = 'TODOS';
         },

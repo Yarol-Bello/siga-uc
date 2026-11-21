@@ -154,11 +154,20 @@ Cada layout contiene:
 > opacidad reducida al llegar a los extremos. Al aplicar filtros o búsqueda se vuelve a la
 > página 1.
 
-> El Admin tiene un modal **“Nueva Notificación”** en el dashboard para enviar a TODOS, un
-> GRADO o un ALUMNO. El destinatario ALUMNO se busca por DNI, nombres o apellidos con
-> autocompletado (`debounce` 300 ms, máximo 10 resultados). Muestra el resultado real
-> (guardadas, correos enviados y fallidos). El receptor lo ve en la campanita; no hay
-> WebSockets, se actualiza al abrir o por polling.
+> El Admin tiene un modal **"Nueva Notificación"** en el dashboard con cinco destinatarios,
+> en este orden: TODOS, PERSONAL, ROL, GRADO y ALUMNO.
+>
+> - **PERSONAL** no envía `id`: el backend resuelve ADMIN + DOCENTE + SECRETARIA activos.
+> - **ROL** muestra un select cargado una sola vez desde `GET /api/personal/roles`
+>   (excluye ESTUDIANTE) y envía `{ tipo: "ROL", id: id_rol }`. Sin rol seleccionado
+>   bloquea con error inline.
+> - **ALUMNO** se busca por DNI, nombres o apellidos con autocompletado (`debounce`
+>   300 ms, máximo 10 resultados).
+> - Al cambiar de tipo se limpia la selección anterior y los mensajes.
+> - El resumen real muestra `"N destinatarios, X correos enviados, Y fallidos."`.
+>
+> El receptor lo ve en la campanita; no hay WebSockets, se actualiza al abrir o por
+> polling.
 
 ### Sidebars
 
@@ -212,7 +221,7 @@ Cada layout contiene:
 | `ResetPasswordComponent` | `GET /auth/validar-token/:token`, `POST /auth/restablecer-password` |
 | `CambiarPasswordComponent` | `PUT /auth/cambiar-password` |
 | `HeaderComponent` | `GET /notificaciones/no-leidas`, `GET /notificaciones`, `PUT /:id/leer`, `PUT /leer-todas`, `GET /auth/perfil` |
-| `DashboardComponent` | `GET /reportes/dashboard`, `GET /grados`, `GET /alumnos?search=&limit=10&solo_activos=1`, `POST /notificaciones/masivo` |
+| `DashboardComponent` | `GET /reportes/dashboard`, `GET /grados`, `GET /personal/roles`, `GET /alumnos?search=&limit=10&solo_activos=1`, `POST /notificaciones/masivo` |
 | `AdminAlumnosComponent` | `GET /alumnos?page=&pageSize=`, `GET /grados`, `POST /alumnos`, `PUT /alumnos/:id`, `PUT /alumnos/:id/retirar`, `PUT /auth/reset-password` |
 | `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar`, `PUT /:id/reactivar`, `PUT /:id/reset-password` |
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |

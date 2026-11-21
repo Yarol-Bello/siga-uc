@@ -60,23 +60,35 @@ const crear = async (req, res) => {
 
 const crearMasivo = async (req, res) => {
   try {
-    const data = await notificacionService.crearMasivo({
+    const resultado = await notificacionService.crearMasivo({
       ...req.body,
       id_usuario_remitente: req.usuario.id_usuario,
     });
 
-    const tipoDestinatario =
-      req.body?.destinatarios?.tipo ||
-      (Array.isArray(req.body?.destinos) ? "USUARIOS" : "TODOS");
+    // `tipo` y `rol_nombre` se usan solo para la auditoría; no forman parte
+    // del JSON de respuesta.
+    const {
+      tipo: tipoDestinatario,
+      rol_nombre: rolNombre,
+      ...data
+    } = resultado;
+
+    const detalleRol = rolNombre ? ` - rol ${rolNombre}` : "";
+    const nuevoAuditoria = {
+      tipo: tipoDestinatario,
+      destinatarios: tipoDestinatario,
+      total: data.total_destinatarios,
+    };
+
+    if (rolNombre) {
+      nuevoAuditoria.rol_nombre = rolNombre;
+    }
 
     await auditoriaService.registrarSeguro(req, {
       modulo: "Notificaciones",
       accion: "ENVIAR",
-      descripcion: `Envío masivo a ${tipoDestinatario} (${data.total_destinatarios} destinatarios)`,
-      nuevo: {
-        destinatarios: tipoDestinatario,
-        total: data.total_destinatarios,
-      },
+      descripcion: `Envío masivo a ${tipoDestinatario}${detalleRol} (${data.total_destinatarios} destinatarios)`,
+      nuevo: nuevoAuditoria,
     });
 
     return response.success(

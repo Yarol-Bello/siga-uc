@@ -77,6 +77,14 @@ const crear = async (data) => {
   return notificacion;
 };
 
+const TIPOS_DESTINATARIO = new Set([
+  "TODOS",
+  "GRADO",
+  "ALUMNO",
+  "PERSONAL",
+  "ROL",
+]);
+
 const crearMasivo = async (data) => {
   const asunto = String(data.asunto || "").trim();
   const cuerpo = String(data.cuerpo || "").trim();
@@ -94,24 +102,53 @@ const crearMasivo = async (data) => {
   }
 
   let destinatarios = [];
+  let tipoDestinatario = "USUARIOS";
+  let rolNombre = null;
 
   if (data.destinatarios && data.destinatarios.tipo) {
     const tipo = String(data.destinatarios.tipo).toUpperCase();
 
-    if (!["TODOS", "GRADO", "ALUMNO"].includes(tipo)) {
+    if (!TIPOS_DESTINATARIO.has(tipo)) {
       const error = new Error("Tipo de destinatario inválido");
       error.statusCode = 400;
       throw error;
     }
 
     const id = data.destinatarios.id ? Number(data.destinatarios.id) : null;
+    const requiereId = ["GRADO", "ALUMNO", "ROL"].includes(tipo);
 
-    if (tipo !== "TODOS" && (!id || !Number.isInteger(id))) {
+    if (
+      requiereId &&
+      (!id || !Number.isInteger(id) || id <= 0)
+    ) {
       const error = new Error(`Debe indicar un ${tipo.toLowerCase()} válido`);
       error.statusCode = 400;
       throw error;
     }
 
+    if (tipo === "ROL") {
+      const rol = await notificacionDao.findRolById(id);
+
+      if (!rol) {
+        const error = new Error(
+          `El rol ${id} no existe. Para estudiantes use TODOS, GRADO o ALUMNO.`,
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (![1, 2, 3].includes(Number(rol.id_rol))) {
+        const error = new Error(
+          "Para estudiantes use TODOS, GRADO o ALUMNO.",
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+
+      rolNombre = rol.nombre_rol;
+    }
+
+    tipoDestinatario = tipo;
     destinatarios = await notificacionDao.listarDestinatarios({
       tipo,
       id,
@@ -131,7 +168,7 @@ const crearMasivo = async (data) => {
     destinatarios = await notificacionDao.listarDestinatariosPorIds(ids);
   } else {
     const error = new Error(
-      "Debe indicar destinatarios: TODOS, GRADO o ALUMNO",
+      "Debe indicar destinatarios: TODOS, GRADO, ALUMNO, PERSONAL o ROL",
     );
     error.statusCode = 400;
     throw error;
@@ -212,6 +249,8 @@ const crearMasivo = async (data) => {
     correos_enviados: correosEnviados,
     correos_fallidos: correosFallidos,
     correos_sin_destino: correosSinDestino,
+    tipo: tipoDestinatario,
+    rol_nombre: rolNombre,
   };
 };
 

@@ -176,15 +176,33 @@
             [(ngModel)]="tipoDestinatario"
             (ngModelChange)="onTipoDestinatarioChange($event)"
           >
-            <option value="TODOS">Todos los usuarios</option>
+            <option value="TODOS">
+              Todos los usuarios (alumnos y personal)
+            </option>
+            <option value="PERSONAL">
+              Todo el personal (admin, docentes, secretaría)
+            </option>
+            <option value="ROL">Un rol específico</option>
             <option value="GRADO">Un grado específico</option>
             <option value="ALUMNO">Un alumno específico</option>
           </select>
         </div>
 
-        @if (cargandoDestinatarios()) {
+        @if (cargandoDestinatarios() || cargandoRoles()) {
         <div class="notif-loading">
           <i class="fa-solid fa-spinner fa-spin"></i> Cargando destinatarios...
+        </div>
+        }
+
+        @if (tipoDestinatario === 'ROL') {
+        <div class="form-group">
+          <label>Rol</label>
+          <select [(ngModel)]="rolNotif">
+            <option [ngValue]="null">Seleccione un rol</option>
+            @for (r of rolesNotif(); track r.id_rol) {
+            <option [ngValue]="r.id_rol">{{ r.nombre_rol }}</option>
+            }
+          </select>
         </div>
         }
 
