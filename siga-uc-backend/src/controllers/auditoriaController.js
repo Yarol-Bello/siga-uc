@@ -6,7 +6,6 @@
 const auditoriaService = require("../services/auditoriaService");
 const actaPdfService = require("../services/actaPdfService");
 const response = require("../utils/response");
-
 const listarBitacora = async (req, res) => {
   try {
     const filtros = {
@@ -95,6 +94,13 @@ const getActaPdf = async (req, res) => {
     const data = await auditoriaService.obtenerActa(req.params.id_acta);
     const buffer = await actaPdfService.generarActaPdf(data);
 
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Reportes",
+      accion: "DESCARGAR",
+      descripcion: `Descarga de acta #${data.id_acta}`,
+      nuevo: { id_acta: data.id_acta },
+    });
+
     const periodo = String(data.periodo || "acta").replace(
       /[^0-9A-Za-z]+/g,
       "_",
@@ -123,6 +129,19 @@ const cerrarActa = async (req, res) => {
       ...req.body,
       cerrado_por: req.usuario.id_usuario,
     });
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Evaluaciones",
+      accion: "CERRAR",
+      descripcion: `Cierre de acta ${data.periodo} - ${data.anio_lectivo}`,
+      nuevo: {
+        id_acta: data.id_acta,
+        periodo: data.periodo,
+        grado: data.id_grado,
+        anio_lectivo: data.anio_lectivo,
+      },
+    });
+
     return response.success(
       res,
       200,

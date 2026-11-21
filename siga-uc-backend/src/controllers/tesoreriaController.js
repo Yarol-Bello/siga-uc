@@ -126,6 +126,17 @@ const getBoletaPdf = async (req, res) => {
     }
 
     const buffer = await boletaPdfService.generarBoletaPdf(data);
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Tesorería",
+      accion: "DESCARGAR",
+      descripcion: `Descarga de boleta ${data.numero_boleta}`,
+      nuevo: {
+        id_pago: Number(req.params.id_pago) || null,
+        numero_boleta: data.numero_boleta,
+      },
+    });
+
     const numero = String(data.numero_boleta).replace(/[^0-9A-Za-z_-]/g, "");
     const fileName = `boleta_${numero || data.id_pago}.pdf`;
 

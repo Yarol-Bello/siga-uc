@@ -318,6 +318,26 @@ tr:hover td {
     background: rgba(128, 0, 32, 0.12);
     color: var(--primary-guindo);
   }
+  &.retirar {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-red);
+  }
+  &.cesar {
+    background: rgba(120, 53, 15, 0.15);
+    color: #92400e;
+  }
+  &.descargar {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-blue);
+  }
+  &.importar {
+    background: rgba(139, 92, 246, 0.15);
+    color: #6d28d9;
+  }
+  &.enviar {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success-green);
+  }
   &.default {
     background: #f1f5f9;
     color: #64748b;

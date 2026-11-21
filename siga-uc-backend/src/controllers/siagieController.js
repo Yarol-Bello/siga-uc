@@ -6,6 +6,7 @@
 const path = require("path");
 const fs = require("fs");
 const siagieService = require("../services/siagieService");
+const auditoriaService = require("../services/auditoriaService");
 const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
@@ -42,6 +43,16 @@ const generarExcel = async (req, res) => {
 
     // 3. Eliminar el archivo temporal subido
     fs.unlink(req.file.path, () => {});
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "SIAGIE",
+      accion: "IMPORTAR",
+      descripcion: `Importación SIAGIE: ${resultado.nombre_archivo} (${resultado.total_notas} filas)`,
+      nuevo: {
+        archivo: resultado.nombre_archivo,
+        filas: resultado.total_notas,
+      },
+    });
 
     // 4. Devolver el archivo generado como descarga
     res.download(resultado.ruta, resultado.nombre_archivo, (err) => {

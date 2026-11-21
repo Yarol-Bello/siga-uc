@@ -350,6 +350,16 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'abrir';
       case 'CERRAR':
         return 'cerrar';
+      case 'RETIRAR':
+        return 'retirar';
+      case 'CESAR':
+        return 'cesar';
+      case 'DESCARGAR':
+        return 'descargar';
+      case 'IMPORTAR':
+        return 'importar';
+      case 'ENVIAR':
+        return 'enviar';
       default:
         return 'default';
     }
@@ -376,6 +386,16 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'fa-lock-open';
       case 'CERRAR':
         return 'fa-lock';
+      case 'RETIRAR':
+        return 'fa-user-slash';
+      case 'CESAR':
+        return 'fa-user-xmark';
+      case 'DESCARGAR':
+        return 'fa-download';
+      case 'IMPORTAR':
+        return 'fa-file-import';
+      case 'ENVIAR':
+        return 'fa-paper-plane';
       default:
         return 'fa-info-circle';
     }

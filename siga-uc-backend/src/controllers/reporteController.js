@@ -5,6 +5,7 @@
 
 const reporteService = require("../services/reporteService");
 const libretaPdfService = require("../services/libretaPdfService");
+const auditoriaService = require("../services/auditoriaService");
 const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
@@ -87,6 +88,16 @@ const getLibretaPdf = async (req, res) => {
     }
 
     const buffer = await libretaPdfService.generarLibretaPdf(data);
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Reportes",
+      accion: "DESCARGAR",
+      descripcion: `Descarga de libreta del alumno ${id_alumno}`,
+      nuevo: {
+        id_alumno: Number(id_alumno) || null,
+        bimestre: bimestreNumero,
+      },
+    });
 
     const dni = String(data.alumno.dni || "alumno").replace(
       /[^0-9A-Za-z_-]/g,

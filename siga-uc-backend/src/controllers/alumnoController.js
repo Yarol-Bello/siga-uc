@@ -5,6 +5,7 @@
 
 const { validationResult } = require("express-validator");
 const alumnoService = require("../services/alumnoService");
+const auditoriaService = require("../services/auditoriaService");
 const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
@@ -111,6 +112,19 @@ const crear = async (req, res) => {
       ...req.body,
       id_usuario_emite: req.usuario.id_usuario,
     });
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Alumnos",
+      accion: "CREAR",
+      descripcion: `Alta de alumno DNI ${result.dni} - ${result.nombre_completo} - grado ${req.body.id_grado}`,
+      nuevo: {
+        id_alumno: result.id_alumno,
+        dni: result.dni,
+        nombre_completo: result.nombre_completo,
+        grado: Number(req.body.id_grado) || null,
+      },
+    });
+
     return response.success(
       res,
       201,
@@ -128,7 +142,49 @@ const crear = async (req, res) => {
  */
 const actualizar = async (req, res) => {
   try {
+    const anterior = await alumnoService.obtener(req.params.id);
     const alumno = await alumnoService.actualizar(req.params.id, req.body);
+
+    const anteriorCambios = {};
+    const nuevoCambios = {};
+
+    const comparar = (clave, viejo, nuevo) => {
+      if (String(viejo ?? "") !== String(nuevo ?? "")) {
+        anteriorCambios[clave] = viejo;
+        nuevoCambios[clave] = nuevo;
+      }
+    };
+
+    comparar("nombres", anterior.nombres, alumno.nombres);
+    comparar("apellidos", anterior.apellidos, alumno.apellidos);
+    comparar(
+      "grado",
+      Number(anterior.id_grado) || null,
+      Number(alumno.id_grado) || null,
+    );
+    comparar(
+      "estado_matricula",
+      anterior.estado_matricula,
+      alumno.estado_matricula,
+    );
+    comparar(
+      "correo_personal",
+      anterior.correo_personal || null,
+      req.body.correo_personal !== undefined
+        ? req.body.correo_personal || null
+        : anterior.correo_personal || null,
+    );
+
+    if (Object.keys(nuevoCambios).length > 0) {
+      await auditoriaService.registrarSeguro(req, {
+        modulo: "Alumnos",
+        accion: "MODIFICAR",
+        descripcion: `Edición de alumno DNI ${anterior.dni}`,
+        anterior: anteriorCambios,
+        nuevo: nuevoCambios,
+      });
+    }
+
     return response.success(res, 200, "Alumno actualizado", alumno);
   } catch (error) {
     console.error("❌ Error al actualizar alumno:", error);
@@ -141,7 +197,23 @@ const actualizar = async (req, res) => {
  */
 const retirar = async (req, res) => {
   try {
+    const anterior = await alumnoService.obtener(req.params.id);
     const alumno = await alumnoService.retirar(req.params.id, req.body);
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Alumnos",
+      accion: "RETIRAR",
+      descripcion: `Retiro de alumno DNI ${anterior.dni} - motivo: ${req.body.motivo_retiro}`,
+      anterior: {
+        estado_matricula: anterior.estado_matricula,
+      },
+      nuevo: {
+        estado_matricula: "Retirado",
+        motivo: req.body.motivo_retiro,
+        destino: req.body.colegio_destino || null,
+      },
+    });
+
     return response.success(
       res,
       200,

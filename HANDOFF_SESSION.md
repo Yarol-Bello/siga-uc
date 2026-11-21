@@ -83,6 +83,7 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `feat(auditoria): auditar personas, academico, notificaciones y descargas (H07 parte B)` |
 | `(sesión H15)` | `feat(auditoria): registrar eventos de seguridad y dinero (H07 parte A)` |
 | `(sesión H15)` | `docs(instalacion): corregir secuencia de restauracion de la BD (H40)` |
 | `(sesión H15)` | `fix(tesoreria): cerrar concurrencia y coherencia de pagos (H10, H37, H38)` |
@@ -313,15 +314,17 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 - `registrarPago` valida mes/año del concepto contra la pensión y responde 409 “La pensión ya
   fue pagada.” ante doble pago concurrente (lock + 23505 si el índice existe).
 
-#### H07 parte A — Auditoría de seguridad y dinero (21/11/2026)
+#### H07 — Auditoría completa (21/11/2026)
 
 - `auditoriaDao.registrarEvento` + `auditoriaService.registrar/registrarSeguro` (nunca lanza;
   se invoca fuera de las transacciones de negocio).
-- Eventos: `LOGIN`, `LOGIN_FALLIDO`, `LOGOUT`, `MODIFICAR` (contraseñas/recuperación),
-  `CREAR`/`ANULAR` (Tesorería), `ABRIR`/`CERRAR` (Caja).
-- Calificaciones: `modificado_por` se toma del token en guardado individual y masivo.
+- Parte A: `LOGIN`, `LOGIN_FALLIDO`, `LOGOUT`, `MODIFICAR` (contraseñas/recuperación),
+  `CREAR`/`ANULAR` (Tesorería), `ABRIR`/`CERRAR` (Caja) y `modificado_por` desde el token.
+- Parte B: `CREAR`/`MODIFICAR`/`RETIRAR` (Alumnos), `CREAR`/`MODIFICAR`/`CESAR` (Personal),
+  `CERRAR` (Evaluaciones), `IMPORTAR` (SIAGIE), `ENVIAR` (Notificaciones) y `DESCARGAR`
+  (libreta, boleta y acta).
 - Migración `database/migracion_h07_auditoria.sql` con índices por fecha y usuario.
-- UI: filtros, iconos y estilos para los nuevos eventos.
+- UI: filtros, iconos y estilos para todos los eventos.
 
 ### Verificaciones realizadas
 
@@ -405,6 +408,11 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
   `ANULAR` con motivo; caja → `ABRIR`/`CERRAR`; nota → trigger con `id_usuario` del token;
   con un trigger que forzaba error en la bitácora, el pago respondió 201 y quedó PAGADO.
   Migración H07 ejecutada dos veces (idempotente). Datos temporales eliminados (0 residuos).
+- H07 parte B: 13/13 pruebas OK. Alta/edición/retiro de alumno (`CREAR`, `MODIFICAR` solo con
+  campos cambiados, `RETIRAR`); personal (`CREAR`/`MODIFICAR` con rol 2→3/`CESAR`); acta
+  (`CERRAR`); SIAGIE (`IMPORTAR` con archivo y filas); notificación (`ENVIAR`); descargas de
+  libreta, boleta y acta (`DESCARGAR` con sus IDs). El escaneo de la bitácora de prueba no
+  encontró contraseña, hash ni token. Datos temporales eliminados (0 residuos).
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

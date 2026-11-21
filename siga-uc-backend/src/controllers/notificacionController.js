@@ -4,6 +4,7 @@
  */
 
 const notificacionService = require("../services/notificacionService");
+const auditoriaService = require("../services/auditoriaService");
 const response = require("../utils/response");
 
 const listar = async (req, res) => {
@@ -63,6 +64,21 @@ const crearMasivo = async (req, res) => {
       ...req.body,
       id_usuario_remitente: req.usuario.id_usuario,
     });
+
+    const tipoDestinatario =
+      req.body?.destinatarios?.tipo ||
+      (Array.isArray(req.body?.destinos) ? "USUARIOS" : "TODOS");
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Notificaciones",
+      accion: "ENVIAR",
+      descripcion: `Envío masivo a ${tipoDestinatario} (${data.total_destinatarios} destinatarios)`,
+      nuevo: {
+        destinatarios: tipoDestinatario,
+        total: data.total_destinatarios,
+      },
+    });
+
     return response.success(
       res,
       201,

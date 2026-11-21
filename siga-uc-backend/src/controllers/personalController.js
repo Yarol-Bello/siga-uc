@@ -4,6 +4,7 @@
  */
 
 const personalService = require("../services/personalService");
+const auditoriaService = require("../services/auditoriaService");
 const response = require("../utils/response");
 
 const listar = async (req, res) => {
@@ -47,6 +48,19 @@ const listarRoles = async (req, res) => {
 const crear = async (req, res) => {
   try {
     const data = await personalService.crear(req.body);
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Personal",
+      accion: "CREAR",
+      descripcion: `Alta de personal DNI ${data.dni} - ${data.nombre_completo} - rol ${req.body.id_rol}`,
+      nuevo: {
+        id_personal: data.id_personal,
+        dni: data.dni,
+        nombre_completo: data.nombre_completo,
+        rol: Number(req.body.id_rol) || null,
+      },
+    });
+
     return response.success(res, 201, "Personal registrado exitosamente", data);
   } catch (error) {
     console.error("❌ Error al crear personal:", error);
@@ -56,7 +70,30 @@ const crear = async (req, res) => {
 
 const actualizar = async (req, res) => {
   try {
+    const anterior = await personalService.obtener(req.params.id);
     const data = await personalService.actualizar(req.params.id, req.body);
+
+    const cambioRol =
+      Number(anterior.id_rol) !== Number(data.id_rol)
+        ? {
+            anterior: {
+              id_rol: anterior.id_rol,
+              rol: anterior.nombre_rol,
+            },
+            nuevo: {
+              id_rol: data.id_rol,
+              rol: data.nombre_rol,
+            },
+          }
+        : {};
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Personal",
+      accion: "MODIFICAR",
+      descripcion: `Edición de personal DNI ${data.dni}`,
+      ...cambioRol,
+    });
+
     return response.success(res, 200, "Personal actualizado", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);
@@ -65,7 +102,17 @@ const actualizar = async (req, res) => {
 
 const cesar = async (req, res) => {
   try {
+    const anterior = await personalService.obtener(req.params.id);
     const data = await personalService.cesar(req.params.id, req.body);
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Personal",
+      accion: "CESAR",
+      descripcion: `Cese de personal DNI ${data.dni} - motivo: ${req.body.motivo_cese}`,
+      anterior: { estado: anterior.estado },
+      nuevo: { estado: "CESADO", motivo: req.body.motivo_cese },
+    });
+
     return response.success(res, 200, "Cese registrado exitosamente", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);

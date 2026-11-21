@@ -166,12 +166,13 @@ sequenceDiagram
 | Pago registrado | ✅ | `CREAR` (`Tesorería`) con id_pago/monto/forma_pago |
 | Pago anulado | ✅ | `ANULAR` (`Tesorería`) con motivo |
 | Apertura/cierre de caja | ✅ | `ABRIR` / `CERRAR` (`Caja`) |
-| Matrícula | ❌ | Parte B |
-| Edición/retiro de alumno | ❌ | Parte B |
-| Personal (alta/cese) | ❌ | Parte B |
-| Notificaciones/descargas | ❌ | Parte B |
-| Cierre de acta | ⚠️ Parcial | Se guarda `cerrado_por` y hash, no bitácora |
-| SIAGIE | ⚠️ Parcial | Se registra exportación, no bitácora |
+| Matrícula / alta de alumno | ✅ | `CREAR` (`Alumnos`) |
+| Edición/retiro de alumno | ✅ | `MODIFICAR` / `RETIRAR` (`Alumnos`) |
+| Personal (alta/edición/cese) | ✅ | `CREAR` / `MODIFICAR` / `CESAR` (`Personal`) |
+| Notificaciones | ✅ | `ENVIAR` (`Notificaciones`) |
+| Descargas de libreta/boleta/acta | ✅ | `DESCARGAR` (`Reportes` / `Tesorería`) |
+| Cierre de acta | ✅ | `CERRAR` (`Evaluaciones`) + `cerrado_por` y hash |
+| SIAGIE | ✅ | `IMPORTAR` (`SIAGIE`) |
 
 Los eventos de seguridad y dinero se insertan **después** del COMMIT del negocio. Un fallo de
 auditoría se registra en consola y nunca revierte la operación (`auditoriaService.registrar`
@@ -194,14 +195,12 @@ no lanza).
 ```
 
 **Pendientes:**
-- Completar la parte B (alumnos, personal, notificaciones, descargas, cierre de acta).
 - Retención/archivado de la bitácora.
 
 ### 5.3 Recomendaciones
 
-1. ~~Crear un `auditoriaService.registrar(...)` reutilizable.~~ ✅ (H07 parte A).
-2. ~~Llamarlo desde login, pagos, caja y recuperación.~~ ✅; falta matrícula, personal y
-   notificaciones (parte B).
+1. ~~Crear un `auditoriaService.registrar(...)` reutilizable.~~ ✅ (H07).
+2. ~~Llamarlo desde login, matrícula, pagos, caja, personal, notificaciones y descargas.~~ ✅.
 3. ~~Tomar `modificado_por` del token en calificaciones.~~ ✅.
 4. ~~Capturar IP.~~ ✅ en los eventos nuevos.
 5. ~~Añadir paginación y filtros.~~ ✅ (H23).
