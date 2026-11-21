@@ -145,7 +145,7 @@ const crear = async (data) => {
     `;
     const personalResult = await client.query(personalSql, [
       id_usuario,
-      data.especialidad || null,
+      Number(data.id_rol) === 2 ? data.especialidad || null : null,
       data.cargo || null,
       data.fecha_ingreso || new Date(),
     ]);
@@ -201,8 +201,9 @@ const actualizar = async (id_personal, data) => {
         telefono = COALESCE($5, telefono),
         id_rol = COALESCE($6, id_rol)
       WHERE id_usuario = (SELECT id_usuario FROM personal WHERE id_personal = $7)
+      RETURNING id_rol
     `;
-    await client.query(usuarioSql, [
+    const usuarioResult = await client.query(usuarioSql, [
       data.nombres,
       data.apellidos,
       data.correo_institucional,
@@ -211,11 +212,15 @@ const actualizar = async (id_personal, data) => {
       data.id_rol,
       id_personal,
     ]);
+    const rolFinal = Number(usuarioResult.rows[0]?.id_rol);
 
-    // Actualizar personal
+    // Actualizar personal. La especialidad solo persiste para DOCENTE (2).
     const personalSql = `
       UPDATE personal SET
-        especialidad = COALESCE($1, especialidad),
+        especialidad = CASE
+          WHEN $4 = 2 THEN COALESCE($1, especialidad)
+          ELSE NULL
+        END,
         cargo = COALESCE($2, cargo)
       WHERE id_personal = $3
     `;
@@ -223,6 +228,7 @@ const actualizar = async (id_personal, data) => {
       data.especialidad,
       data.cargo,
       id_personal,
+      rolFinal,
     ]);
 
     await client.query("COMMIT");

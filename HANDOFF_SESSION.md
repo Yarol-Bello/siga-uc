@@ -3,11 +3,11 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit base de esta sesión:** `280adea fix(seguridad): auditar resets de contraseña por admin (H43)`
-- **Commit de esta sesión:** `fix(tesoreria): generar pensiones del alumno al matricular (H44)`
+- **Commit base de esta sesión:** `de80dfd fix(tesoreria): generar pensiones del alumno al matricular (H44)`
+- **Commit de esta sesión:** `fix(personal): especialidad solo para docentes y roles de personal (H46)`
   (el hash exacto queda en `git log -1`).
-- **Estado:** cronograma de pensiones por alumno generado al matricular y por botón manual;
-  verificado con base desechable y UI; árbol limpio.
+- **Estado:** especialidad restringida a DOCENTE, roles de Personal limitados a 1-3 y UI
+  ajustada; verificado con base desechable y navegador; árbol limpio.
 
 ---
 
@@ -63,6 +63,13 @@
   Verificación en `siga_uc_h44`: **9 PASS** (Nov/Dic automáticos, marzo-diciembre 10,
   idempotencia, pagos fuera de orden, rollback, 400, RBAC, auditoría) + UI
   “Generar pensiones”/“Al día”.
+- H46: el módulo Personal solo acepta roles 1-3; `ESTUDIANTE` responde 400 con
+  “El rol ESTUDIANTE no aplica al personal.”. La especialidad solo se guarda para
+  DOCENTE; al cambiar a ADMIN/SECRETARIA el backend la deja en `NULL`. La UI filtra
+  ESTUDIANTE en alta/edición/filtro y muestra “Especialidad (solo docentes)” solo con
+  DOCENTE. Verificación en `siga_uc_h46`: **8 PASS** de API + UI (campo condicional,
+  lista y cese). En local existe **1** usuario no docente con especialidad
+  (SECRETARIA, id_usuario 2); no se modificó.
 
 ---
 
@@ -97,6 +104,7 @@
 | H41 | Seed de producción separado del dump demo; invariante 7 corregido | `feat(db): seed de produccion sin datos ficticios (H41)` |
 | H43 | Resets de contraseña por ADMIN auditados | `fix(seguridad): auditar resets de contraseña por admin (H43)` |
 | H44 | Pensiones por alumno generadas al matricular y por botón manual | `fix(tesoreria): generar pensiones del alumno al matricular (H44)` |
+| H46 | Especialidad solo para DOCENTE y roles de Personal 1-3 | `fix(personal): especialidad solo para docentes y roles de personal (H46)` |
 
 ---
 
@@ -193,6 +201,12 @@
   `pensiones_generadas`.
 - La base desechable usada para H44 se creó desde el dump de demo, se probó con
   backend/puerto 3000 y se eliminó al terminar; `siga_uc` no se tocó.
+- H46: “Especialidad” solo existe para DOCENTE (id_rol 2). ADMIN/SECRETARIA se guardan
+  con `NULL`; “Cargo” aplica a todos. El módulo Personal nunca acepta ESTUDIANTE (4).
+- Los datos históricos no se corrigen automáticamente: en `siga_uc` hay 1 usuario no
+  docente (SECRETARIA, id_usuario 2) con especialidad “Auxiliar Administrativo”; se
+  limpiará cuando el dueño edite esa ficha. No se tocaron roles ni nombres.
+- El carné y el QR no se modificaron en H46.
 
 ---
 

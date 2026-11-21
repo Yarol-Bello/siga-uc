@@ -136,9 +136,29 @@ export class AdminPersonalComponent implements OnInit {
   cargarRoles(): void {
     this.http.get<any>(`${environment.apiUrl}/personal/roles`).subscribe({
       next: (res) => {
-        if (res.success) this.roles.set(res.data);
+        if (res.success) {
+          this.roles.set(
+            (res.data || []).filter(
+              (rol: Rol) => Number(rol.id_rol) !== 4,
+            ),
+          );
+        }
       },
     });
+  }
+
+  onRolNuevoChange(valor: any): void {
+    this.formNuevo.id_rol = Number(valor);
+    if (Number(valor) !== 2) {
+      this.formNuevo.especialidad = '';
+    }
+  }
+
+  onRolEditarChange(valor: any): void {
+    this.formEditar.id_rol = Number(valor);
+    if (Number(valor) !== 2) {
+      this.formEditar.especialidad = '';
+    }
   }
 
   aplicarFiltros(): void {
@@ -231,8 +251,9 @@ export class AdminPersonalComponent implements OnInit {
       correo_institucional: p.correo_institucional,
       correo_personal: p.correo_personal || '',
       telefono: p.telefono || '',
-      id_rol: p.id_rol,
-      especialidad: p.especialidad || '',
+      id_rol: Number(p.id_rol),
+      especialidad:
+        Number(p.id_rol) === 2 ? p.especialidad || '' : '',
       cargo: p.cargo || '',
     };
     this.errorEditar.set(null);

@@ -169,6 +169,14 @@ Cada layout contiene:
 > El receptor lo ve en la campanita; no hay WebSockets, se actualiza al abrir o por
 > polling.
 
+> En **Personal & Usuarios**, el selector de roles (alta, edición y filtro superior)
+> solo muestra ADMIN, DOCENTE y SECRETARIA; ESTUDIANTE se filtra al cargar los roles.
+> El campo **“Especialidad (solo docentes)”** aparece únicamente cuando el rol es
+> DOCENTE y se limpia al cambiar a otro rol. La lista muestra especialidad + cargo para
+> docentes y cargo (o nombre del rol) para ADMIN/SECRETARIA, nunca “Sin especialidad”.
+> El modal de cese de un no docente muestra rol y cargo, sin “Especialidad: Sin
+> especificar”. El carné y el QR no cambian.
+
 ### Sidebars
 
 #### ADMIN (`sidebar.component.ts`)

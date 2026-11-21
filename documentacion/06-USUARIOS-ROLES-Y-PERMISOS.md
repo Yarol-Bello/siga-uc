@@ -15,6 +15,18 @@ Restricción en BD:
 CHECK (nombre_rol IN ('ADMIN','DOCENTE','SECRETARIA','ESTUDIANTE'))
 ```
 
+### 1.1 Módulo Personal vs. estudiantes
+
+- El módulo **Personal** solo admite roles `ADMIN` (1), `DOCENTE` (2) y
+  `SECRETARIA` (3). `ESTUDIANTE` (4) nunca se crea ni se edita desde este módulo.
+- **Especialidad** es exclusiva de `DOCENTE`. `ADMIN` y `SECRETARIA` no tienen
+  especialidad; el backend la guarda como `NULL` aunque llegue un valor.
+- **Cargo** aplica a todos los roles (Director, Secretaría, Docente de Matemática...).
+- Al editar un trabajador, cambiar de `DOCENTE` a otro rol limpia la especialidad.
+  Al volver a `DOCENTE`, el campo aparece vacío para completarlo.
+- El selector de roles del frontend filtra `ESTUDIANTE` tanto en el alta, la edición y
+  el filtro superior de la lista.
+
 No existe tabla de permisos por rol. Los permisos están **codificados** en:
 
 - Backend: `verificarRol(...)` en cada router.
@@ -35,9 +47,10 @@ stateDiagram-v2
 
 - El login exige `estado = 'ACTIVO'`.
 - `CESADO` e `INACTIVO` no pueden iniciar sesión.
-- El token ya emitido sigue siendo válido hasta expirar (8 h), aunque el usuario sea cesado.
-- Los estudiantes retirados **no** cambian su estado de usuario; solo cambia
-  `alumnos.estado_matricula`.
+- El middleware revalida el estado en cada request: un usuario cesado o retirado queda
+  bloqueado aunque su JWT no haya expirado (H02).
+- El retiro de un alumno pasa `alumnos.estado_matricula` a `Retirado`, deja el usuario
+  `INACTIVO` y congela el expediente (H19).
 
 ## 3. Autenticación
 
@@ -221,6 +234,8 @@ Si un usuario intenta una ruta de otro rol, `roleGuard` lo devuelve a su dashboa
 | Interceptor | `core/interceptors/auth.interceptor.ts` | Adjunta Bearer |
 | Backend autenticación | `middlewares/authMiddleware.js` | Firma/expiración JWT |
 | Backend autorización | `verificarRol(...roles)` | Rol exacto del payload |
+| Roles de Personal | `personalService.crear/actualizar` | Solo 1, 2 o 3; ESTUDIANTE → 400 |
+| Especialidad | `personalDao.crear/actualizar` | Solo se guarda para DOCENTE; el resto queda `NULL` |
 | Propiedad de datos | Services/DAOs | Solo notificaciones y libreta tienen lógica parcial; el resto no |
 
 ## 8. Riesgos de permisos

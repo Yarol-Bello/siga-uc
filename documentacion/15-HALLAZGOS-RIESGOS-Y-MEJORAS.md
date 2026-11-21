@@ -514,6 +514,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Esfuerzo | M |
 | Estado | ✅ Resuelto (21/11/2026): `generarPensionesAlumno` crea desde el mes de `fecha_creacion` hasta diciembre, solo meses con concepto `PENSION` y con beca; se ejecuta al matricular y desde el botón manual. Verificado: Nov/Dic automáticos, marzo-diciembre 10, idempotencia, pagos fuera de orden, rollback total y UI con “Generar pensiones”/“Al día” |
 
+### H46 — Especialidad y rol del personal desalineados
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Media |
+| Evidencia | El formulario mostraba “Especialidad” para todos los roles; `personalDao` guardaba cualquier valor y `COALESCE` impedía borrarla; el selector de roles incluía ESTUDIANTE |
+| Impacto | ADMIN/SECRETARIA con especialidad incoherente, datos históricos que no se limpiaban y posibilidad de crear personal con rol ESTUDIANTE |
+| Recomendación | Especialidad exclusiva de DOCENTE; backend valida roles 1-3 y limpia la especialidad de los demás; UI filtra ESTUDIANTE y muestra el campo solo para docentes |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): `personalService` valida roles 1-3, `personalDao.crear` guarda especialidad solo para DOCENTE y `personalDao.actualizar` la limpia al cambiar de rol; UI condiciona el campo y filtra roles. Verificado con 8 PASS de API y UI (alta ADMIN/SECRETARIA/DOCENTE, cambio DOCENTE→ADMIN, selector sin ESTUDIANTE, lista y cese). Datos existentes no se modificaron: en local hay **1** usuario no docente con especialidad |
+
 ---
 
 ## 4. Cosas que parecen bugs pero no lo son

@@ -23,6 +23,14 @@ const listarRoles = async () => {
   return await personalDao.listarRoles();
 };
 
+const validarRolPersonal = (idRol) => {
+  if (![1, 2, 3].includes(Number(idRol))) {
+    const error = new Error("El rol ESTUDIANTE no aplica al personal.");
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
 const crear = async (data) => {
   if (!data.dni || !data.nombres || !data.apellidos || !data.id_rol) {
     const error = new Error(
@@ -31,6 +39,8 @@ const crear = async (data) => {
     error.statusCode = 400;
     throw error;
   }
+
+  validarRolPersonal(data.id_rol);
 
   if (data.dni.length !== 8) {
     const error = new Error("El DNI debe tener 8 dígitos");
@@ -48,6 +58,11 @@ const actualizar = async (id, data) => {
     error.statusCode = 404;
     throw error;
   }
+
+  if (data.id_rol !== undefined && data.id_rol !== null) {
+    validarRolPersonal(data.id_rol);
+  }
+
   return await personalDao.actualizar(id, data);
 };
 
