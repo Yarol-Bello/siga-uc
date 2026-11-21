@@ -414,3 +414,110 @@
   align-items: center;
   gap: 8px;
 }
+
+/* ============================================================
+   BUSCADOR DE ALUMNOS (autocompletado)
+   ============================================================ */
+.alumno-search {
+  position: relative;
+
+  > i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 0.85rem;
+    pointer-events: none;
+  }
+
+  input {
+    padding-left: 34px;
+  }
+}
+
+.alumno-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 1200;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 18px 35px -12px rgba(15, 23, 42, 0.35);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.alumno-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: #fdf2f4;
+  }
+}
+
+.alumno-option-nombre {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.alumno-option-meta {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.alumno-dropdown-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: #64748b;
+
+  i {
+    color: #800020;
+  }
+
+  &.error {
+    color: #b91c1c;
+
+    i {
+      color: #b91c1c;
+    }
+  }
+}
+
+.alumno-seleccionado,
+.alumno-ayuda {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.78rem;
+}
+
+.alumno-seleccionado {
+  color: #047857;
+}
+
+.alumno-ayuda {
+  color: #b45309;
+}

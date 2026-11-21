@@ -42,7 +42,7 @@
 | `authController.js` | `login`, `perfil`, `verify`, `logout`, `resetPassword`, `solicitarRecuperacion`, `validarToken`, `restablecerPassword`, `cambiarPassword` | `validationResult` en login y cambio de contraseña; recuperación delega a `recuperacionService` |
 | `configuracionController.js` | `obtener` | Devuelve el año lectivo activo |
 | `academicoController.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion`, `listarHorariosPorGrado` | Solo lectura |
-| `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda y año |
+| `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda, año, `limit` y `solo_activos` |
 | `personalController.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | Roles excluyen ESTUDIANTE |
 | `cargaCurricularController.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `crear`, `actualizar`, `eliminar`, `asignarTutor`, `getTutor` | `listarPorDocente` usa el año lectivo configurado |
 | `asistenciaController.js` | `obtenerPorCursoFecha`, `obtenerPorAlumno`, `obtenerResumenPorAlumno`, `registrar`, `registrarMasivo`, `listarAsistenciaPersonal`, `buscarPersonalPorDni`, `registrarAsistenciaPersonal`, `obtenerResumenAsistenciaPersonal` | Personal y alumnos separados |
@@ -83,7 +83,7 @@
 | DAO | Entidades / operaciones | Consultas destacadas |
 |---|---|---|
 | `usuarioDao.js` | `usuarios`, `roles`, `alumnos`, `personal`, `credenciales_qr`, `recuperacion_password` | `findByDni`, `findByCorreo`, `findByDniOCorreo`, `findById`, `getCredencialQR`, reset/actualizar password |
-| `alumnoDao.js` | `apoderados`, `usuarios`, `alumnos`, `expediente_alumno`, `credenciales_qr` | Listado con filtros, código `EST-XXX`, matrícula transaccional, retiro |
+| `alumnoDao.js` | `apoderados`, `usuarios`, `alumnos`, `expediente_alumno`, `credenciales_qr` | Listado con filtros, búsqueda `unaccent` por DNI/nombre completo y `LIMIT` opcional; código `EST-XXX`, matrícula transaccional, retiro |
 | `personalDao.js` | `usuarios`, `personal`, `credenciales_qr` | Listado con rol, creación transaccional, cese/reactivación, reset |
 | `gradoDao.js` | `grados`, `alumnos`, `tutores_grado`, `horarios` | Grados con conteo, tutor, horario ordenado por día/hora |
 | `cursoDao.js` | `cursos`, `competencias`, `escala_calificacion` | Listado con conteo de competencias, escala |

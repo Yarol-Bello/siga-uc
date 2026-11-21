@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `feat(notificaciones): buscador de alumnos por DNI/nombre en envio masivo` |
 | `(sesión H15)` | `feat(notificaciones): permitir mensajes personalizados y envio por correo (H15)` |
 | `(sesión H34 completo)` | `feat(reportes): PDFs reales para boletas y actas (H34 completo)` |
 | `(sesión H34)` | `feat(reportes): generar PDFs reales para libretas (H34)` |
@@ -224,6 +225,18 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   spinner, resultado real y advertencia amarilla por correos fallidos.
 - La campanita ya muestra asunto/cuerpo reales; no se agregaron WebSockets.
 
+#### H15 — Buscador de alumnos en el envío masivo
+
+- `GET /api/alumnos` acepta `limit` (1–50) y `solo_activos=1`; el `search` ahora usa
+  `unaccent` sobre DNI, nombres, apellidos y nombre completo (también acepta el alias `q`).
+- El modal reemplazó el `<select>` de alumnos por un input con autocompletado:
+  `debounceTime(300)`, `distinctUntilChanged`, `switchMap` y máximo 10 resultados.
+- Al elegir una fila con `(mousedown)` + `(click)` se guarda `id_alumno`, el input muestra el
+  nombre completo, el dropdown se cierra y el foco sale del campo.
+- Si se intenta enviar sin seleccionar de la lista, se bloquea con “Busque y seleccione un
+  alumno de la lista”.
+- El selector de GRADO no cambió y `notificacionService` no se tocó.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -257,6 +270,12 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   400 para tipo/asunto/destinatarios inválidos; 403 para alumno. UI: modal envió a un alumno,
   mostró “1 destinatario, 0 correos enviados, 1 fallido” y el alumno vio asunto/cuerpo en su
   campanita. Datos temporales eliminados.
+- H15 buscador: 11/11 pruebas de API OK (DNI, apellido, nombre completo sin acentos,
+  `solo_activos`, `limit=1`, alias `q`, 401/403). UI: al teclear el DNI apareció solo el
+  alumno correcto con nombre/DNI/grado; elegirlo mostró el nombre completo, cerró el dropdown
+  y quitó el foco; enviar sin seleccionar mostró el bloqueo; el `POST` llevó
+  `destinatarios.id` = `id_alumno` y el alumno vio el mensaje en su campanita. Datos
+  temporales eliminados.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

@@ -149,8 +149,10 @@ Cada layout contiene:
 | Logout | Confirmación + `authService.logout()` |
 
 > El Admin tiene un modal **“Nueva Notificación”** en el dashboard para enviar a TODOS, un
-> GRADO o un ALUMNO. Muestra el resultado real (guardadas, correos enviados y fallidos). El
-> receptor lo ve en la campanita; no hay WebSockets, se actualiza al abrir o por polling.
+> GRADO o un ALUMNO. El destinatario ALUMNO se busca por DNI, nombres o apellidos con
+> autocompletado (`debounce` 300 ms, máximo 10 resultados). Muestra el resultado real
+> (guardadas, correos enviados y fallidos). El receptor lo ve en la campanita; no hay
+> WebSockets, se actualiza al abrir o por polling.
 
 ### Sidebars
 
@@ -204,7 +206,7 @@ Cada layout contiene:
 | `ResetPasswordComponent` | `GET /auth/validar-token/:token`, `POST /auth/restablecer-password` |
 | `CambiarPasswordComponent` | `PUT /auth/cambiar-password` |
 | `HeaderComponent` | `GET /notificaciones/no-leidas`, `GET /notificaciones`, `PUT /:id/leer`, `PUT /leer-todas`, `GET /auth/perfil` |
-| `DashboardComponent` | `GET /reportes/dashboard`, `GET /grados`, `GET /alumnos`, `POST /notificaciones/masivo` |
+| `DashboardComponent` | `GET /reportes/dashboard`, `GET /grados`, `GET /alumnos?search=&limit=10&solo_activos=1`, `POST /notificaciones/masivo` |
 | `AdminAlumnosComponent` | `GET /alumnos`, `GET /grados`, `POST /alumnos`, `PUT /alumnos/:id`, `PUT /alumnos/:id/retirar`, `PUT /auth/reset-password` |
 | `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar`, `PUT /:id/reactivar`, `PUT /:id/reset-password` |
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |

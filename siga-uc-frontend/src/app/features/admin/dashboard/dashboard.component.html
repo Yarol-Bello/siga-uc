@@ -205,14 +205,64 @@
         @if (tipoDestinatario === 'ALUMNO') {
         <div class="form-group">
           <label>Alumno</label>
-          <select [(ngModel)]="alumnoNotif">
-            <option [ngValue]="null">Seleccione un alumno</option>
-            @for (a of alumnosNotif(); track a.id_alumno) {
-            <option [ngValue]="a.id_alumno">
-              {{ a.nombre_completo }} — {{ a.nombre_grado }}
-            </option>
+
+          <div class="alumno-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              #alumnoInput
+              type="text"
+              autocomplete="off"
+              [(ngModel)]="busquedaAlumno"
+              (input)="onBuscarAlumno($any($event.target).value)"
+              (focus)="onFocusAlumno()"
+              (blur)="cerrarDropdownAlumnos()"
+              (keydown.escape)="cerrarDropdownAlumnos()"
+              placeholder="Buscar por DNI, nombres o apellidos"
+            />
+
+            @if (dropdownAlumnos()) {
+            <div class="alumno-dropdown">
+              @if (buscandoAlumnos()) {
+              <div class="alumno-dropdown-state">
+                <i class="fa-solid fa-spinner fa-spin"></i> Buscando...
+              </div>
+              } @else if (errorBusquedaAlumnos()) {
+              <div class="alumno-dropdown-state error">
+                <i class="fa-solid fa-circle-exclamation"></i> No se pudo
+                buscar alumnos. Intente nuevamente.
+              </div>
+              } @else if (resultadosAlumnos().length === 0) {
+              <div class="alumno-dropdown-state">
+                Sin resultados para "{{ busquedaAlumno }}"
+              </div>
+              } @else { @for (a of resultadosAlumnos(); track a.id_alumno) {
+              <button
+                type="button"
+                class="alumno-option"
+                (mousedown)="$event.preventDefault()"
+                (click)="seleccionarAlumno(a)"
+              >
+                <span class="alumno-option-nombre">{{ a.nombre_completo }}</span>
+                <span class="alumno-option-meta">
+                  DNI {{ a.dni }}
+                  @if (a.nombre_grado) { · {{ a.nombre_grado }} {{ a.seccion }} }
+                </span>
+              </button>
+              } }
+            </div>
             }
-          </select>
+          </div>
+
+          @if (alumnoNotif) {
+          <small class="alumno-seleccionado">
+            <i class="fa-solid fa-circle-check"></i>
+            Seleccionado: {{ busquedaAlumno }}
+          </small>
+          } @else if (busquedaAlumno.trim().length > 0) {
+          <small class="alumno-ayuda">
+            Seleccione un alumno de la lista para continuar.
+          </small>
+          }
         </div>
         }
       </div>

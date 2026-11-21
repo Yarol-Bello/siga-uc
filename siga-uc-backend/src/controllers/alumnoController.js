@@ -16,7 +16,12 @@ const listar = async (req, res) => {
     const filtros = {
       id_grado: req.query.id_grado ? parseInt(req.query.id_grado) : null,
       estado_matricula: req.query.estado_matricula || null,
-      search: req.query.search || null,
+      search: req.query.search || req.query.q || null,
+      limit: req.query.limit ? parseInt(req.query.limit, 10) : null,
+      solo_activos:
+        req.query.solo_activos === "1" ||
+        req.query.solo_activos === "true" ||
+        req.query.solo_activos === true,
       anio_lectivo: req.query.anio
         ? parseInt(req.query.anio)
         : getAnioLectivo(),

@@ -28,14 +28,30 @@ const listar = async (filtros = {}) => {
   }
   if (filtros.search) {
     conditions.push(
-      `(LOWER(a.nombres) LIKE LOWER($${idx}) OR LOWER(a.apellidos) LIKE LOWER($${idx}) OR a.dni LIKE $${idx})`,
+      `(unaccent(LOWER(a.nombres)) LIKE unaccent(LOWER($${idx}))
+        OR unaccent(LOWER(a.apellidos)) LIKE unaccent(LOWER($${idx}))
+        OR unaccent(LOWER(a.nombres || ' ' || a.apellidos)) LIKE unaccent(LOWER($${idx}))
+        OR unaccent(LOWER(a.apellidos || ' ' || a.nombres)) LIKE unaccent(LOWER($${idx}))
+        OR a.dni LIKE $${idx})`,
     );
     params.push(`%${filtros.search}%`);
     idx++;
   }
+  if (filtros.solo_activos) {
+    conditions.push(`a.estado_matricula <> 'Retirado'`);
+  }
 
   const whereClause =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  let limitClause = "";
+  if (filtros.limit !== undefined && filtros.limit !== null) {
+    const limite = Number.parseInt(String(filtros.limit), 10);
+    if (Number.isInteger(limite) && limite > 0) {
+      limitClause = `LIMIT $${idx}`;
+      params.push(Math.min(limite, 50));
+    }
+  }
 
   const sql = `
     SELECT 
@@ -55,6 +71,7 @@ const listar = async (filtros = {}) => {
     LEFT JOIN apoderados ap ON ap.id_apoderado = a.id_apoderado
     ${whereClause}
     ORDER BY g.id_grado, a.apellidos, a.nombres
+    ${limitClause}
   `;
 
   const result = await query(sql, params);

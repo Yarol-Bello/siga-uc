@@ -125,12 +125,16 @@ anteriores. Respuesta genérica; si el usuario existe pero no tiene correo devue
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 16 | GET | `/api/alumnos?anio=&id_grado=&estado_matricula=&search=` | Autenticado | Lista con apoderado y grado |
+| 16 | GET | `/api/alumnos?anio=&id_grado=&estado_matricula=&search=&limit=&solo_activos=` | Autenticado | Lista con apoderado y grado |
 | 17 | GET | `/api/alumnos/dni/:dni` | Autenticado | Busca por DNI |
 | 18 | GET | `/api/alumnos/:id` | Autenticado | Ficha completa |
 | 19 | POST | `/api/alumnos` | ADMIN/SECRETARIA | Matrícula transaccional |
 | 20 | PUT | `/api/alumnos/:id` | ADMIN/SECRETARIA | Actualiza datos |
 | 21 | PUT | `/api/alumnos/:id/retirar` | ADMIN/SECRETARIA | Retiro con motivo |
+
+> **Búsqueda:** `search` (o su alias `q`) aplica `ILIKE` sin acentos sobre DNI, nombres,
+> apellidos y nombre completo. `limit` (1–50) y `solo_activos=1` son opcionales; el buscador
+> del dashboard usa `search=&limit=10&solo_activos=1`.
 
 **POST body:**
 

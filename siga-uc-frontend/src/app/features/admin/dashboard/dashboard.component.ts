@@ -1,8 +1,24 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  ViewChild,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { finalize } from 'rxjs';
+import {
+  Subject,
+  catchError,
+  debounceTime,
+  finalize,
+  of,
+  switchMap,
+} from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
 import {
@@ -53,6 +69,10 @@ export class DashboardComponent implements OnInit {
   private http = inject(HttpClient);
   private configuracion = inject(ConfiguracionService);
   private notificacionService = inject(NotificacionService);
+  private destroyRef = inject(DestroyRef);
+
+  @ViewChild('alumnoInput')
+  private alumnoInput?: ElementRef<HTMLInputElement>;
 
   anioLectivo = this.configuracion.anioLectivo;
 
@@ -70,15 +90,61 @@ export class DashboardComponent implements OnInit {
   warningNotificacion = signal<string | null>(null);
 
   gradosNotif = signal<GradoNotif[]>([]);
-  alumnosNotif = signal<AlumnoNotif[]>([]);
   tipoDestinatario: TipoDestinatario = 'TODOS';
   gradoNotif: number | null = null;
   alumnoNotif: number | null = null;
   asuntoNotif = '';
   cuerpoNotif = '';
 
+  // Buscador de alumnos
+  busquedaAlumno = '';
+  resultadosAlumnos = signal<AlumnoNotif[]>([]);
+  buscandoAlumnos = signal(false);
+  dropdownAlumnos = signal(false);
+  errorBusquedaAlumnos = signal(false);
+  private busquedaAlumno$ = new Subject<string>();
+
   ngOnInit(): void {
     this.cargarDashboard();
+
+    this.busquedaAlumno$
+      .pipe(
+        debounceTime(300),
+        switchMap((texto) => {
+          if (!texto) {
+            this.buscandoAlumnos.set(false);
+            return of({ success: true, data: [] });
+          }
+
+          this.buscandoAlumnos.set(true);
+          this.errorBusquedaAlumnos.set(false);
+
+          return this.http
+            .get<any>(`${environment.apiUrl}/alumnos`, {
+              params: {
+                search: texto,
+                anio: this.anioLectivo(),
+                limit: 10,
+                solo_activos: 1,
+              },
+            })
+            .pipe(catchError(() => of(null)));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((response) => {
+        this.buscandoAlumnos.set(false);
+
+        if (!response) {
+          this.resultadosAlumnos.set([]);
+          this.errorBusquedaAlumnos.set(true);
+          return;
+        }
+
+        this.resultadosAlumnos.set(
+          response?.success && Array.isArray(response.data) ? response.data : [],
+        );
+      });
   }
 
   /**
@@ -105,6 +171,7 @@ export class DashboardComponent implements OnInit {
 
   abrirModalNotificacion(): void {
     this.modalNotificacion.set(true);
+    this.dropdownAlumnos.set(false);
     this.errorNotificacion.set(null);
     this.exitoNotificacion.set(null);
     this.warningNotificacion.set(null);
@@ -114,6 +181,7 @@ export class DashboardComponent implements OnInit {
     if (this.enviandoNotificacion()) return;
 
     this.modalNotificacion.set(false);
+    this.dropdownAlumnos.set(false);
     this.errorNotificacion.set(null);
     this.exitoNotificacion.set(null);
     this.warningNotificacion.set(null);
@@ -141,26 +209,57 @@ export class DashboardComponent implements OnInit {
       });
   }
 
-  cargarAlumnos(): void {
-    if (this.alumnosNotif().length > 0) return;
+  onBuscarAlumno(valor: string): void {
+    const texto = String(valor || '');
+    this.alumnoNotif = null;
 
-    this.cargandoDestinatarios.set(true);
-    this.http
-      .get<any>(`${environment.apiUrl}/alumnos`, {
-        params: { anio: this.anioLectivo() },
-      })
-      .pipe(finalize(() => this.cargandoDestinatarios.set(false)))
-      .subscribe({
-        next: (response) => {
-          this.alumnosNotif.set(
-            response?.success && Array.isArray(response.data) ? response.data : [],
-          );
-        },
-        error: (err) => {
-          console.error('Error al cargar alumnos:', err);
-          this.errorNotificacion.set('No se pudieron cargar los alumnos.');
-        },
-      });
+    if (texto.trim().length < 2) {
+      this.resultadosAlumnos.set([]);
+      this.buscandoAlumnos.set(false);
+      this.errorBusquedaAlumnos.set(false);
+      this.dropdownAlumnos.set(false);
+      this.busquedaAlumno$.next('');
+      return;
+    }
+
+    this.dropdownAlumnos.set(true);
+    this.busquedaAlumno$.next(texto.trim());
+  }
+
+  onFocusAlumno(): void {
+    if (this.resultadosAlumnos().length > 0) {
+      this.dropdownAlumnos.set(true);
+      return;
+    }
+
+    const texto = this.busquedaAlumno.trim();
+    if (texto.length >= 2) {
+      this.busquedaAlumno$.next(texto);
+      this.dropdownAlumnos.set(true);
+    }
+  }
+
+  cerrarDropdownAlumnos(): void {
+    this.dropdownAlumnos.set(false);
+  }
+
+  seleccionarAlumno(alumno: AlumnoNotif): void {
+    this.alumnoNotif = alumno.id_alumno;
+    this.busquedaAlumno = alumno.nombre_completo;
+    this.resultadosAlumnos.set([]);
+    this.errorBusquedaAlumnos.set(false);
+    this.dropdownAlumnos.set(false);
+    this.alumnoInput?.nativeElement.blur();
+  }
+
+  private limpiarBuscadorAlumno(): void {
+    this.busquedaAlumno = '';
+    this.alumnoNotif = null;
+    this.resultadosAlumnos.set([]);
+    this.errorBusquedaAlumnos.set(false);
+    this.buscandoAlumnos.set(false);
+    this.dropdownAlumnos.set(false);
+    this.busquedaAlumno$.next('');
   }
 
   onTipoDestinatarioChange(tipo: TipoDestinatario): void {
@@ -171,10 +270,12 @@ export class DashboardComponent implements OnInit {
     this.exitoNotificacion.set(null);
     this.warningNotificacion.set(null);
 
+    if (tipo !== 'ALUMNO') {
+      this.limpiarBuscadorAlumno();
+    }
+
     if (tipo === 'GRADO') {
       this.cargarGrados();
-    } else if (tipo === 'ALUMNO') {
-      this.cargarAlumnos();
     }
   }
 
@@ -199,7 +300,9 @@ export class DashboardComponent implements OnInit {
     }
 
     if (this.tipoDestinatario === 'ALUMNO' && !this.alumnoNotif) {
-      this.errorNotificacion.set('Seleccione un alumno.');
+      this.errorNotificacion.set(
+        'Busque y seleccione un alumno de la lista.',
+      );
       return;
     }
 
@@ -247,7 +350,7 @@ export class DashboardComponent implements OnInit {
           this.asuntoNotif = '';
           this.cuerpoNotif = '';
           this.gradoNotif = null;
-          this.alumnoNotif = null;
+          this.limpiarBuscadorAlumno();
           this.tipoDestinatario = 'TODOS';
         },
         error: (err) => {
