@@ -503,6 +503,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (21/11/2026): ambos endpoints auditan `RESET_PASSWORD`; la UI de auditoría tiene icono, estilo y filtro para la acción. Verificado con 4 PASS, resets por DNI y por personal, 403 de DOCENTE sin auditoría y 0 contraseñas/hashes en la bitácora |
 
+### H44 — Alumnos nuevos sin pensiones
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | Al pagar matrícula el alumno pasaba a `Matriculado`, pero no se generaba ninguna fila en `pensiones`; el único generador era el mensual global y el frontend nunca lo llamaba |
+| Impacto | Alumnos matriculados con 0 pensiones: imposible cobrarles desde la UI y sin cronograma para el año |
+| Recomendación | Generar el cronograma por alumno dentro de la misma transacción de pago de matrícula, con endpoint manual idempotente para regularizar alumnos existentes |
+| Esfuerzo | M |
+| Estado | ✅ Resuelto (21/11/2026): `generarPensionesAlumno` crea desde el mes de `fecha_creacion` hasta diciembre, solo meses con concepto `PENSION` y con beca; se ejecuta al matricular y desde el botón manual. Verificado: Nov/Dic automáticos, marzo-diciembre 10, idempotencia, pagos fuera de orden, rollback total y UI con “Generar pensiones”/“Al día” |
+
 ---
 
 ## 4. Cosas que parecen bugs pero no lo son

@@ -3,11 +3,11 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit base de esta sesión:** `1f8d4fe feat(notificaciones): enviar avisos al personal y por rol`
-- **Commit de esta sesión:** `fix(seguridad): auditar resets de contraseña por admin (H43)`
+- **Commit base de esta sesión:** `280adea fix(seguridad): auditar resets de contraseña por admin (H43)`
+- **Commit de esta sesión:** `fix(tesoreria): generar pensiones del alumno al matricular (H44)`
   (el hash exacto queda en `git log -1`).
-- **Estado:** resets de contraseña por ADMIN auditados, UI de auditoría actualizada y
-  verificados ambos endpoints; hashes de prueba restaurados y árbol limpio.
+- **Estado:** cronograma de pensiones por alumno generado al matricular y por botón manual;
+  verificado con base desechable y UI; árbol limpio.
 
 ---
 
@@ -55,6 +55,14 @@
   `{ dni, id_usuario_afectado }`, nunca la clave. La bitácora tiene icono, estilo y
   filtro `RESET_PASSWORD`. Verificación: **4 PASS**, DOCENTE recibe 403 sin auditoría,
   hashes temporales restaurados y 0 residuos.
+- H44: al pagar matrícula se genera el cronograma del alumno desde su mes de
+  `fecha_creacion` hasta diciembre, solo conceptos `PENSION` y con beca. La generación
+  participa de la misma transacción: si falla, el pago completo hace ROLLBACK. La
+  respuesta de pago añade `pensiones_generadas`. Endpoint manual idempotente:
+  `POST /tesoreria/pensiones/alumno/:id_alumno/generar` (ADMIN/SECRETARIA).
+  Verificación en `siga_uc_h44`: **9 PASS** (Nov/Dic automáticos, marzo-diciembre 10,
+  idempotencia, pagos fuera de orden, rollback, 400, RBAC, auditoría) + UI
+  “Generar pensiones”/“Al día”.
 
 ---
 
@@ -88,6 +96,7 @@
 | H40 | Secuencia de instalación corregida | `def839e` |
 | H41 | Seed de producción separado del dump demo; invariante 7 corregido | `feat(db): seed de produccion sin datos ficticios (H41)` |
 | H43 | Resets de contraseña por ADMIN auditados | `fix(seguridad): auditar resets de contraseña por admin (H43)` |
+| H44 | Pensiones por alumno generadas al matricular y por botón manual | `fix(tesoreria): generar pensiones del alumno al matricular (H44)` |
 
 ---
 
@@ -176,6 +185,14 @@
   probar H43). Para las pruebas se usó una clave aleatoria temporal y se restauró el
   hash original; `npm run smoke` puede fallar en el login ADMIN hasta restablecer esa
   contraseña a un valor conocido. Los resets auditados no guardan la clave ni el hash.
+- H44: las pensiones se generan desde el **mes de `fecha_creacion`** hasta diciembre,
+  nunca desde enero. Un alumno creado en noviembre solo recibe noviembre y diciembre.
+  No se exige orden de pago; cada mes genera su propia boleta.
+- El pago de matrícula y la generación de pensiones son una sola transacción. Si la
+  generación falla, el alumno **no** queda `Matriculado`; la respuesta de pago incluye
+  `pensiones_generadas`.
+- La base desechable usada para H44 se creó desde el dump de demo, se probó con
+  backend/puerto 3000 y se eliminó al terminar; `siga_uc` no se tocó.
 
 ---
 

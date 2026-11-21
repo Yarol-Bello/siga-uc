@@ -566,7 +566,9 @@ si no      → C
 3. Inserta `pre_tickets` estado `PENDIENTE`, con usuario emisor.
 4. Se cobra luego desde el pago.
 
-### P13.3 Generación mensual de pensiones
+### P13.3 Generación de pensiones
+
+#### Generación global mensual (sin cambios)
 
 1. `POST /api/tesoreria/pensiones/generar` con `{ anio, mes, monto_base }`.
 2. Valida mes 1–12.
@@ -581,7 +583,28 @@ si no      → C
 - No se genera para alumnos `PendientePago` ni `Retirado`.
 - No se actualiza si ya existe.
 - La beca se busca por alumno y `activo = TRUE` (la primera).
-- No hay UI para ejecutar esta generación.
+
+#### Generación por alumno (H44)
+
+1. **Automática:** al pagar matrícula, dentro de la misma transacción, después de
+   `UPDATE alumnos SET estado_matricula = 'Matriculado'`, se ejecuta
+   `generarPensionesAlumno(id_alumno, client)`.
+2. **Manual:** `POST /api/tesoreria/pensiones/alumno/:id_alumno/generar` para alumnos
+   ya matriculados que quedaron sin cronograma (ADMIN/SECRETARIA).
+3. El cronograma va desde el **mes de `fecha_creacion`** hasta diciembre del año
+   lectivo. Nunca crea meses anteriores a la creación.
+4. Solo crea meses con concepto `PENSION` y aplica la beca activa.
+5. Es idempotente por `(id_alumno, anio_lectivo, mes)`.
+6. La pensión del mes de matrícula se cobra completa, sin prorrateo.
+7. No se exige orden cronológico para pagar.
+8. Si la generación falla al pagar matrícula, **toda la transacción hace ROLLBACK**:
+   el alumno no queda `Matriculado` sin cronograma.
+9. La generación manual responde `{ generadas, total_pensiones }`, valida `404`
+   (alumno inexistente) y `400` (no matriculado), y audita `CREAR` en `Tesorería`.
+
+En la UI de Secretaría, el detalle del alumno muestra:
+sin pensiones → aviso + **Generar pensiones**; todas pagadas → **Al día**; con
+pendientes → el flujo de cobro actual.
 
 ### P13.4 Becas
 
@@ -620,12 +643,14 @@ si no      → C
    - `hash_cpe = MD5(numero_boleta || NOW())`.
 6. Si hay `id_preticket`: `pre_tickets.estado = 'PAGADO'`, `fecha_pago = NOW()`.
 7. Si hay `id_pension`: `pensiones.estado = 'PAGADO'`.
-8. Si `tipo_concepto = 'MATRICULA'`: `alumnos.estado_matricula = 'Matriculado'`.
+8. Si `tipo_concepto = 'MATRICULA'`: `alumnos.estado_matricula = 'Matriculado'` y
+   se genera el cronograma del alumno desde su mes de creación hasta diciembre.
 9. `COMMIT`.
 10. Trigger `trg_pago_a_caja` inserta movimiento `INGRESO` en la última apertura.
 11. Triggers de pre-ticket/pensión repiten los pasos 6–7.
 
-**Salida:** `{ pago, boleta }`.
+**Salida:** `{ pago, boleta, pensiones_generadas }`. Si la generación de pensiones falla,
+el `ROLLBACK` revierte pago, boleta, movimiento y matrícula.
 
 **Riesgos**
 

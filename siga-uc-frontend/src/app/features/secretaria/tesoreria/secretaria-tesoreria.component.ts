@@ -103,6 +103,8 @@ export class SecretariaTesoreriaComponent implements OnInit {
   nroOperacion = signal('');
   procesando = signal(false);
   esCobroMatricula = signal(false);
+  generandoPensiones = signal(false);
+  errorGeneracion = signal<string | null>(null);
 
   // Meses del año
   meses = [
@@ -232,6 +234,16 @@ export class SecretariaTesoreriaComponent implements OnInit {
   }
 
   /**
+   * Un alumno está al día si tiene pensiones y todas están pagadas.
+   */
+  estaAlDia(alumno: AlumnoConPensiones): boolean {
+    return (
+      alumno.pensiones.length > 0 &&
+      alumno.pensiones.every((pension) => pension.estado === 'PAGADO')
+    );
+  }
+
+  /**
    * Abrir modal de cobro
    */
   abrirCobro(
@@ -255,9 +267,9 @@ export class SecretariaTesoreriaComponent implements OnInit {
       ? []
       : this.obtenerConceptosDisponibles(alumno);
 
-    let conceptoFinal: string;
-    let montoFinal: number;
-    let idConceptoFinal: number | null;
+    let conceptoFinal = '';
+    let montoFinal = 0;
+    let idConceptoFinal: number | null = null;
     let idPensionFinal: number | null = null;
 
     if (esMatricula) {
@@ -271,19 +283,14 @@ export class SecretariaTesoreriaComponent implements OnInit {
         );
         return;
       }
-    } else {
+    } else if (disponibles.length > 0) {
       const seleccionado =
         disponibles.find((c) => c.nombre === concepto) || disponibles[0];
 
-      idConceptoFinal = idConcepto ?? seleccionado?.id_concepto ?? null;
-      idPensionFinal = seleccionado?.id_pension ?? null;
-      conceptoFinal = concepto || seleccionado?.nombre || '';
-      montoFinal = monto ?? seleccionado?.monto ?? 0;
-
-      if (!idConceptoFinal || !conceptoFinal) {
-        alert('No hay pensiones pendientes con concepto para este alumno.');
-        return;
-      }
+      idConceptoFinal = idConcepto ?? seleccionado.id_concepto;
+      idPensionFinal = seleccionado.id_pension;
+      conceptoFinal = concepto || seleccionado.nombre;
+      montoFinal = monto ?? seleccionado.monto;
     }
 
     this.conceptosDisponibles.set(disponibles);
@@ -295,6 +302,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
     this.formaPago.set('Efectivo');
     this.nroOperacion.set('');
     this.esCobroMatricula.set(esMatricula);
+    this.errorGeneracion.set(null);
 
     this.modalCobro.set(true);
   }
@@ -341,8 +349,54 @@ export class SecretariaTesoreriaComponent implements OnInit {
   }
 
   cerrarModalCobro(): void {
+    if (this.generandoPensiones()) return;
+
     this.modalCobro.set(false);
     this.alumnoSeleccionado.set(null);
+    this.errorGeneracion.set(null);
+  }
+
+  /**
+   * Generar el cronograma de pensiones de un alumno ya matriculado.
+   */
+  generarPensionesAlumno(): void {
+    const alumno = this.alumnoSeleccionado();
+    if (!alumno || this.generandoPensiones()) return;
+
+    if (alumno.estado_matricula !== 'Matriculado') return;
+
+    if (
+      !confirm(
+        'Se generarán las pensiones desde el mes de matrícula hasta diciembre.',
+      )
+    ) {
+      return;
+    }
+
+    this.generandoPensiones.set(true);
+    this.errorGeneracion.set(null);
+
+    this.http
+      .post<any>(
+        `${environment.apiUrl}/tesoreria/pensiones/alumno/${alumno.id_alumno}/generar`,
+        {},
+      )
+      .pipe(finalize(() => this.generandoPensiones.set(false)))
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.generandoPensiones.set(false);
+            this.cerrarModalCobro();
+            this.cargarDatos();
+          }
+        },
+        error: (err) => {
+          this.errorGeneracion.set(
+            err?.error?.message ||
+              'No se pudieron generar las pensiones. Intente nuevamente.',
+          );
+        },
+      });
   }
 
   /**

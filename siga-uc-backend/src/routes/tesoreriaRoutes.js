@@ -54,6 +54,10 @@ router.post(
   "/pensiones/generar",
   tesoreriaController.generarPensionesMes,
 );
+router.post(
+  "/pensiones/alumno/:id_alumno/generar",
+  tesoreriaController.generarPensionesAlumno,
+);
 
 // ============================================================
 // BECAS

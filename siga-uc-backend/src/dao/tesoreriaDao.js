@@ -345,10 +345,59 @@ const anularPago = async (id, data) => {
 };
 
 /**
+ * Generar el cronograma de pensiones de un alumno matriculado.
+ *
+ * Regla de negocio: desde el mes de creación del alumno hasta diciembre,
+ * solo meses con concepto PENSION y sin meses anteriores a la creación.
+ * Es idempotente por (id_alumno, anio_lectivo, mes).
+ *
+ * @param {number} id_alumno
+ * @param {object|null} client Cliente de una transacción en curso.
+ * @returns {Promise<number>} Cantidad de pensiones creadas.
+ */
+const generarPensionesAlumno = async (id_alumno, client = null) => {
+  const ejecutar = client ? client.query.bind(client) : query;
+
+  const sql = `
+    INSERT INTO pensiones (
+      id_alumno, anio_lectivo, mes, monto_base, descuento, monto_final, estado
+    )
+    SELECT
+      a.id_alumno,
+      a.anio_lectivo,
+      c.mes,
+      c.monto_base,
+      COALESCE(b.monto_descuento, 0),
+      c.monto_base - COALESCE(b.monto_descuento, 0),
+      'PENDIENTE'
+    FROM alumnos a
+    INNER JOIN conceptos_pago c
+      ON c.anio_lectivo = a.anio_lectivo
+     AND c.tipo = 'PENSION'
+    LEFT JOIN LATERAL (
+      SELECT monto_descuento
+      FROM becas
+      WHERE id_alumno = a.id_alumno
+        AND activo = TRUE
+      LIMIT 1
+    ) b ON TRUE
+    WHERE a.id_alumno = $1
+      AND a.estado_matricula = 'Matriculado'
+      AND c.mes >= EXTRACT(MONTH FROM a.fecha_creacion)::int
+    ON CONFLICT (id_alumno, anio_lectivo, mes) DO NOTHING
+  `;
+
+  const result = await ejecutar(sql, [id_alumno]);
+  return result.rowCount;
+};
+
+/**
  * Registrar pago + generar boleta electrónica (transacción)
  */
 const registrarPago = async (data) => {
   const client = await getClient();
+  let pensionesGeneradas = 0;
+
   try {
     await client.query("BEGIN");
 
@@ -485,10 +534,16 @@ const registrarPago = async (data) => {
         `UPDATE alumnos SET estado_matricula = 'Matriculado' WHERE id_alumno = $1::INT`,
         [data.id_alumno],
       );
+
+      // Si la generación falla, el ROLLBACK revierte también la matrícula.
+      pensionesGeneradas = await generarPensionesAlumno(
+        data.id_alumno,
+        client,
+      );
     }
 
     await client.query("COMMIT");
-    return { pago, boleta };
+    return { pago, boleta, pensiones_generadas: pensionesGeneradas };
   } catch (error) {
     await client.query("ROLLBACK");
 
@@ -685,6 +740,7 @@ module.exports = {
   listarPagos,
   findPagoById,
   anularPago,
+  generarPensionesAlumno,
   registrarPago,
   // Pensiones
   listarPensionesAlumno,

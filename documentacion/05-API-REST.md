@@ -287,7 +287,8 @@ grado/año en una transacción.
 | 60 | PUT | `/api/tesoreria/pagos/:id/anular` | ADMIN/SECRETARIA | Anula pago, boleta, pensión/pre-ticket y revierte caja |
 | 61 | POST | `/api/tesoreria/pagos` | ADMIN/SECRETARIA | Pago + boleta + efectos |
 | 62 | GET | `/api/tesoreria/pensiones/alumno/:id_alumno?anio=` | Autenticado | Pensiones del alumno |
-| 63 | POST | `/api/tesoreria/pensiones/generar` | ADMIN/SECRETARIA | Genera pensiones del mes |
+| 63 | POST | `/api/tesoreria/pensiones/generar` | ADMIN/SECRETARIA | Genera un mes para todos los alumnos |
+| 63b | POST | `/api/tesoreria/pensiones/alumno/:id_alumno/generar` | ADMIN/SECRETARIA | Genera el cronograma de un alumno (H44) |
 | 64 | GET | `/api/tesoreria/becas?activo=` | Autenticado | Lista becas |
 | 65 | POST | `/api/tesoreria/becas` | ADMIN | Aplica beca |
 | 66 | GET | `/api/tesoreria/estadisticas?anio=&mes=` | Autenticado | Recaudación y pendientes |
@@ -319,9 +320,18 @@ usa la actual; sin caja abierta → 400).
 
 **Efectos:** pago `PAGADO`; boleta `ACEPTADO`; pre-ticket/pensión `PAGADO` (DAO + trigger);
 movimiento de caja `INGRESO` (trigger); si el concepto es `MATRICULA`, alumno pasa a
-`Matriculado`.
+`Matriculado` y se genera su cronograma de pensiones desde el mes de creación hasta
+diciembre. La respuesta añade `pensiones_generadas`; si la generación falla, todo el pago
+hace `ROLLBACK`.
 
 **Pensiones generar body:** `{ anio, mes, monto_base }` (monto_base por defecto 250).
+Genera un mes para todos los alumnos `Matriculado`; **no** cambia su comportamiento.
+
+**Pensiones por alumno (H44):** `POST /api/tesoreria/pensiones/alumno/:id_alumno/generar`
+sin body. Es idempotente y genera desde el mes de `fecha_creacion` hasta diciembre, solo
+meses con concepto `PENSION`. Responde `{ generadas, total_pensiones }`; `404` si el
+alumno no existe y `400` si no está `Matriculado`. Audita `CREAR` en `Tesorería` con
+`{ id_alumno, generadas }`.
 
 **Beca body:** `{ id_alumno, tipo, porcentaje_descuento, monto_descuento, fecha_inicio, fecha_fin }`.
 

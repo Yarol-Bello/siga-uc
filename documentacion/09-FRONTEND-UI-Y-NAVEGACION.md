@@ -238,7 +238,20 @@ Cada layout contiene:
 | `EstudianteAsistenciaComponent` | `GET /asistencias/alumno/:id/resumen`, `GET /asistencias/alumno/:id?id_curso=` |
 | `EstudianteHorarioComponent` | `GET /horarios/grado/:id` |
 | `SecretariaDashboardComponent` | `GET /tesoreria/estadisticas`, `GET /tesoreria/pre-tickets?estado=PENDIENTE` |
-| `SecretariaTesoreriaComponent` | `GET /alumnos`, `GET /tesoreria/pensiones/alumno/:id` (N+1), `GET /tesoreria/pre-tickets`, `POST /tesoreria/pagos` |
+
+> En **Tesorería**, el detalle de un alumno distingue tres estados:
+>
+> - Sin pensiones y `Matriculado`: muestra “Este alumno no tiene pensiones generadas.” y
+>   el botón **Generar pensiones**. Pide confirmación con
+>   “Se generarán las pensiones desde el mes de matrícula hasta diciembre.”, muestra
+>   spinner y, al terminar, recarga el padrón y los estados.
+> - Sin pensiones y no matriculado: indica que primero debe pagar la matrícula; no
+>   muestra el botón de generación.
+> - Con pensiones: si todas están pagadas muestra “El alumno está al día.”; si hay
+>   pendientes mantiene el flujo de cobro actual.
+>
+> Los errores de generación se muestran inline dentro del modal.
+| `SecretariaTesoreriaComponent` | `GET /alumnos`, `GET /tesoreria/pensiones/alumno/:id` (N+1), `GET /tesoreria/pre-tickets`, `POST /tesoreria/pagos`, `POST /tesoreria/pensiones/alumno/:id/generar` |
 | `SecretariaCajaComponent` | `GET /caja/actual`, `GET /caja/movimientos/:id`, `POST /caja/aperturar`, `POST /caja/egresos`, `POST /caja/cerrar`, `GET /tesoreria/boletas/:id/pdf` |
 
 ## 7. Patrones de implementación

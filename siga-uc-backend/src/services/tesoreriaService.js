@@ -227,6 +227,41 @@ const listarPensionesAlumno = async (id_alumno, anioLectivo) => {
   return await tesoreriaDao.listarPensionesAlumno(id_alumno, anioLectivo);
 };
 
+/**
+ * Generar manualmente el cronograma de pensiones de un alumno matriculado.
+ * No crea meses anteriores al mes de creación; es idempotente.
+ */
+const generarPensionesAlumno = async (id_alumno) => {
+  const alumno = await alumnoDao.findById(id_alumno);
+
+  if (!alumno) {
+    const error = new Error("Alumno no encontrado");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (alumno.estado_matricula !== "Matriculado") {
+    const error = new Error(
+      "El alumno no está matriculado. Registre el pago de matrícula antes de generar pensiones.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const generadas = await tesoreriaDao.generarPensionesAlumno(id_alumno);
+  const anioLectivo = alumno.anio_lectivo || getAnioLectivo();
+  const pensiones = await tesoreriaDao.listarPensionesAlumno(
+    id_alumno,
+    anioLectivo,
+  );
+
+  return {
+    generadas,
+    total_pensiones: pensiones.length,
+    dni: alumno.dni,
+  };
+};
+
 const generarPensionesMes = async (anioLectivo, mes, montoBase) => {
   if (!mes || mes < 1 || mes > 12) {
     const error = new Error("Mes inválido (1-12)");
@@ -315,6 +350,7 @@ module.exports = {
   anularPago,
   registrarPago,
   listarPensionesAlumno,
+  generarPensionesAlumno,
   generarPensionesMes,
   listarBecas,
   aplicarBeca,

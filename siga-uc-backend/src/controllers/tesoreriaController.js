@@ -195,6 +195,28 @@ const listarPensionesAlumno = async (req, res) => {
   }
 };
 
+const generarPensionesAlumno = async (req, res) => {
+  try {
+    const { dni, ...data } = await tesoreriaService.generarPensionesAlumno(
+      req.params.id_alumno,
+    );
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Tesorería",
+      accion: "CREAR",
+      descripcion: `Generación manual de pensiones del alumno ${dni}`,
+      nuevo: {
+        id_alumno: Number(req.params.id_alumno) || null,
+        generadas: data.generadas,
+      },
+    });
+
+    return response.success(res, 200, "Pensiones generadas", data);
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
 const generarPensionesMes = async (req, res) => {
   try {
     const { anio, mes, monto_base } = req.body;
@@ -265,6 +287,7 @@ module.exports = {
   obtenerPreTicket,
   crearPreTicket,
   listarPagos,
+  generarPensionesAlumno,
   obtenerPago,
   anularPago,
   getBoletaPdf,
