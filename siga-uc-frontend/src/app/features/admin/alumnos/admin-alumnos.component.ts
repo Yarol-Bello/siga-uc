@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
+import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 interface Alumno {
   id_alumno: number;
@@ -37,7 +38,7 @@ interface Grado {
 @Component({
   selector: 'app-admin-alumnos',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PaginationComponent],
   templateUrl: './admin-alumnos.component.html',
   styleUrl: './admin-alumnos.component.scss',
 })
@@ -52,6 +53,12 @@ export class AdminAlumnosComponent implements OnInit {
   error = signal<string | null>(null);
   alumnos = signal<Alumno[]>([]);
   grados = signal<Grado[]>([]);
+
+  // Paginación server-side
+  readonly pageSize = 20;
+  pagina = signal(1);
+  totalRegistros = signal(0);
+  totalPaginas = signal(1);
 
   // Filtros
   filtroGrado = signal<string>('');
@@ -95,18 +102,31 @@ export class AdminAlumnosComponent implements OnInit {
     this.cargarGrados();
   }
 
-  cargarAlumnos(): void {
+  cargarAlumnos(pagina = 1): void {
     this.cargando.set(true);
     this.error.set(null);
 
-    const params: any = { anio: this.anioLectivo() };
+    const params: any = {
+      anio: this.anioLectivo(),
+      page: pagina,
+      pageSize: this.pageSize,
+    };
     if (this.filtroGrado()) params.id_grado = this.filtroGrado();
     if (this.filtroEstado()) params.estado_matricula = this.filtroEstado();
     if (this.busqueda()) params.search = this.busqueda();
 
     this.http.get<any>(`${environment.apiUrl}/alumnos`, { params }).subscribe({
       next: (response) => {
-        if (response.success) this.alumnos.set(response.data);
+        if (response.success) {
+          this.alumnos.set(response.data || []);
+
+          const pagination = response.pagination;
+          this.totalRegistros.set(
+            pagination?.total ?? (response.data || []).length,
+          );
+          this.totalPaginas.set(pagination?.totalPages ?? 1);
+          this.pagina.set(pagination?.page ?? pagina);
+        }
         this.cargando.set(false);
       },
       error: (err) => {
@@ -115,6 +135,11 @@ export class AdminAlumnosComponent implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  irPagina(pagina: number): void {
+    if (pagina < 1 || pagina > this.totalPaginas()) return;
+    this.cargarAlumnos(pagina);
   }
 
   cargarGrados(): void {
@@ -130,14 +155,14 @@ export class AdminAlumnosComponent implements OnInit {
   }
 
   aplicarFiltros(): void {
-    this.cargarAlumnos();
+    this.cargarAlumnos(1);
   }
 
   limpiarFiltros(): void {
     this.filtroGrado.set('');
     this.filtroEstado.set('');
     this.busqueda.set('');
-    this.cargarAlumnos();
+    this.cargarAlumnos(1);
   }
 
   // ============================================================
@@ -238,7 +263,7 @@ export class AdminAlumnosComponent implements OnInit {
               `📌 Estado: Pendiente de Pago (debe ir a Tesorería)`,
           );
           this.cerrarModalMatricula();
-          this.cargarAlumnos();
+          this.cargarAlumnos(this.pagina());
         }
       },
       error: (err) => {
@@ -291,7 +316,7 @@ export class AdminAlumnosComponent implements OnInit {
           if (res.success) {
             alert(`✅ Retiro registrado exitosamente para ${alumno.nombre_completo}`);
             this.cerrarModalRetiro();
-            this.cargarAlumnos();
+            this.cargarAlumnos(this.pagina());
           }
         },
         error: (err) => {
@@ -373,7 +398,7 @@ export class AdminAlumnosComponent implements OnInit {
         if (res.success) {
           alert('✅ Ficha actualizada correctamente');
           this.cerrarModalEditar();
-          this.cargarAlumnos();
+          this.cargarAlumnos(this.pagina());
         }
       },
       error: (err) => {

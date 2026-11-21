@@ -9,6 +9,13 @@ const listarBitacora = async (filtros) => {
   return await auditoriaDao.listarBitacora(filtros);
 };
 
+/**
+ * Contar bitácora con los mismos filtros del listado
+ */
+const contarBitacora = async (filtros) => {
+  return await auditoriaDao.contarBitacora(filtros);
+};
+
 const obtenerBitacora = async (id) => {
   const bitacora = await auditoriaDao.findBitacoraById(id);
   if (!bitacora) {
@@ -86,6 +93,7 @@ const getEstadisticas = async () => {
 
 module.exports = {
   listarBitacora,
+  contarBitacora,
   obtenerBitacora,
   listarModulos,
   listarActas,

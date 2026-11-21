@@ -13,6 +13,13 @@ const listar = async (filtros) => {
 };
 
 /**
+ * Contar alumnos con los mismos filtros del listado
+ */
+const contar = async (filtros) => {
+  return await alumnoDao.contar(filtros);
+};
+
+/**
  * Obtener alumno por ID
  */
 const obtener = async (id) => {
@@ -101,6 +108,7 @@ const retirar = async (id, data) => {
 
 module.exports = {
   listar,
+  contar,
   obtener,
   buscarPorDni,
   crear,

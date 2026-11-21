@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `feat(ui): paginacion server-side en alumnos y bitacora (H23)` |
 | `(sesión H15)` | `feat(notificaciones): buscador de alumnos por DNI/nombre en envio masivo` |
 | `(sesión H15)` | `feat(notificaciones): permitir mensajes personalizados y envio por correo (H15)` |
 | `(sesión H34 completo)` | `feat(reportes): PDFs reales para boletas y actas (H34 completo)` |
@@ -237,6 +238,19 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   alumno de la lista”.
 - El selector de GRADO no cambió y `notificacionService` no se tocó.
 
+#### H23 — Paginación server-side (alumnos y bitácora)
+
+- `GET /api/alumnos` y `GET /api/auditoria` aceptan `page`/`pageSize` y responden
+  `data: [...]` + `pagination: { total, page, pageSize, totalPages }`; sin `page` mantienen el
+  arreglo completo (o el `limit` del buscador) para no romper tesorería, reportes ni el
+  dashboard.
+- El `COUNT(*)` usa exactamente los mismos filtros del listado (búsqueda, grado, estado,
+  módulo, acción, fechas).
+- `shared/components/pagination` muestra “Mostrando X–Y de Z”, botones redondos con opacidad
+  al deshabilitarse y emite `pageChange`.
+- Alumnos usa 20 por página; bitácora 50. Aplicar filtros o búsqueda vuelve a la página 1.
+- `response.success` acepta un quinto parámetro opcional `pagination`.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -276,6 +290,11 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   y quitó el foco; enviar sin seleccionar mostró el bloqueo; el `POST` llevó
   `destinatarios.id` = `id_alumno` y el alumno vio el mensaje en su campanita. Datos
   temporales eliminados.
+- H23: 15/15 pruebas de API OK (total/totalPages, página 2, página fuera de rango ajustada,
+  search + paginación, total=0, sin `page` arreglo completo, 403). UI: alumnos mostró
+  “1–20 de 25” con 20 filas y “21–25 de 25” al avanzar; en página 2, cambiar el estado volvió a
+  `page=1`; bitácora mostró “1–50 de 55” y “51–55 de 55” con 50 por página. Datos temporales
+  eliminados.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

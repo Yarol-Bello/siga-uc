@@ -15,6 +15,22 @@
 { "success": true, "message": "Operación exitosa", "data": {}, "timestamp": "2026-11-19T..." }
 ```
 
+**Listados paginados:** cuando el cliente envía `page`, la respuesta añade el bloque
+`pagination` y `data` sigue siendo el arreglo de la página:
+
+```json
+{
+  "success": true,
+  "message": "20 de 45 alumnos",
+  "data": [ ... ],
+  "pagination": { "total": 45, "page": 1, "pageSize": 20, "totalPages": 3 },
+  "timestamp": "..."
+}
+```
+
+Sin `page` no se agrega `pagination` y se mantiene el comportamiento histórico (arreglo
+completo, o el `limit` del buscador).
+
 Error:
 
 ```json
@@ -125,7 +141,7 @@ anteriores. Respuesta genérica; si el usuario existe pero no tiene correo devue
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 16 | GET | `/api/alumnos?anio=&id_grado=&estado_matricula=&search=&limit=&solo_activos=` | Autenticado | Lista con apoderado y grado |
+| 16 | GET | `/api/alumnos?anio=&id_grado=&estado_matricula=&search=&limit=&solo_activos=&page=&pageSize=` | Autenticado | Lista con apoderado y grado; `page` activa paginación (default 1, máx. 100) |
 | 17 | GET | `/api/alumnos/dni/:dni` | Autenticado | Busca por DNI |
 | 18 | GET | `/api/alumnos/:id` | Autenticado | Ficha completa |
 | 19 | POST | `/api/alumnos` | ADMIN/SECRETARIA | Matrícula transaccional |
@@ -359,13 +375,18 @@ movimiento de caja `INGRESO` (trigger); si el concepto es `MATRICULA`, alumno pa
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 83 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=` | Autenticado | Bitácora (máx. 200) |
+| 83 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=&page=&pageSize=` | Autenticado | Bitácora; `page` activa paginación (default 1, máx. 100); sin `page` máx. 200 |
 | 84 | GET | `/api/auditoria/modulos` | Autenticado | Módulos distintos |
 | 85 | GET | `/api/auditoria/estadisticas` | Autenticado | Totales por acción |
 | 86 | GET | `/api/auditoria/actas` | Autenticado | Actas bimestrales |
 | 87 | GET | `/api/auditoria/actas/:id_acta/pdf` | ADMIN/DOCENTE | PDF de acta con matriz real de notas |
 | 88 | GET | `/api/auditoria/:id` | Autenticado | Detalle de registro |
 | 89 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra acta con hash |
+
+> El `COUNT(*)` de la bitácora usa los mismos filtros del listado (`módulo`, `acción`,
+> `búsqueda`, fechas), por lo que `total` y `totalPages` reflejan lo filtrado.
+> El dashboard de alumnos y la bitácora consumen `pagination`; tesorería, reportes y el
+> buscador de notificaciones siguen pidiendo el arreglo completo (sin `page`).
 
 **Cerrar acta body:** `{ periodo, anio_lectivo, id_grado }`.
 Respuesta: acta con `estado = CERRADO`, `fecha_cierre`, `cerrado_por`, `hash_integridad`

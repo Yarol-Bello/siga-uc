@@ -134,6 +134,16 @@
       </table>
     </div>
 
+    @if (totalRegistros() > 0) {
+    <app-pagination
+      [page]="pagina()"
+      [totalPages]="totalPaginas()"
+      [total]="totalRegistros()"
+      [pageSize]="pageSize"
+      (pageChange)="irPagina($event)"
+    />
+    }
+
     @if (bitacora().length === 0) {
     <div class="empty-state">
       <i class="fa-solid fa-inbox"></i>

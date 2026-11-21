@@ -148,6 +148,12 @@ Cada layout contiene:
 | Usuario | Iniciales y nombre |
 | Logout | Confirmación + `authService.logout()` |
 
+> Los listados de alumnos y bitácora usan el paginador compartido
+> `shared/components/pagination` (inputs `page`, `totalPages`, `total`, `pageSize`; output
+> `pageChange`), con botones redondos “Anterior/Siguiente”, texto “Mostrando X–Y de Z” y
+> opacidad reducida al llegar a los extremos. Al aplicar filtros o búsqueda se vuelve a la
+> página 1.
+
 > El Admin tiene un modal **“Nueva Notificación”** en el dashboard para enviar a TODOS, un
 > GRADO o un ALUMNO. El destinatario ALUMNO se busca por DNI, nombres o apellidos con
 > autocompletado (`debounce` 300 ms, máximo 10 resultados). Muestra el resultado real
@@ -207,13 +213,13 @@ Cada layout contiene:
 | `CambiarPasswordComponent` | `PUT /auth/cambiar-password` |
 | `HeaderComponent` | `GET /notificaciones/no-leidas`, `GET /notificaciones`, `PUT /:id/leer`, `PUT /leer-todas`, `GET /auth/perfil` |
 | `DashboardComponent` | `GET /reportes/dashboard`, `GET /grados`, `GET /alumnos?search=&limit=10&solo_activos=1`, `POST /notificaciones/masivo` |
-| `AdminAlumnosComponent` | `GET /alumnos`, `GET /grados`, `POST /alumnos`, `PUT /alumnos/:id`, `PUT /alumnos/:id/retirar`, `PUT /auth/reset-password` |
+| `AdminAlumnosComponent` | `GET /alumnos?page=&pageSize=`, `GET /grados`, `POST /alumnos`, `PUT /alumnos/:id`, `PUT /alumnos/:id/retirar`, `PUT /auth/reset-password` |
 | `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar`, `PUT /:id/reactivar`, `PUT /:id/reset-password` |
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
 | `AdminSiagieComponent` | `GET /grados`, `GET /reportes/auditoria-docentes/:id`, `POST /siagie/generar-excel`, `GET /personal/:id`, `POST /notificaciones` |
 | `AdminReportesComponent` | `GET /grados`, `GET /alumnos`, `GET /reportes/cuadro-merito/:id`, `/alumnos-riesgo/:id`, `/libreta/:id`, `/libreta/:id/pdf` |
-| `AdminAuditoriaComponent` | `GET /auditoria`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `GET /actas/:id/pdf` |
+| `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `GET /actas/:id/pdf` |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id` |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo` |
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo` |
@@ -332,7 +338,7 @@ del rol original; el backend debe permitir ambos roles.
 2. Centralizar manejo de errores/401 y refresh de sesión.
 3. Reemplazar `alert/confirm` por componentes accesibles.
 4. ~~Implementar pantalla de cambio de contraseña obligatorio.~~ ✅ (H18)
-5. Añadir paginación real (hoy listas completas).
+5. ~~Añadir paginación real (hoy listas completas).~~ ✅ Parcial (H23): alumnos y bitácora; falta personal, pagos y pre-tickets.
 6. Evitar N+1 en tesorería (cargar pensiones en un endpoint agregado).
 7. ~~Parametrizar año lectivo y conceptos (hoy hardcodeados).~~ ✅ (H12: `ANIO_LECTIVO` + `GET /api/configuracion`).
 8. Añadir botón “Calcular notas finales” y “Cerrar acta” con bloqueo real.

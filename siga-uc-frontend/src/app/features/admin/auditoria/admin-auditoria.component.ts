@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 interface Bitacora {
   id_bitacora: string;
@@ -49,7 +50,7 @@ interface Estadisticas {
 @Component({
   selector: 'app-admin-auditoria',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PaginationComponent],
   templateUrl: './admin-auditoria.component.html',
   styleUrl: './admin-auditoria.component.scss',
 })
@@ -67,6 +68,12 @@ export class AdminAuditoriaComponent implements OnInit {
   estadisticas = signal<Estadisticas | null>(null);
   actaPdfId = signal<number | null>(null);
   errorActaPdf = signal<string | null>(null);
+
+  // Paginación server-side (logs: 50 por página)
+  readonly pageSize = 50;
+  pagina = signal(1);
+  totalRegistros = signal(0);
+  totalPaginas = signal(1);
 
   // Filtros
   filtroModulo = signal<string>('');
@@ -97,18 +104,27 @@ export class AdminAuditoriaComponent implements OnInit {
   /**
    * Cargar bitácora
    */
-  cargarBitacora(): void {
+  cargarBitacora(pagina = 1): void {
     this.cargando.set(true);
     this.error.set(null);
 
-    const params: any = {};
+    const params: any = { page: pagina, pageSize: this.pageSize };
     if (this.filtroModulo()) params.modulo = this.filtroModulo();
     if (this.filtroAccion()) params.accion = this.filtroAccion();
     if (this.filtroBusqueda()) params.search = this.filtroBusqueda();
 
     this.http.get<any>(`${environment.apiUrl}/auditoria`, { params }).subscribe({
       next: (res) => {
-        if (res.success) this.bitacora.set(res.data);
+        if (res.success) {
+          this.bitacora.set(res.data || []);
+
+          const pagination = res.pagination;
+          this.totalRegistros.set(
+            pagination?.total ?? (res.data || []).length,
+          );
+          this.totalPaginas.set(pagination?.totalPages ?? 1);
+          this.pagina.set(pagination?.page ?? pagina);
+        }
         this.cargando.set(false);
       },
       error: (err) => {
@@ -117,6 +133,11 @@ export class AdminAuditoriaComponent implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  irPagina(pagina: number): void {
+    if (pagina < 1 || pagina > this.totalPaginas()) return;
+    this.cargarBitacora(pagina);
   }
 
   /**
@@ -247,14 +268,14 @@ export class AdminAuditoriaComponent implements OnInit {
   }
 
   aplicarFiltros(): void {
-    this.cargarBitacora();
+    this.cargarBitacora(1);
   }
 
   limpiarFiltros(): void {
     this.filtroModulo.set('');
     this.filtroAccion.set('');
     this.filtroBusqueda.set('');
-    this.cargarBitacora();
+    this.cargarBitacora(1);
   }
 
   /**

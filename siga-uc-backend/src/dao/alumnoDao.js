@@ -7,9 +7,9 @@ const { query, getClient } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
 
 /**
- * Listar alumnos con filtros
+ * Construir el WHERE dinámico del listado de alumnos.
  */
-const listar = async (filtros = {}) => {
+const construirFiltros = (filtros = {}) => {
   const conditions = [];
   const params = [];
   let idx = 1;
@@ -44,11 +44,31 @@ const listar = async (filtros = {}) => {
   const whereClause =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-  let limitClause = "";
-  if (filtros.limit !== undefined && filtros.limit !== null) {
+  return { whereClause, params, nextIdx: idx };
+};
+
+/**
+ * Listar alumnos con filtros.
+ * Con `page` + `pageSize` aplica LIMIT/OFFSET; sin `page` mantiene el
+ * comportamiento histórico (arreglo completo o `limit` del buscador).
+ */
+const listar = async (filtros = {}) => {
+  const { whereClause, params, nextIdx } = construirFiltros(filtros);
+  let idx = nextIdx;
+  let paginacionClause = "";
+
+  const page = Number.parseInt(String(filtros.page ?? ""), 10);
+  const pageSize = Number.parseInt(String(filtros.pageSize ?? ""), 10);
+
+  if (Number.isInteger(page) && page > 0 && Number.isInteger(pageSize) && pageSize > 0) {
+    const size = Math.min(pageSize, 100);
+    const offset = (page - 1) * size;
+    paginacionClause = `LIMIT $${idx++} OFFSET $${idx++}`;
+    params.push(size, offset);
+  } else if (filtros.limit !== undefined && filtros.limit !== null) {
     const limite = Number.parseInt(String(filtros.limit), 10);
     if (Number.isInteger(limite) && limite > 0) {
-      limitClause = `LIMIT $${idx}`;
+      paginacionClause = `LIMIT $${idx}`;
       params.push(Math.min(limite, 50));
     }
   }
@@ -71,11 +91,25 @@ const listar = async (filtros = {}) => {
     LEFT JOIN apoderados ap ON ap.id_apoderado = a.id_apoderado
     ${whereClause}
     ORDER BY g.id_grado, a.apellidos, a.nombres
-    ${limitClause}
+    ${paginacionClause}
   `;
 
   const result = await query(sql, params);
   return result.rows;
+};
+
+/**
+ * Contar alumnos con los mismos filtros del listado.
+ */
+const contar = async (filtros = {}) => {
+  const { whereClause, params } = construirFiltros(filtros);
+  const sql = `
+    SELECT COUNT(*)::int AS total
+    FROM alumnos a
+    ${whereClause}
+  `;
+  const result = await query(sql, params);
+  return result.rows[0].total;
 };
 
 /**
@@ -364,6 +398,7 @@ const cambiarEstado = async (id, nuevoEstado) => {
 
 module.exports = {
   listar,
+  contar,
   findById,
   findByDni,
   crear,

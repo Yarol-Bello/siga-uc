@@ -14,7 +14,7 @@
 | `src/config/academico.js` | Expone `getAnioLectivo()` desde `ANIO_LECTIVO` |
 | `src/config/database.js` | Pool `pg` (`max=20`), helper `query`, `getClient` transaccional, `testConnection` |
 | `src/middlewares/authMiddleware.js` | `verificarAutenticacion` (Bearer/JWT, estado y bloqueo por cambio de contraseña) y `verificarRol(...roles)` |
-| `src/utils/response.js` | `success`, `error`, `validationError`, `unauthorized`, `forbidden`, `notFound` |
+| `src/utils/response.js` | `success` (con `pagination` opcional), `error`, `validationError`, `unauthorized`, `forbidden`, `notFound` |
 
 ### 1.2 Routers (14)
 
@@ -42,7 +42,7 @@
 | `authController.js` | `login`, `perfil`, `verify`, `logout`, `resetPassword`, `solicitarRecuperacion`, `validarToken`, `restablecerPassword`, `cambiarPassword` | `validationResult` en login y cambio de contraseña; recuperación delega a `recuperacionService` |
 | `configuracionController.js` | `obtener` | Devuelve el año lectivo activo |
 | `academicoController.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion`, `listarHorariosPorGrado` | Solo lectura |
-| `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda, año, `limit` y `solo_activos` |
+| `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda, año, `limit`, `solo_activos` y paginación (`page`/`pageSize`) |
 | `personalController.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | Roles excluyen ESTUDIANTE |
 | `cargaCurricularController.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `crear`, `actualizar`, `eliminar`, `asignarTutor`, `getTutor` | `listarPorDocente` usa el año lectivo configurado |
 | `asistenciaController.js` | `obtenerPorCursoFecha`, `obtenerPorAlumno`, `obtenerResumenPorAlumno`, `registrar`, `registrarMasivo`, `listarAsistenciaPersonal`, `buscarPersonalPorDni`, `registrarAsistenciaPersonal`, `obtenerResumenAsistenciaPersonal` | Personal y alumnos separados |
@@ -50,7 +50,7 @@
 | `tesoreriaController.js` | `listarConceptos`, `listarPreTickets`, `obtenerPreTicket`, `crearPreTicket`, `listarPagos`, `obtenerPago`, `getBoletaPdf`, `registrarPago`, `listarPensionesAlumno`, `generarPensionesMes`, `listarBecas`, `aplicarBeca`, `getEstadisticas` | Inyecta `id_usuario` del token; PDF de boleta |
 | `cajaController.js` | `obtenerCajaAbierta`, `listarCajas`, `listarAperturas`, `obtenerApertura`, `aperturar`, `listarMovimientos`, `registrarEgreso`, `cerrar`, `listarCierres` | Inyecta usuario de apertura/egreso/cierre |
 | `reporteController.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getLibretaPdf`, `getResumenAsistencia`, `getAuditoriaDocentes` | KPIs, reportes y PDF de libreta |
-| `auditoriaController.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `getActaPdf`, `cerrarActa`, `getEstadisticas` | Inyecta `cerrado_por`; PDF de acta |
+| `auditoriaController.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `getActaPdf`, `cerrarActa`, `getEstadisticas` | Inyecta `cerrado_por`; PDF de acta; paginación con `page`/`pageSize` |
 | `siagieController.js` | `generarExcel` | Valida archivo/parámetros, borra temporal y descarga |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
@@ -83,7 +83,7 @@
 | DAO | Entidades / operaciones | Consultas destacadas |
 |---|---|---|
 | `usuarioDao.js` | `usuarios`, `roles`, `alumnos`, `personal`, `credenciales_qr`, `recuperacion_password` | `findByDni`, `findByCorreo`, `findByDniOCorreo`, `findById`, `getCredencialQR`, reset/actualizar password |
-| `alumnoDao.js` | `apoderados`, `usuarios`, `alumnos`, `expediente_alumno`, `credenciales_qr` | Listado con filtros, búsqueda `unaccent` por DNI/nombre completo y `LIMIT` opcional; código `EST-XXX`, matrícula transaccional, retiro |
+| `alumnoDao.js` | `apoderados`, `usuarios`, `alumnos`, `expediente_alumno`, `credenciales_qr` | Listado con filtros, búsqueda `unaccent` por DNI/nombre completo, `LIMIT` opcional y `LIMIT/OFFSET` con `contar`; código `EST-XXX`, matrícula transaccional, retiro |
 | `personalDao.js` | `usuarios`, `personal`, `credenciales_qr` | Listado con rol, creación transaccional, cese/reactivación, reset |
 | `gradoDao.js` | `grados`, `alumnos`, `tutores_grado`, `horarios` | Grados con conteo, tutor, horario ordenado por día/hora |
 | `cursoDao.js` | `cursos`, `competencias`, `escala_calificacion` | Listado con conteo de competencias, escala |
@@ -93,7 +93,7 @@
 | `tesoreriaDao.js` | `conceptos_pago`, `pre_tickets`, `pagos`, `boletas_electronicas`, `pensiones`, `becas` | Pago transaccional, numeración de boleta, generación de pensiones |
 | `cajaDao.js` | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` | Caja abierta, apertura/egreso/cierre con arqueo |
 | `reporteDao.js` | Múltiples tablas | Dashboard, mérito, riesgo, libreta, asistencia, auditoría docente |
-| `auditoriaDao.js` | `bitacora_auditoria`, `actas_bimestrales` | Bitácora filtrada (máx. 200), actas, hash MD5 |
+| `auditoriaDao.js` | `bitacora_auditoria`, `actas_bimestrales` | Bitácora filtrada con `COUNT` y `LIMIT/OFFSET` (sin `page` máx. 200), actas, hash MD5 |
 | `notificacionDao.js` | `notificaciones`, `usuarios`, `alumnos`, `grados` | Listar/contar/marcar/eliminar por destinatario; `listarDestinatarios` por TODOS/GRADO/ALUMNO e inserción masiva con `unnest` |
 | `siagieDao.js` | `alumnos`, `cursos`, `notas_finales_area`, `grados`, `exportaciones_siagie` | Notas por grado/bimestre, grado, registro de exportación |
 | `recuperacionDao.js` | `recuperacion_password`, `usuarios` | Crear token (expira en PostgreSQL), validar, marcar usado |
@@ -103,7 +103,7 @@
 | Archivo | Uso |
 |---|---|
 | `emailService.js` | Resend; `RESEND_API_KEY`, `EMAIL_FROM`; interfaz compatible con la versión Nodemailer |
-| `response.js` | Respuestas uniformes |
+| `response.js` | Respuestas uniformes; `success` agrega `pagination` cuando se pasa |
 | `authMiddleware.js` | Seguridad por token/rol |
 
 ## 2. Frontend

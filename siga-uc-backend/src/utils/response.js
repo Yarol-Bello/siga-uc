@@ -8,13 +8,20 @@ const success = (
   statusCode = 200,
   message = "Operación exitosa",
   data = null,
+  pagination = null,
 ) => {
-  return res.status(statusCode).json({
+  const body = {
     success: true,
     message,
     data,
     timestamp: new Date().toISOString(),
-  });
+  };
+
+  if (pagination) {
+    body.pagination = pagination;
+  }
+
+  return res.status(statusCode).json(body);
 };
 
 const error = (

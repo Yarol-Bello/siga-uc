@@ -7,9 +7,9 @@ const { query } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
 
 /**
- * Listar bitácora con filtros
+ * Construir el WHERE dinámico de la bitácora.
  */
-const listarBitacora = async (filtros = {}) => {
+const construirFiltrosBitacora = (filtros = {}) => {
   const conditions = [];
   const params = [];
   let idx = 1;
@@ -51,6 +51,29 @@ const listarBitacora = async (filtros = {}) => {
   const where =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+  return { where, params, nextIdx: idx };
+};
+
+/**
+ * Listar bitácora con filtros.
+ * Con `page` + `pageSize` aplica LIMIT/OFFSET; sin `page` conserva el
+ * límite histórico de 200 registros.
+ */
+const listarBitacora = async (filtros = {}) => {
+  const { where, params, nextIdx } = construirFiltrosBitacora(filtros);
+  let idx = nextIdx;
+  let paginacionClause = "LIMIT 200";
+
+  const page = Number.parseInt(String(filtros.page ?? ""), 10);
+  const pageSize = Number.parseInt(String(filtros.pageSize ?? ""), 10);
+
+  if (Number.isInteger(page) && page > 0 && Number.isInteger(pageSize) && pageSize > 0) {
+    const size = Math.min(pageSize, 100);
+    const offset = (page - 1) * size;
+    paginacionClause = `LIMIT $${idx++} OFFSET $${idx++}`;
+    params.push(size, offset);
+  }
+
   const sql = `
     SELECT 
       b.id_bitacora,
@@ -70,11 +93,26 @@ const listarBitacora = async (filtros = {}) => {
     LEFT JOIN roles r ON r.id_rol = u.id_rol
     ${where}
     ORDER BY b.fecha_hora DESC
-    LIMIT 200
+    ${paginacionClause}
   `;
 
   const result = await query(sql, params);
   return result.rows;
+};
+
+/**
+ * Contar bitácora con los mismos filtros del listado.
+ */
+const contarBitacora = async (filtros = {}) => {
+  const { where, params } = construirFiltrosBitacora(filtros);
+  const sql = `
+    SELECT COUNT(*)::int AS total
+    FROM bitacora_auditoria b
+    LEFT JOIN usuarios u ON u.id_usuario = b.id_usuario
+    ${where}
+  `;
+  const result = await query(sql, params);
+  return result.rows[0].total;
 };
 
 /**
@@ -332,6 +370,7 @@ const actaEstaCerrada = async (
 
 module.exports = {
   listarBitacora,
+  contarBitacora,
   findBitacoraById,
   listarModulos,
   listarActas,

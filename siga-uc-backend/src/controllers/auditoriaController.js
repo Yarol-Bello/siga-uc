@@ -17,6 +17,35 @@ const listarBitacora = async (req, res) => {
       hasta: req.query.hasta || null,
       search: req.query.search || null,
     };
+
+    const pageSolicitada = parseInt(req.query.page, 10);
+    const pageSizeSolicitada = parseInt(req.query.pageSize, 10);
+
+    if (Number.isInteger(pageSolicitada) && pageSolicitada > 0) {
+      const pageSize = Math.min(
+        Math.max(Number.isInteger(pageSizeSolicitada) ? pageSizeSolicitada : 20, 1),
+        100,
+      );
+
+      const total = await auditoriaService.contarBitacora(filtros);
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const page = Math.min(pageSolicitada, totalPages);
+
+      const data = await auditoriaService.listarBitacora({
+        ...filtros,
+        page,
+        pageSize,
+      });
+
+      return response.success(
+        res,
+        200,
+        `${data.length} de ${total} registros de auditoría`,
+        data,
+        { total, page, pageSize, totalPages },
+      );
+    }
+
     const data = await auditoriaService.listarBitacora(filtros);
     return response.success(
       res,

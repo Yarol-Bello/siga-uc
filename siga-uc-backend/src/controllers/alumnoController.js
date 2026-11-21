@@ -26,6 +26,35 @@ const listar = async (req, res) => {
         ? parseInt(req.query.anio)
         : getAnioLectivo(),
     };
+
+    const pageSolicitada = parseInt(req.query.page, 10);
+    const pageSizeSolicitada = parseInt(req.query.pageSize, 10);
+
+    if (Number.isInteger(pageSolicitada) && pageSolicitada > 0) {
+      const pageSize = Math.min(
+        Math.max(Number.isInteger(pageSizeSolicitada) ? pageSizeSolicitada : 20, 1),
+        100,
+      );
+
+      const total = await alumnoService.contar(filtros);
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const page = Math.min(pageSolicitada, totalPages);
+
+      const alumnos = await alumnoService.listar({
+        ...filtros,
+        page,
+        pageSize,
+      });
+
+      return response.success(
+        res,
+        200,
+        `${alumnos.length} de ${total} alumnos`,
+        alumnos,
+        { total, page, pageSize, totalPages },
+      );
+    }
+
     const alumnos = await alumnoService.listar(filtros);
     return response.success(
       res,

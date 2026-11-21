@@ -11,6 +11,8 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > programación en Render/Supabase. H34 quedó resuelto: libretas, boletas y actas con PDFKit.
 > H15 quedó resuelto: mensajes personalizados con destinatarios TODOS/GRADO/ALUMNO y envío por
 > Resend sin perder la notificación si el correo falla.
+> H23 quedó resuelto parcialmente: alumnos y bitácora ya tienen paginación server-side; faltan
+> personal, pagos y pre-tickets.
 
 ---
 
@@ -243,7 +245,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Endpoint agregado de pensiones por año o incluir en listado |
 | Esfuerzo | S/M |
 
-### H23 — Listas sin paginación
+### H23 — Listas sin paginación (parcial: alumnos y bitácora)
 
 | Campo | Detalle |
 |---|---|
@@ -252,6 +254,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Rendimiento y usabilidad con datos reales |
 | Recomendación | Paginación server-side y filtros indexados |
 | Esfuerzo | M |
+| Estado | 🟡 Alumnos y bitácora resueltos (20/11/2026): `page`/`pageSize`, `COUNT(*)` con filtros y paginador compartido. Pendiente: personal, pagos y pre-tickets |
 
 ### H24 — Sin tests ni CI/CD
 

@@ -59,7 +59,7 @@
         <i class="fa-solid fa-users"></i>
         Padrón de Alumnos — Año Lectivo {{ anioLectivo() }}
       </h3>
-      <span class="badge-count">{{ alumnos().length }} estudiantes</span>
+      <span class="badge-count">{{ totalRegistros() }} estudiantes</span>
     </div>
 
     <div class="table-responsive">
@@ -112,6 +112,16 @@
         </tbody>
       </table>
     </div>
+
+    @if (totalRegistros() > 0) {
+    <app-pagination
+      [page]="pagina()"
+      [totalPages]="totalPaginas()"
+      [total]="totalRegistros()"
+      [pageSize]="pageSize"
+      (pageChange)="irPagina($event)"
+    />
+    }
 
     @if (alumnos().length === 0) {
     <div class="empty-state">
