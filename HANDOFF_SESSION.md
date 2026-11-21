@@ -3,8 +3,9 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit actual:** `48d119a fix(academico): mostrar errores reales en guardados masivos (H11)`
-- **Estado:** árbol limpio; sin cambios pendientes.
+- **Commit de este handoff:** `ef68ba8 docs(handoff): estado al cierre de la sesion (H07/H11/H39/H40)` (documento base; el ajuste final de prerequisitos se commitea como `docs(handoff): completar prerequisitos de despliegue`)
+- **Último commit de código:** `48d119a fix(academico): mostrar errores reales en guardados masivos (H11)`
+- **Estado:** árbol limpio tras el commit de este handoff.
 
 ---
 
@@ -18,6 +19,10 @@
 - **No hay staging.**
 - La BD local se recreó con la secuencia oficial: **39 tablas** y el índice
   `ux_pago_pension_activo` **existe** (verificado el 21/11/2026).
+- Datos locales tras la recreación: **21 alumnos, 29 usuarios, 10 pagos de seed
+  (+1 pago de prueba existente), 180 pensiones, 0 pensiones duplicadas**.
+- Credenciales de prueba: `docs/CREDENCIALES.md`. La clave de PostgreSQL local está en
+  `siga-uc-backend/.env` (`DB_PASSWORD`); no se escribe en este documento.
 - `npm run smoke` **todavía no existe** en `package.json`; hay que crearlo en la
   siguiente sesión antes de desplegar.
 
@@ -121,6 +126,12 @@
 2. **Despliegue de ensayo en el Render actual** con datos de prueba:
    - Configurar `NODE_ENV=production`, `FRONTEND_URL`, `TZ=America/Lima`,
      `JWT_SECRET` largo y la conexión (`DATABASE_URL`/`DB_SSL` o `DB_*`).
+   - **Resend:** verificar el dominio con SPF/DKIM. Sin eso los correos solo llegan a
+     la cuenta propia.
+   - **Backups:** comprobar que `pg_dump` existe en el entorno de Render; si no,
+     `npm run backup` falla en producción y hay que usar los backups del proveedor.
+   - **Frontend:** confirmar que `environment.prod.ts` apunta a la URL real del backend
+     y que el build genera `404.html`.
    - Aplicar las migraciones pendientes en orden.
    - Repetir `npm run smoke` contra Render.
 3. Solo si el ensayo pasa: planificar el **despliegue definitivo** y la carga de
@@ -133,9 +144,10 @@
 ```powershell
 git log -1 --oneline
 psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
+# Requiere el backend corriendo en localhost:3000
 curl.exe -s http://localhost:3000/api/health
 ```
 
 El primero confirma el commit; el segundo debe devolver **39** y
 `ux_pago_pension_activo`; el tercero debe devolver `success: true` y
-`database: "ok"` con el backend en marcha.
+`database: "ok"` **con el backend en marcha**.
