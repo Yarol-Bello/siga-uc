@@ -1,518 +1,141 @@
 # HANDOFF_SESSION.md — SIGA-UC
 
-> Guía para retomar el trabajo sin perder contexto.
-> **Fuente de verdad:** el código y `documentacion/`. Si este archivo difiere, manda el código.
-> Fecha de cierre de sesión: **21/11/2026**.
+## 1. Cierre de sesión
+
+- **Fecha:** 21/11/2026
+- **Commit actual:** `48d119a fix(academico): mostrar errores reales en guardados masivos (H11)`
+- **Estado:** árbol limpio; sin cambios pendientes.
 
 ---
 
-## 1. STACK Y ENTORNO
+## 2. Entorno
 
-| Capa | Tecnología real |
-|---|---|
-| Frontend | Angular **21.2** standalone + signals + Bootstrap 5 + FontAwesome |
-| Backend | Node.js **20.20.2** + Express **5.3** (CommonJS) |
-| Base de datos | PostgreSQL **18.4** (`pgcrypto`, `unaccent`, `uuid-ossp`) |
-| Acceso a datos | `pg` con SQL crudo parametrizado, sin ORM |
-| Auth | JWT (8 h) + bcrypt/`crypt` coste 10 |
-| Correo | **Resend** (API HTTP); no se usa SMTP/Nodemailer en runtime |
-| Excel | ExcelJS + Multer (SIAGIE) |
-| Despliegue | Backend/preview en **Render**; URL de producción en `environment.prod.ts` |
-| Supabase | No hay SDK de Supabase en el código. Si se usa, es solo como **PostgreSQL gestionado** compatible; la app sigue conectando por `pg`. |
+- Todo el desarrollo es **local**:
+  - Backend: `http://localhost:3000`
+  - Frontend: `http://localhost:4200`
+  - PostgreSQL 18 local, base `siga_uc`.
+- En **Render** hay una versión **ANTIGUA** con **DATOS DE PRUEBA**. **No hay datos reales.**
+- **No hay staging.**
+- La BD local se recreó con la secuencia oficial: **39 tablas** y el índice
+  `ux_pago_pension_activo` **existe** (verificado el 21/11/2026).
+- `npm run smoke` **todavía no existe** en `package.json`; hay que crearlo en la
+  siguiente sesión antes de desplegar.
 
-### Rutas locales
+---
 
-```text
-C:\Users\yarol\Documents\Proyectos\siga-uc
-├── siga-uc-backend
-├── siga-uc-frontend
-├── database
-├── docs                  # documentación operativa previa
-├── documentacion         # documentación detallada vigente
-└── AGENTS.md             # resumen operativo
-```
+## 3. Hallazgos CERRADOS
 
-### Levantar backend
+| Hallazgo | Detalle | Commit |
+|---|---|---|
+| H01 | GET por rol/ownership | `b6f4a21` (+ verificación `ca5e742`) |
+| H02 | Revalidar estado en cada request | `b6f4a21` |
+| H03 | Rate limit en login, recuperación y validar-token | `b6f4a21`, `408c451` |
+| H04 | Nota final automática al guardar | `f02f88a` |
+| H06 | Acta cerrada bloquea notas | `f02f88a` |
+| H07 (A+B) | Auditoría de seguridad, dinero, alumnos, personal, académico, SIAGIE, notificaciones y descargas | `d8800e4`, `76573ac` |
+| H08 | Pago solo a caja abierta | `81aa521` |
+| H09 | Monto, pensión, alumno y caja coherentes | `408c451` |
+| H10 | Numeraciones con advisory locks | `c65770c` |
+| H11 | Errores visibles en guardados masivos | `48d119a` |
+| H12 | Año lectivo y conceptos centralizados | `e483245` |
+| H15 | Notificaciones personalizadas + buscador de alumnos | `e099173`, `e793ee3` |
+| H17 | Errores SQL no expuestos | `b6f4a21` |
+| H18 | Cambio obligatorio de contraseña | `33be57a` |
+| H19 | Retiro desactiva usuario y congela expediente | `e5f7055` |
+| H20 | Edición sincroniza nombres en `usuarios` | `e5f7055` |
+| H23 (parcial) | Paginación en alumnos y bitácora | `8a4727b` |
+| H25 | Backup automático | `e6e5296` |
+| H32 | Anulación de pagos | `f2c258c` |
+| H34 | PDFs reales de libretas, boletas y actas | `9b70b94`, `95f08f3` |
+| H37 | Concepto de pensión valida mes/año | `c65770c` |
+| H38 | Doble pago concurrente bloqueado | `c65770c` |
+| H39 | Fechas de negocio en hora de Lima | `399d35e` |
+| H40 | Secuencia de instalación corregida | `def839e` |
+
+---
+
+## 4. Hallazgos PENDIENTES
+
+| Hallazgo | Detalle | Severidad | Esfuerzo |
+|---|---|---|---|
+| H05 | SIAGIE limitado a 4 cursos y primera hoja | Alta | M |
+| H21 | Cambio de rol no regenera QR ni permisos históricos | Media | S |
+| H22 | N+1 en tesorería (pensiones por alumno) | Media | S/M |
+| H23 | Paginación faltante en personal, pagos y pre-tickets | Media | M |
+| H24 | Sin tests automatizados ni CI/CD | Media | L |
+| H26 | Documentación histórica desactualizada | Baja | S |
+| H27 | `.env.example` usa SMTP y no Resend | Baja/Media | S |
+| H28 | `siga_uc.sql` con meta-orden `\restrict` de psql 18 | Baja | S |
+| H29 | Tablas de reportes no persistidas | Baja | S |
+| H30 | Título e identidad menores | Baja | S |
+| H31 | Endpoint de logout sin uso | Baja | S |
+| H33 | Sin CRUD de horarios, competencias y conclusiones | Media | L |
+| H35 | Estudiantes sin pantalla de libreta | Baja | S |
+| H36 | Rate limit de login por IP compartida en red escolar | Media | S |
+
+---
+
+## 5. Decisiones de negocio tomadas
+
+1. Las pensiones se pagan **completas**; no existen pagos parciales.
+2. Las boletas son **comprobantes internos**; no van a SUNAT.
+3. La anulación de un pago genera un **EGRESO** con el mismo medio de pago.
+4. La auditoría registra **escrituras, accesos y descargas**; **no lecturas**.
+5. El despliegue se hará primero en el **Render actual como ensayo**, con datos de
+   prueba, antes del despliegue definitivo.
+6. Antes de desplegar se ejecutará un **smoke test de solo lectura**.
+
+---
+
+## 6. Trampas conocidas
+
+- El backend fija la sesión de PostgreSQL en `America/Lima`; el `TZ` del **proceso**
+  también debe ser `America/Lima` en Render (variable de entorno, no en JS).
+- `siga_uc_completo.sql` es un **dump COMPLETO**: no cargarlo junto con `siga_uc.sql`.
+- Orden oficial: `siga_uc_completo.sql` → `migracion_h32_anulacion_pagos.sql` →
+  `migracion_h10_h38_concurrencia_pagos.sql` → `migracion_h07_auditoria.sql` →
+  migraciones futuras, en ese orden.
+- `express-rate-limit` usa memoria: reiniciar el backend limpia los contadores.
+- 5 fallos de login bloquean 15 min por IP; en red escolar compartida afecta a todos
+  (H36, pendiente).
+- El guardado masivo devuelve `{ guardados, total_errores, errores[] }`; la UI solo
+  muestra éxito si `total_errores = 0`.
+- La auditoría se escribe **después** del COMMIT: un fallo de auditoría no revierte
+  pagos ni caja.
+- El índice `ux_pago_pension_activo` existe en local; si una base tiene pagos
+  `PAGADO` duplicados, la migración H10/H38 lo omite y avisa.
+- H23 es parcial: faltan personal, pagos y pre-tickets.
+- `npm run smoke` aún no existe.
+
+---
+
+## 7. Próximo paso exacto
+
+1. **Crear `npm run smoke`** (solo lectura) y ejecutarlo contra local.
+   - Health: `GET /api/health` → 200 y `database: "ok"`.
+   - Lecturas autenticadas (token por variable de entorno, nunca en el repo):
+     alumnos página 1, bitácora página 1, caja actual, dashboard, configuración.
+   - **No** llamar a POST/PUT/DELETE.
+   - Criterio de aceptación: exit code `0`, todas las respuestas `success: true`,
+     ningún `5xx`, sin escrituras.
+2. **Despliegue de ensayo en el Render actual** con datos de prueba:
+   - Configurar `NODE_ENV=production`, `FRONTEND_URL`, `TZ=America/Lima`,
+     `JWT_SECRET` largo y la conexión (`DATABASE_URL`/`DB_SSL` o `DB_*`).
+   - Aplicar las migraciones pendientes en orden.
+   - Repetir `npm run smoke` contra Render.
+3. Solo si el ensayo pasa: planificar el **despliegue definitivo** y la carga de
+   datos reales.
+
+---
+
+## 8. Verificar el entorno en 3 comandos
 
 ```powershell
-nvm use 20
-cd C:\Users\yarol\Documents\Proyectos\siga-uc\siga-uc-backend
-npm install
-npm run dev
+git log -1 --oneline
+psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
+curl.exe -s http://localhost:3000/api/health
 ```
 
-- API local: `http://localhost:3000`
-- Health: `GET http://localhost:3000/api/health`
-- Requiere `.env` con `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET` y `ANIO_LECTIVO`.
-- Correo real: `RESEND_API_KEY`, `EMAIL_FROM`.
-- `.env.example` sigue mostrando SMTP; el servicio real es Resend.
-
-### Levantar frontend
-
-```powershell
-cd C:\Users\yarol\Documents\Proyectos\siga-uc\siga-uc-frontend
-npm install
-ng serve
-```
-
-- SPA local: `http://localhost:4200`
-- `environment.ts` apunta a `http://localhost:3000/api`.
-- `environment.prod.ts` apunta a `https://siga-uc-api.onrender.com/api`.
-- `npm run build` genera `dist/siga-uc-frontend/browser` y copia `404.html`.
-
-### Restaurar BD
-
-```powershell
-createdb -U postgres siga_uc
-psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
-psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
-psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
-psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
-```
-
-> `siga_uc_completo.sql` es el **dump completo** (esquema + datos de ejemplo). **No** cargar
-> `siga_uc.sql` junto con él: es solo la referencia del esquema y provoca errores de
-> “ya existe”. Las migraciones son idempotentes. `siga_uc_completo.sql` contiene datos
-> ficticios: no usar en producción. `siga_uc_backup.sql` está ignorado por Git.
-
----
-
-## 2. ESTADO ACTUAL DEL PROYECTO
-
-### Commits de esta sesión
-
-| Hash | Mensaje |
-|---|---|
-| `(sesión H15)` | `fix(academico): mostrar errores reales en guardados masivos (H11)` |
-| `(sesión H15)` | `feat(auditoria): auditar personas, academico, notificaciones y descargas (H07 parte B)` |
-| `(sesión H15)` | `feat(auditoria): registrar eventos de seguridad y dinero (H07 parte A)` |
-| `(sesión H15)` | `docs(instalacion): corregir secuencia de restauracion de la BD (H40)` |
-| `(sesión H15)` | `fix(tesoreria): cerrar concurrencia y coherencia de pagos (H10, H37, H38)` |
-| `(sesión H15)` | `feat(tesoreria): anulacion de pagos con reversion de caja y pension (H32)` |
-| `(sesión H15)` | `fix(fechas): calcular fechas de negocio en hora de Lima (H39)` |
-| `(sesión H15)` | `chore(infra): endurecer conexion, logs y arranque para produccion` |
-| `(sesión H15)` | `fix(tesoreria,auth): exigir pago completo de pensiones y limitar validar-token (H09, H03)` |
-| `(sesión H15)` | `fix(alumnos): sincronizar estado de usuario al retirar y editar (H19, H20)` |
-| `(sesión H15)` | `feat(ui): paginacion server-side en alumnos y bitacora (H23)` |
-| `(sesión H15)` | `feat(notificaciones): buscador de alumnos por DNI/nombre en envio masivo` |
-| `(sesión H15)` | `feat(notificaciones): permitir mensajes personalizados y envio por correo (H15)` |
-| `(sesión H34 completo)` | `feat(reportes): PDFs reales para boletas y actas (H34 completo)` |
-| `(sesión H34)` | `feat(reportes): generar PDFs reales para libretas (H34)` |
-| `(sesión H25)` | `feat(infra): script de backup automatico de PostgreSQL (H25)` |
-| `(sesión H12)` | `fix(config): centralizar año lectivo (H12)` |
-| `(sesión H18)` | `fix(auth): forzar cambio de contraseña en primer inicio` |
-| `d575319` | `feat(alumnos): agregar correo de alumno para recuperacion de contraseña` |
-| `12cbd22` | `fix(auth): usar DNI como contraseña por defecto en alumnos y personal` |
-| `81aa521` | `fix(tesoreria): corregir flujo de matricula, pagos, caja y kpis` |
-| `a7fdb57` | `fix(tesoreria): corregir kpis, filtro de meses pagados y logica de alumno nuevo` |
-| `b6f4a21` | `fix(security): implementar Fase 1 (autorizacion, estado, rate limit y errores seguros)` |
-| `f6772c5` | `docs: actualizar documentacion con fase 1 de seguridad (roles, auth y rate limit)` |
-| `f02f88a` | `fix(academico): fase 2 (unificar nota final, bloquear acta cerrada y calculo automatico)` |
-
-### Implementado y probado
-
-#### Correo del alumno
-
-- El formulario de matrícula Angular ya envía `correo_personal`.
-- `alumnoDao.crear` lo guarda en `usuarios.correo_personal`; si no viene, mantiene el fallback al correo del apoderado.
-- `alumnoDao.actualizar` actualiza `usuarios.correo_personal` en la misma transacción.
-- Listado/ficha de alumnos devuelve `correo_personal`.
-- `POST /api/auth/recuperar-password` y el login por correo usan `usuarios.correo_personal`.
-
-#### Contraseña por defecto = DNI
-
-- Alumnos nuevos, personal nuevo y resets usan el DNI en crudo.
-- El hash sigue siendo bcrypt (`crypt(..., gen_salt('bf', 10))`).
-- **Los usuarios existentes conservan su contraseña anterior**; solo cambia al crear o resetear.
-- Riesgo conocido: el DNI es predecible y `requiere_cambio_password` aún no se fuerza (H18).
-
-#### Tesorería / Caja
-
-- La matrícula crea automáticamente un `pre_ticket` de matrícula `PENDIENTE`.
-- Se corrigió la bandeja de matrículas pendientes (pre-tickets).
-- El trigger `trg_pago_a_caja` imputa a la **caja abierta actual**, no a la última cerrada.
-- Se validó que exista caja abierta antes de registrar pagos.
-- N° de operación:
-  - Digital: obligatorio.
-  - Efectivo: se oculta el campo y el backend genera `EFECTIVO-YYYY-NNN`.
-- Los pagos actualizan `pagos`, `boletas_electronicas`, pre-ticket/pensión, caja y KPIs.
-- La generación de pensiones solo crea meses desde la `fecha_creacion` del alumno.
-- El filtro de conceptos solo muestra pensiones pendientes; usa `id_concepto` real.
-- El estado de matrícula se actualiza a `Matriculado` (no existe estado `Pagado` en el CHECK).
-
-#### Fase 1 — Seguridad
-
-- `checkRole([...])` en `authRoles.js`; ownership por alumno/curso/grado.
-- Matriz aplicada:
-  - ADMIN: todo.
-  - SECRETARIA: alumnos, tesorería, caja, QR de personal.
-  - DOCENTE: notas/asistencias de sus cursos; ficha de alumnos de sus grados.
-  - ESTUDIANTE: solo sus propias notas/asistencias/libreta.
-- `GET /alumnos` solo ADMIN/SECRETARIA.
-- `personal` y `auditoria` solo ADMIN.
-- `reportes/libreta` protegido por alumno propio.
-- `verificarAutenticacion` revalida `usuarios.estado` en cada petición; inactivo/cesado → `401`.
-- Rate limiting con `express-rate-limit` 8.7.5:
-  - login: 5 intentos fallidos / 15 min por IP.
-  - recuperación: 5 solicitudes / 15 min por IP.
-  - `trust proxy` activo en producción.
-- Errores 500 y PostgreSQL ya no exponen `error.message`; respuesta genérica:
-  `{ success:false, message:"Ocurrió un error interno en el servidor", errors:null, timestamp }`.
-- Se mantiene el JSON `{ success, message, data, timestamp }`.
-
-#### Fase 2 — Integridad académica
-
-- `calificacionDao.calcularNotaFinal` llama a la función SQL `public.calcular_nota_final_area`; una sola fuente de verdad.
-- Algoritmo SQL: `AD >= 2 → AD`, `A >= 2 → A`, `B >= 2 → B`, si no `C`.
-- Se eliminó el desempate Node por “mejor nota individual”.
-- `POST /api/calificaciones` y `/masivo` recalculan automáticamente `notas_finales_area`.
-- Respuesta incluye `notas_finales_calculadas` y `notas_finales_errores`.
-- Si falla el cálculo, la nota individual queda guardada (el cálculo va en try/catch separado).
-- Bloqueo por acta cerrada:
-  - `auditoriaDao.actaEstaCerrada(id_grado, bimestre, anio)`.
-  - Solo actas con `id_grado` específico; las globales `id_grado = NULL` se ignoran.
-  - Notas individuales, masivas y upsert de nota final → `409`.
-- Frontend docente muestra cuántas notas finales se calcularon.
-
-#### H18 — Cambio obligatorio de contraseña
-
-- Nuevo endpoint `PUT /api/auth/cambiar-password` (autenticado). Valida contraseña actual con
-  `bcrypt.compare`, nueva ≥ 6, confirmación y que sea distinta de la actual. Hashea con
-  `crypt(..., gen_salt('bf',10))` y pone `requiere_cambio_password = FALSE`.
-- `authMiddleware.verificarAutenticacion` bloquea todos los endpoints autenticados si el flag es
-  `TRUE`, salvo `/auth/cambiar-password`, `/auth/logout`, `/auth/perfil` y `/auth/verify`.
-  Responde `403` con `errors.codigo = "CAMBIO_PASSWORD_REQUERIDO"`.
-- Nuevo componente standalone `/cambiar-password` con formulario (actual, nueva, confirmar),
-  validaciones, mostrar/ocultar y cierre de sesión.
-- `authGuard` y `roleGuard` redirigen a `/cambiar-password` si el flag está activo. El login
-  también redirige allí antes de elegir el dashboard por rol.
-- `authInterceptor` detecta el `403` del backend, actualiza el flag local y redirige.
-- `AuthService` actualiza `localStorage` tras el cambio y expone `getDashboardUrl()`.
-- Los alumnos y el personal nuevos se crean con `requiere_cambio_password = TRUE`.
-- Documentación actualizada: 05, 06, 07, 09, 10, 11, 15, AGENTS.md y este handoff.
-
-#### H12 — Año lectivo centralizado
-
-- `ANIO_LECTIVO=2026` en `.env`/`.env.example`; `env.js` lo valida y `config/academico.js`
-  expone `getAnioLectivo()`.
-- Nuevo `GET /api/configuracion` (público) devuelve `{ anio_lectivo }`.
-- Backend: controllers, services, DAOs y `authRoles` usan `getAnioLectivo()` como default.
-  `?anio=YYYY` explícito conserva prioridad para consultas históricas.
-- Frontend: `ConfiguracionService` carga el año con `provideAppInitializer` antes de renderizar;
-  fallback al año calendario si la API falla. Se reemplazaron los textos/parámetros `2026`.
-- Tesorería: la matrícula usa el `id_concepto`, nombre y monto reales del año; se eliminó
-  `idConcepto = 1` y los `250` hardcodeados. Las pensiones toman el monto del concepto.
-- `database/preparar_anio_lectivo.sql` copia conceptos del año anterior de forma idempotente
-  por nombre + año, sin tocar datos históricos.
-
-#### H25 — Backup automatizado
-
-- Nuevo `siga-uc-backend/scripts/backup.js` y comando `npm run backup`.
-- Usa `DATABASE_URL` si existe; si no, `DB_*`. Soporta `DB_SSL=true` y `BACKUP_DIR`.
-- Genera `backup_siga_uc_YYYY-MM-DD_HH-mm-ss.sql` en `siga-uc-backend/backups/`.
-- Si `pg_dump` no está instalado, muestra un mensaje amigable con instrucciones.
-- `.gitignore` excluye `siga-uc-backend/backups/`.
-- `documentacion/12` documenta ejecución local, Render Cron Job, disco persistente y Supabase
-  (conexión directa/session pooler, no transaction pooler).
-- Sin escrituras ni borrados en la base de datos.
-
-#### H34 — PDFs reales de libretas, boletas y actas
-
-- `GET /api/reportes/libreta/:id_alumno/pdf?bimestre=&anio=` (ADMIN/DOCENTE/ESTUDIANTE propio).
-- `GET /api/tesoreria/boletas/:id_pago/pdf` (ADMIN/SECRETARIA).
-- `GET /api/auditoria/actas/:id_acta/pdf` (ADMIN/DOCENTE), declarado antes del guard global ADMIN.
-- `libretaPdfService.js`, `boletaPdfService.js` y `actaPdfService.js` usan PDFKit con Helvetica;
-  sin Chromium ni fuentes externas.
-- El acta incluye **matriz real** de alumnos y notas (`notas_finales_area`) y watermark
-  “BORRADOR - NO VÁLIDO PARA TRÁMITE” si está ABIERTA. Si no hay notas, devuelve 400.
-- Frontend: descarga Blob con nombre de `Content-Disposition`, spinner y bloqueo de doble clic;
-  errores inline. Caja muestra PDF por movimiento con boleta; Auditoría muestra PDF por acta.
-- H34 queda **completo**.
-
-#### H15 — Mensajería interna personalizada
-
-- `POST /api/notificaciones/masivo` acepta `{ asunto, cuerpo, destinatarios: { tipo, id } }`
-  para TODOS/GRADO/ALUMNO; mantiene compatibilidad con `{ destinos: [...] }`.
-- `notificacionDao` resuelve destinatarios y hace un `INSERT ... unnest`.
-- `notificacionService.crearMasivo` guarda primero y luego envía correos; fallos de Resend se
-  cuentan y no revierten ni detienen los demás envíos.
-- Dashboard Admin: modal “Nueva Notificación” con Asunto, Mensaje, selector TODOS/GRADO/ALUMNO,
-  spinner, resultado real y advertencia amarilla por correos fallidos.
-- La campanita ya muestra asunto/cuerpo reales; no se agregaron WebSockets.
-
-#### H15 — Buscador de alumnos en el envío masivo
-
-- `GET /api/alumnos` acepta `limit` (1–50) y `solo_activos=1`; el `search` ahora usa
-  `unaccent` sobre DNI, nombres, apellidos y nombre completo (también acepta el alias `q`).
-- El modal reemplazó el `<select>` de alumnos por un input con autocompletado:
-  `debounceTime(300)`, `distinctUntilChanged`, `switchMap` y máximo 10 resultados.
-- Al elegir una fila con `(mousedown)` + `(click)` se guarda `id_alumno`, el input muestra el
-  nombre completo, el dropdown se cierra y el foco sale del campo.
-- Si se intenta enviar sin seleccionar de la lista, se bloquea con “Busque y seleccione un
-  alumno de la lista”.
-- El selector de GRADO no cambió y `notificacionService` no se tocó.
-
-#### H23 — Paginación server-side (alumnos y bitácora)
-
-- `GET /api/alumnos` y `GET /api/auditoria` aceptan `page`/`pageSize` y responden
-  `data: [...]` + `pagination: { total, page, pageSize, totalPages }`; sin `page` mantienen el
-  arreglo completo (o el `limit` del buscador) para no romper tesorería, reportes ni el
-  dashboard.
-- El `COUNT(*)` usa exactamente los mismos filtros del listado (búsqueda, grado, estado,
-  módulo, acción, fechas).
-- `shared/components/pagination` muestra “Mostrando X–Y de Z”, botones redondos con opacidad
-  al deshabilitarse y emite `pageChange`.
-- Alumnos usa 20 por página; bitácora 50. Aplicar filtros o búsqueda vuelve a la página 1.
-- `response.success` acepta un quinto parámetro opcional `pagination`.
-
-#### H19 / H20 — Integridad en alumnos
-
-- `alumnoDao.retirar` ahora es transaccional: `alumnos → Retirado`, `usuarios → INACTIVO`,
-  `expediente_alumno.congelado = TRUE`. Un fallo en cualquier update hace `ROLLBACK` total.
-- El login de un usuario inactivo responde 403 y `authMiddleware` bloquea también los JWT ya
-  emitidos.
-- `alumnoDao.actualizar` sincroniza `usuarios.nombres/apellidos` con `COALESCE` solo si el
-  request envía esos campos, dentro de la misma transacción.
-
-#### Endurecimiento de producción (21/11/2026)
-
-- `database.js` soporta `DATABASE_URL` (SSL con `DB_SSL=true` o `sslmode=require`) y `DB_*`
-  como fallback; pool configurable con `DB_POOL_MAX`, `DB_IDLE_TIMEOUT_MS` y
-  `DB_CONNECTION_TIMEOUT_MS`. Un error del pool se registra y ya no mata la API.
-- `env.js` exige `JWT_SECRET` (≥32 caracteres en producción) y `FRONTEND_URL` en producción;
-  valida la zona horaria del proceso y avisa si no es `America/Lima`.
-- `/api/health` ejecuta `SELECT 1` con timeout de 2 s y responde 503 si la BD no contesta.
-- En producción: morgan `combined` con id corto de petición (también en errores), log de
-  queries >500 ms, `unhandledRejection` sin exit y `uncaughtException`/`SIGTERM` con cierre
-  ordenado del pool.
-
-#### H39 — Fechas de negocio en hora de Lima (21/11/2026)
-
-- Los 4 inputs de fecha usan el helper `core/utils/fecha.util.ts` (`toLocaleDateString('en-CA')`)
-  en lugar de `toISOString().split('T')[0]`.
-- El pool de PostgreSQL fija `options: "-c timezone=America/Lima"` y `testConnection` verifica
-  `SHOW timezone`, emitiendo warning si la sesión no es Lima.
-- `TZ=America/Lima` debe definirse en el entorno del proceso (Windows y Render); en JS llega
-  tarde. Las columnas son `timestamp without time zone`: cambiar la zona de la BD solo afecta a
-  valores nuevos.
-
-#### H32 — Anulación de pagos (21/11/2026)
-
-- Migración `database/migracion_h32_anulacion_pagos.sql`: `motivo_anulacion`,
-  `fecha_anulacion`, `id_usuario_anulacion` en `pagos` y `ANULADO` en `chk_boleta_estado`.
-- `PUT /api/tesoreria/pagos/:id/anular` (ADMIN/SECRETARIA): transacción con `FOR UPDATE`,
-  pago/boleta ANULADO, pensión/pre-ticket PENDIENTE y EGRESO con el mismo monto/medio en la
-  apertura abierta (nunca en una cerrada).
-- UI en caja e historial: botón solo para `PAGADO`, modal con motivo ≥10, spinner y recarga.
-- Boleta PDF con watermark “ANULADA”.
-
-#### H10 / H37 / H38 — Integridad y concurrencia de pagos (21/11/2026)
-
-- Advisory locks `pg_advisory_xact_lock` por dominio: `codigo_alumno`, `efectivo:<año>`,
-  `boleta:B001` y `pension:<id>`, dentro de las transacciones existentes.
-- `UNIQUE (serie, numero)` en `boletas_electronicas` creado; `ux_pago_pension_activo` omitido
-  en esta BD por duplicados históricos (pensión 139). La migración es idempotente y avisa.
-- `registrarPago` valida mes/año del concepto contra la pensión y responde 409 “La pensión ya
-  fue pagada.” ante doble pago concurrente (lock + 23505 si el índice existe).
-
-#### H07 — Auditoría completa (21/11/2026)
-
-- `auditoriaDao.registrarEvento` + `auditoriaService.registrar/registrarSeguro` (nunca lanza;
-  se invoca fuera de las transacciones de negocio).
-- Parte A: `LOGIN`, `LOGIN_FALLIDO`, `LOGOUT`, `MODIFICAR` (contraseñas/recuperación),
-  `CREAR`/`ANULAR` (Tesorería), `ABRIR`/`CERRAR` (Caja) y `modificado_por` desde el token.
-- Parte B: `CREAR`/`MODIFICAR`/`RETIRAR` (Alumnos), `CREAR`/`MODIFICAR`/`CESAR` (Personal),
-  `CERRAR` (Evaluaciones), `IMPORTAR` (SIAGIE), `ENVIAR` (Notificaciones) y `DESCARGAR`
-  (libreta, boleta y acta).
-- Migración `database/migracion_h07_auditoria.sql` con índices por fecha y usuario.
-- UI: filtros, iconos y estilos para todos los eventos.
-
-#### H11 — Errores visibles en guardados masivos (21/11/2026)
-
-- `asistenciaDao.registrarMasivo` y `calificacionDao.registrarMasivo` devuelven `guardados`,
-  `total_errores` y hasta 20 `errores` con `indice`, `id_alumno` y `mensaje`.
-- Validación previa de estado de asistencia y calificación; las filas válidas se guardan.
-- Docente/asistencia y docente/notas muestran banner amarillo “X guardadas, Y fallidas” con
-  detalle expandible; nunca muestran éxito si hubo errores.
-
-### Verificaciones realizadas
-
-- `node --check` en archivos backend: OK.
-- `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
-- Matriz de roles: ADMIN 200, SECRETARIA 403 en notas/auditoría/personal, DOCENTE 403 en curso ajeno, ESTUDIANTE 403 en datos ajenos.
-- H02: usuario `INACTIVO` → 401; reactivado → 200.
-- Rate limit: 5 intentos y el 6.º → 429 en login y recuperación.
-- H17: error SQL forzado → 500 con mensaje genérico.
-- H04: guardado individual/masivo → `notas_finales_area` poblada.
-- H06: acta específica cerrada → 409 en nota individual y nota final; no se guardaron datos.
-- Los datos de prueba usados para H04/H06 fueron eliminados.
-- H18: 22/22 pruebas de API OK. Login con flag `TRUE` → módulos `403`; `/auth/perfil` y
-  `/auth/logout` permitidos; validaciones 400; cambio exitoso → flag `FALSE`; login con la
-  nueva contraseña y acceso normal. Usuario de prueba eliminado.
-- H12: 18/18 pruebas de integración OK con `ANIO_LECTIVO=2027`; `?anio=2026` mantiene
-  prioridad; alumno nuevo en 2027; pre-ticket y pensión con conceptos 2027; script de conceptos
-  idempotente (11 filas 2026 intactas). UI verificada con “Año Lectivo 2027” y matrícula 2027
-  usando el concepto real. Datos de prueba eliminados.
-- H25: `npm run backup` generó un `.sql` de 143.6 KB; restauración en `siga_uc_restore_test`
-  devolvió 39 tablas, 33 usuarios y 24 alumnos; luego se eliminó la BD de prueba. También se
-  probaron `DATABASE_URL`, `BACKUP_DIR`, el mensaje amigable sin `pg_dump` y `git check-ignore`.
-- H34 libretas: 10/10 pruebas de API OK (200 PDF, `%PDF`, headers, 401, 403, 404). PDF de 1
-  página verificado visualmente con tildes/ñ. UI: descarga `libreta_75918234_BIM2_2026.pdf`.
-- H34 boletas/actas: 22/22 pruebas de API OK. Boleta `B001-004837` descargada desde Caja; acta
-  2do Bimestre de 2 páginas con matriz real de alumnos/notas; acta ABIERTA con watermark
-  “BORRADOR - NO VÁLIDO PARA TRÁMITE”; acta sin notas → 400; permisos 401/403/404 correctos.
-  UI: `boleta_B001-004837.pdf` y `acta_2_2do_Bimestre_2026.pdf` descargados; spinner y errores
-  inline. Datos temporales eliminados.
-- H15: 15/15 pruebas de API OK con destinatarios temporales. ALUMNO y GRADO guardaron 1 y 2
-  notificaciones; correos fallidos no detuvieron el flujo; TODOS resolvió 35 usuarios activos;
-  400 para tipo/asunto/destinatarios inválidos; 403 para alumno. UI: modal envió a un alumno,
-  mostró “1 destinatario, 0 correos enviados, 1 fallido” y el alumno vio asunto/cuerpo en su
-  campanita. Datos temporales eliminados.
-- H15 buscador: 11/11 pruebas de API OK (DNI, apellido, nombre completo sin acentos,
-  `solo_activos`, `limit=1`, alias `q`, 401/403). UI: al teclear el DNI apareció solo el
-  alumno correcto con nombre/DNI/grado; elegirlo mostró el nombre completo, cerró el dropdown
-  y quitó el foco; enviar sin seleccionar mostró el bloqueo; el `POST` llevó
-  `destinatarios.id` = `id_alumno` y el alumno vio el mensaje en su campanita. Datos
-  temporales eliminados.
-- H23: 15/15 pruebas de API OK (total/totalPages, página 2, página fuera de rango ajustada,
-  search + paginación, total=0, sin `page` arreglo completo, 403). UI: alumnos mostró
-  “1–20 de 25” con 20 filas y “21–25 de 25” al avanzar; en página 2, cambiar el estado volvió a
-  `page=1`; bitácora mostró “1–50 de 55” y “51–55 de 55” con 50 por página. Datos temporales
-  eliminados.
-- H19/H20: 12/12 pruebas OK. Con un trigger temporal que forzaba error en el expediente, el
-  retiro devolvió 500 y no dejó cambios (alumno Matriculado, usuario ACTIVO, sin congelar). Sin
-  el trigger: alumno Retirado, usuario INACTIVO, expediente congelado; login del retirado → 403
-  y JWT previo → 401. Editar nombres/apellidos actualizó `usuarios` y `/auth/perfil`; una
-  edición sin nombres conservó los valores. Trigger y datos temporales eliminados.
-- H09/H03: 13/13 pruebas OK. Pensión con monto S/1 → 400 “El monto de la pensión es S/ 250.00”;
-  pensión de otro alumno → 400; pensión ya pagada → 400; pago correcto → 201 con boleta y
-  movimiento por S/250 en la apertura abierta, pensión PAGADO. Beca temporal (20 %): S/250
-  rechazado y S/200 aceptado. Concepto no pensión: S/25 rechazado y S/29.999999 aceptado por
-  redondeo. `validar-token` 6.ª petición → 429. Datos temporales eliminados.
-- Endurecimiento de producción: health 200 en development; instancia con `DB_PORT` cerrado →
-  health 503 y proceso vivo; `pool.emit('error')` registró el error y el proceso siguió;
-  producción abortó con JWT corto y también sin `FRONTEND_URL` (exit 1); TZ=UTC emitió el
-  warning; morgan `combined` mostró id de 8 caracteres y se registró una query de 723 ms;
-  `SIGTERM` cerró el pool (exit 0); `npm run backup` generó 143.7 KB. Backup de prueba eliminado.
-- H39: con el backend en `TZ=UTC`, `SHOW timezone` devolvió `America/Lima`; para el instante
-  20:00 Lima del 2026-11-20 el método viejo daba `2026-11-21` y el nuevo `2026-11-20`; la
-  asistencia se guardó con `fecha=2026-11-20` y `fecha_registro=2026-11-21 07:16:50` (Lima).
-  Los 4 inputs mostraron `2026-11-21` (hoy en Lima). Datos temporales eliminados.
-- H32: 15/15 pruebas de API OK. Anulación de pensión: pago ANULADO, pensión PENDIENTE, boleta
-  ANULADA y EGRESO de S/250 en Yape en la apertura abierta. Estadísticas del mes y recaudación
-  anual bajaron S/250; egresos de caja subieron S/250. Doble anulación → 409 sin duplicar
-  movimientos. Con la apertura original cerrada, el EGRESO cayó en la actual. Sin caja abierta
-  → 400 sin cambios. SECRETARIA 200; DOCENTE/ESTUDIANTE 403; sin token 401; motivo corto 400.
-  Datos y cierres temporales eliminados (0 residuos).
-- H10/H37/H38: 7/7 pruebas OK. Matrículas simultáneas → `EST-122` y `EST-123`; pagos efectivo
-  simultáneos → `EFECTIVO-2026-007/008` y boletas `B001-004838/004839`; concepto abril +
-  pensión marzo → 400; doble pago concurrente → 201/409 con un solo PAGADO. Backup 144.3 KB y
-  migración ejecutada dos veces (idempotente); `ux_pago_pension_activo` omitido por duplicados
-  históricos. Datos temporales eliminados (0 residuos).
-- H40: instalación nueva verificada en `siga_uc_install_test` con la secuencia oficial:
-  `siga_uc_completo.sql` → `migracion_h32` (no-op) → `migracion_h10_h38`; resultado 39 tablas e
-  índice `ux_pago_pension_activo`, sin duplicados de pensión. BD de prueba eliminada.
-- H07 parte A: 10/10 pruebas OK. Login → `LOGIN` con usuario e IP; fallo →
-  `LOGIN_FALLIDO` sin contraseña; logout → `LOGOUT`; pago → `CREAR` con id/monto; anulación →
-  `ANULAR` con motivo; caja → `ABRIR`/`CERRAR`; nota → trigger con `id_usuario` del token;
-  con un trigger que forzaba error en la bitácora, el pago respondió 201 y quedó PAGADO.
-  Migración H07 ejecutada dos veces (idempotente). Datos temporales eliminados (0 residuos).
-- H07 parte B: 13/13 pruebas OK. Alta/edición/retiro de alumno (`CREAR`, `MODIFICAR` solo con
-  campos cambiados, `RETIRAR`); personal (`CREAR`/`MODIFICAR` con rol 2→3/`CESAR`); acta
-  (`CERRAR`); SIAGIE (`IMPORTAR` con archivo y filas); notificación (`ENVIAR`); descargas de
-  libreta, boleta y acta (`DESCARGAR` con sus IDs). El escaneo de la bitácora de prueba no
-  encontró contraseña, hash ni token. Datos temporales eliminados (0 residuos).
-- H11: 8/8 pruebas de API OK. Asistencia mixta → `guardados=2`, `total_errores=1` y solo 2
-  filas en BD; 100% válido → 3/0; 100% inválido → 0/3. Notas mixtas → 2/1 con solo 2 en BD.
-  UI real: banner “2 guardadas, 1 fallidas” con detalle “fallo simulado H11” en asistencia y
-  notas. Datos temporales eliminados (0 residuos).
-- `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
-
----
-
-## 3. REGLAS DE ORO APRENDIDAS
-
-1. **Parches quirúrgicos.** No reescribir archivos completos ni hacer refactors de paso. Cambiar solo lo necesario y conservar patrones existentes.
-2. **No tocar el esquema de BD sin avisar.** No agregar/quitar tablas, columnas, CHECKs ni triggers sin autorización. Para cambios de lógica, usar la función/consulta existente.
-3. **No hacer backfill masivo sin pedido explícito.** Las notas históricas no se recalculan automáticamente; se llenan al volver a guardar o con el endpoint manual.
-4. **Transacciones y triggers:**
-   - Los pagos se imputan a la **apertura abierta** (`NOT EXISTS cierres_caja`), no a la última apertura.
-   - El trigger `trg_pago_a_caja` no debe fallar ni bloquear el pago; la validación de caja se hace antes en el servicio.
-   - Los pre-tickets de matrícula se resuelven automáticamente al pagar.
-   - `notas_finales_area` se upserta con `ON CONFLICT`; el cálculo automático va después del guardado y con catch independiente.
-5. **Actas globales:** `actas_bimestrales.id_grado = NULL` se ignora para el bloqueo. Solo bloquea un acta con `id_grado` específico. No cambiar esto sin decisión de negocio.
-6. **JSON estable.** Mantener `{ success, message, data, timestamp }` en éxitos y `{ success:false, message, errors, timestamp }` en errores. Angular lee `err.error.message`.
-7. **Autorización en backend, no solo UI.** `checkRole`/ownership y filtros SQL; no confiar en que Angular oculta módulos.
-8. **Contexto del usuario:** `req.usuario.id_alumno` e `id_personal` se obtienen en la revalidación H02. No confiar solo en IDs de la URL/body.
-9. **Rate limit:** `app.set("trust proxy", 1)` solo en producción. No probar 6 logins desde la misma IP en desarrollo sin reiniciar el backend, porque queda bloqueada 15 min.
-10. **Contraseñas:** el DNI por defecto es una regla solicitada, pero es débil. H18 ya fuerza el
-    cambio en el primer inicio; no desactivar ese bloqueo.
-11. **Documentación:** `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` es la fuente de hallazgos/roadmap; `documentacion/06` roles; `04` BD; `05` API.
-12. **Commits:** semánticos, atómicos, en español, un solo commit por tarea.
-13. **Año lectivo:** no introducir literales `2026`. Backend: `getAnioLectivo()`; frontend:
-    `ConfiguracionService.anioLectivo`. Un `?anio=YYYY` explícito siempre tiene prioridad.
-14. **Backups:** `npm run backup` genera `.sql` en `siga-uc-backend/backups/` (ignorado). No
-    commitear datos personales. En Render se requiere `pg_dump` y disco persistente o subida
-    externa.
-15. **PDFs:** usar PDFKit con fuentes estándar; no introducir Puppeteer/Chromium por el límite
-    de RAM de Render. Libretas, boletas y actas se descargan como Blob.
-
----
-
-## 4. PENDIENTES (ROADMAP)
-
-### H18 — Cambio obligatorio de contraseña (completado 20/11/2026)
-
-Implementado y probado:
-
-- Endpoint `PUT /api/auth/cambiar-password` con verificación de contraseña actual, nueva ≥ 6,
-  confirmación, hash con `crypt` y limpieza del flag.
-- Bloqueo backend con `403 CAMBIO_PASSWORD_REQUERIDO` y allowlist de perfil, verify, logout y
-  cambio de contraseña.
-- Pantalla `/cambiar-password`, redirección desde login y guards, actualización de
-  `localStorage`, manejo del `403` en el interceptor.
-- Alumnos y personal nuevos creados con `requiere_cambio_password = TRUE`.
-- Pruebas API 22/22 OK y build Angular OK.
-
-### H03 / H09 — Rate limit de validar-token y coherencia de pagos (completado 21/11/2026)
-
-- `GET /api/auth/validar-token/:token` usa `tokenValidationLimiter` (5/15 min); los tres
-  limiters comparten `crearLimiter` en `rateLimit.js`.
-- `tesoreriaService.registrarPago` exige pensión existente, del mismo alumno, `PENDIENTE` y
-  monto igual a `monto_final` (redondeo a 2 decimales). Si falta `id_pension`, resuelve la
-  pensión por alumno/año/mes; los conceptos no pensión exigen `monto_base` exacto.
-- H36 queda documentado y **no implementado**: el límite por IP puede bloquear a todo el
-  colegio detrás de NAT.
-
-### Siguiente: Fase 4 — Operación y calidad
-
-> H12, H25, H34, H18, H03 y H09 quedaron completados. H23 está parcial: alumnos y bitácora ya
-> tienen paginación; faltan personal, pagos y pre-tickets.
-
-Tomar como fuente `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`:
-
-- **H23:** paginación server-side — alumnos y bitácora ✅; faltan personal, pagos y pre-tickets.
-- **H24:** tests automatizados y CI/CD (unitarios de services, integración de endpoints, E2E de flujos críticos).
-- **H11:** visibilizar errores de guardados masivos (hoy la UI solo muestra insertados).
-- **H22:** eliminar N+1 de tesorería (pensiones por alumno en un endpoint agregado).
-- **H05:** mapeo SIAGIE configurable (hoy solo 4 prefijos y primera hoja).
-- **H34:** PDFs reales — libretas, boletas y actas ✅.
-- **H27:** actualizar `.env.example`, README e INSTALACION (Resend, no SMTP).
-- **H29:** documentar tablas históricas no persistidas (`libretas`, `cuadro_merito`, `alumnos_riesgo`, etc.).
-- **H36:** rate limit de login por IP compartida en red escolar (documentado, pendiente de decisión).
-
----
-
-## 5. PROMPT DE INICIO PARA LA NUEVA SESIÓN
-
-Copiar y pegar:
-
-```text
-Estás retomando SIGA-UC (PostgreSQL 18 + Angular 21 + Node/Express). Antes de escribir código, lee HANDOFF_SESSION.md en la raíz y revisa documentacion/README.md, documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md, documentacion/11-SEGURIDAD-AUDITORIA-E-INTEGRIDAD.md y documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md.
-
-Contexto: Fase 1 (seguridad), Fase 2 (integridad académica), H18 (cambio obligatorio de contraseña), H12 (año lectivo centralizado), H25 (backup automatizado) y H34 (PDFs de libretas, boletas y actas) ya están implementadas y commiteadas. La fuente de verdad es el código.
-
-Comienza con la Fase 4, empezando por H23 (paginación server-side). No cambies el esquema de la BD, no rompas el JSON { success, message, ... }, usa parches quirúrgicos y entrega commits atómicos.
-
-Al terminar, actualiza HANDOFF_SESSION.md con el nuevo estado y el siguiente pendiente del roadmap.
-```
+El primero confirma el commit; el segundo debe devolver **39** y
+`ux_pago_pension_activo`; el tercero debe devolver `success: true` y
+`database: "ok"` con el backend en marcha.
