@@ -8,6 +8,7 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "backup": "node scripts/backup.js",
+    "smoke": "node scripts/smoke.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

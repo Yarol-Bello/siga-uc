@@ -3,9 +3,10 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit de este handoff:** `ef68ba8 docs(handoff): estado al cierre de la sesion (H07/H11/H39/H40)` (documento base; el ajuste final de prerequisitos se commitea como `docs(handoff): completar prerequisitos de despliegue`)
-- **Último commit de código:** `48d119a fix(academico): mostrar errores reales en guardados masivos (H11)`
-- **Estado:** árbol limpio tras el commit de este handoff.
+- **Commit base de esta sesión:** `4ad4960 docs(handoff): completar prerequisitos de despliegue`
+- **Commit de esta sesión:** `feat(scripts): smoke test de solo lectura para verificar entornos`
+  (el hash exacto queda en `git log -1`).
+- **Estado:** smoke test implementado y verificado contra local; árbol limpio tras el commit.
 
 ---
 
@@ -23,8 +24,11 @@
   (+1 pago de prueba existente), 180 pensiones, 0 pensiones duplicadas**.
 - Credenciales de prueba: `docs/CREDENCIALES.md`. La clave de PostgreSQL local está en
   `siga-uc-backend/.env` (`DB_PASSWORD`); no se escribe en este documento.
-- `npm run smoke` **todavía no existe** en `package.json`; hay que crearlo en la
-  siguiente sesión antes de desplegar.
+- `npm run smoke` existe (`siga-uc-backend/scripts/smoke.js`): 11 pruebas de solo lectura,
+  timeout de 10 s por petición y exit code 1 si hay algún FAIL. Lee las credenciales de
+  `SMOKE_*` y, si existe, de `siga-uc-backend/.env`; nunca las imprime.
+- Verificación local del 21/11/2026: **11 PASS, 0 FAIL, 0 SKIP** con las tres cuentas;
+  **3 PASS, 0 FAIL, 8 SKIP** sin credenciales.
 
 ---
 
@@ -110,20 +114,20 @@
 - El índice `ux_pago_pension_activo` existe en local; si una base tiene pagos
   `PAGADO` duplicados, la migración H10/H38 lo omite y avisa.
 - H23 es parcial: faltan personal, pagos y pre-tickets.
-- `npm run smoke` aún no existe.
+- `npm run smoke` carga `.env` automáticamente y no sobrescribe variables ya definidas en
+  el proceso. Su único POST es `/auth/login` (actualiza `ultimo_login` y registra el LOGIN
+  en la bitácora); el resto son GET. No imprime tokens ni contraseñas.
+- La cuenta docente `10293847` tiene `requiere_cambio_password = TRUE` y su contraseña de
+  `docs/CREDENCIALES.md` ya no aplica. Para el smoke usar otra cuenta docente activa (por
+  ejemplo `20394812`), sin modificar datos ni contraseñas.
+- El login correcto no consume el rate limit (`skipSuccessfulRequests`); un smoke con
+  contraseña incorrecta sí consume 1 de los 5 intentos de la ventana de 15 min.
 
 ---
 
 ## 7. Próximo paso exacto
 
-1. **Crear `npm run smoke`** (solo lectura) y ejecutarlo contra local.
-   - Health: `GET /api/health` → 200 y `database: "ok"`.
-   - Lecturas autenticadas (token por variable de entorno, nunca en el repo):
-     alumnos página 1, bitácora página 1, caja actual, dashboard, configuración.
-   - **No** llamar a POST/PUT/DELETE.
-   - Criterio de aceptación: exit code `0`, todas las respuestas `success: true`,
-     ningún `5xx`, sin escrituras.
-2. **Despliegue de ensayo en el Render actual** con datos de prueba:
+1. **Ensayo de despliegue en el Render actual** con datos de prueba:
    - Configurar `NODE_ENV=production`, `FRONTEND_URL`, `TZ=America/Lima`,
      `JWT_SECRET` largo y la conexión (`DATABASE_URL`/`DB_SSL` o `DB_*`).
    - **Resend:** verificar el dominio con SPF/DKIM. Sin eso los correos solo llegan a
@@ -133,21 +137,36 @@
    - **Frontend:** confirmar que `environment.prod.ts` apunta a la URL real del backend
      y que el build genera `404.html`.
    - Aplicar las migraciones pendientes en orden.
-   - Repetir `npm run smoke` contra Render.
+   - Configurar en Render las variables `SMOKE_BASE_URL` y `SMOKE_*` (o pasarlas solo
+     al ejecutar; nunca commitearlas) y correr el smoke contra el ensayo:
+     ```powershell
+     $env:SMOKE_BASE_URL="https://<backend-de-ensayo>/api"
+     $env:SMOKE_ADMIN_DNI="<dni>"; $env:SMOKE_ADMIN_PASSWORD="<clave>"
+     $env:SMOKE_DOCENTE_DNI="<dni>"; $env:SMOKE_DOCENTE_PASSWORD="<clave>"
+     $env:SMOKE_ESTUDIANTE_DNI="<dni>"; $env:SMOKE_ESTUDIANTE_PASSWORD="<clave>"
+     cd siga-uc-backend
+     npm run smoke
+     ```
+   - Criterio: **11 PASS, 0 FAIL**, exit code `0`. Los SKIP solo son aceptables si
+     faltan credenciales; un FAIL bloquea el ensayo.
+2. Revisar en Render los logs del backend y confirmar que el smoke no dejó escrituras
+   de negocio (solo `ultimo_login` y los registros de LOGIN en la bitácora).
 3. Solo si el ensayo pasa: planificar el **despliegue definitivo** y la carga de
    datos reales.
 
 ---
 
-## 8. Verificar el entorno en 3 comandos
+## 8. Verificar el entorno en 4 comandos
 
 ```powershell
 git log -1 --oneline
 psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
 # Requiere el backend corriendo en localhost:3000
 curl.exe -s http://localhost:3000/api/health
+cd siga-uc-backend; npm run smoke   # con las variables SMOKE_* definidas
 ```
 
 El primero confirma el commit; el segundo debe devolver **39** y
 `ux_pago_pension_activo`; el tercero debe devolver `success: true` y
-`database: "ok"` **con el backend en marcha**.
+`database: "ok"` **con el backend en marcha**; el cuarto debe terminar en
+**11 PASS, 0 FAIL** y exit code `0`.

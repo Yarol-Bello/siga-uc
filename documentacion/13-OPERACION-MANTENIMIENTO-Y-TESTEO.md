@@ -23,7 +23,7 @@ Respuesta esperada:
 {
   "success": true,
   "message": "SIGA-UC API funcionando correctamente",
-  "data": { "app": "SIGA-UC", "version": "1.0.0", "environment": "production", "timestamp": "..." }
+  "data": { "app": "SIGA-UC", "version": "1.0.0", "environment": "production", "database": "ok", "timestamp": "..." }
 }
 ```
 
@@ -53,6 +53,7 @@ Respuesta esperada:
 | Tarea | Frecuencia | Responsable | Comando/acción |
 |---|---|---|---|
 | Backup completo | Diario | TI | `npm run backup` (`scripts/backup.js`) |
+| Smoke test de solo lectura | Antes de cada despliegue y semanal | TI | `npm run smoke` (`scripts/smoke.js`) |
 | Verificar backup | Semanal | TI | Restaurar en entorno de prueba |
 | Revisar logs de error | Diario | TI | Consola/plataforma |
 | Revisar usuarios inactivos | Mensual | Admin | Módulo Personal |
@@ -103,9 +104,11 @@ usar `getAnioLectivo()` en backend y `ConfiguracionService.anioLectivo` en front
 
 ---
 
-## 4. Testeo manual
+## 4. Testeo
 
-El proyecto **no tiene tests automatizados**. La estrategia es manual y por rol.
+El proyecto **no tiene una suite de tests automatizados ni CI**. Desde el 21/11/2026 cuenta
+con un **smoke test de solo lectura** para validar que un entorno está sano antes de
+desplegar; el resto de la estrategia sigue siendo manual y por rol.
 
 ### 4.1 Preparación
 
@@ -115,13 +118,70 @@ El proyecto **no tiene tests automatizados**. La estrategia es manual y por rol.
 4. Consola del navegador (F12) abierta.
 5. Logs del backend visibles.
 
-### 4.2 Smoke test (15 minutos)
+### 4.2 Smoke test automatizado (solo lectura)
+
+Script: `siga-uc-backend/scripts/smoke.js` → `npm run smoke`.
+
+- **No escribe datos de negocio.** El único POST es `/auth/login` (actualiza
+  `ultimo_login` y registra el LOGIN en la bitácora); el resto son GET.
+- Timeout de **10 s por petición** (`AbortSignal.timeout`).
+- Nunca imprime tokens ni contraseñas.
+- Si faltan credenciales de un rol, las pruebas dependientes se marcan **SKIP**, nunca FAIL.
+- Exit code `1` si hay al menos un FAIL; `0` si todo pasa o solo hay SKIP.
+
+Variables de entorno:
+
+| Variable | Obligatoria | Default |
+|---|---|---|
+| `SMOKE_BASE_URL` | No | `http://localhost:3000/api` |
+| `SMOKE_ADMIN_DNI` / `SMOKE_ADMIN_PASSWORD` | Para pruebas ADMIN | — |
+| `SMOKE_DOCENTE_DNI` / `SMOKE_DOCENTE_PASSWORD` | Para prueba DOCENTE | — |
+| `SMOKE_ESTUDIANTE_DNI` / `SMOKE_ESTUDIANTE_PASSWORD` | Para pruebas ESTUDIANTE | — |
+
+El script carga `siga-uc-backend/.env` si existe (Node ≥ 20.12) sin sobrescribir las
+variables ya definidas en el proceso. En Render se pasan desde el panel o solo para la
+ejecución; **nunca se commitean**.
+
+Ejecución local:
+
+```powershell
+cd siga-uc-backend
+$env:SMOKE_ADMIN_DNI="<dni>"; $env:SMOKE_ADMIN_PASSWORD="<clave>"
+$env:SMOKE_DOCENTE_DNI="<dni>"; $env:SMOKE_DOCENTE_PASSWORD="<clave>"
+$env:SMOKE_ESTUDIANTE_DNI="<dni>"; $env:SMOKE_ESTUDIANTE_PASSWORD="<clave>"
+npm run smoke
+```
+
+Las 11 pruebas cubren: health + `database: "ok"`, configuración con año numérico, 401 sin
+token, login/perfil ADMIN, alumnos página 1, bitácora con paginación, pagos, libreta PDF
+del primer alumno (Content-Type y firma `%PDF`), RBAC del ESTUDIANTE (403 en `/alumnos`),
+login/perfil DOCENTE y libreta propia del ESTUDIANTE.
+
+Resultado esperado en local con las tres cuentas: **11 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+Sin credenciales: **3 PASS, 0 FAIL, 8 SKIP**, exit `0`.
+
+> La cuenta docente `10293847` tiene `requiere_cambio_password = TRUE` y su clave de
+> `docs/CREDENCIALES.md` ya no aplica. Usar otra cuenta docente activa (por ejemplo
+> `20394812`) sin modificar contraseñas.
+
+Contra un entorno remoto:
+
+```powershell
+$env:SMOKE_BASE_URL="https://<backend>/api"
+# definir SMOKE_* con credenciales válidas de ese entorno
+npm run smoke
+```
+
+Criterio de aceptación del ensayo en Render: **11 PASS, 0 FAIL**, exit `0`. Un FAIL bloquea
+el despliegue.
+
+### 4.3 Smoke test manual (15 minutos)
 
 | # | Caso | Pasos | Esperado |
 |---|---|---|---|
 | 1 | Health | `GET /api/health` | 200 + app/version |
 | 2 | Login Admin | 74829102 / `UC2026*` | Dashboard con KPIs |
-| 3 | Login Docente | 10293847 / `UC2026*` | Dashboard con cursos |
+| 3 | Login Docente | 20394812 / `UC2026*` | Dashboard con cursos |
 | 4 | Login Estudiante | 75918234 / `UC75918234` | Notas del alumno |
 | 5 | Login Secretaría | 40596837 / `UC2026*` | Dashboard financiero |
 | 6 | Ruta cruzada | Estando como estudiante, ir a `/admin` | Redirige a `/estudiante` |
@@ -130,7 +190,7 @@ El proyecto **no tiene tests automatizados**. La estrategia es manual y por rol.
 | 9 | Logout | Cerrar sesión | Vuelve a login |
 | 10 | Recuperación | Solicitar por DNI con correo | Alerta genérica |
 
-### 4.3 Checklist ADMIN
+### 4.4 Checklist ADMIN
 
 - [ ] Dashboard carga KPIs.
 - [ ] Alumnos: listar, filtrar, ver ficha.
@@ -149,7 +209,7 @@ El proyecto **no tiene tests automatizados**. La estrategia es manual y por rol.
 - [ ] Auditoría: bitácora, filtros, detalle.
 - [ ] Auditoría: cerrar acta.
 
-### 4.4 Checklist SECRETARÍA
+### 4.5 Checklist SECRETARÍA
 
 - [ ] Dashboard financiero.
 - [ ] Padrón (mismo que Admin).
@@ -158,7 +218,7 @@ El proyecto **no tiene tests automatizados**. La estrategia es manual y por rol.
 - [ ] QR: marcar personal.
 - [ ] Verificar que no accede por UI a Personal/Carga/SIAGIE/Reportes.
 
-### 4.5 Checklist DOCENTE
+### 4.6 Checklist DOCENTE
 
 - [ ] Dashboard con cursos asignados.
 - [ ] Notas: selector curso/bimestre.
@@ -171,7 +231,7 @@ El proyecto **no tiene tests automatizados**. La estrategia es manual y por rol.
 - [ ] Campanita: recibir recordatorio.
 - [ ] Verificar que no accede a Admin/Secretaría.
 
-### 4.6 Checklist ESTUDIANTE
+### 4.7 Checklist ESTUDIANTE
 
 - [ ] Dashboard: notas por curso y promedio.
 - [ ] Asistencia: resumen por curso y detalle.
@@ -179,7 +239,7 @@ El proyecto **no tiene tests automatizados**. La estrategia es manual y por rol.
 - [ ] Carné QR.
 - [ ] Verificar que no accede a Admin/Docente/Secretaría.
 
-### 4.7 Casos borde
+### 4.8 Casos borde
 
 | Caso | Resultado esperado |
 |---|---|
@@ -193,25 +253,26 @@ El proyecto **no tiene tests automatizados**. La estrategia es manual y por rol.
 | Egreso sin caja | 400 |
 | Cierre sin caja | 400 |
 | Pago sin número de operación (UI) | Bloqueado en frontend |
-| Pago con monto 0 | Backend no lo impide (brecha) |
+| Pago con monto 0 o distinto al esperado | 400, el backend exige el monto exacto |
 | Nota inválida | 400 |
 | Bimestre 5 | 400 |
 | SIAGIE sin notas | 404 |
 | Archivo SIAGIE PDF | 400 multer |
 | Archivo >10 MB | 400 multer |
 | Notificación ajena | 404 |
-| Acta ya cerrada | UI bloquea; backend no valida estado |
+| Acta ya cerrada | 409, el backend bloquea la edición |
 | Curso duplicado en carga | Error de llave duplicada |
 
-### 4.8 Regresión mínima tras cambios
+### 4.9 Regresión mínima tras cambios
 
-1. Login de los 4 roles.
-2. Matrícula + pago de matrícula.
-3. Asistencia + nota de un alumno.
-4. Reporte de libreta.
-5. Caja apertura/cierre.
-6. Campanita.
-7. SIAGIE con plantilla de prueba.
+1. `npm run smoke` → 0 FAIL.
+2. Login de los 4 roles.
+3. Matrícula + pago de matrícula.
+4. Asistencia + nota de un alumno.
+5. Reporte de libreta.
+6. Caja apertura/cierre.
+7. Campanita.
+8. SIAGIE con plantilla de prueba.
 
 ---
 
@@ -302,6 +363,7 @@ WHERE m.id_movimiento IS NULL;
 3. Verificar PostgreSQL.
 4. Revisar puerto.
 5. Revisar logs.
+6. Ejecutar `npm run smoke`: distingue health, configuración, login y permisos.
 
 ### 7.2 La API arranca pero todo da 500
 
@@ -335,6 +397,7 @@ WHERE m.id_movimiento IS NULL;
 
 | Mejora | Beneficio |
 |---|---|
+| ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E (Playwright/Cypress) | Flujos por rol |
