@@ -55,6 +55,12 @@ export class DocenteNotasComponent implements OnInit {
   guardando = signal(false);
   error = signal<string | null>(null);
   mensajeExito = signal<string | null>(null);
+  mensajeAdvertencia = signal<string | null>(null);
+  erroresGuardado = signal<
+    Array<{ indice: number; id_alumno: number | null; mensaje: string }>
+  >([]);
+  totalErroresGuardado = signal(0);
+  mostrarDetalleErrores = signal(false);
 
   cursos = signal<CursoAsignado[]>([]);
   competencias = signal<Competencia[]>([]);
@@ -213,29 +219,65 @@ export class DocenteNotasComponent implements OnInit {
 
     this.guardando.set(true);
     this.mensajeExito.set(null);
+    this.mensajeAdvertencia.set(null);
+    this.erroresGuardado.set([]);
+    this.totalErroresGuardado.set(0);
+    this.mostrarDetalleErrores.set(false);
 
     this.http.post<any>(`${environment.apiUrl}/calificaciones/masivo`, { registros }).subscribe({
       next: (res) => {
         this.guardando.set(false);
         if (res.success) {
-          const calculadas = res.data.notas_finales_calculadas || 0;
-          const errores = res.data.notas_finales_errores || 0;
-          this.mensajeExito.set(
-            `✅ ${res.data.insertados} calificaciones guardadas. ` +
-              `${calculadas} nota(s) final(es) calculada(s).` +
-              (errores > 0
-                ? ` ⚠️ ${errores} no se pudieron calcular.`
-                : ''),
-          );
-          this.calificacionesModificadas = {};
-          // Recargar después de 1.5s
-          setTimeout(() => this.cargarCalificaciones(), 1500);
+          const data = res.data || {};
+          const guardados = Number(data.guardados ?? data.insertados) || 0;
+          const totalErrores = Number(data.total_errores) || 0;
+          const errores = Array.isArray(data.errores) ? data.errores : [];
+          const notasErrores = Number(data.notas_finales_errores) || 0;
+
+          this.totalErroresGuardado.set(totalErrores);
+          this.erroresGuardado.set(errores);
+          this.mostrarDetalleErrores.set(false);
+
+          if (totalErrores > 0 || notasErrores > 0) {
+            this.mensajeExito.set(null);
+            this.mensajeAdvertencia.set(
+              `${guardados} guardadas, ${totalErrores} fallidas` +
+                (notasErrores > 0
+                  ? ` · ${notasErrores} nota(s) final(es) no se pudieron calcular`
+                  : ''),
+            );
+
+            if (totalErrores > 0 && totalErrores <= errores.length) {
+              const fallidos = new Set(
+                errores.map((e: any) => Number(e.indice)),
+              );
+              const pendientes: { [key: string]: string } = {};
+              registros.forEach((reg: any, indice: number) => {
+                if (fallidos.has(indice)) {
+                  pendientes[`${reg.id_alumno}-${reg.id_competencia}`] =
+                    reg.calificacion;
+                }
+              });
+              this.calificacionesModificadas = pendientes;
+            }
+          } else {
+            this.mensajeAdvertencia.set(null);
+            this.erroresGuardado.set([]);
+            this.mensajeExito.set(
+              `✅ ${guardados} calificaciones guardadas. ` +
+                `${Number(data.notas_finales_calculadas) || 0} nota(s) final(es) calculada(s).`,
+            );
+            this.calificacionesModificadas = {};
+            setTimeout(() => this.cargarCalificaciones(), 1500);
+          }
         }
       },
       error: (err) => {
         this.guardando.set(false);
         console.error('❌ Error:', err);
-        alert('Error al guardar: ' + (err.error?.message || 'Error desconocido'));
+        this.error.set(
+          err.error?.message || 'Error al guardar las calificaciones.',
+        );
       },
     });
   }

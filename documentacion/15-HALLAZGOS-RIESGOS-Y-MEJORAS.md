@@ -39,6 +39,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 21/11/2026 (H07 completa):** se añaden alumnos, personal, académico,
 > notificaciones y descargas; H07 queda resuelto.
+>
+> **Actualización 21/11/2026 (H11):** los guardados masivos informan filas fallidas y la UI
+> muestra el detalle; H11 queda resuelto.
 
 ---
 
@@ -166,6 +169,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | La UI muestra “X guardadas” y oculta filas fallidas |
 | Recomendación | Mostrar `errores[]`; usar savepoints o validación previa |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): ambos DAOs devuelven `guardados`, `total_errores` y hasta 20 `errores` con `indice`/`id_alumno`/`mensaje`; validación previa de estado/calificación. La UI muestra banner amarillo “X guardadas, Y fallidas” con detalle expandible y no muestra éxito si hay errores |
 
 ### H12 — Año 2026 y conceptos hardcodeados (resuelto)
 

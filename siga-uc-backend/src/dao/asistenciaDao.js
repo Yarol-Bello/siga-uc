@@ -215,13 +215,41 @@ const registrar = async (data) => {
  */
 const registrarMasivo = async (registros) => {
   const client = await getClient();
-  let insertados = 0;
+  let guardados = 0;
+  let totalErrores = 0;
   const errores = [];
+
+  const agregarError = (indice, idAlumno, mensaje) => {
+    totalErrores += 1;
+    if (errores.length < 20) {
+      errores.push({ indice, id_alumno: idAlumno, mensaje });
+    }
+  };
 
   try {
     await client.query("BEGIN");
 
-    for (const reg of registros) {
+    for (let indice = 0; indice < registros.length; indice += 1) {
+      const reg = registros[indice];
+
+      if (!reg.id_alumno || !reg.id_curso || !reg.id_grado || !reg.fecha) {
+        agregarError(
+          indice,
+          reg.id_alumno,
+          `Alumno ${reg.id_alumno || "sin ID"}: faltan datos obligatorios (curso, grado o fecha).`,
+        );
+        continue;
+      }
+
+      if (!["P", "T", "F"].includes(String(reg.estado))) {
+        agregarError(
+          indice,
+          reg.id_alumno,
+          `Alumno ${reg.id_alumno}: estado de asistencia inválido.`,
+        );
+        continue;
+      }
+
       try {
         const sql = `
           INSERT INTO asistencia_alumnos (
@@ -247,14 +275,23 @@ const registrarMasivo = async (registros) => {
           reg.justificada || false,
           reg.motivo_justificacion || null,
         ]);
-        insertados++;
+        guardados += 1;
       } catch (err) {
-        errores.push({ id_alumno: reg.id_alumno, error: err.message });
+        agregarError(
+          indice,
+          reg.id_alumno,
+          `Alumno ${reg.id_alumno}: ${err.message}`,
+        );
       }
     }
 
     await client.query("COMMIT");
-    return { insertados, errores };
+    return {
+      guardados,
+      total_errores: totalErrores,
+      errores,
+      insertados: guardados,
+    };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

@@ -84,7 +84,9 @@ const registrarMasivo = async (req, res) => {
     return response.success(
       res,
       201,
-      `${result.insertados} asistencias registradas`,
+      `${result.guardados} asistencias guardadas${
+        result.total_errores ? `, ${result.total_errores} fallidas` : ""
+      }`,
       result,
     );
   } catch (error) {

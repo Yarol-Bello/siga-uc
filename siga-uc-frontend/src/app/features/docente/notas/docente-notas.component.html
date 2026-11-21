@@ -48,6 +48,29 @@
   </div>
   }
 
+  @if (mensajeAdvertencia()) {
+  <div class="alert alert-warning">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <div class="detalle-errores">
+      <strong>{{ mensajeAdvertencia() }}</strong>
+      <button
+        type="button"
+        class="btn-ver-detalle"
+        (click)="mostrarDetalleErrores.set(!mostrarDetalleErrores())"
+      >
+        {{ mostrarDetalleErrores() ? 'Ocultar detalle' : 'Ver detalle' }}
+      </button>
+      @if (mostrarDetalleErrores()) {
+      <ul>
+        @for (e of erroresGuardado(); track e.indice) {
+        <li>{{ e.mensaje }}</li>
+        }
+      </ul>
+      }
+    </div>
+  </div>
+  }
+
   @if (error()) {
   <div class="alert alert-danger">
     <i class="fa-solid fa-circle-exclamation"></i>

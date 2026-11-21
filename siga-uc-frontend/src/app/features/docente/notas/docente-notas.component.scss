@@ -295,3 +295,35 @@ tr:hover td {
     margin-bottom: 8px;
   }
 }
+
+.alert-warning {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  align-items: flex-start;
+}
+
+.detalle-errores {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.btn-ver-detalle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: #92400e;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.detalle-errores ul {
+  margin: 4px 0 0 18px;
+  padding: 0;
+  font-size: 0.82rem;
+}

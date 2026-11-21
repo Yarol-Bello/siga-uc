@@ -49,6 +49,12 @@ export class DocenteAsistenciaComponent implements OnInit {
   guardando = signal(false);
   error = signal<string | null>(null);
   mensajeExito = signal<string | null>(null);
+  mensajeAdvertencia = signal<string | null>(null);
+  erroresGuardado = signal<
+    Array<{ indice: number; id_alumno: number | null; mensaje: string }>
+  >([]);
+  totalErroresGuardado = signal(0);
+  mostrarDetalleErrores = signal(false);
 
   cursos = signal<CursoAsignado[]>([]);
   alumnos = signal<AlumnoAsistencia[]>([]);
@@ -240,20 +246,59 @@ export class DocenteAsistenciaComponent implements OnInit {
 
     this.guardando.set(true);
     this.mensajeExito.set(null);
+    this.mensajeAdvertencia.set(null);
+    this.erroresGuardado.set([]);
+    this.totalErroresGuardado.set(0);
+    this.mostrarDetalleErrores.set(false);
 
     this.http.post<any>(`${environment.apiUrl}/asistencias/masivo`, { registros }).subscribe({
       next: (res) => {
         this.guardando.set(false);
         if (res.success) {
-          this.mensajeExito.set(`✅ ${res.data.insertados} asistencias guardadas exitosamente`);
-          this.cambios = {};
-          setTimeout(() => this.cargarAsistencia(), 1500);
+          const data = res.data || {};
+          const guardados = Number(data.guardados ?? data.insertados) || 0;
+          const totalErrores = Number(data.total_errores) || 0;
+          const errores = Array.isArray(data.errores) ? data.errores : [];
+
+          this.totalErroresGuardado.set(totalErrores);
+          this.erroresGuardado.set(errores);
+          this.mostrarDetalleErrores.set(false);
+
+          if (totalErrores > 0) {
+            this.mensajeExito.set(null);
+            this.mensajeAdvertencia.set(
+              `${guardados} guardadas, ${totalErrores} fallidas`,
+            );
+
+            if (totalErrores <= errores.length) {
+              const fallidos = new Set(
+                errores.map((e: any) => Number(e.id_alumno)),
+              );
+              const pendientes: typeof this.cambios = {};
+              Object.keys(this.cambios).forEach((key) => {
+                if (fallidos.has(Number(key))) {
+                  pendientes[Number(key)] = this.cambios[Number(key)];
+                }
+              });
+              this.cambios = pendientes;
+            }
+          } else {
+            this.mensajeAdvertencia.set(null);
+            this.erroresGuardado.set([]);
+            this.mensajeExito.set(
+              `✅ ${guardados} asistencias guardadas exitosamente`,
+            );
+            this.cambios = {};
+            setTimeout(() => this.cargarAsistencia(), 1500);
+          }
         }
       },
       error: (err) => {
         this.guardando.set(false);
         console.error('❌ Error:', err);
-        alert('Error al guardar: ' + (err.error?.message || 'Error desconocido'));
+        this.error.set(
+          err.error?.message || 'Error al guardar la asistencia.',
+        );
       },
     });
   }

@@ -83,6 +83,7 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `fix(academico): mostrar errores reales en guardados masivos (H11)` |
 | `(sesión H15)` | `feat(auditoria): auditar personas, academico, notificaciones y descargas (H07 parte B)` |
 | `(sesión H15)` | `feat(auditoria): registrar eventos de seguridad y dinero (H07 parte A)` |
 | `(sesión H15)` | `docs(instalacion): corregir secuencia de restauracion de la BD (H40)` |
@@ -326,6 +327,14 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 - Migración `database/migracion_h07_auditoria.sql` con índices por fecha y usuario.
 - UI: filtros, iconos y estilos para todos los eventos.
 
+#### H11 — Errores visibles en guardados masivos (21/11/2026)
+
+- `asistenciaDao.registrarMasivo` y `calificacionDao.registrarMasivo` devuelven `guardados`,
+  `total_errores` y hasta 20 `errores` con `indice`, `id_alumno` y `mensaje`.
+- Validación previa de estado de asistencia y calificación; las filas válidas se guardan.
+- Docente/asistencia y docente/notas muestran banner amarillo “X guardadas, Y fallidas” con
+  detalle expandible; nunca muestran éxito si hubo errores.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -413,6 +422,10 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
   (`CERRAR`); SIAGIE (`IMPORTAR` con archivo y filas); notificación (`ENVIAR`); descargas de
   libreta, boleta y acta (`DESCARGAR` con sus IDs). El escaneo de la bitácora de prueba no
   encontró contraseña, hash ni token. Datos temporales eliminados (0 residuos).
+- H11: 8/8 pruebas de API OK. Asistencia mixta → `guardados=2`, `total_errores=1` y solo 2
+  filas en BD; 100% válido → 3/0; 100% inválido → 0/3. Notas mixtas → 2/1 con solo 2 en BD.
+  UI real: banner “2 guardadas, 1 fallidas” con detalle “fallo simulado H11” en asistencia y
+  notas. Datos temporales eliminados (0 residuos).
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---
