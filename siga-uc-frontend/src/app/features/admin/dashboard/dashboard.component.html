@@ -1,4 +1,10 @@
 <div class="dashboard-body">
+  <div class="dashboard-toolbar">
+    <button class="btn-primary" (click)="abrirModalNotificacion()">
+      <i class="fa-solid fa-paper-plane"></i> Nueva Notificación
+    </button>
+  </div>
+
   <!-- ESTADO DE CARGA -->
   @if (cargando()) {
   <div class="loading-state">
@@ -110,6 +116,126 @@
           <span>Alumnos por Grado (promedio):</span>
           <strong>{{ (+datos()!.total_alumnos / +datos()!.total_grados).toFixed(1) }}</strong>
         </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (modalNotificacion()) {
+  <div class="modal-overlay" (click)="cerrarModalNotificacion()">
+    <div class="modal-container notif-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-paper-plane"></i> Nueva Notificación</h3>
+        <button class="modal-close" (click)="cerrarModalNotificacion()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        @if (errorNotificacion()) {
+        <div class="alert alert-danger">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          {{ errorNotificacion() }}
+        </div>
+        }
+
+        @if (exitoNotificacion()) {
+        <div class="alert alert-success">
+          <i class="fa-solid fa-circle-check"></i>
+          {{ exitoNotificacion() }}
+        </div>
+        }
+
+        @if (warningNotificacion()) {
+        <div class="alert alert-warning">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          {{ warningNotificacion() }}
+        </div>
+        }
+
+        <div class="form-group">
+          <label>Asunto</label>
+          <input
+            type="text"
+            [(ngModel)]="asuntoNotif"
+            maxlength="200"
+            placeholder="Ej. Reunión de padres de familia"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Mensaje</label>
+          <textarea
+            [(ngModel)]="cuerpoNotif"
+            rows="6"
+            placeholder="Escribe el mensaje que recibirán los destinatarios..."
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Destinatarios</label>
+          <select
+            [(ngModel)]="tipoDestinatario"
+            (ngModelChange)="onTipoDestinatarioChange($event)"
+          >
+            <option value="TODOS">Todos los usuarios</option>
+            <option value="GRADO">Un grado específico</option>
+            <option value="ALUMNO">Un alumno específico</option>
+          </select>
+        </div>
+
+        @if (cargandoDestinatarios()) {
+        <div class="notif-loading">
+          <i class="fa-solid fa-spinner fa-spin"></i> Cargando destinatarios...
+        </div>
+        }
+
+        @if (tipoDestinatario === 'GRADO') {
+        <div class="form-group">
+          <label>Grado</label>
+          <select [(ngModel)]="gradoNotif">
+            <option [ngValue]="null">Seleccione un grado</option>
+            @for (g of gradosNotif(); track g.id_grado) {
+            <option [ngValue]="g.id_grado">
+              {{ g.nombre_grado }} — {{ g.seccion }}
+            </option>
+            }
+          </select>
+        </div>
+        }
+
+        @if (tipoDestinatario === 'ALUMNO') {
+        <div class="form-group">
+          <label>Alumno</label>
+          <select [(ngModel)]="alumnoNotif">
+            <option [ngValue]="null">Seleccione un alumno</option>
+            @for (a of alumnosNotif(); track a.id_alumno) {
+            <option [ngValue]="a.id_alumno">
+              {{ a.nombre_completo }} — {{ a.nombre_grado }}
+            </option>
+            }
+          </select>
+        </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button
+          class="btn-secondary"
+          (click)="cerrarModalNotificacion()"
+          [disabled]="enviandoNotificacion()"
+        >
+          Cerrar
+        </button>
+        <button
+          class="btn-primary"
+          (click)="enviarNotificacion()"
+          [disabled]="enviandoNotificacion()"
+        >
+          @if (enviandoNotificacion()) {
+          <i class="fa-solid fa-spinner fa-spin"></i> Enviando...
+          } @else {
+          <i class="fa-solid fa-paper-plane"></i> Enviar Notificación
+          }
+        </button>
       </div>
     </div>
   </div>

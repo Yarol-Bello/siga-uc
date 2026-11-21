@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `feat(notificaciones): permitir mensajes personalizados y envio por correo (H15)` |
 | `(sesión H34 completo)` | `feat(reportes): PDFs reales para boletas y actas (H34 completo)` |
 | `(sesión H34)` | `feat(reportes): generar PDFs reales para libretas (H34)` |
 | `(sesión H25)` | `feat(infra): script de backup automatico de PostgreSQL (H25)` |
@@ -212,6 +213,17 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   errores inline. Caja muestra PDF por movimiento con boleta; Auditoría muestra PDF por acta.
 - H34 queda **completo**.
 
+#### H15 — Mensajería interna personalizada
+
+- `POST /api/notificaciones/masivo` acepta `{ asunto, cuerpo, destinatarios: { tipo, id } }`
+  para TODOS/GRADO/ALUMNO; mantiene compatibilidad con `{ destinos: [...] }`.
+- `notificacionDao` resuelve destinatarios y hace un `INSERT ... unnest`.
+- `notificacionService.crearMasivo` guarda primero y luego envía correos; fallos de Resend se
+  cuentan y no revierten ni detienen los demás envíos.
+- Dashboard Admin: modal “Nueva Notificación” con Asunto, Mensaje, selector TODOS/GRADO/ALUMNO,
+  spinner, resultado real y advertencia amarilla por correos fallidos.
+- La campanita ya muestra asunto/cuerpo reales; no se agregaron WebSockets.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -240,6 +252,11 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   “BORRADOR - NO VÁLIDO PARA TRÁMITE”; acta sin notas → 400; permisos 401/403/404 correctos.
   UI: `boleta_B001-004837.pdf` y `acta_2_2do_Bimestre_2026.pdf` descargados; spinner y errores
   inline. Datos temporales eliminados.
+- H15: 15/15 pruebas de API OK con destinatarios temporales. ALUMNO y GRADO guardaron 1 y 2
+  notificaciones; correos fallidos no detuvieron el flujo; TODOS resolvió 35 usuarios activos;
+  400 para tipo/asunto/destinatarios inválidos; 403 para alumno. UI: modal envió a un alumno,
+  mostró “1 destinatario, 0 correos enviados, 1 fallido” y el alumno vio asunto/cuerpo en su
+  campanita. Datos temporales eliminados.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

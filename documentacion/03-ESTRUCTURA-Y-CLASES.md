@@ -74,7 +74,7 @@
 | `actaPdfService.js` | `generarActaPdf` | PDFKit, acta landscape, matriz real, watermark para borrador |
 | `auditoriaService.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `getEstadisticas` | Periodo/año/Usuario de cierre |
 | `siagieService.js` | `generarExcel` | Detecta encabezados, inyecta notas, guarda archivo, audita exportación |
-| `notificacionService.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Correo no bloqueante, propiedad del destinatario |
+| `notificacionService.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Correo no bloqueante, propiedad del destinatario; el masivo resuelve TODOS/GRADO/ALUMNO y cuenta correos enviados/fallidos |
 | `recuperacionService.js` | `solicitarRecuperacion`, `validarToken`, `restablecerPassword` | Token 32 bytes, 2 h, un uso, no revelar existencia |
 | `emailService.js` | `verificarConexion`, `enviarCorreo`, `enviarNotificacion` | Resend; plantilla guindo/dorado |
 
@@ -94,7 +94,7 @@
 | `cajaDao.js` | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` | Caja abierta, apertura/egreso/cierre con arqueo |
 | `reporteDao.js` | Múltiples tablas | Dashboard, mérito, riesgo, libreta, asistencia, auditoría docente |
 | `auditoriaDao.js` | `bitacora_auditoria`, `actas_bimestrales` | Bitácora filtrada (máx. 200), actas, hash MD5 |
-| `notificacionDao.js` | `notificaciones` | Listar/contar/marcar/eliminar por destinatario; creación masiva |
+| `notificacionDao.js` | `notificaciones`, `usuarios`, `alumnos`, `grados` | Listar/contar/marcar/eliminar por destinatario; `listarDestinatarios` por TODOS/GRADO/ALUMNO e inserción masiva con `unnest` |
 | `siagieDao.js` | `alumnos`, `cursos`, `notas_finales_area`, `grados`, `exportaciones_siagie` | Notas por grado/bimestre, grado, registro de exportación |
 | `recuperacionDao.js` | `recuperacion_password`, `usuarios` | Crear token (expira en PostgreSQL), validar, marcar usado |
 

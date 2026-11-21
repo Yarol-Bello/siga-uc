@@ -13,6 +13,17 @@ export interface Notificacion {
   remitente_correo: string | null;
 }
 
+export interface DestinatariosNotificacion {
+  tipo: 'TODOS' | 'GRADO' | 'ALUMNO';
+  id?: number | null;
+}
+
+export interface EnviarNotificacionRequest {
+  asunto: string;
+  cuerpo: string;
+  destinatarios: DestinatariosNotificacion;
+}
+
 /**
  * Servicio de Notificaciones
  * SIGA-UC - Sistema Integrado de Gestión Académica
@@ -33,6 +44,13 @@ export class NotificacionService {
    */
   listar(): Observable<any> {
     return this.http.get<any>(this.API_URL);
+  }
+
+  /**
+   * Enviar una notificación a TODOS, un GRADO o un ALUMNO.
+   */
+  enviarMasivo(payload: EnviarNotificacionRequest): Observable<any> {
+    return this.http.post<any>(`${this.API_URL}/masivo`, payload);
   }
 
   /**

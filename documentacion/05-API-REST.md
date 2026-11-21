@@ -403,14 +403,17 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 | 95 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
 | 96 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
 | 97 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
-| 98 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a varios |
+| 98 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, un GRADO o un ALUMNO |
 
 **Crear body:** `{ id_usuario_destino, asunto, cuerpo }`.
-**Masivo body:** `{ destinos: [id_usuario,...], asunto, cuerpo }`.
+**Masivo body:** `{ asunto, cuerpo, destinatarios: { tipo: "TODOS" | "GRADO" | "ALUMNO", id } }`.
+También acepta el formato anterior `{ destinos: [id_usuario,...], asunto, cuerpo }`.
 
-> `POST` guarda primero en BD y luego intenta correo a
-> `correo_personal || correo_institucional`; si falla el correo, no revierte.
-> El masivo **no envía correos** (solo persiste). Ver hallazgos.
+**Respuesta masiva:** `total_destinatarios`, `total_guardadas`, `correos_enviados`, `correos_fallidos`, `correos_sin_destino` y `total_enviadas`.
+
+> Ambos endpoints guardan primero en BD y luego intentan correo a
+> `correo_personal || correo_institucional`; si falla un correo, la notificación permanece y
+> el envío continúa con los demás destinatarios.
 
 ---
 

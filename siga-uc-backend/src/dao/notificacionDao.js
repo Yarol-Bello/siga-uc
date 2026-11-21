@@ -130,18 +130,120 @@ const eliminar = async (id, id_usuario) => {
 };
 
 /**
+ * Listar destinatarios activos según el tipo de envío.
+ * TODOS: todos los usuarios activos.
+ * GRADO: alumnos activos del grado y año indicados.
+ * ALUMNO: alumno activo por id_alumno.
+ */
+const listarDestinatarios = async ({ tipo, id, anioLectivo }) => {
+  if (tipo === "TODOS") {
+    const sql = `
+      SELECT
+        u.id_usuario,
+        u.dni,
+        u.nombres,
+        u.apellidos,
+        u.correo_personal,
+        u.correo_institucional
+      FROM usuarios u
+      WHERE u.estado = 'ACTIVO'
+      ORDER BY u.apellidos, u.nombres
+    `;
+    const result = await query(sql);
+    return result.rows;
+  }
+
+  if (tipo === "GRADO") {
+    const sql = `
+      SELECT
+        u.id_usuario,
+        u.nombres,
+        u.apellidos,
+        u.correo_personal,
+        u.correo_institucional,
+        g.nombre_grado,
+        g.seccion
+      FROM usuarios u
+      INNER JOIN alumnos a ON a.id_usuario = u.id_usuario
+      LEFT JOIN grados g ON g.id_grado = a.id_grado
+      WHERE u.estado = 'ACTIVO'
+        AND a.id_grado = $1
+        AND a.anio_lectivo = $2
+        AND a.estado_matricula <> 'Retirado'
+      ORDER BY a.apellidos, a.nombres
+    `;
+    const result = await query(sql, [id, anioLectivo]);
+    return result.rows;
+  }
+
+  if (tipo === "ALUMNO") {
+    const sql = `
+      SELECT
+        u.id_usuario,
+        u.nombres,
+        u.apellidos,
+        u.correo_personal,
+        u.correo_institucional,
+        g.nombre_grado,
+        g.seccion
+      FROM usuarios u
+      INNER JOIN alumnos a ON a.id_usuario = u.id_usuario
+      LEFT JOIN grados g ON g.id_grado = a.id_grado
+      WHERE u.estado = 'ACTIVO'
+        AND a.id_alumno = $1
+        AND a.estado_matricula <> 'Retirado'
+      LIMIT 1
+    `;
+    const result = await query(sql, [id]);
+    return result.rows;
+  }
+
+  return [];
+};
+
+/**
+ * Resolver destinatarios por IDs (compatibilidad con el formato anterior).
+ */
+const listarDestinatariosPorIds = async (ids) => {
+  const sql = `
+    SELECT
+      u.id_usuario,
+      u.nombres,
+      u.apellidos,
+      u.correo_personal,
+      u.correo_institucional
+    FROM usuarios u
+    WHERE u.id_usuario = ANY($1::INT[])
+      AND u.estado = 'ACTIVO'
+    ORDER BY u.apellidos, u.nombres
+  `;
+  const result = await query(sql, [ids]);
+  return result.rows;
+};
+
+/**
  * Enviar notificación masiva (a varios usuarios)
  */
 const crearMasivo = async (destinos, data) => {
-  const results = [];
-  for (const id_destino of destinos) {
-    const result = await crear({
-      ...data,
-      id_usuario_destino: id_destino,
-    });
-    results.push(result);
+  if (!Array.isArray(destinos) || destinos.length === 0) {
+    return [];
   }
-  return results;
+
+  const sql = `
+    INSERT INTO notificaciones (
+      id_usuario_destino, id_usuario_remitente, asunto, cuerpo, leido
+    )
+    SELECT
+      unnest($1::INT[]), $2::INT, $3::VARCHAR, $4::TEXT, FALSE
+    RETURNING *
+  `;
+  const result = await query(sql, [
+    destinos,
+    data.id_usuario_remitente || null,
+    data.asunto,
+    data.cuerpo,
+  ]);
+  return result.rows;
 };
 
 module.exports = {
@@ -152,5 +254,7 @@ module.exports = {
   marcarLeida,
   marcarTodasLeidas,
   eliminar,
+  listarDestinatarios,
+  listarDestinatariosPorIds,
   crearMasivo,
 };

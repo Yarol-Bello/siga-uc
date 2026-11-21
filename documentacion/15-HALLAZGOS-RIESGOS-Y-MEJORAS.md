@@ -9,6 +9,8 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > conceptos hardcodeados) quedó resuelto con `ANIO_LECTIVO`, `GET /api/configuracion` y
 > conceptos dinámicos. H25 (backup) quedó resuelto con `npm run backup`, script Node y guía de
 > programación en Render/Supabase. H34 quedó resuelto: libretas, boletas y actas con PDFKit.
+> H15 quedó resuelto: mensajes personalizados con destinatarios TODOS/GRADO/ALUMNO y envío por
+> Resend sin perder la notificación si el correo falla.
 
 ---
 
@@ -159,15 +161,16 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Unificar en una sola función/DAO documentado |
 | Esfuerzo | S |
 
-### H15 — Envío masivo de notificaciones no envía correos
+### H15 — Envío masivo de notificaciones no envía correos (resuelto)
 
 | Campo | Detalle |
 |---|---|
 | Severidad | Media |
-| Evidencia | `notificacionService.crearMasivo` llama a `notificacionDao.crearMasivo`, que inserta sin pasar por `emailService` |
+| Evidencia | Antes `notificacionService.crearMasivo` solo insertaba; ahora resuelve TODOS/GRADO/ALUMNO y envía correos con manejo de fallos |
 | Impacto | El ADMIN cree que envió correos y solo llegó la campanita |
 | Recomendación | Reutilizar `crear` por destino o enviar en lote |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (20/11/2026): `POST /notificaciones/masivo`, destinatarios dinámicos y correos con `correos_enviados`/`correos_fallidos` |
 
 ### H16 — HTML del correo sin escapar
 

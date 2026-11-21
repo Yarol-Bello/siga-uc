@@ -66,9 +66,10 @@ const crearMasivo = async (req, res) => {
     return response.success(
       res,
       201,
-      `${data.length} notificaciones enviadas`,
+      `Notificación enviada a ${data.total_destinatarios} destinatario(s)`,
       {
-        total_enviadas: data.length,
+        ...data,
+        total_enviadas: data.total_guardadas,
       },
     );
   } catch (error) {

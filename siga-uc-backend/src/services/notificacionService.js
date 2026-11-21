@@ -4,6 +4,9 @@
  */
 
 const notificacionDao = require("../dao/notificacionDao");
+const usuarioDao = require("../dao/usuarioDao");
+const emailService = require("./emailService");
+const { getAnioLectivo } = require("../config/academico");
 
 const listar = async (id_usuario, filtros) => {
   return await notificacionDao.listarPorUsuario(id_usuario, filtros);
@@ -75,16 +78,141 @@ const crear = async (data) => {
 };
 
 const crearMasivo = async (data) => {
-  if (!Array.isArray(data.destinos) || data.destinos.length === 0) {
-    const error = new Error("Debe enviar al menos un destinatario");
+  const asunto = String(data.asunto || "").trim();
+  const cuerpo = String(data.cuerpo || "").trim();
+
+  if (!asunto || !cuerpo) {
+    const error = new Error("El asunto y el cuerpo son obligatorios");
     error.statusCode = 400;
     throw error;
   }
-  return await notificacionDao.crearMasivo(data.destinos, {
-    id_usuario_remitente: data.id_usuario_remitente,
-    asunto: data.asunto,
-    cuerpo: data.cuerpo,
-  });
+
+  if (asunto.length > 200) {
+    const error = new Error("El asunto no puede superar los 200 caracteres");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let destinatarios = [];
+
+  if (data.destinatarios && data.destinatarios.tipo) {
+    const tipo = String(data.destinatarios.tipo).toUpperCase();
+
+    if (!["TODOS", "GRADO", "ALUMNO"].includes(tipo)) {
+      const error = new Error("Tipo de destinatario inválido");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const id = data.destinatarios.id ? Number(data.destinatarios.id) : null;
+
+    if (tipo !== "TODOS" && (!id || !Number.isInteger(id))) {
+      const error = new Error(`Debe indicar un ${tipo.toLowerCase()} válido`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    destinatarios = await notificacionDao.listarDestinatarios({
+      tipo,
+      id,
+      anioLectivo: getAnioLectivo(),
+    });
+  } else if (Array.isArray(data.destinos)) {
+    const ids = data.destinos
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id));
+
+    if (ids.length === 0) {
+      const error = new Error("Debe enviar al menos un destinatario");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    destinatarios = await notificacionDao.listarDestinatariosPorIds(ids);
+  } else {
+    const error = new Error(
+      "Debe indicar destinatarios: TODOS, GRADO o ALUMNO",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const destinatariosUnicos = Array.from(
+    new Map(
+      destinatarios.map((destinatario) => [
+        Number(destinatario.id_usuario),
+        destinatario,
+      ]),
+    ).values(),
+  );
+
+  if (destinatariosUnicos.length === 0) {
+    const error = new Error(
+      "No hay destinatarios activos para el envío seleccionado",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const notificaciones = await notificacionDao.crearMasivo(
+    destinatariosUnicos.map((destinatario) => destinatario.id_usuario),
+    {
+      id_usuario_remitente: data.id_usuario_remitente,
+      asunto,
+      cuerpo,
+    },
+  );
+
+  const remitente = data.id_usuario_remitente
+    ? await usuarioDao.findById(data.id_usuario_remitente)
+    : null;
+  const nombreRemitente = remitente
+    ? `${remitente.nombres} ${remitente.apellidos}`
+    : "SIGA-UC";
+
+  let correosEnviados = 0;
+  let correosFallidos = 0;
+  let correosSinDestino = 0;
+
+  for (const destinatario of destinatariosUnicos) {
+    const correoDestino =
+      destinatario.correo_personal || destinatario.correo_institucional;
+
+    if (!correoDestino) {
+      correosSinDestino += 1;
+      continue;
+    }
+
+    try {
+      const resultado = await emailService.enviarNotificacion({
+        to: correoDestino,
+        destinatario: `${destinatario.nombres} ${destinatario.apellidos}`,
+        asunto,
+        cuerpo,
+        remitente: nombreRemitente,
+      });
+
+      if (resultado?.success) {
+        correosEnviados += 1;
+      } else {
+        correosFallidos += 1;
+      }
+    } catch (emailError) {
+      correosFallidos += 1;
+      console.error(
+        `⚠️ No se pudo enviar el correo a ${correoDestino}:`,
+        emailError.message,
+      );
+    }
+  }
+
+  return {
+    total_destinatarios: destinatariosUnicos.length,
+    total_guardadas: notificaciones.length,
+    correos_enviados: correosEnviados,
+    correos_fallidos: correosFallidos,
+    correos_sin_destino: correosSinDestino,
+  };
 };
 
 const marcarLeida = async (id, id_usuario) => {
