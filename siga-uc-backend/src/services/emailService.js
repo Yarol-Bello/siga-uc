@@ -9,8 +9,11 @@
 const { Resend } = require("resend");
 const env = require("../config/env");
 
-// Inicializar cliente de Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Inicializar cliente de Resend solo si hay clave.
+// El correo es opcional: la API debe arrancar aunque RESEND_API_KEY no exista.
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 // Remitente por defecto (se configura con EMAIL_FROM en .env)
 const FROM_EMAIL = process.env.EMAIL_FROM || "SIGA-UC <onboarding@resend.dev>";
@@ -38,6 +41,13 @@ const verificarConexion = async () => {
  * @param {object} params - { to, subject, html, text }
  */
 const enviarCorreo = async ({ to, subject, html, text }) => {
+  if (!resend) {
+    console.warn(
+      `⚠️ RESEND_API_KEY no configurada: correo omitido para ${to}`,
+    );
+    return { success: false, error: "RESEND_API_KEY no configurada" };
+  }
+
   try {
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
