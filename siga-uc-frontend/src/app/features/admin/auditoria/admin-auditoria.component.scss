@@ -338,6 +338,10 @@ tr:hover td {
     background: rgba(16, 185, 129, 0.15);
     color: var(--success-green);
   }
+  &.reset-password {
+    background: rgba(217, 119, 6, 0.15);
+    color: #b45309;
+  }
   &.default {
     background: #f1f5f9;
     color: #64748b;

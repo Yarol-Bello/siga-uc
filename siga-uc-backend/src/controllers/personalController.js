@@ -130,7 +130,22 @@ const reactivar = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-    const data = await personalService.resetPassword(req.params.id);
+    const {
+      dni,
+      id_usuario_afectado,
+      ...data
+    } = await personalService.resetPassword(req.params.id);
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Seguridad",
+      accion: "RESET_PASSWORD",
+      descripcion: `Reset de contraseña por administrador para DNI ${dni}`,
+      nuevo: {
+        dni,
+        id_usuario_afectado,
+      },
+    });
+
     return response.success(res, 200, "Contraseña restablecida", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);

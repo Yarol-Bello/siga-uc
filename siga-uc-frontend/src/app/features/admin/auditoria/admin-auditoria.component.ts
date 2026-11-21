@@ -360,6 +360,8 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'importar';
       case 'ENVIAR':
         return 'enviar';
+      case 'RESET_PASSWORD':
+        return 'reset-password';
       default:
         return 'default';
     }
@@ -396,6 +398,8 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'fa-file-import';
       case 'ENVIAR':
         return 'fa-paper-plane';
+      case 'RESET_PASSWORD':
+        return 'fa-key';
       default:
         return 'fa-info-circle';
     }

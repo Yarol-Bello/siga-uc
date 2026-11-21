@@ -492,6 +492,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (21/11/2026): `database/seed_produccion.sql` (roles, grados, cursos, competencias, escala, conceptos, carga, caja y admin con cambio obligatorio); `test:integridad` corregido para no marcar al ADMIN; verificado en `siga_uc_prod_test` con 10 PASS y 0 alumnos/pagos/pensiones |
 
+### H43 — Resets de contraseña por ADMIN sin auditoría
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Media |
+| Evidencia | `authController.resetPassword` (por DNI) y `personalController.resetPassword` (por id de personal) actualizaban `password_hash` y `requiere_cambio_password` sin registrar el evento en `bitacora_auditoria` |
+| Impacto | No había trazabilidad de quién ejecutó un reset, sobre qué usuario ni cuándo; difícil investigar accesos indebidos o errores operativos |
+| Recomendación | Registrar `RESET_PASSWORD` en `Seguridad` con el DNI y el `id_usuario_afectado`; nunca guardar la contraseña temporal ni el hash |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): ambos endpoints auditan `RESET_PASSWORD`; la UI de auditoría tiene icono, estilo y filtro para la acción. Verificado con 4 PASS, resets por DNI y por personal, 403 de DOCENTE sin auditoría y 0 contraseñas/hashes en la bitácora |
+
 ---
 
 ## 4. Cosas que parecen bugs pero no lo son

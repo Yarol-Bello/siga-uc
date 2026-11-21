@@ -163,6 +163,7 @@ sequenceDiagram
 | Login fallido | ✅ | `LOGIN_FALLIDO` con DNI intentado e `id_usuario` NULL |
 | Logout | ✅ | `LOGOUT` |
 | Cambio/recuperación de contraseña | ✅ | `MODIFICAR` (`Seguridad`) |
+| Reset de contraseña por ADMIN (por DNI o por personal) | ✅ | `RESET_PASSWORD` (`Seguridad`) con `dni` e `id_usuario_afectado`; nunca la contraseña |
 | Pago registrado | ✅ | `CREAR` (`Tesorería`) con id_pago/monto/forma_pago |
 | Pago anulado | ✅ | `ANULAR` (`Tesorería`) con motivo |
 | Apertura/cierre de caja | ✅ | `ABRIR` / `CERRAR` (`Caja`) |
@@ -204,6 +205,8 @@ no lanza).
 3. ~~Tomar `modificado_por` del token en calificaciones.~~ ✅.
 4. ~~Capturar IP.~~ ✅ en los eventos nuevos.
 5. ~~Añadir paginación y filtros.~~ ✅ (H23).
+6. ~~Auditar los resets de contraseña ejecutados por ADMIN.~~ ✅ (H43): `RESET_PASSWORD`
+   en `Seguridad`, con DNI e `id_usuario_afectado`, sin guardar la clave ni el hash.
 
 ---
 

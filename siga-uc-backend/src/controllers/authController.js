@@ -117,6 +117,16 @@ const resetPassword = async (req, res) => {
 
     const result = await authService.resetPassword(dni);
 
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Seguridad",
+      accion: "RESET_PASSWORD",
+      descripcion: `Reset de contraseña por administrador para DNI ${result.usuario.dni}`,
+      nuevo: {
+        dni: result.usuario.dni,
+        id_usuario_afectado: result.usuario.id_usuario,
+      },
+    });
+
     return response.success(res, 200, "Contraseña restablecida", result);
   } catch (error) {
     console.error("❌ Error al restablecer contraseña:", error);

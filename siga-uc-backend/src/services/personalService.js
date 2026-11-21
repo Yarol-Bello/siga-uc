@@ -88,7 +88,18 @@ const resetPassword = async (id) => {
     error.statusCode = 404;
     throw error;
   }
-  return await personalDao.resetPassword(personal.id_usuario, personal.dni);
+
+  const resultado = await personalDao.resetPassword(
+    personal.id_usuario,
+    personal.dni,
+  );
+
+  // Datos internos para la auditoría; el controller los retira de la respuesta.
+  return {
+    ...resultado,
+    dni: personal.dni,
+    id_usuario_afectado: personal.id_usuario,
+  };
 };
 
 module.exports = {

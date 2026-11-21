@@ -3,11 +3,11 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit base de esta sesión:** `41028ab feat(db): seed de produccion sin datos ficticios (H41)`
-- **Commit de esta sesión:** `feat(notificaciones): enviar avisos al personal y por rol`
+- **Commit base de esta sesión:** `1f8d4fe feat(notificaciones): enviar avisos al personal y por rol`
+- **Commit de esta sesión:** `fix(seguridad): auditar resets de contraseña por admin (H43)`
   (el hash exacto queda en `git log -1`).
-- **Estado:** notificaciones masivas ampliadas a PERSONAL y ROL, backend/UI verificados y
-  datos temporales eliminados; árbol limpio tras el commit.
+- **Estado:** resets de contraseña por ADMIN auditados, UI de auditoría actualizada y
+  verificados ambos endpoints; hashes de prueba restaurados y árbol limpio.
 
 ---
 
@@ -50,6 +50,11 @@
   envía `id`; `ROL` solo admite roles 1-3 y rechaza el 4 con
   `"Para estudiantes use TODOS, GRADO o ALUMNO."`. La UI muestra las 5 opciones y el
   select de roles; la auditoría `ENVIAR` guarda tipo, total y `rol_nombre`.
+- H43: los resets por ADMIN (`PUT /auth/reset-password` por DNI y
+  `PUT /personal/:id/reset-password`) registran `RESET_PASSWORD` en `Seguridad` con
+  `{ dni, id_usuario_afectado }`, nunca la clave. La bitácora tiene icono, estilo y
+  filtro `RESET_PASSWORD`. Verificación: **4 PASS**, DOCENTE recibe 403 sin auditoría,
+  hashes temporales restaurados y 0 residuos.
 
 ---
 
@@ -82,6 +87,7 @@
 | H39 | Fechas de negocio en hora de Lima | `399d35e` |
 | H40 | Secuencia de instalación corregida | `def839e` |
 | H41 | Seed de producción separado del dump demo; invariante 7 corregido | `feat(db): seed de produccion sin datos ficticios (H41)` |
+| H43 | Resets de contraseña por ADMIN auditados | `fix(seguridad): auditar resets de contraseña por admin (H43)` |
 
 ---
 
@@ -166,6 +172,10 @@
 - En los ensayos locales de notificaciones se arrancó el backend con
   `RESEND_API_KEY=""` para no enviar correos reales; los residuos de notificaciones y
   auditoría se eliminaron al terminar.
+- El hash del ADMIN de demo no coincide con `SMOKE_ADMIN_PASSWORD` (drift detectado al
+  probar H43). Para las pruebas se usó una clave aleatoria temporal y se restauró el
+  hash original; `npm run smoke` puede fallar en el login ADMIN hasta restablecer esa
+  contraseña a un valor conocido. Los resets auditados no guardan la clave ni el hash.
 
 ---
 
