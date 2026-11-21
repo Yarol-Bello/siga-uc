@@ -64,12 +64,15 @@ ng serve
 
 ```powershell
 createdb -U postgres siga_uc
-psql -U postgres -d siga_uc -f database/siga_uc.sql
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 ```
 
-> `siga_uc_completo.sql` contiene datos ficticios. No usar en producción.
-> `siga_uc_backup.sql` está ignorado por Git.
+> `siga_uc_completo.sql` es el **dump completo** (esquema + datos de ejemplo). **No** cargar
+> `siga_uc.sql` junto con él: es solo la referencia del esquema y provoca errores de
+> “ya existe”. Las migraciones son idempotentes. `siga_uc_completo.sql` contiene datos
+> ficticios: no usar en producción. `siga_uc_backup.sql` está ignorado por Git.
 
 ---
 
@@ -79,6 +82,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `docs(instalacion): corregir secuencia de restauracion de la BD (H40)` |
 | `(sesión H15)` | `fix(tesoreria): cerrar concurrencia y coherencia de pagos (H10, H37, H38)` |
 | `(sesión H15)` | `feat(tesoreria): anulacion de pagos con reversion de caja y pension (H32)` |
 | `(sesión H15)` | `fix(fechas): calcular fechas de negocio en hora de Lima (H39)` |
@@ -381,6 +385,9 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   pensión marzo → 400; doble pago concurrente → 201/409 con un solo PAGADO. Backup 144.3 KB y
   migración ejecutada dos veces (idempotente); `ux_pago_pension_activo` omitido por duplicados
   históricos. Datos temporales eliminados (0 residuos).
+- H40: instalación nueva verificada en `siga_uc_install_test` con la secuencia oficial:
+  `siga_uc_completo.sql` → `migracion_h32` (no-op) → `migracion_h10_h38`; resultado 39 tablas e
+  índice `ux_pago_pension_activo`, sin duplicados de pensión. BD de prueba eliminada.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

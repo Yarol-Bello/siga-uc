@@ -97,33 +97,41 @@ TZ=America/Lima
 
 ## 3. Base de datos
 
-### 3.1 Crear
+### 3.1 Instalación nueva (secuencia oficial)
+
+`siga_uc_completo.sql` es un **dump completo**: esquema (39 tablas), datos de ejemplo,
+funciones, triggers e índices. No se carga junto con `siga_uc.sql`.
 
 ```powershell
 createdb -U postgres siga_uc
-```
 
-O desde pgAdmin: Databases → Create → `siga_uc`, owner `postgres`, UTF8, template0.
-
-### 3.2 Esquema
-
-```powershell
-psql -U postgres -d siga_uc -f database/siga_uc.sql
-```
-
-### 3.3 Datos de prueba
-
-```powershell
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+# ...y las migraciones futuras, en orden.
 ```
 
-### 3.4 Verificar
+> **No** ejecutar `psql -f database/siga_uc.sql` antes del completo: es la referencia del
+> esquema, no un paso de instalación. Hacerlo provoca errores como
+> `ya existe una función «calcular_nota_final_area»`.
+>
+> `fix_tesoreria_pagos.sql` es histórico y ya está incorporado en el dump; no se ejecuta
+> en instalaciones nuevas.
+
+### 3.2 Verificar
 
 ```powershell
 psql -U postgres -d siga_uc -c "\dt"
 ```
 
 Debe listar **39 tablas** (no 26; la documentación antigua está mal).
+
+```powershell
+psql -U postgres -d siga_uc -c "SELECT indexname FROM pg_indexes WHERE indexname = 'ux_pago_pension_activo';"
+```
+
+El índice de doble pago aparece si la base no tenía duplicados históricos; la migración
+avisa y lo omite si los encuentra.
 
 ### 3.5 Extensiones
 
@@ -260,7 +268,8 @@ producción afecta a los valores **nuevos**, no a los ya guardados. El pool fija
 `timezone=America/Lima` y al arrancar se verifica con `SHOW timezone` (si no coincide, solo
 emite un warning).
 
-**Base de datos:** crear instancia PostgreSQL, ejecutar `siga_uc.sql` (y seeds si es demo).
+**Base de datos:** crear instancia PostgreSQL y ejecutar `siga_uc_completo.sql` (dump
+completo) seguido de las migraciones en orden. No cargar `siga_uc.sql` junto con el completo.
 Verificar extensiones.
 
 ### 7.2 Frontend (Render Static Site / Vercel / Netlify)
@@ -466,8 +475,9 @@ Crear una tarea diaria a las 02:00:
 | `siga-uc-frontend/src/environments/environment.ts` | API local |
 | `siga-uc-frontend/src/environments/environment.prod.ts` | API producción |
 | `siga-uc-frontend/angular.json` | Build, budgets, fileReplacements |
-| `database/siga_uc.sql` | Esquema |
-| `database/siga_uc_completo.sql` | Esquema + seeds |
+| `database/siga_uc_completo.sql` | Instalación completa (esquema + datos de ejemplo) |
+| `database/siga_uc.sql` | Referencia de esquema; no se carga con el completo |
+| `database/migracion_*.sql` | Parches idempotentes para bases existentes |
 | `database/siga_uc_backup.sql` | Backup local (ignorado) |
 
 ---

@@ -468,7 +468,7 @@ duplicación de lógica. El movimiento de caja solo lo crea el trigger.
 
 ---
 
-## 7. Datos semilla (`siga_uc_completo.sql`)
+## 7. Datos de ejemplo (`siga_uc_completo.sql`)
 
 | Entidad | Registros | Detalle |
 |---|---|---|
@@ -537,16 +537,18 @@ ORDER BY event_object_table;
 ## 9. Restauración
 
 ```powershell
-# Crear base
+# Instalación nueva: un solo dump completo + migraciones en orden
 createdb -U postgres siga_uc
 
-# Solo estructura
-psql -U postgres -d siga_uc -f database/siga_uc.sql
-
-# Estructura + datos de prueba
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 ```
 
-> `siga_uc.sql` incluye la meta-orden `\restrict` de `pg_dump` 18. Si se restaura con una
+> `siga_uc_completo.sql` ya contiene esquema, funciones e índices. **No** cargar
+> `siga_uc.sql` junto con él: es solo la referencia del esquema. Las migraciones son
+> idempotentes y se aplican en orden.
+>
+> `siga_uc.sql` incluye la meta-orden `\restrict` de `pg_dump` 18. Si se consulta con una
 > versión anterior de `psql`, puede fallar; en ese caso usar `siga_uc_completo.sql` o eliminar
 > esa línea.

@@ -61,18 +61,25 @@ Instalar Angular CLI 21 globalmente:
 2. Clic derecho en Databases > Create > Database.
 3. Configura: Database = siga_uc, Owner = postgres, Encoding = UTF8, Template = template0.
 4. Clic derecho sobre siga_uc > Query Tool.
-5. Abre database/siga_uc.sql y ejecútalo con F5.
+5. Abre `database/siga_uc_completo.sql` y ejecútalo con F5 (es el dump completo:
+   esquema + datos + funciones + índices).
+6. Ejecuta después, en orden, las migraciones de `database/migracion_*.sql`.
 
 ### Opción B — Con CMD
 
     createdb -U postgres siga_uc
-    psql -U postgres -d siga_uc -f C:\ruta\a\siga-uc\database\siga_uc.sql
+    psql -U postgres -d siga_uc -f C:\ruta\a\siga-uc\database\siga_uc_completo.sql
+    psql -U postgres -d siga_uc -f C:\ruta\a\siga-uc\database\migracion_h32_anulacion_pagos.sql
+    psql -U postgres -d siga_uc -f C:\ruta\a\siga-uc\database\migracion_h10_h38_concurrencia_pagos.sql
+
+> No cargar `database/siga_uc.sql` junto con el completo: es solo la referencia del esquema
+> y provocaría errores de “ya existe”.
 
 Verificar:
 
     psql -U postgres -d siga_uc -c "\dt"
 
-Debe mostrar 26 tablas.
+Debe mostrar 39 tablas.
 
 ---
 

@@ -23,7 +23,7 @@ Digitaliza procesos académicos y administrativos: matrículas, notas por compet
 ## Estructura del proyecto
 
 siga-uc/
-├── database/            # Scripts SQL (siga_uc.sql)
+├── database/            # siga_uc_completo.sql (instalación) y migraciones
 ├── docs/                # Documentación
 │   ├── INSTALACION.md
 │   ├── GUIA_TESTEO.md

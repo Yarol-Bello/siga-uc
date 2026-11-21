@@ -1,61 +1,77 @@
 # Base de Datos SIGA-UC
 
-Base de datos relacional del Sistema Integrado de Gestión Académica de la I.E.P. Unión Científica.
+Base de datos PostgreSQL 18 del Sistema Integrado de Gestión Académica de la
+I.E.P. Unión Científica.
 
-## 📁 Archivos
+## Instalación nueva (secuencia oficial)
 
-| Archivo              | Descripción                                                             | Versionado en Git     |
-| -------------------- | ----------------------------------------------------------------------- | --------------------- |
-| `siga_uc.sql`        | Esquema completo (26 tablas, 11 funciones/triggers, índices, sin datos) | ✅ Sí                 |
-| `siga_uc_backup.sql` | Backup completo con datos de prueba (~370 registros)                    | ❌ No (por seguridad) |
+`database/siga_uc_completo.sql` es un **dump completo**: crea el esquema (39 tablas),
+funciones, triggers, índices y carga los datos de ejemplo. **No se carga junto con
+`siga_uc.sql`.**
 
-> **Nota**: El archivo `siga_uc_backup.sql` está ignorado por Git mediante la regla `database/*_backup.sql` en el `.gitignore`. Esto evita subir datos sensibles al repositorio.
+```powershell
+# Windows / PowerShell
+createdb -U postgres siga_uc
 
-## 🛠️ Tecnología
-
-| Componente   | Versión           |
-| ------------ | ----------------- |
-| PostgreSQL   | 18.4              |
-| Encoding     | UTF8              |
-| Zona horaria | America/Lima      |
-| Extensión    | pgcrypto (bcrypt) |
-
-## 🗂️ Estructura de la Base de Datos
-
-### Módulos y tablas (26 en total)
-
-| Módulo             | Tablas                                                                                                                                     |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Seguridad**      | `roles`, `usuarios`, `recuperacion_password`, `personal`, `asistencia_personal`, `bitacora_auditoria`, `notificaciones`, `credenciales_qr` |
-| **Curricular**     | `grados`, `cursos`, `competencias`, `carga_curricular`, `tutores_grado`, `horarios`, `escala_calificacion`                                 |
-| **Alumnos**        | `apoderados`, `alumnos`, `expediente_alumno`                                                                                               |
-| **Asistencia**     | `asistencia_alumnos`, `resumen_asistencia_curso`                                                                                           |
-| **Calificaciones** | `calificaciones`, `notas_finales_area`, `conclusiones_descriptivas`, `actas_bimestrales`, `libretas`                                       |
-| **Tesorería**      | `conceptos_pago`, `becas`, `pensiones`, `pre_tickets`, `pagos`, `boletas_electronicas`                                                     |
-| **Caja**           | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja`                                                                              |
-| **SIAGIE**         | `exportaciones_siagie`, `estado_carga_docentes`                                                                                            |
-| **Reportes**       | `cuadro_merito`, `alumnos_riesgo`                                                                                                          |
-
-### Funciones y Triggers (11)
-
-| Objeto                     | Tipo    | Propósito                                |
-| -------------------------- | ------- | ---------------------------------------- |
-| `trg_actualizar_timestamp` | Función | Actualiza `fecha_actualizacion`          |
-| `trg_usuarios_actualizar`  | Trigger | Auto-update timestamps en usuarios       |
-| `trg_auditar_calificacion` | Función | Auditoría de cambios en notas            |
-| `trg_calificaciones_audit` | Trigger | Registra en bitácora                     |
-| `trg_actualizar_preticket` | Función | Marca pre-ticket como pagado             |
-| `trg_pagos_preticket`      | Trigger | Auto-update estado                       |
-| `trg_actualizar_pension`   | Función | Marca pensión como pagada                |
-| `trg_pagos_pension`        | Trigger | Auto-update estado                       |
-| `trg_pago_a_caja`          | Función | Registra ingreso en caja                 |
-| `trg_pagos_mov_caja`       | Trigger | Auto-insert movimiento                   |
-| `calcular_nota_final_area` | Función | Cálculo de predominancia de competencias |
-
-## 🔄 Cómo restaurar la base de datos
-
-### Opción 1: Restaurar solo estructura (recomendado para desarrollo)
+psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+# ...y las migraciones futuras, en orden.
+```
 
 ```bash
-psql -U postgres -h localhost -d siga_uc -f siga_uc.sql# Base de Datos SIGA-UC
+# Linux / macOS
+createdb -U postgres siga_uc
+
+psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 ```
+
+> Ejecutar `siga_uc.sql` antes del completo **falla**: el dump vuelve a crear
+> `calcular_nota_final_area`, triggers e índices que ya existirían.
+
+## Archivos
+
+| Archivo | Uso |
+|---|---|
+| `siga_uc_completo.sql` | **Instalación completa**: esquema + datos de ejemplo + funciones/índices. Es el archivo que se carga en una BD nueva. |
+| `siga_uc.sql` | **Referencia de esquema** (39 tablas, sin datos). Sirve para consultar/versionar la estructura; **no se carga junto con el completo**. |
+| `migracion_*.sql` | Parches **idempotentes** para bases existentes. Se aplican en orden después del dump o de la migración anterior. |
+| `migracion_h32_anulacion_pagos.sql` | Añade campos de anulación en `pagos` y `ANULADO` en `boletas_electronicas`. |
+| `migracion_h10_h38_concurrencia_pagos.sql` | Crea `UNIQUE (serie, numero)` y `ux_pago_pension_activo` si no hay duplicados; avisa y omite el índice si los hay. |
+| `fix_tesoreria_pagos.sql` | **Histórico**: corrige el trigger de caja y genera pre-tickets de matrícula. Ya está incorporado en `siga_uc_completo.sql`; no se ejecuta en instalaciones nuevas. |
+| `preparar_anio_lectivo.sql` | Utilidad idempotente para copiar conceptos `MATRICULA`/`PENSION` a un año nuevo (`-v anio=2027`). |
+| `siga_uc_backup.sql` | Backup local con datos. Ignorado por Git; no se usa para instalar. |
+
+## Verificación
+
+```sql
+-- 39 tablas
+SELECT COUNT(*) FROM information_schema.tables
+WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
+
+-- Índice de doble pago (si no había duplicados históricos)
+SELECT indexname FROM pg_indexes
+WHERE indexname = 'ux_pago_pension_activo';
+```
+
+## Migraciones sobre una base existente
+
+1. Hacer backup: `cd siga-uc-backend && npm run backup`.
+2. Ejecutar solo las migraciones pendientes, en orden.
+3. Verificar que no queden objetos duplicados ni errores.
+
+Las migraciones no eliminan datos ni vuelven a crear el esquema.
+
+## Tecnología
+
+| Componente | Versión |
+|---|---|
+| PostgreSQL | 18.4 |
+| Encoding | UTF8 |
+| Zona horaria | America/Lima |
+| Extensiones | `pgcrypto`, `unaccent`, `uuid-ossp` |
+
+Los usuarios y contraseñas de ejemplo están en `docs/CREDENCIALES.md` y solo
+aplican a bases de demostración.

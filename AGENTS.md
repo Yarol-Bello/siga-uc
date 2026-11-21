@@ -2,7 +2,7 @@
 
 > Documentación detallada: **`documentacion/README.md`**.
 > Fuente de verdad: **el código** (`siga-uc-backend`, `siga-uc-frontend`) y
-> `database/siga_uc.sql`. Si este resumen difiere del código, manda el código.
+> `database/siga_uc_completo.sql`. Si este resumen difiere del código, manda el código.
 
 ---
 
@@ -41,7 +41,7 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 
 ```text
 siga-uc/
-├── database/          siga_uc.sql (esquema), siga_uc_completo.sql (seeds)
+├── database/          siga_uc_completo.sql (instalación), siga_uc.sql (referencia), migraciones
 ├── docs/              documentación operativa previa (parcialmente desactualizada)
 ├── documentacion/     documentación detallada y vigente
 ├── siga-uc-backend/   API REST
@@ -72,13 +72,18 @@ npm install
 ng serve
 ```
 
-Base de datos:
+Base de datos (instalación nueva, secuencia oficial):
 
 ```powershell
 createdb -U postgres siga_uc
-psql -U postgres -d siga_uc -f database/siga_uc.sql
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 ```
+
+> `siga_uc_completo.sql` es un **dump completo** (esquema + datos + funciones + índices).
+> **No** cargar `siga_uc.sql` junto con él: es solo la referencia del esquema. Las
+> migraciones son idempotentes y se aplican en orden. Detalle en `database/README.md`.
 
 Health check: `GET http://localhost:3000/api/health`.
 

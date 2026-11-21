@@ -30,6 +30,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 21/11/2026 (H10/H37/H38):** numeraciones protegidas con advisory locks,
 > coherencia mes/año concepto-pensión y bloqueo del doble pago; H10, H37 y H38 resueltos.
+>
+> **Actualización 21/11/2026 (H40):** secuencia de instalación corregida; `siga_uc_completo.sql`
+> es el dump completo y `siga_uc.sql` queda solo como referencia de esquema.
 
 ---
 
@@ -453,6 +456,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Calcular la fecha local con `toLocaleDateString('en-CA')` y fijar `timezone=America/Lima` en las sesiones del pool |
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (21/11/2026): helper `core/utils/fecha.util.ts` usado en los 4 puntos; `database.js` añade `options: "-c timezone=America/Lima"` y verifica `SHOW timezone` al arrancar (warning si no coincide) |
+
+### H40 — Documentación de instalación incorrecta
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | AGENTS §4 y `documentacion/12` indicaban cargar `siga_uc.sql` y después `siga_uc_completo.sql`; este último es un dump completo (esquema + datos + funciones + índices) y falla con “ya existe una función «calcular_nota_final_area»” |
+| Impacto | Una instalación nueva siguiendo la documentación no funciona |
+| Recomendación | Una sola secuencia oficial: `siga_uc_completo.sql` + migraciones en orden; `siga_uc.sql` solo como referencia |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): `database/README.md`, AGENTS §4, docs 04/12 y HANDOFF actualizados; instalación verificada en `siga_uc_install_test` con 39 tablas e índice `ux_pago_pension_activo` |
 
 ---
 
