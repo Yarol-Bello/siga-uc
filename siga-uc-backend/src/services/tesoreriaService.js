@@ -194,7 +194,15 @@ const registrarPago = async (data) => {
     }
 
     if (pension.estado !== "PENDIENTE") {
-      const error = new Error("La pensión ya está pagada.");
+      let mensaje = "La pensión no está disponible para pago.";
+
+      if (pension.estado === "PAGADO") {
+        mensaje = "La pensión ya está pagada.";
+      } else if (pension.estado === "ANULADO") {
+        mensaje = "La pensión está anulada.";
+      }
+
+      const error = new Error(mensaje);
       error.statusCode = 400;
       throw error;
     }

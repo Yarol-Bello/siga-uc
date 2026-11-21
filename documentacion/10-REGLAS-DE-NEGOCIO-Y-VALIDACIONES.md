@@ -158,7 +158,7 @@ top = 10
 |---|---|---|---|
 | RN-80 | Tipos de concepto: MATRICULA, PENSION, OTROS | BD `CHECK` | — |
 | RN-81 | Mes de pensión 1–12 | BD `CHECK` | — |
-| RN-82 | Una pensión por alumno, año y mes | BD `UNIQUE` | `DO NOTHING` |
+| RN-82 | Una pensión por alumno, año y mes | BD `UNIQUE` | `DO NOTHING`, salvo `ANULADO` que vuelve a `PENDIENTE` (H45) |
 | RN-83 | Solo se generan pensiones para matriculados | Query | — |
 | RN-84 | La beca activa descuenta `monto_descuento` | Query de generación | Primera beca activa |
 | RN-85 | `monto_final = monto_base - descuento` | Query | — |
@@ -173,6 +173,10 @@ top = 10
 | RN-94 | No se valida monto contra pensión/concepto | Código actual | Brecha |
 | RN-95 | No se valida caja abierta para cobrar | Código actual | Brecha |
 | RN-96 | No hay anulación de pagos en UI | Código actual | Brecha |
+| RN-97 | El retiro anula pensiones `PENDIENTE` de meses posteriores al retiro | `alumnoDao.retirar` | La pensión del mes de retiro queda `PENDIENTE`; `PAGADO` no se toca |
+| RN-98 | El retiro anula todos los `pre_tickets PENDIENTE` | `alumnoDao.retirar` | Los `PAGADO` no se tocan |
+| RN-99 | Una pensión `ANULADO` no se puede cobrar | `tesoreriaService.registrarPago` | 400 “La pensión está anulada.” |
+| RN-100 | Al regenerar el cronograma, una pensión `ANULADO` vuelve a `PENDIENTE` | `tesoreriaDao.generarPensionesAlumno` | No cambia montos ni descuentos |
 
 ## 11. Caja
 

@@ -3,11 +3,11 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit base de esta sesión:** `de80dfd fix(tesoreria): generar pensiones del alumno al matricular (H44)`
-- **Commit de esta sesión:** `fix(personal): especialidad solo para docentes y roles de personal (H46)`
+- **Commit base de esta sesión:** `cafcda4 fix(personal): especialidad solo para docentes y roles de personal (H46)`
+- **Commit de esta sesión:** `fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)`
   (el hash exacto queda en `git log -1`).
-- **Estado:** especialidad restringida a DOCENTE, roles de Personal limitados a 1-3 y UI
-  ajustada; verificado con base desechable y navegador; árbol limpio.
+- **Estado:** retiro anula deuda futura en una transacción, UI y migración H45 verificadas;
+  árbol limpio.
 
 ---
 
@@ -70,6 +70,12 @@
   DOCENTE. Verificación en `siga_uc_h46`: **8 PASS** de API + UI (campo condicional,
   lista y cese). En local existe **1** usuario no docente con especialidad
   (SECRETARIA, id_usuario 2); no se modificó.
+- H45: el retiro anula en la misma transacción las pensiones `PENDIENTE` de meses
+  posteriores al retiro y todos los `pre_tickets PENDIENTE`; la pensión del mes de
+  retiro queda `PENDIENTE` y los `PAGADO` no se tocan. La respuesta y la auditoría
+  `RETIRAR` incluyen `pensiones_anuladas` y `pretickets_anulados`. Verificación en
+  `siga_uc_h45`: **8 PASS** de API + UI (Nov→Dic anulada, retiro en Dic, PAGADO intacto,
+  pre-tickets/KPI, pago 400, rollback, reactivación y migración dos veces).
 
 ---
 
@@ -105,6 +111,7 @@
 | H43 | Resets de contraseña por ADMIN auditados | `fix(seguridad): auditar resets de contraseña por admin (H43)` |
 | H44 | Pensiones por alumno generadas al matricular y por botón manual | `fix(tesoreria): generar pensiones del alumno al matricular (H44)` |
 | H46 | Especialidad solo para DOCENTE y roles de Personal 1-3 | `fix(personal): especialidad solo para docentes y roles de personal (H46)` |
+| H45 | Anulación de pensiones/pre-tickets futuros al retirar | `fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)` |
 
 ---
 
@@ -149,7 +156,8 @@
   ~146 pensiones PAGADO sin pago). **Nunca en producción.**
 - **Producción:** `siga_uc.sql` → `seed_produccion.sql` (con `-v admin_password`) →
   `migracion_h32_anulacion_pagos.sql` → `migracion_h10_h38_concurrencia_pagos.sql` →
-  `migracion_h07_auditoria.sql` → migraciones futuras, en ese orden.
+  `migracion_h07_auditoria.sql` → `migracion_h45_pensiones_anuladas.sql` →
+  migraciones futuras, en ese orden.
 - No mezclar ambos escenarios: `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes.
 - `seed_produccion.sql` crea una ficha `personal` mínima del admin porque
   `carga_curricular.id_personal` es NOT NULL; la carga inicial queda asignada al admin
@@ -207,6 +215,13 @@
   docente (SECRETARIA, id_usuario 2) con especialidad “Auxiliar Administrativo”; se
   limpiará cuando el dueño edite esa ficha. No se tocaron roles ni nombres.
 - El carné y el QR no se modificaron en H46.
+- H45: la pensión del **mes de retiro** se mantiene `PENDIENTE` y se cobra completa;
+  solo se anulan meses posteriores. Los `pre_tickets PENDIENTE` se anulan todos.
+  Pagar una pensión `ANULADO` responde 400 “La pensión está anulada.”.
+- H45: al regenerar el cronograma de un alumno, `ON CONFLICT` cambia `ANULADO` a
+  `PENDIENTE` sin tocar montos ni descuentos. El generador mensual global no cambió.
+- La migración H45 se aplicó dos veces en `siga_uc_h45` (idempotente) y la base se
+  eliminó; `siga_uc` no se tocó.
 
 ---
 
@@ -268,5 +283,6 @@ psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 cd siga-uc-backend; npm run test:integridad   # 10 PASS
 ```

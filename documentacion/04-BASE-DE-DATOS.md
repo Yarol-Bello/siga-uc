@@ -291,8 +291,9 @@ default `true`.
 #### `pensiones`
 `id_pension` PK · `id_alumno` FK → `alumnos` ON DELETE CASCADE · `anio_lectivo` · `mes`
 CHECK 1–12 · `monto_base` · `descuento` default 0 · `monto_final` · `estado` CHECK
-`PAGADO/PENDIENTE` default `PENDIENTE` · `id_beca` FK → `becas` ON DELETE SET NULL · UNIQUE
-(`id_alumno`, `anio_lectivo`, `mes`).
+`PAGADO/PENDIENTE/ANULADO` default `PENDIENTE` · `id_beca` FK → `becas` ON DELETE SET NULL · UNIQUE
+(`id_alumno`, `anio_lectivo`, `mes`). Las pensiones `ANULADO` no se cobran y pueden
+volver a `PENDIENTE` al regenerar el cronograma (H45).
 
 #### `pre_tickets`
 `id_preticket` PK · `id_alumno` FK → `alumnos` ON DELETE CASCADE · `id_concepto` FK →
@@ -374,7 +375,7 @@ FK → `personal` ON DELETE SET NULL · `accion_correctiva` text · UNIQUE (`id_
 | `conceptos_pago` | `tipo` | MATRICULA, PENSION, OTROS |
 | `conceptos_pago` | `mes` | 1–12 o NULL |
 | `pensiones` | `mes` | 1–12 |
-| `pensiones` | `estado` | PAGADO, PENDIENTE |
+| `pensiones` | `estado` | PAGADO, PENDIENTE, ANULADO |
 | `pre_tickets` | `estado` | PENDIENTE, PAGADO, ANULADO |
 | `pagos` | `forma_pago` | Efectivo, Yape, Plin, Interbank, BCP, BBVA |
 | `pagos` | `estado` | PAGADO, ANULADO |

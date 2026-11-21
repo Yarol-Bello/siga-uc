@@ -259,6 +259,12 @@ Cada layout contiene:
 >   pendientes mantiene el flujo de cobro actual.
 >
 > Los errores de generación se muestran inline dentro del modal.
+>
+> Con el alumno **Retirado**, el estado general muestra “Retirado” antes de evaluar
+> deudas. Las pensiones `ANULADO` se pintan en gris con `×` (“Anulada”), no cuentan como
+> pendientes y no aparecen en el selector de cobro (solo se ofrecen `PENDIENTE`). El
+> modal de retiro de Admin → Alumnos avisa que se anularán las pensiones y pre-tickets
+> pendientes de meses posteriores al retiro, manteniendo la pensión del mes de retiro.
 | `SecretariaTesoreriaComponent` | `GET /alumnos`, `GET /tesoreria/pensiones/alumno/:id` (N+1), `GET /tesoreria/pre-tickets`, `POST /tesoreria/pagos`, `POST /tesoreria/pensiones/alumno/:id/generar` |
 | `SecretariaCajaComponent` | `GET /caja/actual`, `GET /caja/movimientos/:id`, `POST /caja/aperturar`, `POST /caja/egresos`, `POST /caja/cerrar`, `GET /tesoreria/boletas/:id/pdf` |
 

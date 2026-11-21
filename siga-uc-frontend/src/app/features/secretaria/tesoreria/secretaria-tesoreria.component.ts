@@ -209,6 +209,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
    * Calcular estado general de un alumno
    */
   calcularEstadoGeneral(pensiones: Pension[], estadoMatricula: string): string {
+    if (estadoMatricula === 'Retirado') return 'Retirado';
     if (estadoMatricula === 'PendientePago') return 'Pendiente de Pago';
     if (pensiones.length === 0) return 'Sin datos';
     const pendientes = pensiones.filter((p) => p.estado === 'PENDIENTE').length;
@@ -223,7 +224,9 @@ export class SecretariaTesoreriaComponent implements OnInit {
   getEstadoMes(alumno: AlumnoConPensiones, mes: number): string {
     const pension = alumno.pensiones.find((p) => p.mes === mes);
     if (!pension) return 'no-aplica';
-    return pension.estado === 'PAGADO' ? 'pagado' : 'pendiente';
+    if (pension.estado === 'PAGADO') return 'pagado';
+    if (pension.estado === 'ANULADO') return 'anulado';
+    return 'pendiente';
   }
 
   /**
@@ -314,7 +317,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
     alumno: AlumnoConPensiones,
   ): ConceptoDisponible[] {
     return alumno.pensiones
-      .filter((p) => p.estado !== 'PAGADO' && p.id_concepto)
+      .filter((p) => p.estado === 'PENDIENTE' && p.id_concepto)
       .map((p) => ({
         id_concepto: Number(p.id_concepto),
         id_pension: p.id_pension,
@@ -504,6 +507,8 @@ export class SecretariaTesoreriaComponent implements OnInit {
         return 'moroso';
       case 'Pendiente de Pago':
         return 'con-deuda';
+      case 'Retirado':
+        return 'retirado';
       default:
         return 'sin-datos';
     }

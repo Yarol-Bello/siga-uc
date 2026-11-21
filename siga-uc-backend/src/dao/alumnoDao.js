@@ -391,6 +391,7 @@ const retirar = async (id, data) => {
   try {
     await client.query("BEGIN");
 
+    const fechaRetiro = data.fecha_retiro || new Date();
     const sql = `
       UPDATE alumnos SET
         estado_matricula = 'Retirado',
@@ -401,7 +402,7 @@ const retirar = async (id, data) => {
       WHERE id_alumno = $5 RETURNING *
     `;
     const result = await client.query(sql, [
-      data.fecha_retiro || new Date(),
+      fechaRetiro,
       data.motivo_retiro,
       data.colegio_destino || null,
       data.resolucion_directoral || null,
@@ -426,8 +427,29 @@ const retirar = async (id, data) => {
       [id],
     );
 
+    // Anular pensiones pendientes posteriores al mes de retiro.
+    const pensionesResult = await client.query(
+      `UPDATE pensiones SET estado = 'ANULADO'
+       WHERE id_alumno = $1
+         AND anio_lectivo = $2
+         AND estado = 'PENDIENTE'
+         AND mes > EXTRACT(MONTH FROM $3::date)::int`,
+      [id, alumno.anio_lectivo, fechaRetiro],
+    );
+
+    // Anular pre-tickets pendientes del alumno.
+    const preticketsResult = await client.query(
+      `UPDATE pre_tickets SET estado = 'ANULADO'
+       WHERE id_alumno = $1 AND estado = 'PENDIENTE'`,
+      [id],
+    );
+
     await client.query("COMMIT");
-    return alumno;
+    return {
+      alumno,
+      pensiones_anuladas: pensionesResult.rowCount,
+      pretickets_anulados: preticketsResult.rowCount,
+    };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

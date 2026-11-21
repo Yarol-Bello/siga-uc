@@ -113,6 +113,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -126,6 +127,7 @@ psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -532,6 +534,7 @@ Crear una tarea diaria a las 02:00:
 | `database/siga_uc_completo.sql` | Demo: esquema + datos ficticios; no usar en producción |
 | `database/siga_uc.sql` | Esquema base para producción (39 tablas, sin datos) |
 | `database/seed_produccion.sql` | Catálogos + admin inicial; requiere `-v admin_password` |
+| `database/migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` a pensiones y regulariza deuda futura de retirados |
 | `database/migracion_*.sql` | Parches idempotentes para bases existentes |
 | `database/siga_uc_backup.sql` | Backup local (ignorado) |
 

@@ -1638,7 +1638,7 @@ CREATE TABLE public.pensiones (
     monto_final numeric(10,2) NOT NULL,
     estado character varying(20) DEFAULT 'PENDIENTE'::character varying NOT NULL,
     id_beca integer,
-    CONSTRAINT chk_pension_estado CHECK (((estado)::text = ANY ((ARRAY['PAGADO'::character varying, 'PENDIENTE'::character varying])::text[]))),
+    CONSTRAINT chk_pension_estado CHECK (((estado)::text = ANY ((ARRAY['PAGADO'::character varying, 'PENDIENTE'::character varying, 'ANULADO'::character varying])::text[]))),
     CONSTRAINT chk_pension_mes CHECK (((mes >= 1) AND (mes <= 12)))
 );
 

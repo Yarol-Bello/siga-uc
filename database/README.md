@@ -17,6 +17,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -31,6 +32,7 @@ psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 ```
 
 `seed_produccion.sql` crea únicamente catálogos y configuración: 4 roles, 5 grados, 11 cursos,
@@ -63,6 +65,7 @@ caja, bitácora ni becas.
 | `migracion_h32_anulacion_pagos.sql` | Añade campos de anulación en `pagos` y `ANULADO` en `boletas_electronicas`. |
 | `migracion_h10_h38_concurrencia_pagos.sql` | Crea `UNIQUE (serie, numero)` y `ux_pago_pension_activo` si no hay duplicados; avisa y omite el índice si los hay. |
 | `migracion_h07_auditoria.sql` | Índices `ix_bitacora_fecha` e `ix_bitacora_usuario` para la bitácora. |
+| `migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` al CHECK de `pensiones` y regulariza deuda futura de alumnos ya retirados. |
 | `fix_tesoreria_pagos.sql` | **Histórico**: corrige el trigger de caja y genera pre-tickets de matrícula. Ya está incorporado en el esquema actual (`siga_uc.sql`) y en el dump; no se ejecuta en instalaciones nuevas. |
 | `preparar_anio_lectivo.sql` | Utilidad idempotente para copiar conceptos `MATRICULA`/`PENSION` a un año nuevo (`-v anio=2027`). |
 | `siga_uc_backup.sql` | Backup local con datos. Ignorado por Git; no se usa para instalar. |

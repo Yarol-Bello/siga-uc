@@ -384,7 +384,9 @@ const generarPensionesAlumno = async (id_alumno, client = null) => {
     WHERE a.id_alumno = $1
       AND a.estado_matricula = 'Matriculado'
       AND c.mes >= EXTRACT(MONTH FROM a.fecha_creacion)::int
-    ON CONFLICT (id_alumno, anio_lectivo, mes) DO NOTHING
+    ON CONFLICT (id_alumno, anio_lectivo, mes)
+    DO UPDATE SET estado = 'PENDIENTE'
+    WHERE pensiones.estado = 'ANULADO'
   `;
 
   const result = await ejecutar(sql, [id_alumno]);

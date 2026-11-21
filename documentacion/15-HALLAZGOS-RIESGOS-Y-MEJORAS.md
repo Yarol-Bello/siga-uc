@@ -514,6 +514,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Esfuerzo | M |
 | Estado | ✅ Resuelto (21/11/2026): `generarPensionesAlumno` crea desde el mes de `fecha_creacion` hasta diciembre, solo meses con concepto `PENSION` y con beca; se ejecuta al matricular y desde el botón manual. Verificado: Nov/Dic automáticos, marzo-diciembre 10, idempotencia, pagos fuera de orden, rollback total y UI con “Generar pensiones”/“Al día” |
 
+### H45 — Pensiones y pre-tickets futuros quedan como deuda al retirar
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | `alumnoDao.retirar` marcaba al alumno `Retirado`, pero no anulaba las pensiones `PENDIENTE` de meses futuros ni los `pre_tickets PENDIENTE`; el estado `ANULADO` no existía para pensiones |
+| Impacto | Alumnos retirados seguían apareciendo con deuda futura y pre-tickets cobrables para siempre |
+| Recomendación | Anular pensiones futuras y pre-tickets pendientes en la misma transacción; pensión del mes de retiro se mantiene; permitir restaurar `ANULADO` al regenerar |
+| Esfuerzo | M |
+| Estado | ✅ Resuelto (21/11/2026): migración H45 (CHECK + backfill), retiro transaccional con conteos y auditoría, pago rechaza `ANULADO`, generador restaura `ANULADO` y UI muestra “Anulada”/“Retirado”. Verificado con 8 PASS de API + UI y migración ejecutada dos veces |
+
 ### H46 — Especialidad y rol del personal desalineados
 
 | Campo | Detalle |

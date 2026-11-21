@@ -83,6 +83,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
@@ -91,6 +92,7 @@ psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 ```
 
 > `siga_uc_completo.sql` es el **dump de demo** (esquema + 21 alumnos ficticios +

@@ -179,11 +179,16 @@ Nuevo → PendientePago ──(pago MATRICULA)──> Matriculado
      `colegio_destino`, `resolucion_directoral`
    - `usuarios.estado = 'INACTIVO'` (login y JWT en curso quedan bloqueados)
    - `expediente_alumno.congelado = TRUE`
-4. Devuelve el alumno. Si falla cualquier update, `ROLLBACK` total.
+   - `pensiones`: `ANULADO` para las `PENDIENTE` de meses **posteriores** al mes de
+     retiro. La pensión del mes de retiro queda `PENDIENTE`. Las `PAGADO` no se tocan.
+   - `pre_tickets`: `ANULADO` para todos los `PENDIENTE`. Los `PAGADO` no se tocan.
+4. Devuelve el alumno más `pensiones_anuladas` y `pretickets_anulados`; la auditoría
+   `RETIRAR` incluye ambos conteos.
+5. Si falla cualquier update, `ROLLBACK` total: el alumno no queda retirado ni el
+   expediente congelado.
 
-**Efectos colaterales no implementados**
+**Efectos colaterales**
 
-- No anula pensiones/pre-tickets pendientes.
 - No retira de carga/asistencia histórica (se conserva).
 
 ---
@@ -595,11 +600,13 @@ si no      → C
    lectivo. Nunca crea meses anteriores a la creación.
 4. Solo crea meses con concepto `PENSION` y aplica la beca activa.
 5. Es idempotente por `(id_alumno, anio_lectivo, mes)`.
-6. La pensión del mes de matrícula se cobra completa, sin prorrateo.
-7. No se exige orden cronológico para pagar.
-8. Si la generación falla al pagar matrícula, **toda la transacción hace ROLLBACK**:
+6. Si una pensión existente está `ANULADO`, el `ON CONFLICT` la vuelve a `PENDIENTE`
+   (reactivación / re-matrícula). No modifica montos ni descuentos.
+7. La pensión del mes de matrícula se cobra completa, sin prorrateo.
+8. No se exige orden cronológico para pagar.
+9. Si la generación falla al pagar matrícula, **toda la transacción hace ROLLBACK**:
    el alumno no queda `Matriculado` sin cronograma.
-9. La generación manual responde `{ generadas, total_pensiones }`, valida `404`
+10. La generación manual responde `{ generadas, total_pensiones }`, valida `404`
    (alumno inexistente) y `400` (no matriculado), y audita `CREAR` en `Tesorería`.
 
 En la UI de Secretaría, el detalle del alumno muestra:
@@ -629,6 +636,9 @@ pendientes → el flujo de cobro actual.
 - `id_alumno`, `id_concepto`, `monto`, `forma_pago`.
 - Alumno existe.
 - Concepto existe → se obtiene `tipo`.
+- Pensión: solo se acepta `PENDIENTE`. `PAGADO` → 400 “La pensión ya está pagada.”;
+  `ANULADO` → 400 “La pensión está anulada.”; otro estado → 400 “La pensión no está
+  disponible para pago.”.
 
 **Pasos**
 

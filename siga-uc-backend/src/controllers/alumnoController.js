@@ -198,7 +198,11 @@ const actualizar = async (req, res) => {
 const retirar = async (req, res) => {
   try {
     const anterior = await alumnoService.obtener(req.params.id);
-    const alumno = await alumnoService.retirar(req.params.id, req.body);
+    const {
+      alumno,
+      pensiones_anuladas = 0,
+      pretickets_anulados = 0,
+    } = await alumnoService.retirar(req.params.id, req.body);
 
     await auditoriaService.registrarSeguro(req, {
       modulo: "Alumnos",
@@ -211,6 +215,8 @@ const retirar = async (req, res) => {
         estado_matricula: "Retirado",
         motivo: req.body.motivo_retiro,
         destino: req.body.colegio_destino || null,
+        pensiones_anuladas,
+        pretickets_anulados,
       },
     });
 
@@ -218,7 +224,11 @@ const retirar = async (req, res) => {
       res,
       200,
       "Retiro registrado. Expediente congelado.",
-      alumno,
+      {
+        ...alumno,
+        pensiones_anuladas,
+        pretickets_anulados,
+      },
     );
   } catch (error) {
     console.error("❌ Error al retirar alumno:", error);
