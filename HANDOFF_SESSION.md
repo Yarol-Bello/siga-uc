@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `fix(fechas): calcular fechas de negocio en hora de Lima (H39)` |
 | `(sesión H15)` | `chore(infra): endurecer conexion, logs y arranque para produccion` |
 | `(sesión H15)` | `fix(tesoreria,auth): exigir pago completo de pensiones y limitar validar-token (H09, H03)` |
 | `(sesión H15)` | `fix(alumnos): sincronizar estado de usuario al retirar y editar (H19, H20)` |
@@ -275,6 +276,16 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   queries >500 ms, `unhandledRejection` sin exit y `uncaughtException`/`SIGTERM` con cierre
   ordenado del pool.
 
+#### H39 — Fechas de negocio en hora de Lima (21/11/2026)
+
+- Los 4 inputs de fecha usan el helper `core/utils/fecha.util.ts` (`toLocaleDateString('en-CA')`)
+  en lugar de `toISOString().split('T')[0]`.
+- El pool de PostgreSQL fija `options: "-c timezone=America/Lima"` y `testConnection` verifica
+  `SHOW timezone`, emitiendo warning si la sesión no es Lima.
+- `TZ=America/Lima` debe definirse en el entorno del proceso (Windows y Render); en JS llega
+  tarde. Las columnas son `timestamp without time zone`: cambiar la zona de la BD solo afecta a
+  valores nuevos.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -334,6 +345,10 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   producción abortó con JWT corto y también sin `FRONTEND_URL` (exit 1); TZ=UTC emitió el
   warning; morgan `combined` mostró id de 8 caracteres y se registró una query de 723 ms;
   `SIGTERM` cerró el pool (exit 0); `npm run backup` generó 143.7 KB. Backup de prueba eliminado.
+- H39: con el backend en `TZ=UTC`, `SHOW timezone` devolvió `America/Lima`; para el instante
+  20:00 Lima del 2026-11-20 el método viejo daba `2026-11-21` y el nuevo `2026-11-20`; la
+  asistencia se guardó con `fecha=2026-11-20` y `fecha_registro=2026-11-21 07:16:50` (Lima).
+  Los 4 inputs mostraron `2026-11-21` (hoy en Lima). Datos temporales eliminados.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

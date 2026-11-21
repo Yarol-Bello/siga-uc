@@ -38,6 +38,9 @@ const configuracionPool = {
     process.env.DB_CONNECTION_TIMEOUT_MS,
     5000,
   ),
+  // Todas las sesiones del pool trabajan en hora de Lima. Funciona también
+  // cuando la conexión se define con DATABASE_URL.
+  options: "-c timezone=America/Lima",
 };
 
 if (databaseUrl) {
@@ -143,6 +146,18 @@ const testConnection = async () => {
     console.log("   Conexión:", describirConexion());
     console.log("   Hora del servidor:", result.rows[0].ahora);
     console.log("   Versión PostgreSQL:", result.rows[0].version.split(",")[0]);
+
+    // Verificar que la sesión del pool use la zona de negocio.
+    const zonaResult = await pool.query("SHOW timezone");
+    const zonaBd = zonaResult.rows[0]?.TimeZone;
+    if (zonaBd === "America/Lima") {
+      console.log("   Zona horaria BD:", zonaBd);
+    } else {
+      console.warn(
+        `⚠️ La sesión de PostgreSQL usa "${zonaBd}" en lugar de "America/Lima". Las fechas/horas de negocio podrían desfasarse.`,
+      );
+    }
+
     return true;
   } catch (error) {
     console.error(

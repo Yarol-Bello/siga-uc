@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { fechaLocalISO } from '../../../core/utils/fecha.util';
 
 interface Personal {
   id_personal: number;
@@ -280,7 +281,7 @@ export class AdminPersonalComponent implements OnInit {
     }
     this.personalCese.set(p);
     this.motivoCese.set('');
-    this.fechaCese.set(new Date().toISOString().split('T')[0]);
+    this.fechaCese.set(fechaLocalISO());
     this.modalCese.set(true);
   }
 

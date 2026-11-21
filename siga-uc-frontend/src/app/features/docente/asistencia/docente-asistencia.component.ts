@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { fechaLocalISO } from '../../../core/utils/fecha.util';
 
 interface AlumnoAsistencia {
   id_alumno: number;
@@ -54,7 +55,7 @@ export class DocenteAsistenciaComponent implements OnInit {
 
   // Selección
   cursoSeleccionado = signal<CursoAsignado | null>(null);
-  fecha = signal<string>(new Date().toISOString().split('T')[0]);
+  fecha = signal<string>(fechaLocalISO());
 
   // Cache de cambios (id_alumno -> {estado, observacion})
   cambios: { [key: number]: { estado: string; observacion: string } } = {};

@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
+import { fechaLocalISO } from '../../../core/utils/fecha.util';
 
 interface Alumno {
   id_alumno: number;
@@ -284,7 +285,7 @@ export class AdminAlumnosComponent implements OnInit {
     }
     this.retiroAlumno.set(alumno);
     this.motivoRetiro.set('');
-    this.fechaRetiro.set(new Date().toISOString().split('T')[0]);
+    this.fechaRetiro.set(fechaLocalISO());
     this.colegioDestino.set('');
     this.modalRetiro.set(true);
   }

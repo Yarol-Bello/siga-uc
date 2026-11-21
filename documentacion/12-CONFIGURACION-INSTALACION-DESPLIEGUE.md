@@ -38,7 +38,7 @@ desactualizado** (habla de SMTP; el código usa Resend).
 | `ANIO_LECTIVO` | Recomendada (default año calendario) | Año lectivo activo |
 | `APP_NAME` | No (`SIGA-UC`) | Health/branding |
 | `APP_VERSION` | No (`1.0.0`) | Health |
-| `TZ` | Recomendada | Debe definirse en el proceso (Render > Environment), no en JS |
+| `TZ` | Recomendada | Debe definirse en el entorno del proceso (Windows local y Render), no en JS |
 | `RESEND_API_KEY` | Para correos | API Resend |
 | `EMAIL_FROM` | Para correos | Remitente verificado |
 | `DATABASE_URL` | Opcional (API y backup) | Cadena completa; prioridad sobre `DB_*` |
@@ -247,6 +247,18 @@ transitorio del pool se registra y **no** tumba la API.
 también presente en los logs de error; se registran queries de más de 500 ms (sin parámetros).
 `unhandledRejection` se registra sin matar el proceso; `uncaughtException` y `SIGTERM` cierran
 el servidor y el pool de forma ordenada.
+
+**Fechas y zona horaria:** `TZ=America/Lima` debe existir en el **entorno del proceso**:
+
+- Windows local: `$env:TZ = "America/Lima"` antes de `npm run dev` (o definirla como variable
+  de usuario/sistema).
+- Render: Environment → `TZ=America/Lima`.
+
+Definir `TZ` desde JavaScript llega tarde: Node fija la zona al arrancar. Además, las columnas
+de fecha/hora son `timestamp without time zone`; cambiar la zona del servidor de BD en
+producción afecta a los valores **nuevos**, no a los ya guardados. El pool fija
+`timezone=America/Lima` y al arrancar se verifica con `SHOW timezone` (si no coincide, solo
+emite un warning).
 
 **Base de datos:** crear instancia PostgreSQL, ejecutar `siga_uc.sql` (y seeds si es demo).
 Verificar extensiones.

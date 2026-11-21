@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { fechaLocalISO } from '../../../core/utils/fecha.util';
 
 interface PersonalAsistencia {
   id_personal: number;
@@ -57,7 +58,7 @@ export class AdminAsistenciaQrComponent implements OnInit {
   error = signal<string | null>(null);
   personal = signal<PersonalAsistencia[]>([]);
   resumen = signal<Resumen | null>(null);
-  fechaActual = signal<string>(new Date().toISOString().split('T')[0]);
+  fechaActual = signal<string>(fechaLocalISO());
 
   // Escaneo
   dniEscaneado = signal('');

@@ -21,6 +21,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 21/11/2026 (cierre H03/H09):** H03 y H09 quedaron resueltos. Se añade H36
 > (rate limit de login por IP compartida en red escolar) solo como hallazgo documentado.
+>
+> **Actualización 21/11/2026 (H39):** las fechas de negocio se calculan en hora local y las
+> sesiones de PostgreSQL trabajan en `America/Lima`; H39 queda resuelto.
 
 ---
 
@@ -409,6 +412,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Detrás de una red escolar con NAT, 5 fallos de cualquier alumno bloquean el login de todo el colegio durante 15 minutos |
 | Recomendación | Clave por DNI/usuario combinada con IP, o límites más altos con backoff progresivo; revisar `trust proxy` en producción |
 | Esfuerzo | S |
+
+### H39 — Fechas de negocio calculadas en UTC
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | Cuatro pantallas usaban `new Date().toISOString().split('T')[0]` (`docente-asistencia:57`, `admin-asistencia-qr:60`, `admin-alumnos:287`, `admin-personal:283`), que devuelve la fecha UTC; el pool de PostgreSQL no fijaba la zona de sesión |
+| Impacto | Entre las 19:00 y 23:59 de Lima, la asistencia, el retiro y el cese se registraban con la fecha del día siguiente |
+| Recomendación | Calcular la fecha local con `toLocaleDateString('en-CA')` y fijar `timezone=America/Lima` en las sesiones del pool |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): helper `core/utils/fecha.util.ts` usado en los 4 puntos; `database.js` añade `options: "-c timezone=America/Lima"` y verifica `SHOW timezone` al arrancar (warning si no coincide) |
 
 ---
 
