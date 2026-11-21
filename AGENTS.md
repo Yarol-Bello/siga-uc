@@ -79,6 +79,7 @@ createdb -U postgres siga_uc
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 ```
 
 > `siga_uc_completo.sql` es un **dump completo** (esquema + datos + funciones + índices).

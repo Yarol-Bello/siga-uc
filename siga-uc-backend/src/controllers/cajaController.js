@@ -4,6 +4,7 @@
  */
 
 const cajaService = require("../services/cajaService");
+const auditoriaService = require("../services/auditoriaService");
 const response = require("../utils/response");
 
 const obtenerCajaAbierta = async (req, res) => {
@@ -62,6 +63,17 @@ const aperturar = async (req, res) => {
       ...req.body,
       id_usuario_apertura: req.usuario.id_usuario,
     });
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Caja",
+      accion: "ABRIR",
+      descripcion: `Caja aperturada: apertura #${data.id_apertura}`,
+      nuevo: {
+        id_apertura: data.id_apertura,
+        monto_inicial: Number(data.monto_inicial) || 0,
+      },
+    });
+
     return response.success(res, 201, "Caja aperturada exitosamente", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);
@@ -100,6 +112,19 @@ const cerrar = async (req, res) => {
       ...req.body,
       id_usuario_cierre: req.usuario.id_usuario,
     });
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Caja",
+      accion: "CERRAR",
+      descripcion: `Caja cerrada: apertura #${data.id_apertura}`,
+      nuevo: {
+        id_cierre: data.id_cierre,
+        id_apertura: data.id_apertura,
+        efectivo_fisico: Number(data.efectivo_fisico) || 0,
+        diferencia: Number(data.diferencia) || 0,
+      },
+    });
+
     return response.success(res, 200, "Caja cerrada exitosamente", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);

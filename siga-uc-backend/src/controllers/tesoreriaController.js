@@ -5,6 +5,7 @@
 
 const tesoreriaService = require("../services/tesoreriaService");
 const boletaPdfService = require("../services/boletaPdfService");
+const auditoriaService = require("../services/auditoriaService");
 const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
@@ -88,6 +89,24 @@ const anularPago = async (req, res) => {
       motivo: req.body?.motivo,
       id_usuario: req.usuario.id_usuario,
     });
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Tesorería",
+      accion: "ANULAR",
+      descripcion: `Pago anulado: ${data.pago.id_pago}`,
+      anterior: {
+        id_pago: data.pago.id_pago,
+        estado: "PAGADO",
+        monto: Number(data.pago.monto) || 0,
+        forma_pago: data.pago.forma_pago,
+      },
+      nuevo: {
+        id_pago: data.pago.id_pago,
+        estado: "ANULADO",
+        motivo: data.pago.motivo_anulacion,
+      },
+    });
+
     return response.success(res, 200, "Pago anulado correctamente", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);
@@ -132,6 +151,20 @@ const registrarPago = async (req, res) => {
       ...req.body,
       id_usuario_cobrador: req.usuario.id_usuario,
     });
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Tesorería",
+      accion: "CREAR",
+      descripcion: `Pago registrado: ${data.pago.nro_operacion || data.pago.id_pago}`,
+      nuevo: {
+        id_pago: data.pago.id_pago,
+        alumno: data.pago.id_alumno,
+        concepto: data.pago.id_concepto,
+        monto: Number(data.pago.monto) || 0,
+        forma_pago: data.pago.forma_pago,
+      },
+    });
+
     return response.success(res, 201, "Pago registrado y boleta emitida", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);

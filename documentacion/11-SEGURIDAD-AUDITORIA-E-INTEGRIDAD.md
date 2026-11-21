@@ -158,47 +158,53 @@ sequenceDiagram
 
 | Evento | ¿Auditado? | Cómo |
 |---|---|---|
-| Crear/modificar calificación | ✅ | Trigger `trg_calificaciones_audit` |
-| Login | ❌ | No hay inserción |
-| Logout | ❌ | No hay |
-| Matrícula | ❌ | No hay |
-| Edición/retiro de alumno | ❌ | No hay |
-| Personal (alta/cese) | ❌ | No hay |
-| Pagos/boletas | ❌ | No hay |
-| Caja | ❌ | No hay |
-| Notificaciones | ❌ | No hay |
+| Crear/modificar calificación | ✅ | Trigger `trg_calificaciones_audit` con `modificado_por` del token |
+| Login exitoso | ✅ | `LOGIN` (`Seguridad`) |
+| Login fallido | ✅ | `LOGIN_FALLIDO` con DNI intentado e `id_usuario` NULL |
+| Logout | ✅ | `LOGOUT` |
+| Cambio/recuperación de contraseña | ✅ | `MODIFICAR` (`Seguridad`) |
+| Pago registrado | ✅ | `CREAR` (`Tesorería`) con id_pago/monto/forma_pago |
+| Pago anulado | ✅ | `ANULAR` (`Tesorería`) con motivo |
+| Apertura/cierre de caja | ✅ | `ABRIR` / `CERRAR` (`Caja`) |
+| Matrícula | ❌ | Parte B |
+| Edición/retiro de alumno | ❌ | Parte B |
+| Personal (alta/cese) | ❌ | Parte B |
+| Notificaciones/descargas | ❌ | Parte B |
 | Cierre de acta | ⚠️ Parcial | Se guarda `cerrado_por` y hash, no bitácora |
 | SIAGIE | ⚠️ Parcial | Se registra exportación, no bitácora |
+
+Los eventos de seguridad y dinero se insertan **después** del COMMIT del negocio. Un fallo de
+auditoría se registra en consola y nunca revierte la operación (`auditoriaService.registrar`
+no lanza).
 
 ### 5.2 Estructura de la bitácora
 
 ```json
 {
   "id_bitacora": 8,
-  "id_usuario": null,
+  "id_usuario": 3,
   "fecha_hora": "2026-10-12T23:25:51",
   "modulo_afectado": "Evaluaciones",
   "accion": "MODIFICAR",
   "descripcion": "Calificación alumno ID 1",
   "valor_anterior": { "calificacion": "A" },
   "valor_nuevo": { "calificacion": "AD" },
-  "ip_origen": null
+  "ip_origen": "127.0.0.1"
 }
 ```
 
-**Problemas:**
-- `id_usuario` suele ser NULL porque el frontend no envía `modificado_por`.
-- `ip_origen` nunca se llena.
-- Solo hay 200 registros visibles (no hay paginación).
-- No hay retención ni archivado.
+**Pendientes:**
+- Completar la parte B (alumnos, personal, notificaciones, descargas, cierre de acta).
+- Retención/archivado de la bitácora.
 
 ### 5.3 Recomendaciones
 
-1. Crear un `auditoriaService.registrar(...)` reutilizable.
-2. Llamarlo desde login, matrícula, pagos, caja, personal y notificaciones.
-3. Enviar `modificado_por` desde el frontend o tomarlo del token en el backend.
-4. Capturar IP y user-agent.
-5. Añadir paginación y filtros por rango.
+1. ~~Crear un `auditoriaService.registrar(...)` reutilizable.~~ ✅ (H07 parte A).
+2. ~~Llamarlo desde login, pagos, caja y recuperación.~~ ✅; falta matrícula, personal y
+   notificaciones (parte B).
+3. ~~Tomar `modificado_por` del token en calificaciones.~~ ✅.
+4. ~~Capturar IP.~~ ✅ en los eventos nuevos.
+5. ~~Añadir paginación y filtros.~~ ✅ (H23).
 
 ---
 

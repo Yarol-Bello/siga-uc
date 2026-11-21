@@ -342,6 +342,14 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'anular';
       case 'LOGIN':
         return 'login';
+      case 'LOGIN_FALLIDO':
+        return 'login-fallido';
+      case 'LOGOUT':
+        return 'logout';
+      case 'ABRIR':
+        return 'abrir';
+      case 'CERRAR':
+        return 'cerrar';
       default:
         return 'default';
     }
@@ -360,6 +368,14 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'fa-ban';
       case 'LOGIN':
         return 'fa-sign-in-alt';
+      case 'LOGIN_FALLIDO':
+        return 'fa-user-lock';
+      case 'LOGOUT':
+        return 'fa-right-from-bracket';
+      case 'ABRIR':
+        return 'fa-lock-open';
+      case 'CERRAR':
+        return 'fa-lock';
       default:
         return 'fa-info-circle';
     }

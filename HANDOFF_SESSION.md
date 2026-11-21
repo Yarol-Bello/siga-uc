@@ -67,6 +67,7 @@ createdb -U postgres siga_uc
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 ```
 
 > `siga_uc_completo.sql` es el **dump completo** (esquema + datos de ejemplo). **No** cargar
@@ -82,6 +83,7 @@ psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `feat(auditoria): registrar eventos de seguridad y dinero (H07 parte A)` |
 | `(sesión H15)` | `docs(instalacion): corregir secuencia de restauracion de la BD (H40)` |
 | `(sesión H15)` | `fix(tesoreria): cerrar concurrencia y coherencia de pagos (H10, H37, H38)` |
 | `(sesión H15)` | `feat(tesoreria): anulacion de pagos con reversion de caja y pension (H32)` |
@@ -311,6 +313,16 @@ psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 - `registrarPago` valida mes/año del concepto contra la pensión y responde 409 “La pensión ya
   fue pagada.” ante doble pago concurrente (lock + 23505 si el índice existe).
 
+#### H07 parte A — Auditoría de seguridad y dinero (21/11/2026)
+
+- `auditoriaDao.registrarEvento` + `auditoriaService.registrar/registrarSeguro` (nunca lanza;
+  se invoca fuera de las transacciones de negocio).
+- Eventos: `LOGIN`, `LOGIN_FALLIDO`, `LOGOUT`, `MODIFICAR` (contraseñas/recuperación),
+  `CREAR`/`ANULAR` (Tesorería), `ABRIR`/`CERRAR` (Caja).
+- Calificaciones: `modificado_por` se toma del token en guardado individual y masivo.
+- Migración `database/migracion_h07_auditoria.sql` con índices por fecha y usuario.
+- UI: filtros, iconos y estilos para los nuevos eventos.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -388,6 +400,11 @@ psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 - H40: instalación nueva verificada en `siga_uc_install_test` con la secuencia oficial:
   `siga_uc_completo.sql` → `migracion_h32` (no-op) → `migracion_h10_h38`; resultado 39 tablas e
   índice `ux_pago_pension_activo`, sin duplicados de pensión. BD de prueba eliminada.
+- H07 parte A: 10/10 pruebas OK. Login → `LOGIN` con usuario e IP; fallo →
+  `LOGIN_FALLIDO` sin contraseña; logout → `LOGOUT`; pago → `CREAR` con id/monto; anulación →
+  `ANULAR` con motivo; caja → `ABRIR`/`CERRAR`; nota → trigger con `id_usuario` del token;
+  con un trigger que forzaba error en la bitácora, el pago respondió 201 y quedó PAGADO.
+  Migración H07 ejecutada dos veces (idempotente). Datos temporales eliminados (0 residuos).
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

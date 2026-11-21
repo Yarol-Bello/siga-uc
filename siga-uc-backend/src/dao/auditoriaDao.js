@@ -7,6 +7,37 @@ const { query } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
 
 /**
+ * Registrar un evento genérico en la bitácora.
+ */
+const registrarEvento = async ({
+  id_usuario = null,
+  modulo,
+  accion,
+  descripcion = null,
+  anterior = null,
+  nuevo = null,
+  ip = null,
+}) => {
+  const sql = `
+    INSERT INTO bitacora_auditoria (
+      id_usuario, modulo_afectado, accion, descripcion,
+      valor_anterior, valor_nuevo, ip_origen
+    ) VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7)
+    RETURNING id_bitacora
+  `;
+  const result = await query(sql, [
+    id_usuario,
+    modulo,
+    accion,
+    descripcion,
+    anterior ? JSON.stringify(anterior) : null,
+    nuevo ? JSON.stringify(nuevo) : null,
+    ip || null,
+  ]);
+  return result.rows[0];
+};
+
+/**
  * Construir el WHERE dinámico de la bitácora.
  */
 const construirFiltrosBitacora = (filtros = {}) => {
@@ -369,6 +400,7 @@ const actaEstaCerrada = async (
 };
 
 module.exports = {
+  registrarEvento,
   listarBitacora,
   contarBitacora,
   findBitacoraById,

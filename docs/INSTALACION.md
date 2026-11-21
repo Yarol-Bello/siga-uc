@@ -71,6 +71,7 @@ Instalar Angular CLI 21 globalmente:
     psql -U postgres -d siga_uc -f C:\ruta\a\siga-uc\database\siga_uc_completo.sql
     psql -U postgres -d siga_uc -f C:\ruta\a\siga-uc\database\migracion_h32_anulacion_pagos.sql
     psql -U postgres -d siga_uc -f C:\ruta\a\siga-uc\database\migracion_h10_h38_concurrencia_pagos.sql
+    psql -U postgres -d siga_uc -f C:\ruta\a\siga-uc\database\migracion_h07_auditoria.sql
 
 > No cargar `database/siga_uc.sql` junto con el completo: es solo la referencia del esquema
 > y provocaría errores de “ya existe”.

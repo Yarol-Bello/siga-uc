@@ -16,6 +16,7 @@ createdb -U postgres siga_uc
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -26,6 +27,7 @@ createdb -U postgres siga_uc
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 ```
 
 > Ejecutar `siga_uc.sql` antes del completo **falla**: el dump vuelve a crear
@@ -40,6 +42,7 @@ psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 | `migracion_*.sql` | Parches **idempotentes** para bases existentes. Se aplican en orden después del dump o de la migración anterior. |
 | `migracion_h32_anulacion_pagos.sql` | Añade campos de anulación en `pagos` y `ANULADO` en `boletas_electronicas`. |
 | `migracion_h10_h38_concurrencia_pagos.sql` | Crea `UNIQUE (serie, numero)` y `ux_pago_pension_activo` si no hay duplicados; avisa y omite el índice si los hay. |
+| `migracion_h07_auditoria.sql` | Índices `ix_bitacora_fecha` e `ix_bitacora_usuario` para la bitácora. |
 | `fix_tesoreria_pagos.sql` | **Histórico**: corrige el trigger de caja y genera pre-tickets de matrícula. Ya está incorporado en `siga_uc_completo.sql`; no se ejecuta en instalaciones nuevas. |
 | `preparar_anio_lectivo.sql` | Utilidad idempotente para copiar conceptos `MATRICULA`/`PENSION` a un año nuevo (`-v anio=2027`). |
 | `siga_uc_backup.sql` | Backup local con datos. Ignorado por Git; no se usa para instalar. |

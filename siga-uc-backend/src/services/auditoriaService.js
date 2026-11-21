@@ -5,6 +5,37 @@
 
 const auditoriaDao = require("../dao/auditoriaDao");
 
+/**
+ * Registrar un evento de auditoría.
+ *
+ * Se invoca SIEMPRE fuera de las transacciones de negocio (después del COMMIT):
+ * un fallo al escribir la bitácora no debe revertir un pago ni una operación.
+ * Esta función nunca lanza; solo registra el error en consola.
+ */
+const registrar = async (evento) => {
+  try {
+    return await auditoriaDao.registrarEvento(evento);
+  } catch (error) {
+    console.error(
+      "❌ No se pudo registrar el evento de auditoría:",
+      error.message,
+    );
+    return null;
+  }
+};
+
+/**
+ * Variante para controllers: toma el usuario autenticado y la IP de la request.
+ * Permite sobrescribir id_usuario/ip para eventos públicos (login, recuperación).
+ */
+const registrarSeguro = async (req, evento) => {
+  return registrar({
+    ...evento,
+    id_usuario: evento.id_usuario ?? req.usuario?.id_usuario ?? null,
+    ip: evento.ip ?? req.ip,
+  });
+};
+
 const listarBitacora = async (filtros) => {
   return await auditoriaDao.listarBitacora(filtros);
 };
@@ -92,6 +123,8 @@ const getEstadisticas = async () => {
 };
 
 module.exports = {
+  registrar,
+  registrarSeguro,
   listarBitacora,
   contarBitacora,
   obtenerBitacora,

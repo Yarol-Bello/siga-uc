@@ -33,6 +33,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 21/11/2026 (H40):** secuencia de instalación corregida; `siga_uc_completo.sql`
 > es el dump completo y `siga_uc.sql` queda solo como referencia de esquema.
+>
+> **Actualización 21/11/2026 (H07 parte A):** servicio de auditoría, eventos de seguridad y
+> dinero, `modificado_por` desde el token e índices de bitácora; H07 queda 🟡 hasta la parte B.
 
 ---
 
@@ -112,6 +115,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Sin trazabilidad real; la bitácora no sirve para investigación |
 | Recomendación | Servicio de auditoría central, tomar usuario del token, auditar eventos críticos |
 | Esfuerzo | M |
+| Estado | 🟡 Parcial (21/11/2026, parte A): `auditoriaService.registrar/registrarSeguro` + login/logout/recuperación/cambio de contraseña, pagos, anulación y caja; `modificado_por` desde el token en calificaciones e índices `ix_bitacora_*`. Falta la parte B: alumnos, personal, notificaciones, descargas y cierre de acta |
 
 ### H08 — Pagos se imputan a una caja posiblemente cerrada
 

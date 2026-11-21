@@ -46,7 +46,11 @@ const obtenerPorCursoGrado = async (req, res) => {
 
 const registrar = async (req, res) => {
   try {
-    const data = await calificacionService.registrar(req.body);
+    // El usuario sale del token, nunca del body.
+    const data = await calificacionService.registrar({
+      ...req.body,
+      modificado_por: req.usuario.id_usuario,
+    });
     return response.success(res, 201, "Calificación registrada", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);
@@ -56,7 +60,17 @@ const registrar = async (req, res) => {
 const registrarMasivo = async (req, res) => {
   try {
     const { registros } = req.body;
-    const result = await calificacionService.registrarMasivo(registros);
+    // El usuario sale del token, nunca del body.
+    const registrosConUsuario = Array.isArray(registros)
+      ? registros.map((registro) => ({
+          ...registro,
+          modificado_por: req.usuario.id_usuario,
+        }))
+      : registros;
+
+    const result = await calificacionService.registrarMasivo(
+      registrosConUsuario,
+    );
     return response.success(
       res,
       201,

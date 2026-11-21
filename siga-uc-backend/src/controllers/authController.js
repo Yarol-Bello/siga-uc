@@ -5,6 +5,7 @@
 
 const { validationResult } = require("express-validator");
 const authService = require("../services/authService");
+const auditoriaService = require("../services/auditoriaService");
 const response = require("../utils/response");
 
 /**
@@ -27,8 +28,29 @@ const login = async (req, res) => {
     // Llamar al servicio
     const resultado = await authService.login(dni, password);
 
+    await auditoriaService.registrarSeguro(req, {
+      id_usuario: resultado.usuario.id_usuario,
+      modulo: "Seguridad",
+      accion: "LOGIN",
+      descripcion: `Inicio de sesión exitoso: DNI ${resultado.usuario.dni}, rol ${resultado.usuario.rol}`,
+      nuevo: {
+        id_usuario: resultado.usuario.id_usuario,
+        rol: resultado.usuario.rol,
+      },
+    });
+
     return response.success(res, 200, "Login exitoso", resultado);
   } catch (error) {
+    // No se registra la contraseña; solo el DNI intentado.
+    const dniIntento = String(req.body?.dni || "").trim();
+    await auditoriaService.registrar({
+      id_usuario: null,
+      ip: req.ip,
+      modulo: "Seguridad",
+      accion: "LOGIN_FALLIDO",
+      descripcion: `Intento de inicio de sesión fallido para DNI ${dniIntento || "no proporcionado"}`,
+    });
+
     if (error.statusCode) {
       return response.error(res, error.statusCode, error.message);
     }
@@ -71,6 +93,12 @@ const verify = async (req, res) => {
  * Cerrar sesión (solo del lado del cliente, eliminar token)
  */
 const logout = async (req, res) => {
+  await auditoriaService.registrarSeguro(req, {
+    modulo: "Seguridad",
+    accion: "LOGOUT",
+    descripcion: `Cierre de sesión: DNI ${req.usuario?.dni || "desconocido"}`,
+  });
+
   // El backend no guarda sesiones, el cliente debe eliminar el token
   return response.success(res, 200, "Sesión cerrada exitosamente");
 };
@@ -111,6 +139,14 @@ const solicitarRecuperacion = async (req, res) => {
     const recuperacionService = require("../services/recuperacionService");
     const resultado =
       await recuperacionService.solicitarRecuperacion(identificador);
+
+    await auditoriaService.registrar({
+      id_usuario: null,
+      ip: req.ip,
+      modulo: "Seguridad",
+      accion: "MODIFICAR",
+      descripcion: `Solicitud de recuperación de contraseña para ${identificador}`,
+    });
 
     if (!resultado.tieneCorreo) {
       return response.success(
@@ -158,6 +194,15 @@ const restablecerPassword = async (req, res) => {
     const recuperacionService = require("../services/recuperacionService");
     const data = await recuperacionService.restablecerPassword(token, password);
 
+    await auditoriaService.registrar({
+      id_usuario: null,
+      ip: req.ip,
+      modulo: "Seguridad",
+      accion: "MODIFICAR",
+      descripcion: `Restablecimiento de contraseña con token para DNI ${data.usuario.dni}`,
+      nuevo: { dni: data.usuario.dni },
+    });
+
     return response.success(
       res,
       200,
@@ -191,6 +236,12 @@ const cambiarPassword = async (req, res) => {
       password_nueva,
       confirmar_password,
     );
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Seguridad",
+      accion: "MODIFICAR",
+      descripcion: "Cambio de contraseña",
+    });
 
     return response.success(
       res,
