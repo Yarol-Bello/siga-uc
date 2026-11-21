@@ -19,24 +19,24 @@ const crearHandler = () => (req, res) => {
   );
 };
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 5,
-  skipSuccessfulRequests: true,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: crearHandler(),
-});
+const crearLimiter = (opciones = {}) =>
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: crearHandler(),
+    ...opciones,
+  });
 
-const recoveryLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: crearHandler(),
-});
+const loginLimiter = crearLimiter({ skipSuccessfulRequests: true });
+
+const recoveryLimiter = crearLimiter();
+
+const tokenValidationLimiter = crearLimiter();
 
 module.exports = {
   loginLimiter,
   recoveryLimiter,
+  tokenValidationLimiter,
 };

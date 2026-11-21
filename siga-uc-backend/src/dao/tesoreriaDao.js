@@ -337,6 +337,36 @@ const listarPensionesAlumno = async (id_alumno, anioLectivo = getAnioLectivo()) 
   return result.rows;
 };
 
+/**
+ * Buscar una pensión por ID (para validar coherencia del pago).
+ */
+const findPensionById = async (id) => {
+  const sql = `
+    SELECT id_pension, id_alumno, anio_lectivo, mes, monto_base, descuento,
+           monto_final, estado, id_beca
+    FROM pensiones
+    WHERE id_pension = $1
+    LIMIT 1
+  `;
+  const result = await query(sql, [id]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Buscar la pensión de un alumno para un año y mes.
+ */
+const findPensionPorAlumnoMes = async (id_alumno, anioLectivo, mes) => {
+  const sql = `
+    SELECT id_pension, id_alumno, anio_lectivo, mes, monto_base, descuento,
+           monto_final, estado, id_beca
+    FROM pensiones
+    WHERE id_alumno = $1 AND anio_lectivo = $2 AND mes = $3
+    LIMIT 1
+  `;
+  const result = await query(sql, [id_alumno, anioLectivo, mes]);
+  return result.rows[0] || null;
+};
+
 const generarPensionesMensuales = async (anioLectivo, mes, montoBase) => {
   const client = await getClient();
   try {
@@ -468,6 +498,8 @@ module.exports = {
   registrarPago,
   // Pensiones
   listarPensionesAlumno,
+  findPensionById,
+  findPensionPorAlumnoMes,
   generarPensionesMensuales,
   // Becas
   listarBecas,

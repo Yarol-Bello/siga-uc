@@ -2,7 +2,7 @@
 
 > Guía para retomar el trabajo sin perder contexto.
 > **Fuente de verdad:** el código y `documentacion/`. Si este archivo difiere, manda el código.
-> Fecha de cierre de sesión: **20/11/2026**.
+> Fecha de cierre de sesión: **21/11/2026**.
 
 ---
 
@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `fix(tesoreria,auth): exigir pago completo de pensiones y limitar validar-token (H09, H03)` |
 | `(sesión H15)` | `fix(alumnos): sincronizar estado de usuario al retirar y editar (H19, H20)` |
 | `(sesión H15)` | `feat(ui): paginacion server-side en alumnos y bitacora (H23)` |
 | `(sesión H15)` | `feat(notificaciones): buscador de alumnos por DNI/nombre en envio masivo` |
@@ -310,6 +311,11 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   el trigger: alumno Retirado, usuario INACTIVO, expediente congelado; login del retirado → 403
   y JWT previo → 401. Editar nombres/apellidos actualizó `usuarios` y `/auth/perfil`; una
   edición sin nombres conservó los valores. Trigger y datos temporales eliminados.
+- H09/H03: 13/13 pruebas OK. Pensión con monto S/1 → 400 “El monto de la pensión es S/ 250.00”;
+  pensión de otro alumno → 400; pensión ya pagada → 400; pago correcto → 201 con boleta y
+  movimiento por S/250 en la apertura abierta, pensión PAGADO. Beca temporal (20 %): S/250
+  rechazado y S/200 aceptado. Concepto no pensión: S/25 rechazado y S/29.999999 aceptado por
+  redondeo. `validar-token` 6.ª petición → 429. Datos temporales eliminados.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---
@@ -358,13 +364,24 @@ Implementado y probado:
 - Alumnos y personal nuevos creados con `requiere_cambio_password = TRUE`.
 - Pruebas API 22/22 OK y build Angular OK.
 
+### H03 / H09 — Rate limit de validar-token y coherencia de pagos (completado 21/11/2026)
+
+- `GET /api/auth/validar-token/:token` usa `tokenValidationLimiter` (5/15 min); los tres
+  limiters comparten `crearLimiter` en `rateLimit.js`.
+- `tesoreriaService.registrarPago` exige pensión existente, del mismo alumno, `PENDIENTE` y
+  monto igual a `monto_final` (redondeo a 2 decimales). Si falta `id_pension`, resuelve la
+  pensión por alumno/año/mes; los conceptos no pensión exigen `monto_base` exacto.
+- H36 queda documentado y **no implementado**: el límite por IP puede bloquear a todo el
+  colegio detrás de NAT.
+
 ### Siguiente: Fase 4 — Operación y calidad
 
-> H12, H25 y H34 quedaron completados. El siguiente pendiente es H23.
+> H12, H25, H34, H18, H03 y H09 quedaron completados. H23 está parcial: alumnos y bitácora ya
+> tienen paginación; faltan personal, pagos y pre-tickets.
 
 Tomar como fuente `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`:
 
-- **H23:** paginación server-side en alumnos, personal, pagos, pre-tickets y bitácora.
+- **H23:** paginación server-side — alumnos y bitácora ✅; faltan personal, pagos y pre-tickets.
 - **H24:** tests automatizados y CI/CD (unitarios de services, integración de endpoints, E2E de flujos críticos).
 - **H11:** visibilizar errores de guardados masivos (hoy la UI solo muestra insertados).
 - **H22:** eliminar N+1 de tesorería (pensiones por alumno en un endpoint agregado).
@@ -372,6 +389,7 @@ Tomar como fuente `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`:
 - **H34:** PDFs reales — libretas, boletas y actas ✅.
 - **H27:** actualizar `.env.example`, README e INSTALACION (Resend, no SMTP).
 - **H29:** documentar tablas históricas no persistidas (`libretas`, `cuadro_merito`, `alumnos_riesgo`, etc.).
+- **H36:** rate limit de login por IP compartida en red escolar (documentado, pendiente de decisión).
 
 ---
 

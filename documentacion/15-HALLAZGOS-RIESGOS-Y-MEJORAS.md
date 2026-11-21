@@ -18,6 +18,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > **Actualización 21/11/2026 (auditoría de hallazgos):** H01, H02, H04, H06, H08 y H17 quedaron
 > verificados como resueltos con evidencia en el código; H03 y H09 quedan 🟡 (parciales); H07
 > sigue sin cambios.
+>
+> **Actualización 21/11/2026 (cierre H03/H09):** H03 y H09 quedaron resueltos. Se añade H36
+> (rate limit de login por IP compartida en red escolar) solo como hallazgo documentado.
 
 ---
 
@@ -54,7 +57,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Fuerza bruta sobre DNI/contraseña y recuperación |
 | Recomendación | Limitar `/auth/login`, `/auth/recuperar-password` y `/auth/validar-token`; bloqueo temporal |
 | Esfuerzo | S |
-| Estado | 🟡 Parcial (21/11/2026): `loginLimiter` y `recoveryLimiter` (5 intentos/15 min) en `rateLimit.js:22-37`, aplicados en `authRoutes.js:25-27` y `:109-111`. Falta limitar `/auth/validar-token/:token` y no hay bloqueo de cuenta |
+| Estado | ✅ Resuelto (21/11/2026): `crearLimiter` (5 intentos/15 min) y `tokenValidationLimiter` en `rateLimit.js:22-42`, aplicado a login (`authRoutes.js:25-27`), recuperación (`:109-113`) y `GET /auth/validar-token/:token` (`:122-126`) |
 
 ### H04 — La nota final no se calcula automáticamente desde la UI
 
@@ -118,7 +121,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Se puede pagar S/1 una pensión de S/250 o pagar una pensión de otro alumno |
 | Recomendación | Validar monto contra pensión/concepto, pertenencia alumno-pensión y caja abierta |
 | Esfuerzo | M |
-| Estado | 🟡 Parcial (21/11/2026): valida caja abierta (`tesoreriaService.js:74-81`), alumno (`:83-89`) y concepto (`:91-97`), pero sigue sin comparar el monto con la pensión/concepto ni verificar que la pensión pertenezca al alumno (`tesoreriaDao.js:255-264`) |
+| Estado | ✅ Resuelto (21/11/2026): `registrarPago` exige pensión existente, del mismo alumno, `PENDIENTE` y monto igual a `monto_final` redondeado a 2 decimales (`tesoreriaService.js:52-64` y `:114-182`; `tesoreriaDao.js:343-369`). Si el concepto es pensión sin `id_pension`, la resuelve por alumno/año/mes; los conceptos no pensión exigen `monto_base` exacto |
 
 ### H10 — Concurrencia en códigos y boletas
 
@@ -395,6 +398,16 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Evidencia | El endpoint `/reportes/libreta/:id` está abierto a autenticados, pero el panel del estudiante no lo usa |
 | Impacto | Funcionalidad disponible pero no visible |
 | Recomendación | Añadir “Mi libreta” con validación de pertenencia |
+| Esfuerzo | S |
+
+### H36 — Rate limit de login por IP compartida en red escolar
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Media |
+| Evidencia | El limiter de login (`rateLimit.js:22-32`) cuenta por IP: 5 intentos fallidos cada 15 minutos |
+| Impacto | Detrás de una red escolar con NAT, 5 fallos de cualquier alumno bloquean el login de todo el colegio durante 15 minutos |
+| Recomendación | Clave por DNI/usuario combinada con IP, o límites más altos con backoff progresivo; revisar `trust proxy` en producción |
 | Esfuerzo | S |
 
 ---

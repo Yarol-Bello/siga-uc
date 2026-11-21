@@ -13,6 +13,7 @@ const {
 const {
   loginLimiter,
   recoveryLimiter,
+  tokenValidationLimiter,
 } = require("../middlewares/rateLimit");
 
 const router = express.Router();
@@ -118,7 +119,11 @@ router.post(
  * @desc    Validar un token de recuperación
  * @access  Público
  */
-router.get("/validar-token/:token", authController.validarToken);
+router.get(
+  "/validar-token/:token",
+  tokenValidationLimiter,
+  authController.validarToken,
+);
 
 /**
  * @route   POST /api/auth/restablecer-password

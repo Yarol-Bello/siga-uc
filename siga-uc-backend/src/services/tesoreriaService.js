@@ -49,6 +49,21 @@ const obtenerPago = async (id) => {
   return pago;
 };
 
+const redondearMonto = (valor) =>
+  Math.round((Number(valor) || 0) * 100) / 100;
+
+const formatearMonto = (valor) => redondearMonto(valor).toFixed(2);
+
+const validarMontoEsperado = (montoEsperado, montoRecibido, mensaje) => {
+  if (redondearMonto(montoEsperado) !== redondearMonto(montoRecibido)) {
+    const error = new Error(
+      `${mensaje} S/ ${formatearMonto(montoEsperado)}`,
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
 const registrarPago = async (data) => {
   // Validaciones
   if (!data.id_alumno || !data.id_concepto || !data.monto || !data.forma_pago) {
@@ -94,6 +109,76 @@ const registrarPago = async (data) => {
     const error = new Error("Concepto no encontrado");
     error.statusCode = 404;
     throw error;
+  }
+
+  // Resolver la pensión vinculada al pago (si corresponde)
+  let pension = null;
+
+  if (data.id_pension) {
+    const idPension = Number(data.id_pension);
+    if (!Number.isInteger(idPension) || idPension <= 0) {
+      const error = new Error("La pensión indicada no existe.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    pension = await tesoreriaDao.findPensionById(idPension);
+    if (!pension) {
+      const error = new Error("La pensión indicada no existe.");
+      error.statusCode = 400;
+      throw error;
+    }
+  } else if (concepto.tipo === "PENSION") {
+    if (!concepto.mes) {
+      const error = new Error(
+        "El concepto de pensión no tiene un mes configurado.",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    pension = await tesoreriaDao.findPensionPorAlumnoMes(
+      data.id_alumno,
+      concepto.anio_lectivo,
+      concepto.mes,
+    );
+
+    if (!pension) {
+      const error = new Error(
+        "No se encontró la pensión del alumno para ese mes.",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Vincular el pago a la pensión resuelta (mismo campo que ya usa el DAO).
+    data.id_pension = pension.id_pension;
+  }
+
+  if (pension) {
+    if (Number(pension.id_alumno) !== Number(data.id_alumno)) {
+      const error = new Error("La pensión no pertenece al alumno.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (pension.estado !== "PENDIENTE") {
+      const error = new Error("La pensión ya está pagada.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    validarMontoEsperado(
+      pension.monto_final,
+      data.monto,
+      "El monto de la pensión es",
+    );
+  } else {
+    validarMontoEsperado(
+      concepto.monto_base,
+      data.monto,
+      "El monto del concepto es",
+    );
   }
 
   data.tipo_concepto = concepto.tipo;
