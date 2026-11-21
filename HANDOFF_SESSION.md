@@ -3,11 +3,11 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit base de esta sesión:** `6fc6d3e feat(scripts): smoke test de solo lectura para verificar entornos`
-- **Commit de esta sesión:** `fix(scripts): smoke test sin credenciales debe fallar y persistir SMOKE_*`
+- **Commit base de esta sesión:** `56dbf06 fix(scripts): smoke test sin credenciales debe fallar y persistir SMOKE_*`
+- **Commit de esta sesión:** `test(scripts): suites de integridad y e2e sobre base desechable`
   (el hash exacto queda en `git log -1`).
-- **Estado:** smoke test corregido y verificado; las credenciales locales viven en
-  `siga-uc-backend/.env` (ignorado); árbol limpio tras el commit.
+- **Estado:** smoke, integridad y E2E implementados y verificados; las credenciales locales
+  viven en `siga-uc-backend/.env` (ignorado); árbol limpio tras el commit.
 
 ---
 
@@ -31,6 +31,14 @@
   SKIP; `1` si hay FAIL; `2` si hay SKIP sin `SMOKE_ALLOW_SKIP=1`.
 - Verificación local del 21/11/2026: **11 PASS, 0 FAIL, 0 SKIP** (exit 0) con las tres
   cuentas; **3 PASS, 0 FAIL, 8 SKIP** (exit 2) sin credenciales.
+- `npm run test:integridad` (`scripts/test-integridad.js`): 10 invariantes de solo lectura
+  sobre cualquier base. Fuerza `default_transaction_read_only=on`. Exit 1 si hay FAIL.
+- `npm run test:e2e` (`scripts/test-e2e.js`): crea `siga_uc_e2e`, carga el dump y las
+  migraciones, arranca el backend en el puerto 3101, ejecuta 14 flujos y elimina la base
+  con `dropdb --force`. Verificado dos veces seguidas: **14 PASS, 0 FAIL** y exit 0.
+- Integridad local del 21/11/2026: **7 PASS, 3 FAIL** por datos de seed reales
+  (invariantes 4, 7 y 8: 5 pagos sin INGRESO, ADMIN sin alumno/personal y 144 pensiones
+  PAGADO sin pago). No son fallos de la suite.
 
 ---
 
@@ -124,6 +132,13 @@
   (por ejemplo `20394812`), sin modificar datos ni contraseñas.
 - El login correcto no consume el rate limit (`skipSuccessfulRequests`); un smoke con
   contraseña incorrecta sí consume 1 de los 5 intentos de la ventana de 15 min.
+- `npm run test:e2e` exige `createdb`, `dropdb` y `psql` en el PATH, el puerto 3101 libre y
+  las credenciales `SMOKE_*` del seed. Ignora `DATABASE_URL`, se niega a usar una base sin
+  `_e2e` y nunca toca `siga_uc` ni Supabase. Al terminar elimina `siga_uc_e2e`; si no puede,
+  imprime los comandos manuales.
+- `npm run test:integridad` es de solo lectura y puede apuntar a producción mediante
+  `DATABASE_URL`; no ejecutarlo con credenciales de escritura si se quiere una garantía
+  adicional.
 
 ---
 
@@ -139,6 +154,8 @@
    - **Frontend:** confirmar que `environment.prod.ts` apunta a la URL real del backend
      y que el build genera `404.html`.
    - Aplicar las migraciones pendientes en orden.
+   - Antes del ensayo, ejecutar localmente `npm run test:integridad` y
+     `npm run test:e2e`; ambos deben quedar sin FAIL (el E2E debe dar 14 PASS).
    - Configurar en Render las variables `SMOKE_BASE_URL` y `SMOKE_*` (o pasarlas solo
      al ejecutar; nunca commitearlas) y correr el smoke contra el ensayo:
      ```powershell
@@ -159,17 +176,20 @@
 
 ---
 
-## 8. Verificar el entorno en 4 comandos
+## 8. Verificar el entorno en 6 comandos
 
 ```powershell
 git log -1 --oneline
 psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
 # Requiere el backend corriendo en localhost:3000
 curl.exe -s http://localhost:3000/api/health
-cd siga-uc-backend; npm run smoke   # con las variables SMOKE_* definidas
+cd siga-uc-backend; npm run smoke          # 11 PASS, exit 0
+npm run test:integridad                    # 10 invariantes; revisar FAIL reales
+npm run test:e2e                           # 14 PASS, exit 0; elimina siga_uc_e2e
 ```
 
 El primero confirma el commit; el segundo debe devolver **39** y
 `ux_pago_pension_activo`; el tercero debe devolver `success: true` y
 `database: "ok"` **con el backend en marcha**; el cuarto debe terminar en
-**11 PASS, 0 FAIL** y exit code `0`.
+**11 PASS, 0 FAIL**; el quinto puede reportar violaciones reales de seed; el sexto
+debe terminar en **14 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada.

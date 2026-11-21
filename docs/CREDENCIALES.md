@@ -37,6 +37,9 @@ cambiarla cuando `requiere_cambio_password = TRUE`. No se documentan contraseña
 no hace falta definir `SMOKE_*` manualmente. Si faltan credenciales, las pruebas
 dependientes se marcan como SKIP y el script termina con código **2** (resultado parcial).
 
+`npm run test:e2e` usa esas mismas credenciales del seed, pero las aplica a una base
+desechable `siga_uc_e2e` que crea y elimina automáticamente.
+
 Para ejecutarlo contra otro entorno, define `SMOKE_BASE_URL` y las variables `SMOKE_*`
 solo en la sesión de la terminal; nunca las agregues al repositorio.
 

@@ -54,6 +54,8 @@ Respuesta esperada:
 |---|---|---|---|
 | Backup completo | Diario | TI | `npm run backup` (`scripts/backup.js`) |
 | Smoke test de solo lectura | Antes de cada despliegue y semanal | TI | `npm run smoke` (`scripts/smoke.js`) |
+| Integridad de datos (solo lectura) | Antes de desplegar y semanal | TI | `npm run test:integridad` (`scripts/test-integridad.js`) |
+| E2E sobre base desechable | Antes de cada despliegue | TI | `npm run test:e2e` (`scripts/test-e2e.js`) |
 | Verificar backup | Semanal | TI | Restaurar en entorno de prueba |
 | Revisar logs de error | Diario | TI | Consola/plataforma |
 | Revisar usuarios inactivos | Mensual | Admin | Módulo Personal |
@@ -106,9 +108,10 @@ usar `getAnioLectivo()` en backend y `ConfiguracionService.anioLectivo` en front
 
 ## 4. Testeo
 
-El proyecto **no tiene una suite de tests automatizados ni CI**. Desde el 21/11/2026 cuenta
-con un **smoke test de solo lectura** para validar que un entorno está sano antes de
-desplegar; el resto de la estrategia sigue siendo manual y por rol.
+El proyecto **no tiene CI ni tests unitarios**. Desde el 21/11/2026 cuenta con tres suites
+de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
+(10 invariantes de datos, solo lectura) y **E2E** (14 flujos sobre una base desechable).
+El resto de la estrategia sigue siendo manual y por rol.
 
 ### 4.1 Preparación
 
@@ -275,6 +278,52 @@ sirve para diagnósticos parciales.
 7. Campanita.
 8. SIAGIE con plantilla de prueba.
 
+### 4.10 Suites de integridad y E2E pre-despliegue
+
+#### `test:integridad` — solo lectura, cualquier base
+
+```powershell
+cd siga-uc-backend
+npm run test:integridad
+```
+
+- Verifica **10 invariantes**: 39 tablas, índices críticos, pagos/pensiones/boletas
+  coherentes, movimientos de caja, usuarios activos asociados, escala AD/A/B/C y alumnos
+  matriculados con usuario activo.
+- Fuerza `default_transaction_read_only=on`: no escribe nada.
+- Usa `DATABASE_URL` si existe; si no, `DB_*`. Puede ejecutarse contra local, una réplica
+  de lectura o producción.
+- Muestra **PASS/FAIL**, el conteo de violaciones y hasta 5 filas de ejemplo. Exit `1` si
+  hay algún FAIL.
+- **Cuándo:** después de restaurar un backup, antes de cada despliegue y semanalmente.
+  En producción, usar preferentemente una conexión/replica de solo lectura.
+
+> En la base local del 21/11/2026 hay violaciones reales de seed en los invariantes 4, 7 y
+> 8 (pagos sin INGRESO, usuario ADMIN sin alumno/personal y pensiones PAGADO sin pago).
+> No son fallos de la suite: deben revisarse antes de cargar datos reales.
+
+#### `test:e2e` — base desechable
+
+```powershell
+cd siga-uc-backend
+npm run test:e2e
+```
+
+- Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
+  (`h32`, `h10_h38`, `h07`), arranca el backend en `http://localhost:3101` y ejecuta
+  **14 flujos**: alta/retiro de alumno, matrícula, pensión, doble pago, anulación, doble
+  anulación, calificaciones, guardado masivo, PDFs, RBAC, auditoría y acta cerrada.
+- Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
+  Si la limpieza falla, imprime los comandos manuales.
+- **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
+  misma que `DB_NAME` o si el host es Supabase. Ignora `DATABASE_URL` para no apuntar a
+  producción.
+- Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
+  puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
+- Resultado esperado: **14 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
+  **Nunca** contra producción ni Supabase.
+
 ---
 
 ## 5. Diagnóstico de datos
@@ -399,9 +448,11 @@ WHERE m.id_movimiento IS NULL;
 | Mejora | Beneficio |
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
+| ~~Integridad de datos~~ ✅ | 10 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
+| ~~E2E de flujos críticos~~ ✅ | 14 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
-| Tests E2E (Playwright/Cypress) | Flujos por rol |
+| Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |
 | Seed reproducible | Tests consistentes |
 | CI en GitHub Actions | Build + lint + tests |
 | Cobertura de autorización | Evitar GET amplios |
