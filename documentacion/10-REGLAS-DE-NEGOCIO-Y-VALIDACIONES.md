@@ -48,8 +48,9 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-27 | La matrícula es transaccional | `BEGIN/COMMIT` | Rollback total |
 | RN-28 | El expediente se crea vacío | `expediente_alumno` | Nivel NULL, asistencia 0 |
 | RN-29 | El QR se genera al crear el alumno | `credenciales_qr` | `QR-<DNI>-<MD5>` |
-| RN-30 | El retiro no congela el expediente | Código actual | Brecha |
-| RN-31 | El retiro no desactiva el usuario | Código actual | Brecha |
+| RN-30 | El retiro congela el expediente | `alumnoDao.retirar` (transacción) | `congelado = TRUE` |
+| RN-31 | El retiro desactiva el usuario | `alumnoDao.retirar` (transacción) | `estado = INACTIVO`; bloquea login y JWT |
+| RN-32 | Editar nombres/apellidos sincroniza `usuarios` | `alumnoDao.actualizar` | `COALESCE` dentro de la transacción |
 
 ## 4. Personal
 

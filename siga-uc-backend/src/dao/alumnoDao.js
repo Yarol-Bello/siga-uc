@@ -354,6 +354,17 @@ const actualizar = async (id, data) => {
       alumno.correo_personal = data.correo_personal || null;
     }
 
+    // Mantener el nombre del usuario alineado con la ficha del alumno.
+    if (data.nombres !== undefined || data.apellidos !== undefined) {
+      await client.query(
+        `UPDATE usuarios SET
+          nombres = COALESCE($1, nombres),
+          apellidos = COALESCE($2, apellidos)
+        WHERE id_usuario = $3`,
+        [data.nombres ?? null, data.apellidos ?? null, alumno.id_usuario],
+      );
+    }
+
     await client.query("COMMIT");
     return alumno;
   } catch (error) {
@@ -368,23 +379,53 @@ const actualizar = async (id, data) => {
  * Registrar retiro
  */
 const retirar = async (id, data) => {
-  const sql = `
-    UPDATE alumnos SET
-      estado_matricula = 'Retirado',
-      fecha_retiro = $1,
-      motivo_retiro = $2,
-      colegio_destino = $3,
-      resolucion_directoral = $4
-    WHERE id_alumno = $5 RETURNING *
-  `;
-  const result = await query(sql, [
-    data.fecha_retiro || new Date(),
-    data.motivo_retiro,
-    data.colegio_destino || null,
-    data.resolucion_directoral || null,
-    id,
-  ]);
-  return result.rows[0] || null;
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+
+    const sql = `
+      UPDATE alumnos SET
+        estado_matricula = 'Retirado',
+        fecha_retiro = $1,
+        motivo_retiro = $2,
+        colegio_destino = $3,
+        resolucion_directoral = $4
+      WHERE id_alumno = $5 RETURNING *
+    `;
+    const result = await client.query(sql, [
+      data.fecha_retiro || new Date(),
+      data.motivo_retiro,
+      data.colegio_destino || null,
+      data.resolucion_directoral || null,
+      id,
+    ]);
+    const alumno = result.rows[0];
+
+    if (!alumno) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    // El usuario deja de poder autenticarse (login y JWT en curso).
+    await client.query(
+      `UPDATE usuarios SET estado = 'INACTIVO' WHERE id_usuario = $1`,
+      [alumno.id_usuario],
+    );
+
+    // Congelar el expediente para que no siga recibiendo cambios.
+    await client.query(
+      `UPDATE expediente_alumno SET congelado = TRUE WHERE id_alumno = $1`,
+      [id],
+    );
+
+    await client.query("COMMIT");
+    return alumno;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 /**

@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `fix(alumnos): sincronizar estado de usuario al retirar y editar (H19, H20)` |
 | `(sesión H15)` | `feat(ui): paginacion server-side en alumnos y bitacora (H23)` |
 | `(sesión H15)` | `feat(notificaciones): buscador de alumnos por DNI/nombre en envio masivo` |
 | `(sesión H15)` | `feat(notificaciones): permitir mensajes personalizados y envio por correo (H15)` |
@@ -251,6 +252,15 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 - Alumnos usa 20 por página; bitácora 50. Aplicar filtros o búsqueda vuelve a la página 1.
 - `response.success` acepta un quinto parámetro opcional `pagination`.
 
+#### H19 / H20 — Integridad en alumnos
+
+- `alumnoDao.retirar` ahora es transaccional: `alumnos → Retirado`, `usuarios → INACTIVO`,
+  `expediente_alumno.congelado = TRUE`. Un fallo en cualquier update hace `ROLLBACK` total.
+- El login de un usuario inactivo responde 403 y `authMiddleware` bloquea también los JWT ya
+  emitidos.
+- `alumnoDao.actualizar` sincroniza `usuarios.nombres/apellidos` con `COALESCE` solo si el
+  request envía esos campos, dentro de la misma transacción.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -295,6 +305,11 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   “1–20 de 25” con 20 filas y “21–25 de 25” al avanzar; en página 2, cambiar el estado volvió a
   `page=1`; bitácora mostró “1–50 de 55” y “51–55 de 55” con 50 por página. Datos temporales
   eliminados.
+- H19/H20: 12/12 pruebas OK. Con un trigger temporal que forzaba error en el expediente, el
+  retiro devolvió 500 y no dejó cambios (alumno Matriculado, usuario ACTIVO, sin congelar). Sin
+  el trigger: alumno Retirado, usuario INACTIVO, expediente congelado; login del retirado → 403
+  y JWT previo → 401. Editar nombres/apellidos actualizó `usuarios` y `/auth/perfil`; una
+  edición sin nombres conservó los valores. Trigger y datos temporales eliminados.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

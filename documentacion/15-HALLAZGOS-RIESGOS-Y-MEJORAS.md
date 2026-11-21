@@ -12,7 +12,8 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > H15 quedó resuelto: mensajes personalizados con destinatarios TODOS/GRADO/ALUMNO y envío por
 > Resend sin perder la notificación si el correo falla.
 > H23 quedó resuelto parcialmente: alumnos y bitácora ya tienen paginación server-side; faltan
-> personal, pagos y pre-tickets.
+> personal, pagos y pre-tickets. H19 y H20 quedaron resueltos: el retiro desactiva al usuario y
+> congela el expediente en una transacción, y la edición sincroniza nombres/apellidos.
 
 ---
 
@@ -205,25 +206,27 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Esfuerzo | M |
 | Estado | ✅ Resuelto (20/11/2026): endpoint `PUT /api/auth/cambiar-password`, pantalla `/cambiar-password`, redirect en guards y bloqueo API |
 
-### H19 — Retiro no congela expediente ni usuario
+### H19 — Retiro no congela expediente ni usuario (resuelto)
 
 | Campo | Detalle |
 |---|---|
 | Severidad | Media |
-| Evidencia | `alumnoDao.retirar` solo actualiza `alumnos`; el mensaje dice “expediente congelado” |
+| Evidencia | Antes `alumnoDao.retirar` solo actualizaba `alumnos`; ahora usa transacción y actualiza `usuarios.estado = 'INACTIVO'` y `expediente_alumno.congelado = TRUE` |
 | Impacto | Usuario retirado puede iniciar sesión y consultar; expediente queda abierto |
 | Recomendación | `expediente_alumno.congelado = true` y `usuarios.estado = INACTIVO` (o CESADO) |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (20/11/2026): retiro atómico; login responde 403 y los JWT en curso quedan bloqueados |
 
-### H20 — Edición de alumno no sincroniza usuario
+### H20 — Edición de alumno no sincroniza usuario (resuelto)
 
 | Campo | Detalle |
 |---|---|
 | Severidad | Media |
-| Evidencia | `alumnoDao.actualizar` no toca `usuarios` |
+| Evidencia | Antes `alumnoDao.actualizar` no tocaba `usuarios`; ahora sincroniza nombres/apellidos con `COALESCE` en la misma transacción |
 | Impacto | Login/perfil muestran nombres antiguos; correos desactualizados |
 | Recomendación | Actualizar usuario en la misma transacción |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (20/11/2026) |
 
 ### H21 — Cambio de rol no regenera QR ni permisos históricos
 

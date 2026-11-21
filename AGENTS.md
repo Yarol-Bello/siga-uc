@@ -155,7 +155,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - El correo es **Resend**, no SMTP/Nodemailer.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`.
-- El retiro **no** congela el expediente ni desactiva al usuario (aunque el mensaje lo diga).
+- El retiro es transaccional: pasa al alumno a `Retirado`, deja al usuario `INACTIVO` y congela
+  el expediente (`H19`). La edición de nombres/apellidos sincroniza `usuarios` (`H20`).
 - **No hay cálculo automático de nota final** desde la UI; sin `notas_finales_area`, los
   reportes y SIAGIE salen vacíos.
 - El **cierre de acta no bloquea** la edición de notas.

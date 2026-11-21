@@ -521,8 +521,8 @@ sequenceDiagram
 |---|---|
 | Login | Si `requiere_cambio_password=true`, redirige a `/cambiar-password` y la API bloquea los módulos |
 | Matrícula | El alumno queda `PendientePago`; si nadie cobra, no aparece en asistencia/notas |
-| Edición de alumno | No sincroniza nombres/correo con `usuarios` |
-| Retiro | No desactiva usuario ni congela expediente |
+| Edición de alumno | Sincroniza nombres/apellidos con `usuarios`; el correo personal también se actualiza |
+| Retiro | Desactiva el usuario (`INACTIVO`) y congela el expediente en la misma transacción |
 | Notas | Sin cálculo automático de nota final, reportes y SIAGIE quedan vacíos |
 | SIAGIE | Solo detecta 4 cursos por prefijo; plantillas con otros nombres no se llenan |
 | Tesorería | IDs de conceptos y meses hardcodeados en el frontend |

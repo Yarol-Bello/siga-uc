@@ -165,25 +165,24 @@ Nuevo → PendientePago ──(pago MATRICULA)──> Matriculado
 
 - Actualiza nombres, apellidos, fecha de nacimiento, grado, condición y colegio de
   procedencia con `COALESCE`.
-- No actualiza `usuarios.nombres`, `usuarios.apellidos` ni correos.
+- Si se envían nombres/apellidos, sincroniza `usuarios.nombres` y `usuarios.apellidos` en la
+  misma transacción (con `COALESCE`, sin borrar el campo que no se envíe).
+- Actualiza `usuarios.correo_personal` cuando se envía.
 - No valida transiciones de grado ni año.
 
 **Retiro**
 
 1. Valida que el alumno exista y no esté ya `Retirado`.
 2. Exige `motivo_retiro` (validator).
-3. Actualiza:
-   - `estado_matricula = 'Retirado'`
-   - `fecha_retiro` (o hoy)
-   - `motivo_retiro`
-   - `colegio_destino`
-   - `resolucion_directoral`
-4. Devuelve el alumno.
+3. En una sola transacción actualiza:
+   - `alumnos`: `estado_matricula = 'Retirado'`, `fecha_retiro` (o hoy), `motivo_retiro`,
+     `colegio_destino`, `resolucion_directoral`
+   - `usuarios.estado = 'INACTIVO'` (login y JWT en curso quedan bloqueados)
+   - `expediente_alumno.congelado = TRUE`
+4. Devuelve el alumno. Si falla cualquier update, `ROLLBACK` total.
 
 **Efectos colaterales no implementados**
 
-- No marca `expediente_alumno.congelado = true`.
-- No cambia `usuarios.estado`.
 - No anula pensiones/pre-tickets pendientes.
 - No retira de carga/asistencia histórica (se conserva).
 
@@ -787,7 +786,7 @@ revocación ni rotación. `credenciales_qr.activo` no se usa en la marcación.
 | P01 Login | Alta | Completo | Sin rate limiting ni auditoría |
 | P02 Recuperación | Alta | Completo | Depende de Resend |
 | P03 Matrícula | Alta | Completo | Transaccional |
-| P04 Retiro | Media | Parcial | No congela expediente ni usuario |
+| P04 Retiro | Media | Completo | Transaccional: usuario INACTIVO + expediente congelado |
 | P05 Personal | Alta | Completo | Sin borrado |
 | P06 Configuración | Alta | Parcial | Sin CRUD de horarios/competencias |
 | P07 Asistencia alumnos | Alta | Completo | Éxito parcial en lote |
