@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `fix(tesoreria): cerrar concurrencia y coherencia de pagos (H10, H37, H38)` |
 | `(sesión H15)` | `feat(tesoreria): anulacion de pagos con reversion de caja y pension (H32)` |
 | `(sesión H15)` | `fix(fechas): calcular fechas de negocio en hora de Lima (H39)` |
 | `(sesión H15)` | `chore(infra): endurecer conexion, logs y arranque para produccion` |
@@ -297,6 +298,15 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 - UI en caja e historial: botón solo para `PAGADO`, modal con motivo ≥10, spinner y recarga.
 - Boleta PDF con watermark “ANULADA”.
 
+#### H10 / H37 / H38 — Integridad y concurrencia de pagos (21/11/2026)
+
+- Advisory locks `pg_advisory_xact_lock` por dominio: `codigo_alumno`, `efectivo:<año>`,
+  `boleta:B001` y `pension:<id>`, dentro de las transacciones existentes.
+- `UNIQUE (serie, numero)` en `boletas_electronicas` creado; `ux_pago_pension_activo` omitido
+  en esta BD por duplicados históricos (pensión 139). La migración es idempotente y avisa.
+- `registrarPago` valida mes/año del concepto contra la pensión y responde 409 “La pensión ya
+  fue pagada.” ante doble pago concurrente (lock + 23505 si el índice existe).
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -366,6 +376,11 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   movimientos. Con la apertura original cerrada, el EGRESO cayó en la actual. Sin caja abierta
   → 400 sin cambios. SECRETARIA 200; DOCENTE/ESTUDIANTE 403; sin token 401; motivo corto 400.
   Datos y cierres temporales eliminados (0 residuos).
+- H10/H37/H38: 7/7 pruebas OK. Matrículas simultáneas → `EST-122` y `EST-123`; pagos efectivo
+  simultáneos → `EFECTIVO-2026-007/008` y boletas `B001-004838/004839`; concepto abril +
+  pensión marzo → 400; doble pago concurrente → 201/409 con un solo PAGADO. Backup 144.3 KB y
+  migración ejecutada dos veces (idempotente); `ux_pago_pension_activo` omitido por duplicados
+  históricos. Datos temporales eliminados (0 residuos).
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

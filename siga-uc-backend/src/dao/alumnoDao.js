@@ -159,12 +159,20 @@ const findByDni = async (dni) => {
 /**
  * Obtener el siguiente código de estudiante
  */
-const getSiguienteCodigo = async () => {
+const getSiguienteCodigo = async (client = null) => {
+  // Bloqueo por transacción: evita que dos matrículas simultáneas calculen
+  // el mismo MAX+1. Se libera al hacer COMMIT/ROLLBACK.
+  if (client) {
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtext('codigo_alumno'))",
+    );
+  }
+
   const sql = `
     SELECT MAX(CAST(SUBSTRING(codigo_estudiante FROM 5) AS INTEGER)) AS max_codigo
     FROM alumnos WHERE codigo_estudiante LIKE 'EST-%'
   `;
-  const result = await query(sql);
+  const result = client ? await client.query(sql) : await query(sql);
   const next = (result.rows[0].max_codigo || 0) + 1;
   return `EST-${String(next).padStart(3, "0")}`;
 };
@@ -225,7 +233,7 @@ const crear = async (data) => {
     const id_usuario = usuarioResult.rows[0].id_usuario;
 
     // 5. Generar código estudiante
-    const codigo = await getSiguienteCodigo();
+    const codigo = await getSiguienteCodigo(client);
 
     // 6. Crear alumno
     const alumnoSql = `

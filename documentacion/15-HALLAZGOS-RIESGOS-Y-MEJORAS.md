@@ -27,6 +27,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 21/11/2026 (H32):** anulación de pagos con reversión de caja, pensión,
 > pre-ticket y boleta; H32 queda resuelto.
+>
+> **Actualización 21/11/2026 (H10/H37/H38):** numeraciones protegidas con advisory locks,
+> coherencia mes/año concepto-pensión y bloqueo del doble pago; H10, H37 y H38 resueltos.
 
 ---
 
@@ -138,6 +141,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Dos matrículas/pagos simultáneos pueden colisionar; un fallo revierte la transacción |
 | Recomendación | Secuencias PostgreSQL o `SELECT ... FOR UPDATE` |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): advisory locks por dominio dentro de la transacción (`codigo_alumno`, `efectivo:<año>`, `boleta:B001`) y `UNIQUE (serie, numero)` en `boletas_electronicas`; pruebas concurrentes con códigos, nros y boletas distintos |
 
 ---
 
@@ -416,6 +420,28 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Detrás de una red escolar con NAT, 5 fallos de cualquier alumno bloquean el login de todo el colegio durante 15 minutos |
 | Recomendación | Clave por DNI/usuario combinada con IP, o límites más altos con backoff progresivo; revisar `trust proxy` en producción |
 | Esfuerzo | S |
+
+### H37 — Concepto de pensión sin validar el mes
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | `registrarPago` validaba monto y pertenencia, pero no que `pension.mes`/`anio_lectivo` coincidieran con el concepto |
+| Impacto | Se podía pagar el concepto de abril y marcar como pagada la pensión de marzo |
+| Recomendación | Exigir coincidencia de mes y año entre concepto y pensión |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): `tesoreriaService.registrarPago` responde 400 “El concepto no corresponde al mes de la pensión.” También en la resolución automática |
+
+### H38 — Doble pago concurrente de la misma pensión
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | Dos pagos simultáneos podían leer la pensión `PENDIENTE` y registrar ambos |
+| Impacto | Pensión pagada dos veces y boletas duplicadas |
+| Recomendación | Índice único parcial por pensión activa y respuesta 409 |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): lock por `pension:<id>` + verificación de pago activo en la transacción y captura del 23505 de `ux_pago_pension_activo` → 409. En la BD local el índice se omitió por duplicados históricos (pensión 139); el 409 se garantiza con el lock |
 
 ### H39 — Fechas de negocio calculadas en UTC
 

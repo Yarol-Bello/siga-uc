@@ -662,7 +662,8 @@ CREATE TABLE public.boletas_electronicas (
     xml_url character varying(255),
     pdf_url character varying(255),
     hash_cpe character varying(255),
-    CONSTRAINT chk_boleta_estado CHECK ((((estado_sunat)::text = ANY ((ARRAY['ACEPTADO'::character varying, 'PENDIENTE'::character varying, 'RECHAZADO'::character varying, 'ANULADO'::character varying])::text[])) OR (estado_sunat IS NULL)))
+    CONSTRAINT chk_boleta_estado CHECK ((((estado_sunat)::text = ANY ((ARRAY['ACEPTADO'::character varying, 'PENDIENTE'::character varying, 'RECHAZADO'::character varying, 'ANULADO'::character varying])::text[])) OR (estado_sunat IS NULL))),
+    CONSTRAINT boletas_serie_numero_key UNIQUE (serie, numero)
 );
 
 

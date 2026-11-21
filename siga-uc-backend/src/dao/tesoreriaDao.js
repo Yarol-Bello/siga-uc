@@ -376,6 +376,13 @@ const registrarPago = async (data) => {
       );
       const anio = anioResult.rows[0].anio;
       const prefijo = `EFECTIVO-${anio}-`;
+
+      // Serializa la numeración de efectivo por año.
+      await client.query(
+        "SELECT pg_advisory_xact_lock(hashtext($1))",
+        [`efectivo:${anio}`],
+      );
+
       const secuenciaResult = await client.query(
         `SELECT COALESCE(MAX(CAST(SPLIT_PART(nro_operacion, '-', 3) AS INTEGER)), 0) + 1 AS siguiente
          FROM pagos
@@ -384,6 +391,28 @@ const registrarPago = async (data) => {
         [`${prefijo}%`],
       );
       nroOperacion = `${prefijo}${String(secuenciaResult.rows[0].siguiente).padStart(3, "0")}`;
+    }
+
+    // Evita el doble pago concurrente de la misma pensión. El índice único
+    // parcial (ux_pago_pension_activo) es la segunda barrera cuando existe.
+    if (data.id_pension) {
+      await client.query(
+        "SELECT pg_advisory_xact_lock(hashtext($1))",
+        [`pension:${data.id_pension}`],
+      );
+
+      const pagoPension = await client.query(
+        `SELECT 1 FROM pagos
+         WHERE id_pension = $1 AND estado = 'PAGADO'
+         LIMIT 1`,
+        [data.id_pension],
+      );
+
+      if (pagoPension.rows.length > 0) {
+        const error = new Error("La pensión ya fue pagada.");
+        error.statusCode = 409;
+        throw error;
+      }
     }
 
     // 1. Crear pago (casteando los parámetros NULLables)
@@ -410,6 +439,10 @@ const registrarPago = async (data) => {
     const pago = pagoResult.rows[0];
 
     // 2. Generar número de boleta
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtext('boleta:B001'))",
+    );
+
     const numSql = `SELECT COALESCE(MAX(numero), 4820) + 1 AS siguiente FROM boletas_electronicas`;
     const numResult = await client.query(numSql);
     const numero = numResult.rows[0].siguiente;
@@ -458,6 +491,17 @@ const registrarPago = async (data) => {
     return { pago, boleta };
   } catch (error) {
     await client.query("ROLLBACK");
+
+    if (
+      error.code === "23505" &&
+      (error.constraint === "ux_pago_pension_activo" ||
+        /ux_pago_pension_activo/.test(error.message || ""))
+    ) {
+      const conflicto = new Error("La pensión ya fue pagada.");
+      conflicto.statusCode = 409;
+      throw conflicto;
+    }
+
     throw error;
   } finally {
     client.release();

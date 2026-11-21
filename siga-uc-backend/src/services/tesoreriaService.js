@@ -173,6 +173,20 @@ const registrarPago = async (data) => {
   }
 
   if (pension) {
+    if (concepto.tipo === "PENSION") {
+      const mismoMes = Number(pension.mes) === Number(concepto.mes);
+      const mismoAnio =
+        Number(pension.anio_lectivo) === Number(concepto.anio_lectivo);
+
+      if (!mismoMes || !mismoAnio) {
+        const error = new Error(
+          "El concepto no corresponde al mes de la pensión.",
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
     if (Number(pension.id_alumno) !== Number(data.id_alumno)) {
       const error = new Error("La pensión no pertenece al alumno.");
       error.statusCode = 400;
