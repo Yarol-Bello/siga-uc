@@ -127,7 +127,9 @@ Script: `siga-uc-backend/scripts/smoke.js` → `npm run smoke`.
 - Timeout de **10 s por petición** (`AbortSignal.timeout`).
 - Nunca imprime tokens ni contraseñas.
 - Si faltan credenciales de un rol, las pruebas dependientes se marcan **SKIP**, nunca FAIL.
-- Exit code `1` si hay al menos un FAIL; `0` si todo pasa o solo hay SKIP.
+- Códigos de salida: `0` solo si no hay FAIL ni SKIP; `1` si hay al menos un FAIL; `2` si
+  hay SKIP y no se definió `SMOKE_ALLOW_SKIP=1`. Con SKIP se imprime una advertencia de
+  resultado parcial.
 
 Variables de entorno:
 
@@ -137,18 +139,16 @@ Variables de entorno:
 | `SMOKE_ADMIN_DNI` / `SMOKE_ADMIN_PASSWORD` | Para pruebas ADMIN | — |
 | `SMOKE_DOCENTE_DNI` / `SMOKE_DOCENTE_PASSWORD` | Para prueba DOCENTE | — |
 | `SMOKE_ESTUDIANTE_DNI` / `SMOKE_ESTUDIANTE_PASSWORD` | Para pruebas ESTUDIANTE | — |
+| `SMOKE_ALLOW_SKIP` | No | Sin definir; `1` acepta SKIP solo para diagnóstico |
 
 El script carga `siga-uc-backend/.env` si existe (Node ≥ 20.12) sin sobrescribir las
 variables ya definidas en el proceso. En Render se pasan desde el panel o solo para la
 ejecución; **nunca se commitean**.
 
-Ejecución local:
+Ejecución local (las credenciales ya están en `.env`, no hace falta exportarlas):
 
 ```powershell
 cd siga-uc-backend
-$env:SMOKE_ADMIN_DNI="<dni>"; $env:SMOKE_ADMIN_PASSWORD="<clave>"
-$env:SMOKE_DOCENTE_DNI="<dni>"; $env:SMOKE_DOCENTE_PASSWORD="<clave>"
-$env:SMOKE_ESTUDIANTE_DNI="<dni>"; $env:SMOKE_ESTUDIANTE_PASSWORD="<clave>"
 npm run smoke
 ```
 
@@ -158,10 +158,10 @@ del primer alumno (Content-Type y firma `%PDF`), RBAC del ESTUDIANTE (403 en `/a
 login/perfil DOCENTE y libreta propia del ESTUDIANTE.
 
 Resultado esperado en local con las tres cuentas: **11 PASS, 0 FAIL, 0 SKIP**, exit `0`.
-Sin credenciales: **3 PASS, 0 FAIL, 8 SKIP**, exit `0`.
+Sin credenciales: **3 PASS, 0 FAIL, 8 SKIP**, exit `2` (resultado parcial).
 
-> La cuenta docente `10293847` tiene `requiere_cambio_password = TRUE` y su clave de
-> `docs/CREDENCIALES.md` ya no aplica. Usar otra cuenta docente activa (por ejemplo
+> La cuenta docente `10293847` tiene `requiere_cambio_password = TRUE` y su contraseña
+> documentada anteriormente ya no es válida. Usar otra cuenta docente activa (por ejemplo
 > `20394812`) sin modificar contraseñas.
 
 Contra un entorno remoto:
@@ -172,18 +172,19 @@ $env:SMOKE_BASE_URL="https://<backend>/api"
 npm run smoke
 ```
 
-Criterio de aceptación del ensayo en Render: **11 PASS, 0 FAIL**, exit `0`. Un FAIL bloquea
-el despliegue.
+Criterio de aceptación del ensayo en Render: **11 PASS, 0 FAIL, 0 SKIP**, exit `0`. Un FAIL
+(exit `1`) o un SKIP inesperado (exit `2`) bloquea el despliegue. `SMOKE_ALLOW_SKIP=1` solo
+sirve para diagnósticos parciales.
 
 ### 4.3 Smoke test manual (15 minutos)
 
 | # | Caso | Pasos | Esperado |
 |---|---|---|---|
 | 1 | Health | `GET /api/health` | 200 + app/version |
-| 2 | Login Admin | 74829102 / `UC2026*` | Dashboard con KPIs |
-| 3 | Login Docente | 20394812 / `UC2026*` | Dashboard con cursos |
-| 4 | Login Estudiante | 75918234 / `UC75918234` | Notas del alumno |
-| 5 | Login Secretaría | 40596837 / `UC2026*` | Dashboard financiero |
+| 2 | Login Admin | DNI 74829102 / clave en `.env` | Dashboard con KPIs |
+| 3 | Login Docente | DNI 20394812 / clave en `.env` | Dashboard con cursos |
+| 4 | Login Estudiante | DNI 75918234 / clave en `.env` | Notas del alumno |
+| 5 | Login Secretaría | DNI 40596837 / clave en `.env` | Dashboard financiero |
 | 6 | Ruta cruzada | Estando como estudiante, ir a `/admin` | Redirige a `/estudiante` |
 | 7 | Campanita | Abrir buzón | Lista y contador |
 | 8 | Carné | Abrir carné | QR visible |

@@ -3,10 +3,11 @@
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit base de esta sesión:** `4ad4960 docs(handoff): completar prerequisitos de despliegue`
-- **Commit de esta sesión:** `feat(scripts): smoke test de solo lectura para verificar entornos`
+- **Commit base de esta sesión:** `6fc6d3e feat(scripts): smoke test de solo lectura para verificar entornos`
+- **Commit de esta sesión:** `fix(scripts): smoke test sin credenciales debe fallar y persistir SMOKE_*`
   (el hash exacto queda en `git log -1`).
-- **Estado:** smoke test implementado y verificado contra local; árbol limpio tras el commit.
+- **Estado:** smoke test corregido y verificado; las credenciales locales viven en
+  `siga-uc-backend/.env` (ignorado); árbol limpio tras el commit.
 
 ---
 
@@ -25,10 +26,11 @@
 - Credenciales de prueba: `docs/CREDENCIALES.md`. La clave de PostgreSQL local está en
   `siga-uc-backend/.env` (`DB_PASSWORD`); no se escribe en este documento.
 - `npm run smoke` existe (`siga-uc-backend/scripts/smoke.js`): 11 pruebas de solo lectura,
-  timeout de 10 s por petición y exit code 1 si hay algún FAIL. Lee las credenciales de
-  `SMOKE_*` y, si existe, de `siga-uc-backend/.env`; nunca las imprime.
-- Verificación local del 21/11/2026: **11 PASS, 0 FAIL, 0 SKIP** con las tres cuentas;
-  **3 PASS, 0 FAIL, 8 SKIP** sin credenciales.
+  timeout de 10 s por petición. Lee las credenciales de `SMOKE_*` y de
+  `siga-uc-backend/.env`; nunca las imprime. Códigos de salida: `0` solo sin FAIL y sin
+  SKIP; `1` si hay FAIL; `2` si hay SKIP sin `SMOKE_ALLOW_SKIP=1`.
+- Verificación local del 21/11/2026: **11 PASS, 0 FAIL, 0 SKIP** (exit 0) con las tres
+  cuentas; **3 PASS, 0 FAIL, 8 SKIP** (exit 2) sin credenciales.
 
 ---
 
@@ -117,9 +119,9 @@
 - `npm run smoke` carga `.env` automáticamente y no sobrescribe variables ya definidas en
   el proceso. Su único POST es `/auth/login` (actualiza `ultimo_login` y registra el LOGIN
   en la bitácora); el resto son GET. No imprime tokens ni contraseñas.
-- La cuenta docente `10293847` tiene `requiere_cambio_password = TRUE` y su contraseña de
-  `docs/CREDENCIALES.md` ya no aplica. Para el smoke usar otra cuenta docente activa (por
-  ejemplo `20394812`), sin modificar datos ni contraseñas.
+- La cuenta docente `10293847` tiene `requiere_cambio_password = TRUE` y su contraseña
+  documentada anteriormente ya no es válida. Para el smoke usar otra cuenta docente activa
+  (por ejemplo `20394812`), sin modificar datos ni contraseñas.
 - El login correcto no consume el rate limit (`skipSuccessfulRequests`); un smoke con
   contraseña incorrecta sí consume 1 de los 5 intentos de la ventana de 15 min.
 
@@ -147,8 +149,9 @@
      cd siga-uc-backend
      npm run smoke
      ```
-   - Criterio: **11 PASS, 0 FAIL**, exit code `0`. Los SKIP solo son aceptables si
-     faltan credenciales; un FAIL bloquea el ensayo.
+   - Criterio: **11 PASS, 0 FAIL, 0 SKIP**, exit code `0`. Un FAIL (exit 1) o un SKIP
+     inesperado (exit 2) bloquea el ensayo. `SMOKE_ALLOW_SKIP=1` solo se usa para
+     diagnósticos parciales, nunca como aceptación.
 2. Revisar en Render los logs del backend y confirmar que el smoke no dejó escrituras
    de negocio (solo `ultimo_login` y los registros de LOGIN en la bitácora).
 3. Solo si el ensayo pasa: planificar el **despliegue definitivo** y la carga de

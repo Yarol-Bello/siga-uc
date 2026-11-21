@@ -14,9 +14,15 @@
  *   SMOKE_ADMIN_DNI             / SMOKE_ADMIN_PASSWORD
  *   SMOKE_DOCENTE_DNI           / SMOKE_DOCENTE_PASSWORD
  *   SMOKE_ESTUDIANTE_DNI        / SMOKE_ESTUDIANTE_PASSWORD
+ *   SMOKE_ALLOW_SKIP=1          (opcional; acepta SKIP para diagnósticos parciales)
  *
  * Si faltan credenciales, las pruebas dependientes se marcan SKIP (nunca FAIL).
  * Las credenciales nunca se imprimen.
+ *
+ * Códigos de salida:
+ *   0  Ningún FAIL y ningún SKIP (o SKIP con SMOKE_ALLOW_SKIP=1).
+ *   1  Al menos un FAIL.
+ *   2  Hay SKIP y SMOKE_ALLOW_SKIP no es 1.
  *
  * Uso: npm run smoke
  */
@@ -551,12 +557,27 @@ async function main() {
   const fail = resultados.filter((r) => r.estado === "FAIL").length;
   const skip = resultados.filter((r) => r.estado === "SKIP").length;
 
+  const allowSkip = process.env.SMOKE_ALLOW_SKIP === "1";
+
   console.log("");
   console.log(`${pass} PASS, ${fail} FAIL, ${skip} SKIP`);
+
+  if (skip > 0) {
+    console.log("");
+    console.log(
+      `*** RESULTADO PARCIAL: ${skip} prueba(s) omitidas. No usar como verificación de entorno. ***`,
+    );
+    if (allowSkip) {
+      console.log("SKIP aceptado por SMOKE_ALLOW_SKIP=1.");
+    }
+  }
 
   if (fail > 0) {
     console.log("Resultado: FALLO");
     process.exitCode = 1;
+  } else if (skip > 0 && !allowSkip) {
+    console.log("Resultado: PARCIAL");
+    process.exitCode = 2;
   } else {
     console.log("Resultado: OK");
     process.exitCode = 0;
