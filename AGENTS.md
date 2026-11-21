@@ -216,6 +216,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Operación, backup, testeo | `documentacion/13-OPERACION-MANTENIMIENTO-Y-TESTEO.md` |
 | Trazabilidad UI→BD | `documentacion/14-MATRIZ-TRAZABILIDAD.md` |
 | Hallazgos y roadmap | `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` |
+| Guion de demo y checklist | `documentacion/17-GUION-DEMOSTRACION.md` |
 
 ---
 

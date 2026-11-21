@@ -36,6 +36,7 @@
 | Rastrear un caso de uso hasta las tablas | `14-MATRIZ-TRAZABILIDAD.md` |
 | Ver hallazgos, riesgos y mejoras priorizadas | `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` |
 | Consultar el `AGENTS.md` anterior (histórico) | `16-ANEXO-AGENTS-ANTERIOR.md` |
+| Preparar la demo y el checklist de aprobación | `17-GUION-DEMOSTRACION.md` |
 
 ---
 

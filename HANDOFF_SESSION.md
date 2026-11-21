@@ -1,24 +1,88 @@
 # HANDOFF_SESSION.md — SIGA-UC
 
+> **Fase actual: demostración y aprobación.** SIGA-UC se muestra a la dirección del
+> colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
+> menores hasta que la dirección apruebe. Alcance completo en la sección 0.
+
+---
+
+## 0. Fase actual: demostración y aprobación
+
+**Objetivo:** demostrar el sistema a la dirección del colegio y obtener su aprobación.
+En esta fase **no** se prepara el despliegue definitivo.
+
+### Alcance permitido
+
+- Entorno local (Windows + PostgreSQL 18).
+- Render con servicios gratuitos.
+- Supabase con plan gratuito.
+- Datos ficticios o de prueba.
+- Notificaciones internas (campanita).
+- Smoke test, `test:integridad` y `test:e2e`.
+
+### Fuera de alcance hasta la aprobación
+
+- Comprar o registrar dominios.
+- Modificar DNS de cualquier dominio.
+- Configurar un dominio real en Resend o usar el dominio del colegio (no está
+  confirmado ni autorizado).
+- Contratar planes pagos: Render Starter, Supabase pago o Resend pago.
+- Cargar datos reales de alumnos, apoderados o personal.
+- Servidores corporativos del colegio o de la empresa.
+- Integrar pasarelas de pago (Edpago u otras).
+
+### Reglas de Resend en esta fase
+
+- Remitente de prueba: `SIGA-UC <onboarding@resend.dev>`.
+- **No** cambiar `EMAIL_FROM` a un dominio no verificado.
+- En modo prueba el correo solo llega a la cuenta dueña de Resend. La notificación
+  siempre se guarda y se ve en la campanita aunque el correo falle.
+- El modal de Nueva Notificación muestra el aviso de modo prueba.
+
+### Reglas de datos y migraciones
+
+- Solo datos ficticios o de prueba; nunca información real de menores.
+- Supabase `siga-uc-prod` es **de prueba**, aunque su nombre diga “prod”; puede pausarse
+  por inactividad y no ofrece garantías de producción.
+- **Un `git push` no aplica migraciones.** Cualquier cambio de esquema se aplica a mano
+  en Supabase (SQL Editor) con un archivo idempotente en `database/`.
+- Los datos de prueba deben poder limpiarse al terminar la demo (ver
+  `documentacion/17-GUION-DEMOSTRACION.md`).
+
+---
+
 ## 1. Cierre de sesión
 
 - **Fecha:** 21/11/2026
-- **Commit base de esta sesión:** `cafcda4 fix(personal): especialidad solo para docentes y roles de personal (H46)`
-- **Commit de esta sesión:** `fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)`
-  (el hash exacto queda en `git log -1`).
-- **Estado:** retiro anula deuda futura en una transacción, UI y migración H45 verificadas;
-  árbol limpio.
+- **Commit base de esta sesión:** `22e06f6 fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)`
+- **Commits de esta sesión:** aviso de correo en modo prueba en el modal de notificaciones
+  y documentación de la fase de demostración (hashes exactos en `git log`).
+- **Estado:** fase de demostración fijada; sin cambios de esquema ni de configuración de
+  producción; árbol limpio.
+- **Verificación local:** `npm run smoke` **11 PASS** (exit 0), `npm run test:e2e`
+  **14 PASS** (exit 0) e integridad **8 PASS / 2 FAIL** esperados del seed. Notificación
+  sin correo: guardada y visible en la campanita. La contraseña del ADMIN local se alineó
+  con `SMOKE_ADMIN_PASSWORD` de `.env` (no se documentó).
 
 ---
 
 ## 2. Entorno
 
-- Todo el desarrollo es **local**:
+- Desarrollo **local**:
   - Backend: `http://localhost:3000`
   - Frontend: `http://localhost:4200`
   - PostgreSQL 18 local, base `siga_uc`.
-- En **Render** hay una versión **ANTIGUA** con **DATOS DE PRUEBA**. **No hay datos reales.**
+- **Demo desplegada (21/11/2026):**
+  - Frontend: <https://siga-uc-web.onrender.com>
+  - Backend: <https://siga-uc-api-prod.onrender.com/api>
+  - Ambos **Live** en el commit `22e06f6`, con servicios **gratuitos**.
+- Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **39 tablas**.
+  Migraciones **H32, H10/H38, H07 y H45 aplicadas a mano**.
+- Datos de la demo: solo usuarios y alumno de prueba; noviembre y diciembre ya generados.
+  **No hay datos reales.**
 - **No hay staging.**
+- Render gratuito puede dormir por inactividad y Supabase gratuito puede pausarse; entrar
+  unos minutos antes de la demo para despertar ambos servicios.
 - La BD local de demo se recreó con la secuencia del dump: **39 tablas** y el índice
   `ux_pago_pension_activo` **existe** (verificado el 21/11/2026).
 - Datos locales tras la recreación: **21 alumnos, 29 usuarios, 10 pagos de seed
@@ -142,9 +206,12 @@
 2. Las boletas son **comprobantes internos**; no van a SUNAT.
 3. La anulación de un pago genera un **EGRESO** con el mismo medio de pago.
 4. La auditoría registra **escrituras, accesos y descargas**; **no lecturas**.
-5. El despliegue se hará primero en el **Render actual como ensayo**, con datos de
-   prueba, antes del despliegue definitivo.
-6. Antes de desplegar se ejecutará un **smoke test de solo lectura**.
+5. El despliegue actual en **Render + Supabase gratuitos** es el **entorno de
+   demostración**, no producción real.
+6. Antes de dar una demo se ejecutará un **smoke test de solo lectura** en local; contra
+   Render solo con confirmación explícita del dueño.
+7. **No se compran dominios ni planes** hasta que la dirección apruebe el proyecto.
+8. El correo queda en **modo prueba**; el canal confiable de la demo es la **campanita**.
 
 ---
 
@@ -152,6 +219,12 @@
 
 - El backend fija la sesión de PostgreSQL en `America/Lima`; el `TZ` del **proceso**
   también debe ser `America/Lima` en Render (variable de entorno, no en JS).
+- **Correo en modo prueba:** `onboarding@resend.dev` solo entrega al correo dueño de la
+  cuenta Resend. No prometer correos a apoderados; la campanita sí funciona.
+- **Supabase `siga-uc-prod` es de prueba:** plan gratuito, puede pausarse por inactividad
+  y no ofrece garantías de producción ni de retención de backups.
+- **Un `git push` no aplica migraciones:** se ejecutan a mano en Supabase, en orden y con
+  archivos idempotentes.
 - **Desarrollo/demo:** `siga_uc_completo.sql` (esquema + 21 alumnos ficticios +
   ~146 pensiones PAGADO sin pago). **Nunca en producción.**
 - **Producción:** `siga_uc.sql` → `seed_produccion.sql` (con `-v admin_password`) →
@@ -174,7 +247,8 @@
 - H23 es parcial: faltan personal, pagos y pre-tickets.
 - `npm run smoke` carga `.env` automáticamente y no sobrescribe variables ya definidas en
   el proceso. Su único POST es `/auth/login` (actualiza `ultimo_login` y registra el LOGIN
-  en la bitácora); el resto son GET. No imprime tokens ni contraseñas.
+  en la bitácora); el resto son GET, pero la descarga de libreta registra `DESCARGAR` en
+  la bitácora. No imprime tokens ni contraseñas.
 - La cuenta docente `10293847` tiene `requiere_cambio_password = TRUE` y su contraseña
   documentada anteriormente ya no es válida. Para el smoke usar otra cuenta docente activa
   (por ejemplo `20394812`), sin modificar datos ni contraseñas.
@@ -194,13 +268,15 @@
 - La tabla `notificaciones` guarda una fila por usuario. Los correos se envían después
   de guardar; si Resend falla, la notificación permanece y solo aumentan
   `correos_fallidos`.
-- En los ensayos locales de notificaciones se arrancó el backend con
-  `RESEND_API_KEY=""` para no enviar correos reales; los residuos de notificaciones y
-  auditoría se eliminaron al terminar.
-- El hash del ADMIN de demo no coincide con `SMOKE_ADMIN_PASSWORD` (drift detectado al
-  probar H43). Para las pruebas se usó una clave aleatoria temporal y se restauró el
-  hash original; `npm run smoke` puede fallar en el login ADMIN hasta restablecer esa
-  contraseña a un valor conocido. Los resets auditados no guardan la clave ni el hash.
+- Para probar notificaciones **sin correo real**, arrancar el backend con una key inválida
+  no vacía (`RESEND_API_KEY=re_test_no_enviar`). En PowerShell, asignar `""` elimina la
+  variable y `dotenv` vuelve a cargar la key real de `.env`, lo que envía correos de
+  verdad. Los residuos de notificaciones y auditoría se eliminan al terminar.
+- El hash del ADMIN de demo estaba desalineado de `SMOKE_ADMIN_PASSWORD` (drift de H43).
+  El 21/11/2026 se alineó la contraseña del ADMIN local `74829102` con el valor de
+  `SMOKE_ADMIN_PASSWORD` de `.env` (no se imprimió ni se documentó). Tras el cambio,
+  `npm run smoke` da **11 PASS, 0 FAIL, 0 SKIP** (exit 0). Los resets auditados no
+  guardan la clave ni el hash.
 - H44: las pensiones se generan desde el **mes de `fecha_creacion`** hasta diciembre,
   nunca desde enero. Un alumno creado en noviembre solo recibe noviembre y diciembre.
   No se exige orden de pago; cada mes genera su propia boleta.
@@ -225,38 +301,36 @@
 
 ---
 
-## 7. Próximo paso exacto
+## 7. Próximo paso exacto (fase demo)
 
-1. **Ensayo de despliegue en el Render actual con el escenario de producción**:
-   - Crear la base con `siga_uc.sql` → `seed_produccion.sql` (`-v admin_password`) →
-     migraciones en orden. **No** usar `siga_uc_completo.sql`.
-   - Configurar `NODE_ENV=production`, `FRONTEND_URL`, `TZ=America/Lima`,
-     `JWT_SECRET` largo y la conexión (`DATABASE_URL`/`DB_SSL` o `DB_*`).
-   - **Resend:** verificar el dominio con SPF/DKIM. Sin eso los correos solo llegan a
-     la cuenta propia.
-   - **Backups:** comprobar que `pg_dump` existe en el entorno de Render; si no,
-     `npm run backup` falla en producción y hay que usar los backups del proveedor.
-   - **Frontend:** confirmar que `environment.prod.ts` apunta a la URL real del backend
-     y que el build genera `404.html`.
-   - Entrar con el admin inicial (`74829102`) y cambiar la contraseña temporal.
-   - Ejecutar `npm run test:integridad` contra la base de Render: debe dar **10 PASS**.
-   - Antes del ensayo, ejecutar localmente `npm run test:integridad` y
-     `npm run test:e2e`; el E2E debe dar 14 PASS.
-   - El smoke completo necesita cuentas DOCENTE/ESTUDIANTE reales; el seed de producción
-     solo trae el admin. Crear cuentas reales (o temporales) y recién entonces ejecutar
-     `npm run smoke` con `SMOKE_*` de ese entorno. Sin esas cuentas, el smoke será parcial
-     (exit 2) y no debe usarse como aceptación.
-   - Criterio: **11 PASS, 0 FAIL, 0 SKIP**, exit code `0`. Un FAIL (exit 1) o un SKIP
-     inesperado (exit 2) bloquea el ensayo. `SMOKE_ALLOW_SKIP=1` solo se usa para
-     diagnósticos parciales, nunca como aceptación.
-2. Revisar en Render los logs del backend y confirmar que el smoke no dejó escrituras
-   de negocio (solo `ultimo_login` y los registros de LOGIN en la bitácora).
-3. Solo si el ensayo pasa: planificar el **despliegue definitivo** y la carga de
-   datos reales.
+1. **Ensayar el guion** de `documentacion/17-GUION-DEMOSTRACION.md` en local, **sin
+   correos reales**, y completar el checklist “listo para demostrar”.
+2. Ejecutar en local `npm run smoke` (11 PASS), `npm run test:integridad` y
+   `npm run test:e2e` (14 PASS). **No** ejecutar nada contra Render/Supabase sin
+   confirmación del dueño.
+3. Corregir solo lo que impida la demo; nada de preparar producción.
+4. Después de la demo, limpiar los datos de prueba recreando la base (nunca si hubiera
+   datos reales).
 
 ---
 
-## 8. Verificar el entorno en 6 comandos
+## 8. Pendiente después de la aprobación
+
+Nada de esta lista se hace en la fase actual.
+
+| Tema | Qué queda pendiente |
+|---|---|
+| **Resend real** | Comprar/autorizar un dominio, verificar SPF/DKIM, cambiar `EMAIL_FROM` y probar un envío a un tercero. Hoy es `onboarding@resend.dev` y solo llega a la cuenta dueña de Resend |
+| **Planes pagos** | Render Starter para evitar el sleep y Supabase pago para evitar la pausa; decidir backups/retensión |
+| **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
+| **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
+| **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` en `.env` y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
+| **Migraciones** | Aplicarlas **a mano** en Supabase, en orden, con archivos idempotentes. Un `git push` no las aplica |
+| **Integridad** | `npm run test:integridad` contra la base definitiva: 10 PASS |
+
+---
+
+## 9. Verificar el entorno en 6 comandos
 
 ```powershell
 git log -1 --oneline
@@ -274,7 +348,7 @@ El primero confirma el commit; el segundo debe devolver **39** y
 **11 PASS, 0 FAIL**; el quinto puede reportar violaciones reales de seed; el sexto
 debe terminar en **14 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada.
 
-Para una base de **producción** nueva:
+Para una base **definitiva** (solo después de la aprobación):
 
 ```powershell
 createdb -U postgres siga_uc
