@@ -207,7 +207,7 @@ Cada layout contiene:
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
 | `AdminSiagieComponent` | `GET /grados`, `GET /reportes/auditoria-docentes/:id`, `POST /siagie/generar-excel`, `GET /personal/:id`, `POST /notificaciones` |
 | `AdminReportesComponent` | `GET /grados`, `GET /alumnos`, `GET /reportes/cuadro-merito/:id`, `/alumnos-riesgo/:id`, `/libreta/:id`, `/libreta/:id/pdf` |
-| `AdminAuditoriaComponent` | `GET /auditoria`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar` |
+| `AdminAuditoriaComponent` | `GET /auditoria`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `GET /actas/:id/pdf` |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id` |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo` |
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo` |
@@ -218,7 +218,7 @@ Cada layout contiene:
 | `EstudianteHorarioComponent` | `GET /horarios/grado/:id` |
 | `SecretariaDashboardComponent` | `GET /tesoreria/estadisticas`, `GET /tesoreria/pre-tickets?estado=PENDIENTE` |
 | `SecretariaTesoreriaComponent` | `GET /alumnos`, `GET /tesoreria/pensiones/alumno/:id` (N+1), `GET /tesoreria/pre-tickets`, `POST /tesoreria/pagos` |
-| `SecretariaCajaComponent` | `GET /caja/actual`, `GET /caja/movimientos/:id`, `POST /caja/aperturar`, `POST /caja/egresos`, `POST /caja/cerrar` |
+| `SecretariaCajaComponent` | `GET /caja/actual`, `GET /caja/movimientos/:id`, `POST /caja/aperturar`, `POST /caja/egresos`, `POST /caja/cerrar`, `GET /tesoreria/boletas/:id/pdf` |
 
 ## 7. Patrones de implementación
 
@@ -292,8 +292,8 @@ del rol original; el backend debe permitir ambos roles.
 - **Dashboard Admin:** tarjetas KPI, sin gráficos.
 - **Tablas:** badges por estado, acciones a la derecha, sticky en tablas anchas.
 - **Formularios:** validación local + mensajes inline; muchos usan `alert()`/`confirm()`.
-- **Impresión:** el carné usa `window.print()`; la libreta se descarga como PDF real desde
-  `GET /reportes/libreta/:id/pdf` (PDFKit) y muestra error inline si falla.
+- **Impresión:** el carné usa `window.print()`; libretas, boletas y actas se descargan como PDF
+  real desde el backend (PDFKit) y muestran error inline si fallan.
 - **Responsive:** Bootstrap; se intentó un sidebar drawer y se revirtió
   (`Revert "feat(frontend): sidebar responsive..."`). En móvil la navegación puede ser
   incómoda.

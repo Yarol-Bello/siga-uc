@@ -4,6 +4,7 @@
  */
 
 const tesoreriaService = require("../services/tesoreriaService");
+const boletaPdfService = require("../services/boletaPdfService");
 const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
@@ -78,6 +79,38 @@ const obtenerPago = async (req, res) => {
     return response.success(res, 200, "Pago obtenido", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
+/**
+ * GET /api/tesoreria/boletas/:id_pago/pdf
+ * Genera y descarga la boleta de pago en PDF.
+ */
+const getBoletaPdf = async (req, res) => {
+  try {
+    const data = await tesoreriaService.obtenerPago(req.params.id_pago);
+
+    if (!data?.numero_boleta) {
+      return response.notFound(res, "Boleta no encontrada para este pago");
+    }
+
+    const buffer = await boletaPdfService.generarBoletaPdf(data);
+    const numero = String(data.numero_boleta).replace(/[^0-9A-Za-z_-]/g, "");
+    const fileName = `boleta_${numero || data.id_pago}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("Cache-Control", "no-store");
+
+    return res.send(buffer);
+  } catch (error) {
+    console.error("❌ Error al generar PDF de boleta:", error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.statusCode ? error.message : "No se pudo generar la boleta en PDF",
+    );
   }
 };
 
@@ -177,6 +210,7 @@ module.exports = {
   crearPreTicket,
   listarPagos,
   obtenerPago,
+  getBoletaPdf,
   registrarPago,
   listarPensionesAlumno,
   generarPensionesMes,

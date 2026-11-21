@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H34 completo)` | `feat(reportes): PDFs reales para boletas y actas (H34 completo)` |
 | `(sesión H34)` | `feat(reportes): generar PDFs reales para libretas (H34)` |
 | `(sesión H25)` | `feat(infra): script de backup automatico de PostgreSQL (H25)` |
 | `(sesión H12)` | `fix(config): centralizar año lectivo (H12)` |
@@ -198,18 +199,18 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   (conexión directa/session pooler, no transaction pooler).
 - Sin escrituras ni borrados en la base de datos.
 
-#### H34 — PDFs reales de libretas
+#### H34 — PDFs reales de libretas, boletas y actas
 
-- Nuevo `GET /api/reportes/libreta/:id_alumno/pdf?bimestre=&anio=` con los mismos permisos
-  que la libreta JSON (`checkRole` + `checkAlumnoPropio`).
-- `libretaPdfService.js` usa PDFKit con Helvetica/Times estándar, A4, tabla paginada,
-  asistencia y pie de página. Sin Chromium ni fuentes externas.
-- Respuesta `application/pdf` con `Content-Disposition: attachment`; CORS expone
-  `Content-Disposition`.
-- Frontend: “Descargar PDF” reemplaza `window.print()` en la libreta; usa el nombre del header
-  o `libreta_<dni>_BIM<n>_<anio>.pdf`, spinner y bloqueo de doble clic.
-- Error de generación/red se muestra inline en el modal, no solo en consola.
-- H34 queda **parcial**: boletas y actas siguen pendientes.
+- `GET /api/reportes/libreta/:id_alumno/pdf?bimestre=&anio=` (ADMIN/DOCENTE/ESTUDIANTE propio).
+- `GET /api/tesoreria/boletas/:id_pago/pdf` (ADMIN/SECRETARIA).
+- `GET /api/auditoria/actas/:id_acta/pdf` (ADMIN/DOCENTE), declarado antes del guard global ADMIN.
+- `libretaPdfService.js`, `boletaPdfService.js` y `actaPdfService.js` usan PDFKit con Helvetica;
+  sin Chromium ni fuentes externas.
+- El acta incluye **matriz real** de alumnos y notas (`notas_finales_area`) y watermark
+  “BORRADOR - NO VÁLIDO PARA TRÁMITE” si está ABIERTA. Si no hay notas, devuelve 400.
+- Frontend: descarga Blob con nombre de `Content-Disposition`, spinner y bloqueo de doble clic;
+  errores inline. Caja muestra PDF por movimiento con boleta; Auditoría muestra PDF por acta.
+- H34 queda **completo**.
 
 ### Verificaciones realizadas
 
@@ -232,10 +233,13 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 - H25: `npm run backup` generó un `.sql` de 143.6 KB; restauración en `siga_uc_restore_test`
   devolvió 39 tablas, 33 usuarios y 24 alumnos; luego se eliminó la BD de prueba. También se
   probaron `DATABASE_URL`, `BACKUP_DIR`, el mensaje amigable sin `pg_dump` y `git check-ignore`.
-- H34: 10/10 pruebas de API OK (200 PDF, `%PDF`, headers, 401, 403, 404). PDF de 1 página
-  verificado visualmente con tildes/ñ. UI: descarga `libreta_75918234_BIM2_2026.pdf`, spinner
-  activo y doble clic genera una sola petición. Error simulado sin backend muestra mensaje
-  inline amigable.
+- H34 libretas: 10/10 pruebas de API OK (200 PDF, `%PDF`, headers, 401, 403, 404). PDF de 1
+  página verificado visualmente con tildes/ñ. UI: descarga `libreta_75918234_BIM2_2026.pdf`.
+- H34 boletas/actas: 22/22 pruebas de API OK. Boleta `B001-004837` descargada desde Caja; acta
+  2do Bimestre de 2 páginas con matriz real de alumnos/notas; acta ABIERTA con watermark
+  “BORRADOR - NO VÁLIDO PARA TRÁMITE”; acta sin notas → 400; permisos 401/403/404 correctos.
+  UI: `boleta_B001-004837.pdf` y `acta_2_2do_Bimestre_2026.pdf` descargados; spinner y errores
+  inline. Datos temporales eliminados.
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---
@@ -265,7 +269,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
     commitear datos personales. En Render se requiere `pg_dump` y disco persistente o subida
     externa.
 15. **PDFs:** usar PDFKit con fuentes estándar; no introducir Puppeteer/Chromium por el límite
-    de RAM de Render. La libreta se genera en `libretaPdfService` y se descarga como Blob.
+    de RAM de Render. Libretas, boletas y actas se descargan como Blob.
 
 ---
 
@@ -286,7 +290,7 @@ Implementado y probado:
 
 ### Siguiente: Fase 4 — Operación y calidad
 
-> H12 y H25 quedaron completados. H34 quedó parcial (libretas). El siguiente pendiente es H23.
+> H12, H25 y H34 quedaron completados. El siguiente pendiente es H23.
 
 Tomar como fuente `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`:
 
@@ -295,7 +299,7 @@ Tomar como fuente `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`:
 - **H11:** visibilizar errores de guardados masivos (hoy la UI solo muestra insertados).
 - **H22:** eliminar N+1 de tesorería (pensiones por alumno en un endpoint agregado).
 - **H05:** mapeo SIAGIE configurable (hoy solo 4 prefijos y primera hoja).
-- **H34:** PDFs reales — libretas ✅; boletas y actas pendientes.
+- **H34:** PDFs reales — libretas, boletas y actas ✅.
 - **H27:** actualizar `.env.example`, README e INSTALACION (Resend, no SMTP).
 - **H29:** documentar tablas históricas no persistidas (`libretas`, `cuadro_merito`, `alumnos_riesgo`, etc.).
 
@@ -308,7 +312,7 @@ Copiar y pegar:
 ```text
 Estás retomando SIGA-UC (PostgreSQL 18 + Angular 21 + Node/Express). Antes de escribir código, lee HANDOFF_SESSION.md en la raíz y revisa documentacion/README.md, documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md, documentacion/11-SEGURIDAD-AUDITORIA-E-INTEGRIDAD.md y documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md.
 
-Contexto: Fase 1 (seguridad), Fase 2 (integridad académica), H18 (cambio obligatorio de contraseña), H12 (año lectivo centralizado), H25 (backup automatizado) y H34 (PDF de libretas) ya están implementadas y commiteadas. H34 queda parcial: boletas y actas siguen pendientes. La fuente de verdad es el código.
+Contexto: Fase 1 (seguridad), Fase 2 (integridad académica), H18 (cambio obligatorio de contraseña), H12 (año lectivo centralizado), H25 (backup automatizado) y H34 (PDFs de libretas, boletas y actas) ya están implementadas y commiteadas. La fuente de verdad es el código.
 
 Comienza con la Fase 4, empezando por H23 (paginación server-side). No cambies el esquema de la BD, no rompas el JSON { success, message, ... }, usa parches quirúrgicos y entrega commits atómicos.
 

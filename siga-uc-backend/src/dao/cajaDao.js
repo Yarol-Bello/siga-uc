@@ -203,6 +203,7 @@ const listarMovimientos = async (id_apertura) => {
   const sql = `
     SELECT 
       m.id_movimiento,
+      m.id_pago,
       m.tipo,
       m.concepto,
       m.monto,

@@ -135,6 +135,35 @@ const listarActas = async () => {
 };
 
 /**
+ * Obtener un acta bimestral por ID
+ */
+const findActaById = async (id_acta) => {
+  const sql = `
+    SELECT
+      a.id_acta,
+      a.periodo,
+      a.anio_lectivo,
+      a.id_grado,
+      a.estado,
+      a.fecha_cierre,
+      a.cerrado_por,
+      a.hash_integridad,
+      g.nombre_grado,
+      g.seccion,
+      g.nivel,
+      u.nombres || ' ' || u.apellidos AS cerrado_por_nombre,
+      u.dni AS cerrado_por_dni
+    FROM actas_bimestrales a
+    LEFT JOIN grados g ON g.id_grado = a.id_grado
+    LEFT JOIN usuarios u ON u.id_usuario = a.cerrado_por
+    WHERE a.id_acta = $1
+    LIMIT 1
+  `;
+  const result = await query(sql, [id_acta]);
+  return result.rows[0] || null;
+};
+
+/**
  * Cerrar un acta bimestral (con hash de integridad)
  */
 const cerrarActa = async (data) => {
@@ -184,6 +213,94 @@ const PERIODOS_POR_BIMESTRE = {
   4: ["4to Bimestre", "IV Bimestre", "4° Bimestre"],
 };
 
+const obtenerBimestreDesdePeriodo = (periodo) => {
+  const texto = String(periodo || "").toLowerCase();
+
+  for (const [bimestre, alias] of Object.entries(PERIODOS_POR_BIMESTRE)) {
+    if (alias.some((nombre) => texto.includes(nombre.toLowerCase()))) {
+      return Number(bimestre);
+    }
+  }
+
+  const coincidencia = texto.match(/[1-4]/);
+  return coincidencia ? Number(coincidencia[0]) : null;
+};
+
+/**
+ * Matriz real de alumnos y notas finales para un acta.
+ * Si id_grado es NULL, incluye todos los grados del año.
+ */
+const findActaMatriz = async (id_grado, periodo, anioLectivo) => {
+  const bimestre = obtenerBimestreDesdePeriodo(periodo);
+
+  if (!bimestre) {
+    const error = new Error(
+      `No se pudo determinar el bimestre del acta: ${periodo}`,
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const cursosSql = `
+    SELECT id_curso, nombre_curso, area_academica
+    FROM cursos
+    ORDER BY area_academica, nombre_curso
+  `;
+
+  const params = [bimestre, anioLectivo];
+  let filtroGrado = "";
+
+  if (id_grado) {
+    params.push(id_grado);
+    filtroGrado = "AND a.id_grado = $3";
+  }
+
+  const alumnosSql = `
+    SELECT
+      a.id_alumno,
+      a.codigo_estudiante,
+      a.apellidos,
+      a.nombres,
+      a.apellidos || ', ' || a.nombres AS nombre_completo,
+      g.nombre_grado,
+      g.seccion,
+      nf.id_curso,
+      nf.nota_final
+    FROM alumnos a
+    LEFT JOIN grados g ON g.id_grado = a.id_grado
+    LEFT JOIN notas_finales_area nf ON nf.id_alumno = a.id_alumno
+      AND nf.bimestre = $1
+      AND nf.anio_lectivo = $2
+    WHERE a.anio_lectivo = $2
+      ${filtroGrado}
+    ORDER BY g.nombre_grado, a.apellidos, a.nombres, nf.id_curso
+  `;
+
+  const [cursosResult, alumnosResult] = await Promise.all([
+    query(cursosSql),
+    query(alumnosSql, params),
+  ]);
+
+  const alumnosMap = new Map();
+
+  for (const row of alumnosResult.rows) {
+    if (!alumnosMap.has(row.id_alumno)) {
+      const { id_curso, nota_final, ...alumno } = row;
+      alumnosMap.set(row.id_alumno, { ...alumno, notas: {} });
+    }
+
+    if (row.id_curso && row.nota_final !== null) {
+      alumnosMap.get(row.id_alumno).notas[row.id_curso] = row.nota_final;
+    }
+  }
+
+  return {
+    bimestre,
+    cursos: cursosResult.rows,
+    alumnos: Array.from(alumnosMap.values()),
+  };
+};
+
 /**
  * Verifica si existe un acta CERRADA para el grado/bimestre/año.
  * Las actas globales (id_grado NULL) se ignoran por decisión de negocio.
@@ -218,6 +335,8 @@ module.exports = {
   findBitacoraById,
   listarModulos,
   listarActas,
+  findActaById,
+  findActaMatriz,
   cerrarActa,
   actaEstaCerrada,
   getEstadisticas,

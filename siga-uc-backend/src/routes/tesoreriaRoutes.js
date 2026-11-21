@@ -36,6 +36,7 @@ router.post(
 // ============================================================
 router.get("/pagos", tesoreriaController.listarPagos);
 router.get("/pagos/:id", tesoreriaController.obtenerPago);
+router.get("/boletas/:id_pago/pdf", tesoreriaController.getBoletaPdf);
 router.post(
   "/pagos",
   tesoreriaController.registrarPago,

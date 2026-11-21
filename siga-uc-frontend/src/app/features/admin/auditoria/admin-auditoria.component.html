@@ -161,6 +161,13 @@
       Al cerrar un bimestre, las calificaciones quedan bloqueadas para edición de docentes.
     </p>
 
+    @if (errorActaPdf()) {
+    <div class="alert alert-danger" style="margin-bottom: 14px;">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      {{ errorActaPdf() }}
+    </div>
+    }
+
     <div class="table-responsive">
       <table>
         <thead>
@@ -186,15 +193,30 @@
             <td>{{ a.fecha_cierre ? (a.fecha_cierre | date:'dd/MM/yyyy HH:mm') : 'En Cierre...' }}</td>
             <td>{{ a.cerrado_por_nombre || '—' }}</td>
             <td>
-              @if (a.estado === 'ABIERTO') {
-              <button class="btn-lock" (click)="cerrarActa(a)">
-                <i class="fa-solid fa-lock"></i> Firmar y Bloquear
-              </button>
-              } @else {
-              <button class="btn-secondary" disabled>
-                <i class="fa-solid fa-shield-halved"></i> Acta Firmada
-              </button>
-              }
+              <div class="acta-actions">
+                @if (a.estado === 'ABIERTO') {
+                <button class="btn-lock" (click)="cerrarActa(a)">
+                  <i class="fa-solid fa-lock"></i> Firmar y Bloquear
+                </button>
+                } @else {
+                <button class="btn-secondary" disabled>
+                  <i class="fa-solid fa-shield-halved"></i> Acta Firmada
+                </button>
+                }
+
+                <button
+                  class="btn-pdf"
+                  title="Descargar acta en PDF"
+                  (click)="descargarActaPdf(a)"
+                  [disabled]="actaPdfId() !== null"
+                >
+                  @if (actaPdfId() === a.id_acta) {
+                  <i class="fa-solid fa-spinner fa-spin"></i> Generando...
+                  } @else {
+                  <i class="fa-solid fa-file-pdf"></i> Descargar PDF
+                  }
+                </button>
+              </div>
             </td>
           </tr>
           }

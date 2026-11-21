@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 interface Bitacora {
@@ -64,6 +65,8 @@ export class AdminAuditoriaComponent implements OnInit {
   actas = signal<Acta[]>([]);
   modulos = signal<string[]>([]);
   estadisticas = signal<Estadisticas | null>(null);
+  actaPdfId = signal<number | null>(null);
+  errorActaPdf = signal<string | null>(null);
 
   // Filtros
   filtroModulo = signal<string>('');
@@ -126,6 +129,99 @@ export class AdminAuditoriaComponent implements OnInit {
       },
       error: (err) => console.error('Error actas:', err),
     });
+  }
+
+  /**
+   * Descargar el acta de cierre con la matriz real de notas.
+   */
+  descargarActaPdf(acta: Acta): void {
+    if (this.actaPdfId() !== null) return;
+
+    this.actaPdfId.set(acta.id_acta);
+    this.errorActaPdf.set(null);
+
+    this.http
+      .get(`${environment.apiUrl}/auditoria/actas/${acta.id_acta}/pdf`, {
+        observe: 'response',
+        responseType: 'blob',
+      })
+      .pipe(finalize(() => this.actaPdfId.set(null)))
+      .subscribe({
+        next: (response) => {
+          const blob = response.body;
+          if (!blob) {
+            this.errorActaPdf.set(
+              'No se pudo generar el acta en PDF. Intente nuevamente.',
+            );
+            return;
+          }
+
+          const fileName =
+            this.extraerNombreArchivo(
+              response.headers.get('content-disposition'),
+            ) ||
+            `acta_${acta.id_acta}_${acta.anio_lectivo}.pdf`;
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        },
+        error: async (error) => {
+          const mensaje = await this.obtenerMensajeErrorPdf(error);
+          this.errorActaPdf.set(mensaje);
+        },
+      });
+  }
+
+  private extraerNombreArchivo(
+    contentDisposition: string | null,
+  ): string | null {
+    if (!contentDisposition) return null;
+
+    const match = /filename\*?=(?:UTF-8'')?["']?([^;"']+)/i.exec(
+      contentDisposition,
+    );
+
+    if (!match?.[1]) return null;
+
+    try {
+      return decodeURIComponent(match[1].trim());
+    } catch {
+      return match[1].trim();
+    }
+  }
+
+  private async obtenerMensajeErrorPdf(error: any): Promise<string> {
+    const body = error?.error;
+
+    if (body instanceof Blob) {
+      try {
+        const texto = await body.text();
+        const json = JSON.parse(texto);
+        if (json?.message) return json.message;
+      } catch {
+        // El cuerpo no era JSON; se usa el mensaje por estado.
+      }
+    } else if (body?.message) {
+      return body.message;
+    }
+
+    if (error?.status === 401) {
+      return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+    }
+    if (error?.status === 403) {
+      return 'No tienes permisos para descargar esta acta.';
+    }
+    if (error?.status === 404) {
+      return 'No se encontró el acta solicitada.';
+    }
+
+    return 'No se pudo generar el acta en PDF. Intente nuevamente.';
   }
 
   /**

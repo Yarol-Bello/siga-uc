@@ -1,7 +1,7 @@
 # 03 — Estructura y Mapa de Clases
 
-> Conteo verificado el 20/11/2026: **69 archivos JS backend**, **118 archivos frontend
-> (49 TypeScript)**, **14 routers**, **14 controladores**, **17 servicios** y **15 DAOs**.
+> Conteo verificado el 21/11/2026: **72 archivos JS backend**, **118 archivos frontend
+> (49 TypeScript)**, **14 routers**, **14 controladores**, **19 servicios** y **15 DAOs**.
 
 ## 1. Backend
 
@@ -28,10 +28,10 @@
 | `cargaCurricularRoutes.js` | `/api/carga-curricular` | 9 | ADMIN |
 | `asistenciaRoutes.js` | `/api/asistencias` | 9 | ADMIN/DOCENTE o ADMIN/SECRETARIA |
 | `calificacionRoutes.js` | `/api/calificaciones` | 6 | ADMIN/DOCENTE |
-| `tesoreriaRoutes.js` | `/api/tesoreria` | 12 | ADMIN/SECRETARIA; becas ADMIN |
+| `tesoreriaRoutes.js` | `/api/tesoreria` | 13 | ADMIN/SECRETARIA; becas ADMIN |
 | `cajaRoutes.js` | `/api/caja` | 9 | ADMIN/SECRETARIA |
 | `reporteRoutes.js` | `/api/reportes` | 7 | Solo lectura con roles |
-| `auditoriaRoutes.js` | `/api/auditoria` | 6 | Cierre de acta: ADMIN |
+| `auditoriaRoutes.js` | `/api/auditoria` | 7 | Cierre de acta: ADMIN; PDF de acta: ADMIN/DOCENTE |
 | `siagieRoutes.js` | `/api/siagie` | 1 | ADMIN |
 | `notificacionRoutes.js` | `/api/notificaciones` | 8 | ADMIN/DOCENTE; masivo ADMIN |
 
@@ -47,14 +47,14 @@
 | `cargaCurricularController.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `crear`, `actualizar`, `eliminar`, `asignarTutor`, `getTutor` | `listarPorDocente` usa el año lectivo configurado |
 | `asistenciaController.js` | `obtenerPorCursoFecha`, `obtenerPorAlumno`, `obtenerResumenPorAlumno`, `registrar`, `registrarMasivo`, `listarAsistenciaPersonal`, `buscarPersonalPorDni`, `registrarAsistenciaPersonal`, `obtenerResumenAsistenciaPersonal` | Personal y alumnos separados |
 | `calificacionController.js` | `obtenerPorAlumnoCurso`, `obtenerPorCursoGrado`, `registrar`, `registrarMasivo`, `calcularNotaFinal`, `obtenerNotasFinales` | `calcularNotaFinal` expone el cálculo |
-| `tesoreriaController.js` | `listarConceptos`, `listarPreTickets`, `obtenerPreTicket`, `crearPreTicket`, `listarPagos`, `obtenerPago`, `registrarPago`, `listarPensionesAlumno`, `generarPensionesMes`, `listarBecas`, `aplicarBeca`, `getEstadisticas` | Inyecta `id_usuario` del token |
+| `tesoreriaController.js` | `listarConceptos`, `listarPreTickets`, `obtenerPreTicket`, `crearPreTicket`, `listarPagos`, `obtenerPago`, `getBoletaPdf`, `registrarPago`, `listarPensionesAlumno`, `generarPensionesMes`, `listarBecas`, `aplicarBeca`, `getEstadisticas` | Inyecta `id_usuario` del token; PDF de boleta |
 | `cajaController.js` | `obtenerCajaAbierta`, `listarCajas`, `listarAperturas`, `obtenerApertura`, `aperturar`, `listarMovimientos`, `registrarEgreso`, `cerrar`, `listarCierres` | Inyecta usuario de apertura/egreso/cierre |
 | `reporteController.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getLibretaPdf`, `getResumenAsistencia`, `getAuditoriaDocentes` | KPIs, reportes y PDF de libreta |
-| `auditoriaController.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `getEstadisticas` | Inyecta `cerrado_por` |
+| `auditoriaController.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `getActaPdf`, `cerrarActa`, `getEstadisticas` | Inyecta `cerrado_por`; PDF de acta |
 | `siagieController.js` | `generarExcel` | Valida archivo/parámetros, borra temporal y descarga |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
-### 1.4 Servicios (17)
+### 1.4 Servicios (19)
 
 | Servicio | Métodos principales | Reglas que concentra |
 |---|---|---|
@@ -70,6 +70,8 @@
 | `cajaService.js` | `obtenerCajaAbierta`, `listarCajas`, `listarAperturas`, `obtenerApertura`, `aperturar`, `listarMovimientos`, `registrarEgreso`, `cerrar`, `listarCierres` | Montos no negativos, caja abierta |
 | `reporteService.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getResumenAsistencia`, `getAuditoriaDocentes` | Parámetros obligatorios |
 | `libretaPdfService.js` | `generarLibretaPdf` | PDFKit, Helvetica, A4, tabla paginada y pie de página |
+| `boletaPdfService.js` | `generarBoletaPdf` | PDFKit, comprobante de pago y datos SUNAT/hash |
+| `actaPdfService.js` | `generarActaPdf` | PDFKit, acta landscape, matriz real, watermark para borrador |
 | `auditoriaService.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `getEstadisticas` | Periodo/año/Usuario de cierre |
 | `siagieService.js` | `generarExcel` | Detecta encabezados, inyecta notas, guarda archivo, audita exportación |
 | `notificacionService.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Correo no bloqueante, propiedad del destinatario |
@@ -202,10 +204,10 @@ Convenciones:
 app.js
 config/env.js, config/academico.js, config/database.js
 middlewares/authMiddleware.js
-utils/response.js
+utils/response.js, utils/pdfCommon.js
 routes/ (14)
 controllers/ (14)
-services/ (17)
+services/ (19)
 dao/ (15)
 ```
 

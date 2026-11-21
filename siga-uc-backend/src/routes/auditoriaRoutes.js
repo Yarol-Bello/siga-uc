@@ -12,8 +12,17 @@ const { checkRole } = require("../middlewares/authRoles");
 
 const router = express.Router();
 
-// Todas las rutas requieren autenticación y rol ADMIN
+// Todas las rutas requieren autenticación
 router.use(verificarAutenticacion);
+
+// PDF de acta: ADMIN/DOCENTE. Debe ir antes del guard global de ADMIN.
+router.get(
+  "/actas/:id_acta/pdf",
+  checkRole(["ADMIN", "DOCENTE"]),
+  auditoriaController.getActaPdf,
+);
+
+// El resto de auditoría queda restringido a ADMIN
 router.use(checkRole(["ADMIN"]));
 
 // ============================================================

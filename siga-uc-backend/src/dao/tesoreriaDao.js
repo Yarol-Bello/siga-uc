@@ -178,13 +178,20 @@ const findPagoById = async (id) => {
   const sql = `
     SELECT 
       p.*,
-      a.dni, a.nombres, a.apellidos,
+      a.dni, a.nombres, a.apellidos, a.codigo_estudiante,
       a.nombres || ' ' || a.apellidos AS alumno_nombre,
-      c.nombre AS concepto_nombre,
-      b.numero_boleta, b.serie, b.numero AS num_boleta, b.estado_sunat, b.hash_cpe
+      g.nombre_grado, g.seccion,
+      c.nombre AS concepto_nombre, c.tipo AS concepto_tipo,
+      c.mes AS concepto_mes, c.anio_lectivo AS concepto_anio_lectivo,
+      u.nombres || ' ' || u.apellidos AS cobrador,
+      b.numero_boleta, b.serie, b.numero AS num_boleta,
+      b.fecha_emision, b.monto_total,
+      b.estado_sunat, b.hash_cpe
     FROM pagos p
     INNER JOIN alumnos a ON a.id_alumno = p.id_alumno
+    LEFT JOIN grados g ON g.id_grado = a.id_grado
     INNER JOIN conceptos_pago c ON c.id_concepto = p.id_concepto
+    LEFT JOIN usuarios u ON u.id_usuario = p.id_usuario_cobrador
     LEFT JOIN boletas_electronicas b ON b.id_pago = p.id_pago
     WHERE p.id_pago = $1
   `;

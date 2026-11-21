@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **100 endpoints** — 62 GET, 25 POST, 11 PUT, 2 DELETE
+**Total verificado:** **102 endpoints** — 64 GET, 25 POST, 11 PUT, 2 DELETE
 
 ---
 
@@ -254,7 +254,7 @@ grado/año en una transacción.
 
 ---
 
-## 10. Tesorería — `/api/tesoreria` (12)
+## 10. Tesorería — `/api/tesoreria` (13)
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
@@ -270,6 +270,7 @@ grado/año en una transacción.
 | 63 | GET | `/api/tesoreria/becas?activo=` | Autenticado | Lista becas |
 | 64 | POST | `/api/tesoreria/becas` | ADMIN | Aplica beca |
 | 65 | GET | `/api/tesoreria/estadisticas?anio=&mes=` | Autenticado | Recaudación y pendientes |
+| 66 | GET | `/api/tesoreria/boletas/:id_pago/pdf` | ADMIN/SECRETARIA | PDF de boleta de pago |
 
 **Pre-ticket body:** `{ id_alumno, id_concepto, monto }`.
 
@@ -303,15 +304,15 @@ movimiento de caja `INGRESO` (trigger); si el concepto es `MATRICULA`, alumno pa
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 66 | GET | `/api/caja/actual` | Autenticado | Apertura abierta + totales |
-| 67 | GET | `/api/caja/cajas` | Autenticado | Cajas registradas |
-| 68 | GET | `/api/caja/aperturas?desde=&hasta=` | Autenticado | Historial de aperturas |
-| 69 | GET | `/api/caja/aperturas/:id` | Autenticado | Detalle de apertura |
-| 70 | GET | `/api/caja/movimientos/:id_apertura` | Autenticado | Movimientos |
-| 71 | GET | `/api/caja/cierres` | Autenticado | Historial de cierres |
-| 72 | POST | `/api/caja/aperturar` | ADMIN/SECRETARIA | Abre caja |
-| 73 | POST | `/api/caja/egresos` | ADMIN/SECRETARIA | Registra egreso |
-| 74 | POST | `/api/caja/cerrar` | ADMIN/SECRETARIA | Cierra con arqueo |
+| 67 | GET | `/api/caja/actual` | Autenticado | Apertura abierta + totales |
+| 68 | GET | `/api/caja/cajas` | Autenticado | Cajas registradas |
+| 69 | GET | `/api/caja/aperturas?desde=&hasta=` | Autenticado | Historial de aperturas |
+| 70 | GET | `/api/caja/aperturas/:id` | Autenticado | Detalle de apertura |
+| 71 | GET | `/api/caja/movimientos/:id_apertura` | Autenticado | Movimientos |
+| 72 | GET | `/api/caja/cierres` | Autenticado | Historial de cierres |
+| 73 | POST | `/api/caja/aperturar` | ADMIN/SECRETARIA | Abre caja |
+| 74 | POST | `/api/caja/egresos` | ADMIN/SECRETARIA | Registra egreso |
+| 75 | POST | `/api/caja/cerrar` | ADMIN/SECRETARIA | Cierra con arqueo |
 
 **Aperturar body:** `{ monto_inicial, observaciones?, id_caja? }`. Si no hay caja, crea
 “Caja Principal”. Rechaza si ya hay una apertura sin cierre.
@@ -330,13 +331,13 @@ movimiento de caja `INGRESO` (trigger); si el concepto es `MATRICULA`, alumno pa
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 75 | GET | `/api/reportes/dashboard?anio=` | ADMIN/SECRETARIA | KPIs ejecutivos |
-| 76 | GET | `/api/reportes/cuadro-merito/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Top 10 por promedio ponderado |
-| 77 | GET | `/api/reportes/alumnos-riesgo/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Alumnos con 2+ cursos en C |
-| 78 | GET | `/api/reportes/resumen-asistencia/:id_grado?anio=` | ADMIN/DOCENTE | Asistencia por alumno |
-| 79 | GET | `/api/reportes/libreta/:id_alumno?bimestre=&anio=` | Autenticado | Libreta completa |
-| 80 | GET | `/api/reportes/auditoria-docentes/:id_grado?bimestre=&anio=` | ADMIN | Avance de notas por docente |
-| 81 | GET | `/api/reportes/libreta/:id_alumno/pdf?bimestre=&anio=` | ADMIN/DOCENTE/ESTUDIANTE (propio) | PDF de libreta (`application/pdf`, attachment) |
+| 76 | GET | `/api/reportes/dashboard?anio=` | ADMIN/SECRETARIA | KPIs ejecutivos |
+| 77 | GET | `/api/reportes/cuadro-merito/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Top 10 por promedio ponderado |
+| 78 | GET | `/api/reportes/alumnos-riesgo/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Alumnos con 2+ cursos en C |
+| 79 | GET | `/api/reportes/resumen-asistencia/:id_grado?anio=` | ADMIN/DOCENTE | Asistencia por alumno |
+| 80 | GET | `/api/reportes/libreta/:id_alumno?bimestre=&anio=` | Autenticado | Libreta completa |
+| 81 | GET | `/api/reportes/auditoria-docentes/:id_grado?bimestre=&anio=` | ADMIN | Avance de notas por docente |
+| 82 | GET | `/api/reportes/libreta/:id_alumno/pdf?bimestre=&anio=` | ADMIN/DOCENTE/ESTUDIANTE (propio) | PDF de libreta (`application/pdf`, attachment) |
 
 **Dashboard data:** `total_alumnos`, `total_personal`, `recaudacion_anual`,
 `pre_tickets_pendientes`, `monto_pendiente`, `total_retirados`, `total_grados`, `total_cursos`.
@@ -350,16 +351,17 @@ movimiento de caja `INGRESO` (trigger); si el concepto es `MATRICULA`, alumno pa
 
 ---
 
-## 13. Auditoría — `/api/auditoria` (6)
+## 13. Auditoría — `/api/auditoria` (7)
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 82 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=` | Autenticado | Bitácora (máx. 200) |
-| 83 | GET | `/api/auditoria/modulos` | Autenticado | Módulos distintos |
-| 84 | GET | `/api/auditoria/estadisticas` | Autenticado | Totales por acción |
-| 85 | GET | `/api/auditoria/actas` | Autenticado | Actas bimestrales |
-| 86 | GET | `/api/auditoria/:id` | Autenticado | Detalle de registro |
-| 87 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra acta con hash |
+| 83 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=` | Autenticado | Bitácora (máx. 200) |
+| 84 | GET | `/api/auditoria/modulos` | Autenticado | Módulos distintos |
+| 85 | GET | `/api/auditoria/estadisticas` | Autenticado | Totales por acción |
+| 86 | GET | `/api/auditoria/actas` | Autenticado | Actas bimestrales |
+| 87 | GET | `/api/auditoria/actas/:id_acta/pdf` | ADMIN/DOCENTE | PDF de acta con matriz real de notas |
+| 88 | GET | `/api/auditoria/:id` | Autenticado | Detalle de registro |
+| 89 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra acta con hash |
 
 **Cerrar acta body:** `{ periodo, anio_lectivo, id_grado }`.
 Respuesta: acta con `estado = CERRADO`, `fecha_cierre`, `cerrado_por`, `hash_integridad`
@@ -373,7 +375,7 @@ Respuesta: acta con `estado = CERRADO`, `fecha_cierre`, `cerrado_por`, `hash_int
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 88 | POST | `/api/siagie/generar-excel` | ADMIN | Inyecta notas en plantilla y descarga |
+| 90 | POST | `/api/siagie/generar-excel` | ADMIN | Inyecta notas en plantilla y descarga |
 
 `multipart/form-data`:
 - `plantilla`: `.xlsx`/`.xls`, máx. 10 MB.
@@ -394,14 +396,14 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 89 | GET | `/api/notificaciones?leido=` | Autenticado | Mis notificaciones |
-| 90 | GET | `/api/notificaciones/no-leidas` | Autenticado | Contador para campanita |
-| 91 | GET | `/api/notificaciones/:id` | Autenticado | Detalle propio |
-| 92 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
-| 93 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
-| 94 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
-| 95 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
-| 96 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a varios |
+| 91 | GET | `/api/notificaciones?leido=` | Autenticado | Mis notificaciones |
+| 92 | GET | `/api/notificaciones/no-leidas` | Autenticado | Contador para campanita |
+| 93 | GET | `/api/notificaciones/:id` | Autenticado | Detalle propio |
+| 94 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
+| 95 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
+| 96 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
+| 97 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
+| 98 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a varios |
 
 **Crear body:** `{ id_usuario_destino, asunto, cuerpo }`.
 **Masivo body:** `{ destinos: [id_usuario,...], asunto, cuerpo }`.
@@ -424,17 +426,17 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 | Carga curricular | 9 |
 | Asistencias | 9 |
 | Calificaciones | 6 |
-| Tesorería | 12 |
+| Tesorería | 13 |
 | Caja | 9 |
 | Reportes | 7 |
-| Auditoría | 6 |
+| Auditoría | 7 |
 | SIAGIE | 1 |
 | Notificaciones | 8 |
-| **Total** | **100** |
+| **Total** | **102** |
 
 | Verbo | Cantidad |
 |---|---|
-| GET | 62 |
+| GET | 64 |
 | POST | 25 |
 | PUT | 11 |
 | DELETE | 2 |
@@ -442,11 +444,11 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 Acceso:
 - **Públicos:** 7 (raíz, health, configuración, login, recuperar, validar token, restablecer).
 - **Solo JWT (sin rol específico):** 57.
-- **Restringidos por rol:** 36.
-- Total único: 100.
+- **Restringidos por rol:** 38.
+- Total único: 102.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo correcto, revisando `verificarRol(...)` en los 14 routers, es 57/36.
+> El conteo correcto, revisando `verificarRol(...)` en los 14 routers, es 57/38.
 
 ---
 

@@ -61,6 +61,8 @@ cambios y para pruebas de regresión.
 | 50 | Cambio de contraseña | `CambiarPasswordComponent` | `PUT /api/auth/cambiar-password` | `authController.cambiarPassword` | `authService.cambiarPassword` | `usuarioDao.getPasswordHashById`, `usuarioDao.actualizarPassword` | `usuarios` |
 | 51 | Año lectivo global | `ConfiguracionService` / app initializer | `GET /api/configuracion` | `configuracionController.obtener` | `configuracionService.obtenerConfiguracion` | `config/academico.getAnioLectivo` | `.env` (`ANIO_LECTIVO`) |
 | 52 | PDF de libreta | `AdminReportesComponent` | `GET /api/reportes/libreta/:id_alumno/pdf` | `reporteController.getLibretaPdf` | `reporteService.getLibreta` + `libretaPdfService.generarLibretaPdf` | `reporteDao.getLibretaAlumno` | `alumnos`, `cursos`, `notas_finales_area`, `conclusiones_descriptivas`, `asistencia_alumnos`, `tutores_grado` |
+| 53 | PDF de boleta | `SecretariaCajaComponent` | `GET /api/tesoreria/boletas/:id_pago/pdf` | `tesoreriaController.getBoletaPdf` | `tesoreriaService.obtenerPago` + `boletaPdfService.generarBoletaPdf` | `tesoreriaDao.findPagoById` | `pagos`, `boletas_electronicas`, `alumnos`, `grados`, `conceptos_pago`, `usuarios` |
+| 54 | PDF de acta | `AdminAuditoriaComponent` | `GET /api/auditoria/actas/:id_acta/pdf` | `auditoriaController.getActaPdf` | `auditoriaService.obtenerActa` + `actaPdfService.generarActaPdf` | `auditoriaDao.findActaById`, `findActaMatriz` | `actas_bimestrales`, `alumnos`, `grados`, `cursos`, `notas_finales_area`, `usuarios` |
 
 ---
 

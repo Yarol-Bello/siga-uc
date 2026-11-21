@@ -2,10 +2,12 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 interface Movimiento {
   id_movimiento: number;
+  id_pago?: number | null;
   tipo: string;
   concepto: string;
   monto: string;
@@ -48,6 +50,8 @@ export class SecretariaCajaComponent implements OnInit {
   error = signal<string | null>(null);
   cajaAbierta = signal<CajaAbierta | null>(null);
   movimientos = signal<Movimiento[]>([]);
+  boletaPdfId = signal<number | null>(null);
+  errorBoletaPdf = signal<string | null>(null);
 
   // Modal Apertura
   modalApertura = signal(false);
@@ -108,6 +112,100 @@ export class SecretariaCajaComponent implements OnInit {
       },
       error: (err) => console.error('Error movimientos:', err),
     });
+  }
+
+  /**
+   * Descargar la boleta de pago asociada a un movimiento de caja.
+   */
+  descargarBoletaPdf(mov: Movimiento): void {
+    const idPago = mov.id_pago;
+
+    if (!idPago || !mov.numero_boleta || this.boletaPdfId() !== null) return;
+
+    this.boletaPdfId.set(idPago);
+    this.errorBoletaPdf.set(null);
+
+    this.http
+      .get(`${environment.apiUrl}/tesoreria/boletas/${idPago}/pdf`, {
+        observe: 'response',
+        responseType: 'blob',
+      })
+      .pipe(finalize(() => this.boletaPdfId.set(null)))
+      .subscribe({
+        next: (response) => {
+          const blob = response.body;
+          if (!blob) {
+            this.errorBoletaPdf.set(
+              'No se pudo generar la boleta en PDF. Intente nuevamente.',
+            );
+            return;
+          }
+
+          const fileName =
+            this.extraerNombreArchivo(
+              response.headers.get('content-disposition'),
+            ) || `boleta_${mov.numero_boleta || idPago}.pdf`;
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        },
+        error: async (error) => {
+          const mensaje = await this.obtenerMensajeErrorPdf(error);
+          this.errorBoletaPdf.set(mensaje);
+        },
+      });
+  }
+
+  private extraerNombreArchivo(
+    contentDisposition: string | null,
+  ): string | null {
+    if (!contentDisposition) return null;
+
+    const match = /filename\*?=(?:UTF-8'')?["']?([^;"']+)/i.exec(
+      contentDisposition,
+    );
+
+    if (!match?.[1]) return null;
+
+    try {
+      return decodeURIComponent(match[1].trim());
+    } catch {
+      return match[1].trim();
+    }
+  }
+
+  private async obtenerMensajeErrorPdf(error: any): Promise<string> {
+    const body = error?.error;
+
+    if (body instanceof Blob) {
+      try {
+        const texto = await body.text();
+        const json = JSON.parse(texto);
+        if (json?.message) return json.message;
+      } catch {
+        // El cuerpo no era JSON; se usa el mensaje por estado.
+      }
+    } else if (body?.message) {
+      return body.message;
+    }
+
+    if (error?.status === 401) {
+      return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+    }
+    if (error?.status === 403) {
+      return 'No tienes permisos para descargar esta boleta.';
+    }
+    if (error?.status === 404) {
+      return 'No se encontró la boleta solicitada.';
+    }
+
+    return 'No se pudo generar la boleta en PDF. Intente nuevamente.';
   }
 
   /**

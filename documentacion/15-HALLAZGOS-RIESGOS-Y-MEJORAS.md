@@ -8,8 +8,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > endpoint autenticado, pantalla `/cambiar-password` y bloqueo backend. H12 (año lectivo y
 > conceptos hardcodeados) quedó resuelto con `ANIO_LECTIVO`, `GET /api/configuracion` y
 > conceptos dinámicos. H25 (backup) quedó resuelto con `npm run backup`, script Node y guía de
-> programación en Render/Supabase. H34 quedó **parcial**: libretas en PDF con PDFKit; boletas y
-> actas siguen pendientes.
+> programación en Render/Supabase. H34 quedó resuelto: libretas, boletas y actas con PDFKit.
 
 ---
 
@@ -356,16 +355,16 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Módulos de configuración académica |
 | Esfuerzo | L |
 
-### H34 — Sin PDFs reales (libretas resueltas)
+### H34 — Sin PDFs reales (resuelto)
 
 | Campo | Detalle |
 |---|---|
 | Severidad | Baja |
-| Evidencia | `window.print()` en libretas; boletas/actas siguen pendientes |
+| Evidencia | `window.print()` en carné/reportes de caja; libretas, boletas y actas ya usan PDFKit |
 | Impacto | Depende del navegador; no hay archivo firmado |
 | Recomendación | `pdfkit`/Puppeteer para libretas, boletas y actas |
 | Esfuerzo | M |
-| Estado | 🟡 Parcial (20/11/2026): libretas con PDFKit; boletas y actas pendientes |
+| Estado | ✅ Resuelto (21/11/2026): libretas, boletas y actas con PDFKit; acta incluye matriz real y watermark de borrador |
 
 ### H35 — Estudiantes sin pantalla de libreta
 
@@ -432,7 +431,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 5. ~~H12 año lectivo configurable~~ ✅
 6. H27/H26 documentación y `.env.example`.
 7. H05 mapeo SIAGIE configurable.
-8. ~~H34 PDFs reales~~ 🟡 (libretas resueltas; boletas/actas pendientes).
+8. ~~H34 PDFs reales~~ ✅
 
 ---
 
