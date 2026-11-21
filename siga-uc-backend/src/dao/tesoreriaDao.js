@@ -160,7 +160,9 @@ const listarPagos = async (filtros = {}) => {
       c.nombre AS concepto_nombre,
       u.nombres || ' ' || u.apellidos AS cobrador,
       b.numero_boleta,
-      b.estado_sunat
+      b.estado_sunat,
+      p.motivo_anulacion,
+      p.fecha_anulacion
     FROM pagos p
     INNER JOIN alumnos a ON a.id_alumno = p.id_alumno
     LEFT JOIN grados g ON g.id_grado = a.id_grado
@@ -197,6 +199,149 @@ const findPagoById = async (id) => {
   `;
   const result = await query(sql, [id]);
   return result.rows[0] || null;
+};
+
+/**
+ * Anular un pago en una sola transacción:
+ * - marca pago y boleta como ANULADO
+ * - devuelve pensión/pre-ticket a PENDIENTE
+ * - registra el EGRESO en una apertura abierta (nunca en una cerrada)
+ */
+const anularPago = async (id, data) => {
+  const client = await getClient();
+
+  try {
+    await client.query("BEGIN");
+
+    const pagoResult = await client.query(
+      "SELECT * FROM pagos WHERE id_pago = $1 FOR UPDATE",
+      [id],
+    );
+    const pago = pagoResult.rows[0];
+
+    if (!pago) {
+      const error = new Error("Pago no encontrado");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (pago.estado !== "PAGADO") {
+      const error = new Error("El pago ya fue anulado.");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const ingresoResult = await client.query(
+      `SELECT id_movimiento, id_apertura, monto, medio_pago
+       FROM movimientos_caja
+       WHERE id_pago = $1 AND tipo = 'INGRESO'
+       ORDER BY id_movimiento ASC
+       LIMIT 1`,
+      [id],
+    );
+    const ingreso = ingresoResult.rows[0] || null;
+
+    // La apertura del ingreso solo se usa si sigue abierta.
+    let idApertura = ingreso?.id_apertura || null;
+
+    if (idApertura) {
+      const abiertaResult = await client.query(
+        `SELECT 1
+         FROM aperturas_caja ap
+         WHERE ap.id_apertura = $1
+           AND NOT EXISTS (
+             SELECT 1 FROM cierres_caja cc
+             WHERE cc.id_apertura = ap.id_apertura
+           )`,
+        [idApertura],
+      );
+
+      if (abiertaResult.rows.length === 0) {
+        idApertura = null;
+      }
+    }
+
+    if (!idApertura) {
+      const actualResult = await client.query(
+        `SELECT ap.id_apertura
+         FROM aperturas_caja ap
+         WHERE NOT EXISTS (
+           SELECT 1 FROM cierres_caja cc
+           WHERE cc.id_apertura = ap.id_apertura
+         )
+         ORDER BY ap.fecha_apertura DESC
+         LIMIT 1`,
+      );
+      idApertura = actualResult.rows[0]?.id_apertura || null;
+    }
+
+    if (!idApertura) {
+      const error = new Error(
+        "No hay una caja abierta para registrar la anulación.",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const pagoActualizado = await client.query(
+      `UPDATE pagos SET
+         estado = 'ANULADO',
+         motivo_anulacion = $2,
+         fecha_anulacion = NOW(),
+         id_usuario_anulacion = $3
+       WHERE id_pago = $1
+       RETURNING *`,
+      [id, data.motivo, data.id_usuario || null],
+    );
+
+    await client.query(
+      `UPDATE boletas_electronicas SET estado_sunat = 'ANULADO' WHERE id_pago = $1`,
+      [id],
+    );
+
+    if (pago.id_pension) {
+      await client.query(
+        `UPDATE pensiones SET estado = 'PENDIENTE' WHERE id_pension = $1`,
+        [pago.id_pension],
+      );
+    }
+
+    if (pago.id_preticket) {
+      await client.query(
+        `UPDATE pre_tickets
+         SET estado = 'PENDIENTE', fecha_pago = NULL
+         WHERE id_preticket = $1`,
+        [pago.id_preticket],
+      );
+    }
+
+    const movimientoResult = await client.query(
+      `INSERT INTO movimientos_caja (
+         id_apertura, id_pago, tipo, concepto, monto, medio_pago, id_usuario
+       ) VALUES ($1, $2, 'EGRESO', $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        idApertura,
+        id,
+        `ANULACIÓN PAGO N° ${pago.nro_operacion || pago.id_pago}`,
+        ingreso?.monto ?? pago.monto,
+        ingreso?.medio_pago || pago.forma_pago,
+        data.id_usuario || null,
+      ],
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      pago: pagoActualizado.rows[0],
+      movimiento: movimientoResult.rows[0],
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 /**
@@ -495,6 +640,7 @@ module.exports = {
   // Pagos
   listarPagos,
   findPagoById,
+  anularPago,
   registrarPago,
   // Pensiones
   listarPensionesAlumno,

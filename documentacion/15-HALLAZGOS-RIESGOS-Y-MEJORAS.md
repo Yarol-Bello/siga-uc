@@ -24,6 +24,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 21/11/2026 (H39):** las fechas de negocio se calculan en hora local y las
 > sesiones de PostgreSQL trabajan en `America/Lima`; H39 queda resuelto.
+>
+> **Actualización 21/11/2026 (H32):** anulación de pagos con reversión de caja, pensión,
+> pre-ticket y boleta; H32 queda resuelto.
 
 ---
 
@@ -362,15 +365,16 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Llamarlo y auditar |
 | Esfuerzo | S |
 
-### H32 — Anulación de pagos sin UI
+### H32 — Anulación de pagos sin UI (resuelto)
 
 | Campo | Detalle |
 |---|---|
 | Severidad | Media |
-| Evidencia | `pagos.estado` admite `ANULADO`, pero no hay endpoint ni pantalla |
+| Evidencia | `pagos.estado` admite `ANULADO`, pero no había endpoint ni pantalla |
 | Impacto | Errores de cobro no se pueden corregir |
 | Recomendación | Endpoint de anulación con reversión de caja/pensión y auditoría |
 | Esfuerzo | M |
+| Estado | ✅ Resuelto (21/11/2026): `PUT /tesoreria/pagos/:id/anular` (ADMIN/SECRETARIA) con transacción, `SELECT ... FOR UPDATE`, EGRESO en caja abierta, pensión/pre-ticket a PENDIENTE y boleta con watermark ANULADA; UI en caja e historial |
 
 ### H33 — Sin CRUD de horarios, competencias, conclusiones
 

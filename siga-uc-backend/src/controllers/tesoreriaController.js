@@ -82,6 +82,18 @@ const obtenerPago = async (req, res) => {
   }
 };
 
+const anularPago = async (req, res) => {
+  try {
+    const data = await tesoreriaService.anularPago(req.params.id, {
+      motivo: req.body?.motivo,
+      id_usuario: req.usuario.id_usuario,
+    });
+    return response.success(res, 200, "Pago anulado correctamente", data);
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
 /**
  * GET /api/tesoreria/boletas/:id_pago/pdf
  * Genera y descarga la boleta de pago en PDF.
@@ -210,6 +222,7 @@ module.exports = {
   crearPreTicket,
   listarPagos,
   obtenerPago,
+  anularPago,
   getBoletaPdf,
   registrarPago,
   listarPensionesAlumno,

@@ -608,7 +608,7 @@ CREATE TABLE public.boletas_electronicas (
     xml_url character varying(255),
     pdf_url character varying(255),
     hash_cpe character varying(255),
-    CONSTRAINT chk_boleta_estado CHECK ((((estado_sunat)::text = ANY ((ARRAY['ACEPTADO'::character varying, 'PENDIENTE'::character varying, 'RECHAZADO'::character varying])::text[])) OR (estado_sunat IS NULL)))
+    CONSTRAINT chk_boleta_estado CHECK ((((estado_sunat)::text = ANY ((ARRAY['ACEPTADO'::character varying, 'PENDIENTE'::character varying, 'RECHAZADO'::character varying, 'ANULADO'::character varying])::text[])) OR (estado_sunat IS NULL)))
 );
 
 
@@ -1449,6 +1449,9 @@ CREATE TABLE public.pagos (
     fecha_pago timestamp without time zone DEFAULT now() NOT NULL,
     id_usuario_cobrador integer,
     estado character varying(20) DEFAULT 'PAGADO'::character varying NOT NULL,
+    motivo_anulacion character varying(250),
+    fecha_anulacion timestamp without time zone,
+    id_usuario_anulacion integer,
     CONSTRAINT chk_pago_estado CHECK (((estado)::text = ANY ((ARRAY['PAGADO'::character varying, 'ANULADO'::character varying])::text[]))),
     CONSTRAINT chk_pago_forma CHECK (((forma_pago)::text = ANY ((ARRAY['Efectivo'::character varying, 'Yape'::character varying, 'Plin'::character varying, 'Interbank'::character varying, 'BCP'::character varying, 'BBVA'::character varying])::text[])))
 );
@@ -4370,6 +4373,13 @@ ALTER TABLE ONLY public.pagos
 
 ALTER TABLE ONLY public.pagos
     ADD CONSTRAINT pagos_id_usuario_cobrador_fkey FOREIGN KEY (id_usuario_cobrador) REFERENCES public.usuarios(id_usuario) ON DELETE SET NULL;
+
+--
+-- Name: pagos pagos_id_usuario_anulacion_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.pagos
+    ADD CONSTRAINT pagos_id_usuario_anulacion_fkey FOREIGN KEY (id_usuario_anulacion) REFERENCES public.usuarios(id_usuario) ON DELETE SET NULL;
 
 
 --

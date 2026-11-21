@@ -49,6 +49,23 @@ const obtenerPago = async (id) => {
   return pago;
 };
 
+const anularPago = async (id, data) => {
+  const motivo = String(data?.motivo || "").trim();
+
+  if (motivo.length < 10) {
+    const error = new Error(
+      "El motivo de anulación debe tener al menos 10 caracteres.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return await tesoreriaDao.anularPago(id, {
+    motivo,
+    id_usuario: data?.id_usuario,
+  });
+};
+
 const redondearMonto = (valor) =>
   Math.round((Number(valor) || 0) * 100) / 100;
 
@@ -281,6 +298,7 @@ module.exports = {
   crearPreTicket,
   listarPagos,
   obtenerPago,
+  anularPago,
   registrarPago,
   listarPensionesAlumno,
   generarPensionesMes,

@@ -13,6 +13,7 @@ const {
   formatCurrency,
   drawInstitutionalHeader,
   addFooters,
+  drawWatermark,
 } = require("../utils/pdfCommon");
 
 const MARGIN = 40;
@@ -296,6 +297,10 @@ const generarBoletaPdf = (pago) =>
           notaY,
           { width: contentWidth, align: "center" },
         );
+
+      if (estadoPago === "ANULADO") {
+        drawWatermark(doc, "ANULADA");
+      }
 
       addFooters(doc, MARGIN);
       doc.end();

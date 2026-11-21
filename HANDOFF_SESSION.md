@@ -79,6 +79,7 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 
 | Hash | Mensaje |
 |---|---|
+| `(sesión H15)` | `feat(tesoreria): anulacion de pagos con reversion de caja y pension (H32)` |
 | `(sesión H15)` | `fix(fechas): calcular fechas de negocio en hora de Lima (H39)` |
 | `(sesión H15)` | `chore(infra): endurecer conexion, logs y arranque para produccion` |
 | `(sesión H15)` | `fix(tesoreria,auth): exigir pago completo de pensiones y limitar validar-token (H09, H03)` |
@@ -286,6 +287,16 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   tarde. Las columnas son `timestamp without time zone`: cambiar la zona de la BD solo afecta a
   valores nuevos.
 
+#### H32 — Anulación de pagos (21/11/2026)
+
+- Migración `database/migracion_h32_anulacion_pagos.sql`: `motivo_anulacion`,
+  `fecha_anulacion`, `id_usuario_anulacion` en `pagos` y `ANULADO` en `chk_boleta_estado`.
+- `PUT /api/tesoreria/pagos/:id/anular` (ADMIN/SECRETARIA): transacción con `FOR UPDATE`,
+  pago/boleta ANULADO, pensión/pre-ticket PENDIENTE y EGRESO con el mismo monto/medio en la
+  apertura abierta (nunca en una cerrada).
+- UI en caja e historial: botón solo para `PAGADO`, modal con motivo ≥10, spinner y recarga.
+- Boleta PDF con watermark “ANULADA”.
+
 ### Verificaciones realizadas
 
 - `node --check` en archivos backend: OK.
@@ -349,6 +360,12 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
   20:00 Lima del 2026-11-20 el método viejo daba `2026-11-21` y el nuevo `2026-11-20`; la
   asistencia se guardó con `fecha=2026-11-20` y `fecha_registro=2026-11-21 07:16:50` (Lima).
   Los 4 inputs mostraron `2026-11-21` (hoy en Lima). Datos temporales eliminados.
+- H32: 15/15 pruebas de API OK. Anulación de pensión: pago ANULADO, pensión PENDIENTE, boleta
+  ANULADA y EGRESO de S/250 en Yape en la apertura abierta. Estadísticas del mes y recaudación
+  anual bajaron S/250; egresos de caja subieron S/250. Doble anulación → 409 sin duplicar
+  movimientos. Con la apertura original cerrada, el EGRESO cayó en la actual. Sin caja abierta
+  → 400 sin cambios. SECRETARIA 200; DOCENTE/ESTUDIANTE 403; sin token 401; motivo corto 400.
+  Datos y cierres temporales eliminados (0 residuos).
 - `npm run build` Angular: OK (solo warning preexistente de presupuesto de bundle).
 
 ---

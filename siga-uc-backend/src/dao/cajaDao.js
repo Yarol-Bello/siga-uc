@@ -211,6 +211,7 @@ const listarMovimientos = async (id_apertura) => {
       m.nro_comprobante,
       p.nro_operacion,
       b.numero_boleta,
+      p.estado AS estado_pago,
       m.fecha_hora,
       u.nombres || ' ' || u.apellidos AS usuario
     FROM movimientos_caja m

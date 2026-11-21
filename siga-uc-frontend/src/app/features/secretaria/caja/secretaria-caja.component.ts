@@ -15,8 +15,25 @@ interface Movimiento {
   nro_comprobante: string;
   nro_operacion?: string | null;
   numero_boleta?: string | null;
+  estado_pago?: string | null;
   fecha_hora: string;
   usuario: string;
+}
+
+interface Pago {
+  id_pago: number;
+  monto: string | number;
+  forma_pago: string;
+  nro_operacion?: string | null;
+  fecha_pago: string;
+  estado: string;
+  alumno_nombre: string;
+  nombre_grado?: string | null;
+  concepto_nombre: string;
+  numero_boleta?: string | null;
+  estado_sunat?: string | null;
+  motivo_anulacion?: string | null;
+  fecha_anulacion?: string | null;
 }
 
 interface CajaAbierta {
@@ -53,6 +70,16 @@ export class SecretariaCajaComponent implements OnInit {
   boletaPdfId = signal<number | null>(null);
   errorBoletaPdf = signal<string | null>(null);
 
+  // Historial de pagos y anulación
+  pagos = signal<Pago[]>([]);
+  cargandoPagos = signal(false);
+  modalAnulacion = signal(false);
+  pagoAnular = signal<Pago | Movimiento | null>(null);
+  motivoAnulacion = signal('');
+  procesandoAnulacion = signal(false);
+  errorAnulacion = signal<string | null>(null);
+  exitoAnulacion = signal<string | null>(null);
+
   // Modal Apertura
   modalApertura = signal(false);
   montoInicial = signal<number>(100);
@@ -74,6 +101,7 @@ export class SecretariaCajaComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarCajaAbierta();
+    this.cargarPagos();
   }
 
   /**
@@ -115,9 +143,93 @@ export class SecretariaCajaComponent implements OnInit {
   }
 
   /**
+   * Cargar los últimos pagos para el historial y la anulación.
+   */
+  cargarPagos(): void {
+    this.cargandoPagos.set(true);
+
+    this.http.get<any>(`${environment.apiUrl}/tesoreria/pagos`).subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.pagos.set((res.data || []).slice(0, 50));
+        }
+        this.cargandoPagos.set(false);
+      },
+      error: (err) => {
+        console.error('Error pagos:', err);
+        this.cargandoPagos.set(false);
+      },
+    });
+  }
+
+  abrirModalAnulacion(pago: Pago | Movimiento): void {
+    if (!pago.id_pago) return;
+
+    this.pagoAnular.set(pago);
+    this.motivoAnulacion.set('');
+    this.errorAnulacion.set(null);
+    this.exitoAnulacion.set(null);
+    this.modalAnulacion.set(true);
+  }
+
+  cerrarModalAnulacion(): void {
+    if (this.procesandoAnulacion()) return;
+
+    this.modalAnulacion.set(false);
+    this.pagoAnular.set(null);
+    this.errorAnulacion.set(null);
+  }
+
+  confirmarAnulacion(): void {
+    if (this.procesandoAnulacion()) return;
+
+    const pago = this.pagoAnular();
+    const motivo = this.motivoAnulacion().trim();
+
+    if (!pago?.id_pago) return;
+
+    if (motivo.length < 10) {
+      this.errorAnulacion.set(
+        'El motivo de anulación debe tener al menos 10 caracteres.',
+      );
+      return;
+    }
+
+    this.procesandoAnulacion.set(true);
+    this.errorAnulacion.set(null);
+
+    this.http
+      .put<any>(`${environment.apiUrl}/tesoreria/pagos/${pago.id_pago}/anular`, {
+        motivo,
+      })
+      .pipe(finalize(() => this.procesandoAnulacion.set(false)))
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.exitoAnulacion.set(
+              `Pago${pago.numero_boleta ? ` ${pago.numero_boleta}` : ''} anulado correctamente.`,
+            );
+            this.modalAnulacion.set(false);
+            this.pagoAnular.set(null);
+            this.cargarCajaAbierta();
+            this.cargarPagos();
+          }
+        },
+        error: (err) => {
+          this.errorAnulacion.set(
+            err.error?.message || 'No se pudo anular el pago.',
+          );
+        },
+      });
+  }
+
+  /**
    * Descargar la boleta de pago asociada a un movimiento de caja.
    */
-  descargarBoletaPdf(mov: Movimiento): void {
+  descargarBoletaPdf(mov: {
+    id_pago?: number | null;
+    numero_boleta?: string | null;
+  }): void {
     const idPago = mov.id_pago;
 
     if (!idPago || !mov.numero_boleta || this.boletaPdfId() !== null) return;

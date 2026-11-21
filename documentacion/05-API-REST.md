@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **102 endpoints** — 64 GET, 25 POST, 11 PUT, 2 DELETE
+**Total verificado:** **103 endpoints** — 64 GET, 25 POST, 12 PUT, 2 DELETE
 
 ---
 
@@ -284,13 +284,20 @@ grado/año en una transacción.
 | 57 | POST | `/api/tesoreria/pre-tickets` | ADMIN/SECRETARIA | Crea pre-ticket `PENDIENTE` |
 | 58 | GET | `/api/tesoreria/pagos?id_alumno=&desde=&hasta=` | Autenticado | Lista pagos + boleta |
 | 59 | GET | `/api/tesoreria/pagos/:id` | Autenticado | Detalle de pago/boleta |
-| 60 | POST | `/api/tesoreria/pagos` | ADMIN/SECRETARIA | Pago + boleta + efectos |
-| 61 | GET | `/api/tesoreria/pensiones/alumno/:id_alumno?anio=` | Autenticado | Pensiones del alumno |
-| 62 | POST | `/api/tesoreria/pensiones/generar` | ADMIN/SECRETARIA | Genera pensiones del mes |
-| 63 | GET | `/api/tesoreria/becas?activo=` | Autenticado | Lista becas |
-| 64 | POST | `/api/tesoreria/becas` | ADMIN | Aplica beca |
-| 65 | GET | `/api/tesoreria/estadisticas?anio=&mes=` | Autenticado | Recaudación y pendientes |
-| 66 | GET | `/api/tesoreria/boletas/:id_pago/pdf` | ADMIN/SECRETARIA | PDF de boleta de pago |
+| 60 | PUT | `/api/tesoreria/pagos/:id/anular` | ADMIN/SECRETARIA | Anula pago, boleta, pensión/pre-ticket y revierte caja |
+| 61 | POST | `/api/tesoreria/pagos` | ADMIN/SECRETARIA | Pago + boleta + efectos |
+| 62 | GET | `/api/tesoreria/pensiones/alumno/:id_alumno?anio=` | Autenticado | Pensiones del alumno |
+| 63 | POST | `/api/tesoreria/pensiones/generar` | ADMIN/SECRETARIA | Genera pensiones del mes |
+| 64 | GET | `/api/tesoreria/becas?activo=` | Autenticado | Lista becas |
+| 65 | POST | `/api/tesoreria/becas` | ADMIN | Aplica beca |
+| 66 | GET | `/api/tesoreria/estadisticas?anio=&mes=` | Autenticado | Recaudación y pendientes |
+| 67 | GET | `/api/tesoreria/boletas/:id_pago/pdf` | ADMIN/SECRETARIA | PDF de boleta de pago |
+
+**Anulación de pago:** `PUT /api/tesoreria/pagos/:id/anular` con `{ motivo }` (mínimo 10
+caracteres). Solo aplica a pagos `PAGADO`; doble anulación → 409. En una transacción marca el
+pago y la boleta como `ANULADO`, devuelve pensión/pre-ticket a `PENDIENTE` y registra un
+`EGRESO` con el mismo monto y medio de pago en la apertura abierta (si la original está cerrada,
+usa la actual; sin caja abierta → 400).
 
 **Pre-ticket body:** `{ id_alumno, id_concepto, monto }`.
 
@@ -324,15 +331,15 @@ movimiento de caja `INGRESO` (trigger); si el concepto es `MATRICULA`, alumno pa
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 67 | GET | `/api/caja/actual` | Autenticado | Apertura abierta + totales |
-| 68 | GET | `/api/caja/cajas` | Autenticado | Cajas registradas |
-| 69 | GET | `/api/caja/aperturas?desde=&hasta=` | Autenticado | Historial de aperturas |
-| 70 | GET | `/api/caja/aperturas/:id` | Autenticado | Detalle de apertura |
-| 71 | GET | `/api/caja/movimientos/:id_apertura` | Autenticado | Movimientos |
-| 72 | GET | `/api/caja/cierres` | Autenticado | Historial de cierres |
-| 73 | POST | `/api/caja/aperturar` | ADMIN/SECRETARIA | Abre caja |
-| 74 | POST | `/api/caja/egresos` | ADMIN/SECRETARIA | Registra egreso |
-| 75 | POST | `/api/caja/cerrar` | ADMIN/SECRETARIA | Cierra con arqueo |
+| 68 | GET | `/api/caja/actual` | Autenticado | Apertura abierta + totales |
+| 69 | GET | `/api/caja/cajas` | Autenticado | Cajas registradas |
+| 70 | GET | `/api/caja/aperturas?desde=&hasta=` | Autenticado | Historial de aperturas |
+| 71 | GET | `/api/caja/aperturas/:id` | Autenticado | Detalle de apertura |
+| 72 | GET | `/api/caja/movimientos/:id_apertura` | Autenticado | Movimientos |
+| 73 | GET | `/api/caja/cierres` | Autenticado | Historial de cierres |
+| 74 | POST | `/api/caja/aperturar` | ADMIN/SECRETARIA | Abre caja |
+| 75 | POST | `/api/caja/egresos` | ADMIN/SECRETARIA | Registra egreso |
+| 76 | POST | `/api/caja/cerrar` | ADMIN/SECRETARIA | Cierra con arqueo |
 
 **Aperturar body:** `{ monto_inicial, observaciones?, id_caja? }`. Si no hay caja, crea
 “Caja Principal”. Rechaza si ya hay una apertura sin cierre.
@@ -351,13 +358,13 @@ movimiento de caja `INGRESO` (trigger); si el concepto es `MATRICULA`, alumno pa
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 76 | GET | `/api/reportes/dashboard?anio=` | ADMIN/SECRETARIA | KPIs ejecutivos |
-| 77 | GET | `/api/reportes/cuadro-merito/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Top 10 por promedio ponderado |
-| 78 | GET | `/api/reportes/alumnos-riesgo/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Alumnos con 2+ cursos en C |
-| 79 | GET | `/api/reportes/resumen-asistencia/:id_grado?anio=` | ADMIN/DOCENTE | Asistencia por alumno |
-| 80 | GET | `/api/reportes/libreta/:id_alumno?bimestre=&anio=` | Autenticado | Libreta completa |
-| 81 | GET | `/api/reportes/auditoria-docentes/:id_grado?bimestre=&anio=` | ADMIN | Avance de notas por docente |
-| 82 | GET | `/api/reportes/libreta/:id_alumno/pdf?bimestre=&anio=` | ADMIN/DOCENTE/ESTUDIANTE (propio) | PDF de libreta (`application/pdf`, attachment) |
+| 77 | GET | `/api/reportes/dashboard?anio=` | ADMIN/SECRETARIA | KPIs ejecutivos |
+| 78 | GET | `/api/reportes/cuadro-merito/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Top 10 por promedio ponderado |
+| 79 | GET | `/api/reportes/alumnos-riesgo/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Alumnos con 2+ cursos en C |
+| 80 | GET | `/api/reportes/resumen-asistencia/:id_grado?anio=` | ADMIN/DOCENTE | Asistencia por alumno |
+| 81 | GET | `/api/reportes/libreta/:id_alumno?bimestre=&anio=` | Autenticado | Libreta completa |
+| 82 | GET | `/api/reportes/auditoria-docentes/:id_grado?bimestre=&anio=` | ADMIN | Avance de notas por docente |
+| 83 | GET | `/api/reportes/libreta/:id_alumno/pdf?bimestre=&anio=` | ADMIN/DOCENTE/ESTUDIANTE (propio) | PDF de libreta (`application/pdf`, attachment) |
 
 **Dashboard data:** `total_alumnos`, `total_personal`, `recaudacion_anual`,
 `pre_tickets_pendientes`, `monto_pendiente`, `total_retirados`, `total_grados`, `total_cursos`.
@@ -375,13 +382,13 @@ movimiento de caja `INGRESO` (trigger); si el concepto es `MATRICULA`, alumno pa
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 83 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=&page=&pageSize=` | Autenticado | Bitácora; `page` activa paginación (default 1, máx. 100); sin `page` máx. 200 |
-| 84 | GET | `/api/auditoria/modulos` | Autenticado | Módulos distintos |
-| 85 | GET | `/api/auditoria/estadisticas` | Autenticado | Totales por acción |
-| 86 | GET | `/api/auditoria/actas` | Autenticado | Actas bimestrales |
-| 87 | GET | `/api/auditoria/actas/:id_acta/pdf` | ADMIN/DOCENTE | PDF de acta con matriz real de notas |
-| 88 | GET | `/api/auditoria/:id` | Autenticado | Detalle de registro |
-| 89 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra acta con hash |
+| 84 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=&page=&pageSize=` | Autenticado | Bitácora; `page` activa paginación (default 1, máx. 100); sin `page` máx. 200 |
+| 85 | GET | `/api/auditoria/modulos` | Autenticado | Módulos distintos |
+| 86 | GET | `/api/auditoria/estadisticas` | Autenticado | Totales por acción |
+| 87 | GET | `/api/auditoria/actas` | Autenticado | Actas bimestrales |
+| 88 | GET | `/api/auditoria/actas/:id_acta/pdf` | ADMIN/DOCENTE | PDF de acta con matriz real de notas |
+| 89 | GET | `/api/auditoria/:id` | Autenticado | Detalle de registro |
+| 90 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra acta con hash |
 
 > El `COUNT(*)` de la bitácora usa los mismos filtros del listado (`módulo`, `acción`,
 > `búsqueda`, fechas), por lo que `total` y `totalPages` reflejan lo filtrado.
@@ -400,7 +407,7 @@ Respuesta: acta con `estado = CERRADO`, `fecha_cierre`, `cerrado_por`, `hash_int
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 90 | POST | `/api/siagie/generar-excel` | ADMIN | Inyecta notas en plantilla y descarga |
+| 91 | POST | `/api/siagie/generar-excel` | ADMIN | Inyecta notas en plantilla y descarga |
 
 `multipart/form-data`:
 - `plantilla`: `.xlsx`/`.xls`, máx. 10 MB.
@@ -421,14 +428,14 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 91 | GET | `/api/notificaciones?leido=` | Autenticado | Mis notificaciones |
-| 92 | GET | `/api/notificaciones/no-leidas` | Autenticado | Contador para campanita |
-| 93 | GET | `/api/notificaciones/:id` | Autenticado | Detalle propio |
-| 94 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
-| 95 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
-| 96 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
-| 97 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
-| 98 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, un GRADO o un ALUMNO |
+| 92 | GET | `/api/notificaciones?leido=` | Autenticado | Mis notificaciones |
+| 93 | GET | `/api/notificaciones/no-leidas` | Autenticado | Contador para campanita |
+| 94 | GET | `/api/notificaciones/:id` | Autenticado | Detalle propio |
+| 95 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
+| 96 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
+| 97 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
+| 98 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
+| 99 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, un GRADO o un ALUMNO |
 
 **Crear body:** `{ id_usuario_destino, asunto, cuerpo }`.
 **Masivo body:** `{ asunto, cuerpo, destinatarios: { tipo: "TODOS" | "GRADO" | "ALUMNO", id } }`.

@@ -633,8 +633,40 @@ si no      → C
 - Se permite pagar un pre-ticket/pensión de otro alumno si se envían IDs inconsistentes.
 - No se valida monto contra `monto_final` de la pensión ni contra `monto_base` del concepto.
 - No se valida que la caja esté abierta.
-- No se puede anular un pago desde la UI (solo existe el estado `ANULADO`).
+- ~~No se puede anular un pago desde la UI (solo existe el estado `ANULADO`).~~ ✅ H32.
 - La boleta es simulada; no se integra con SUNAT.
+
+---
+
+## P14.1 — Anulación de pago
+
+| Campo | Detalle |
+|---|---|
+| Endpoint | `PUT /api/tesoreria/pagos/:id/anular` |
+| Actores | ADMIN/SECRETARIA |
+| Body | `{ motivo }` (mínimo 10 caracteres) |
+| Transacción | `tesoreriaDao.anularPago` |
+
+**Pasos**
+
+1. `BEGIN`.
+2. `SELECT * FROM pagos WHERE id_pago = $1 FOR UPDATE` (evita doble anulación).
+3. Si el pago no existe → 404; si su estado no es `PAGADO` → 409.
+4. Determina la apertura: la del movimiento `INGRESO` original si sigue abierta; si no, la
+   apertura abierta actual; si no hay ninguna → 400 y `ROLLBACK` total.
+5. `pagos`: `ANULADO`, motivo, `fecha_anulacion`, usuario del token.
+6. `boletas_electronicas`: `estado_sunat = 'ANULADO'`.
+7. `pensiones` (si aplica): `PENDIENTE`.
+8. `pre_tickets` (si aplica): `PENDIENTE` y `fecha_pago = NULL`.
+9. Inserta `movimientos_caja` tipo `EGRESO` con el mismo monto y medio de pago del ingreso,
+   concepto `ANULACIÓN PAGO N° <nro_operacion o id>`.
+10. `COMMIT`.
+
+**Efectos**
+
+- Nunca se modifican movimientos de una apertura cerrada: el egreso cae en la apertura abierta.
+- La boleta PDF del pago anulado se descarga con marca de agua “ANULADA”.
+- El pago deja de sumar en estadísticas y recaudación (filtran `estado = 'PAGADO'`).
 
 ---
 

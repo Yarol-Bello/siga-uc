@@ -32,7 +32,7 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | No existen |
 
-**Conteos actuales:** 39 tablas · 102 endpoints · 4 roles · 14 routers · 14 controladores ·
+**Conteos actuales:** 39 tablas · 103 endpoints · 4 roles · 14 routers · 14 controladores ·
 19 servicios · 15 DAOs · 72 archivos JS backend · 118 archivos frontend (49 TS).
 
 ---
@@ -181,7 +181,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 39 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 102 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 103 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |
