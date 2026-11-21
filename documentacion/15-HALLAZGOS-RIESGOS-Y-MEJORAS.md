@@ -14,6 +14,10 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > H23 quedó resuelto parcialmente: alumnos y bitácora ya tienen paginación server-side; faltan
 > personal, pagos y pre-tickets. H19 y H20 quedaron resueltos: el retiro desactiva al usuario y
 > congela el expediente en una transacción, y la edición sincroniza nombres/apellidos.
+>
+> **Actualización 21/11/2026 (auditoría de hallazgos):** H01, H02, H04, H06, H08 y H17 quedaron
+> verificados como resueltos con evidencia en el código; H03 y H09 quedan 🟡 (parciales); H07
+> sigue sin cambios.
 
 ---
 
@@ -28,6 +32,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Un estudiante puede listar alumnos, ver notas/asistencias ajenas, pagos, caja y bitácora |
 | Recomendación | Middleware de autorización por recurso/rol; restringir GET a ADMIN/SECRETARIA/DOCENTE según módulo; validar pertenencia en libreta y asistencias |
 | Esfuerzo | M |
+| Estado | ✅ Resuelto (21/11/2026): `alumnoRoutes.js:26` (ADMIN/SECRETARIA) y `:27-38` (`checkAlumnoPropio`/`checkAlumnoPorDni`); `personalRoutes.js:17`, `tesoreriaRoutes.js:17` y `cajaRoutes.js:17` (ADMIN/SECRETARIA); `auditoriaRoutes.js:26` (ADMIN); `calificacionRoutes.js:26-42` y `asistenciaRoutes.js:32-42` con ownership; `reporteRoutes.js:50-60` con ownership |
 
 ### H02 — El estado del usuario no se revalida en cada petición
 
@@ -38,6 +43,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Un usuario cesado conserva acceso hasta 8 h |
 | Recomendación | Consultar `usuarios.estado` en el middleware (con caché corta) o incluir versión de sesión |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): `authMiddleware.js:41-51` consulta `getContextoUsuario` y rechaza `estado !== 'ACTIVO'` en cada request, incluidos los JWT ya emitidos |
 
 ### H03 — Sin rate limiting ni bloqueo por intentos
 
@@ -48,6 +54,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Fuerza bruta sobre DNI/contraseña y recuperación |
 | Recomendación | Limitar `/auth/login`, `/auth/recuperar-password` y `/auth/validar-token`; bloqueo temporal |
 | Esfuerzo | S |
+| Estado | 🟡 Parcial (21/11/2026): `loginLimiter` y `recoveryLimiter` (5 intentos/15 min) en `rateLimit.js:22-37`, aplicados en `authRoutes.js:25-27` y `:109-111`. Falta limitar `/auth/validar-token/:token` y no hay bloqueo de cuenta |
 
 ### H04 — La nota final no se calcula automáticamente desde la UI
 
@@ -58,6 +65,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Libretas, mérito, riesgo y SIAGIE pueden salir vacíos aunque los docentes hayan registrado competencias |
 | Recomendación | Botón “Calcular notas finales” por curso/bimestre o cálculo automático tras guardar; job de cierre |
 | Esfuerzo | M |
+| Estado | ✅ Resuelto (21/11/2026): tras cada guardado, `registrar` y `registrarMasivo` recalculan y guardan `notas_finales_area` (`calificacionService.js:146-159` y `:172-209`; `calificacionDao.js:283-286`) |
 
 ### H05 — SIAGIE limitado a 4 cursos y primera hoja
 
@@ -78,6 +86,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Se pueden alterar notas después del cierre, contradiciendo el mensaje de la UI |
 | Recomendación | Verificar acta `CERRADO` antes de insertar/actualizar notas; permitir reapertura auditada |
 | Esfuerzo | M |
+| Estado | ✅ Resuelto (21/11/2026): `auditoriaDao.actaEstaCerrada` (`auditoriaDao.js:346-368`) se invoca antes de registrar y calcular (`calificacionService.js:12-28` y `:234`), respondiendo 409 |
 
 ### H07 — Auditoría incompleta y con usuario NULL
 
@@ -98,6 +107,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Movimientos en cajas cerradas; descuadre y reportes inconsistentes |
 | Recomendación | Verificar apertura sin cierre; si no hay, rechazar pago o registrar pendiente |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): el trigger solo imputa a aperturas sin cierre (`siga_uc.sql:207-214`) y `registrarPago` rechaza el cobro si no hay caja abierta (`tesoreriaService.js:74-81`) |
 
 ### H09 — El pago no valida monto, concepto ni caja
 
@@ -108,6 +118,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Se puede pagar S/1 una pensión de S/250 o pagar una pensión de otro alumno |
 | Recomendación | Validar monto contra pensión/concepto, pertenencia alumno-pensión y caja abierta |
 | Esfuerzo | M |
+| Estado | 🟡 Parcial (21/11/2026): valida caja abierta (`tesoreriaService.js:74-81`), alumno (`:83-89`) y concepto (`:91-97`), pero sigue sin comparar el monto con la pensión/concepto ni verificar que la pensión pertenezca al alumno (`tesoreriaDao.js:255-264`) |
 
 ### H10 — Concurrencia en códigos y boletas
 
@@ -194,6 +205,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Fuga de nombres de tablas/columnas y detalles internos |
 | Recomendación | Mensaje genérico al cliente; detalle solo en logs |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (21/11/2026): `response.error` sustituye cualquier mensaje por uno genérico cuando el status es ≥ 500 (`response.js:33-40`), y el handler global hace lo mismo (`app.js:151-157`); el detalle queda solo en consola |
 
 ### H18 — Cambio obligatorio de contraseña (resuelto)
 
