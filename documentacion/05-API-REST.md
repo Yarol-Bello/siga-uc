@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **114 endpoints** - 64 GET, 32 POST, 14 PUT, 4 DELETE.
+**Total verificado:** **119 endpoints** - 65 GET, 34 POST, 15 PUT, 5 DELETE.
 
 ---
 
@@ -47,8 +47,10 @@ Error:
 | 401 | Token ausente, inválido o expirado |
 | 403 | Rol no autorizado o usuario no activo |
 | 404 | Recurso no encontrado |
-| 409 | Conflicto (DNI duplicado, caja ya abierta) |
+| 409 | Conflicto (DNI duplicado, caja ya abierta, previsualización desactualizada) |
+| 422 | Regla de negocio que impide completar la operación (activación u rollover bloqueado) |
 | 500 | Error interno |
+| 503 | Dependencia no disponible; en 6.2, migración H49 no aplicada (`H49_NO_APLICADO`) |
 
 ### 1.3 Leyenda de acceso
 
@@ -73,6 +75,38 @@ Error:
 | GET | `/` | Público | Bienvenida + versión |
 | GET | `/api/health` | Público | Health check (`app`, `version`, `environment`, `timestamp`) |
 | GET | `/api/configuracion` | Público | Año lectivo activo (`anio_lectivo`): `anios_lectivos.estado='ACTIVO'` o, si falta, `ANIO_LECTIVO` |
+
+### 2.1 Años lectivos y rollover — `/api/anios-lectivos` (5, solo ADMIN)
+
+Todos exigen `verificarAutenticacion` + `verificarRol("ADMIN")`. Si la base no tiene
+aplicada H49, responden **503** con `errors.codigo = "H49_NO_APLICADO"` (no un 500).
+
+| Método | Ruta | Cuerpo | Descripción |
+|---|---|---|---|
+| GET | `/api/anios-lectivos` | - | Catálogo de años con estado, marcas de cierre y conteos de grados, conceptos, MATRICULA, períodos, carga, tutores, alumnos, pagos, notas, asistencia, pensiones, pre-tickets, actas y horarios |
+| POST | `/api/anios-lectivos/preview` | `{ anio_origen, anio_destino, incluir_otros? }` | **Solo lectura.** Devuelve `resumen`, `detalle`, `bloqueos`, `advertencias`, `actividad_destino` y `preview_hash` (SHA-256) |
+| POST | `/api/anios-lectivos/rollover` | `{ anio_origen, anio_destino, preview_hash, confirmar: true, incluir_otros? }` | Clonado transaccional e idempotente de grados → conceptos → períodos → carga → tutores. No crea alumnos, matrículas, pagos, notas, asistencia, actas ni horarios |
+| PUT | `/api/anios-lectivos/:anio/activar` | `{ confirmar: true }` | Activa un año `PLANIFICADO`; el `ACTIVO` anterior pasa a `CERRADO`. Actualiza la caché del backend y audita `ACTIVAR` |
+| DELETE | `/api/anios-lectivos/:anio/rollover` | `{ motivo, confirmar: true }` | Revierte la oferta de un año `PLANIFICADO`, no activo y sin actividad. Audita `REVERTIR_ROLLOVER` |
+
+Reglas verificadas:
+
+- Años válidos entre 2000 y 2100 y `anio_origen < anio_destino`.
+- `preview` no escribe. El confirm recalcula el hash dentro de la transacción; si cambió,
+  responde **409 `PREVIEW_DESACTUALIZADA`**.
+- El confirm es idempotente: con el mismo hash y los mismos datos devuelve `200` con
+  `creados = 0` y `existentes > 0`.
+- Son bloqueos: origen inexistente o sin grados, falta de `MATRICULA`, destino con
+  actividad, oferta del destino distinta, docentes inactivos, docente sobre la capacidad
+  (`períodos CLASE activos × 5 días`), grados sin `orden` o duplicados.
+- `incluir_otros` es `false` por defecto: solo se copian `MATRICULA` y `PENSION`. Los
+  conceptos `OTROS` se omiten con advertencia.
+- La activación exige al menos 1 grado y 1 concepto `MATRICULA`; no reactiva `CERRADO` en
+  6.2. Solo puede quedar un año `ACTIVO` (índice parcial `uq_anio_activo`).
+- La reversión solo procede si la oferta coincide exactamente con la clonada; no borra
+  oferta manual distinta.
+- Auditoría: acciones `ROLLOVER`, `ACTIVAR` y `REVERTIR_ROLLOVER` en el módulo
+  `Años Lectivos`, siempre **después del COMMIT**.
 
 ---
 

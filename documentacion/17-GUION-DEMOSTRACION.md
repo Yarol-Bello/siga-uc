@@ -198,6 +198,23 @@ horario en borrador no es visible”.
 > parcial consciente. El seed de producción asigna las 55 cargas al ADMIN y el preflight
 > responderá que no es posible generar.
 
+### Paso 7c — Años lectivos y rollover (solo preview, 2 min)
+
+1. En **ADMIN** → **Años Lectivos y Rollover**, mostrar el catálogo: año activo, años
+   planificados/cerrados y conteos de oferta y actividad.
+2. Elegir origen 2026 y destino 2027. Pulsar **Previsualizar**.
+3. Recorrer el resumen y las secciones: grados, conceptos `MATRICULA`/`PENSION`, períodos,
+   carga y tutores. Señalar el hash de previsualización y que la operación es de solo
+   lectura.
+4. Mostrar un bloqueo real si existe (docente sobrecargado o inactivo, oferta distinta en el
+   destino, falta de `MATRICULA`). Explicar que el botón de confirmar queda deshabilitado.
+5. **No confirmar, no activar y no revertir en Supabase durante la demo.** El objetivo es
+   mostrar que el sistema exige revisión humana y no promueve alumnos solo.
+
+**Mensaje:** “El rollover prepara la oferta del año siguiente; la promoción de alumnos es
+una fase separada y se confirmará con dirección. En esta demo solo mostramos la
+previsualización.”
+
 ### Paso 8 — Notificación interna (2 min)
 
 1. En **ADMIN** → dashboard → **Nueva Notificación**.
@@ -242,8 +259,9 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
       (42 en local si existe `horarios_h47_backup`).
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
 - [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
-- [ ] `npm run test:e2e` local: **27 PASS, 0 FAIL** (exit 0).
-- [ ] `npm run test:integridad` revisado; los FAIL de seed están explicados.
+- [ ] `npm run test:e2e` local: **38 PASS, 0 FAIL** (exit 0).
+- [ ] `npm run test:integridad` revisado; **16 PASS** en base nueva y los FAIL de seed
+      local explicados.
 
 ### Datos de demo
 

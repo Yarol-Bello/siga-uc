@@ -86,7 +86,7 @@ caja, bitácora ni becas.
 | `migracion_h61_dia_semana.sql` | Solo datos: normaliza `asistencia_alumnos.dia_semana` a español y lo alinea con `fecha`. Idempotente; no cambia el esquema. |
 | `migracion_h49_multianio_base.sql` | Crea `anios_lectivos`, agrega `grados.orden` y reemplaza los UNIQUE globales de `alumnos` por UNIQUE por año. No crea promociones ni clona oferta. Se pega completo en SQL Editor (sin variables psql). Idempotente. |
 | `rollback_h49_multianio_base.sql` | Solo para base desechable: restaura los UNIQUE globales y elimina `anios_lectivos`/`grados.orden`. Aborta si hay varias matrículas por persona o promociones con filas. |
-| `preparar_anio_lectivo.sql` | Utilidad **parcial** e histórica: solo copia conceptos `MATRICULA`/`PENSION` y períodos. No crea grados, carga ni tutores; no es el rollover de 6.2. |
+| `preparar_anio_lectivo.sql` | Utilidad **histórica y parcial**: solo copia conceptos `MATRICULA`/`PENSION` y períodos. No crea grados, carga ni tutores. La reemplaza la pantalla ADMIN de 6.2 (años lectivos y rollover). |
 | `siga_uc_backup.sql` | Backup local con datos. Ignorado por Git; no se usa para instalar. |
 
 ## Verificación
@@ -111,7 +111,7 @@ SELECT
 Además, desde `siga-uc-backend`:
 
 ```powershell
-npm run test:integridad   # 14 invariantes; debe dar 14 PASS en una base de producción limpia
+npm run test:integridad   # 16 invariantes; debe dar 16 PASS en una base de producción limpia
 ```
 
 ## Migraciones sobre una base existente
@@ -129,6 +129,11 @@ variables `psql`: crea una tabla temporal `_param_anio` (2026 por defecto; **edi
 la instalación**, 2027 en producción), marca ese año como
 `ACTIVO` solo si no hay otro y usa `current_setting`. Es idempotente y no crea promociones ni
 clona oferta. Aplicarla solo con backup previo y ventana sin usuarios.
+
+**Fase 6.2 (rollover) no agrega una migración.** Se opera desde la pantalla ADMIN
+`/admin/anios-lectivos` después de aplicar H49: preview, confirmación idempotente, activación
+auditada y reversión. El script `preparar_anio_lectivo.sql` queda como utilidad histórica y
+no reemplaza al rollover (no copia grados, carga ni tutores).
 `rollback_h49_multianio_base.sql` es **exclusivo de bases desechables**; no ejecutarlo en
 producción.
 

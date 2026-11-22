@@ -34,9 +34,9 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | No existen |
 
-**Conteos actuales:** 41 tablas base (42 en local con `horarios_h47_backup`) · 114 endpoints ·
-4 roles · 15 routers · 15 controladores · 22 servicios · 18 DAOs · 80 archivos JS backend ·
-134 archivos frontend (56 TS).
+**Conteos actuales:** 41 tablas base (42 en local con `horarios_h47_backup`) · 119 endpoints ·
+4 roles · 16 routers · 16 controladores · 24 servicios · 20 DAOs · 86 archivos JS backend ·
+142 archivos frontend (59 TS).
 
 ---
 
@@ -175,6 +175,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Personal | `personalRoutes/...` | `admin/personal` |
 | Carga curricular | `cargaCurricularRoutes/...` | `admin/carga-curricular` |
 | Horarios | `horarioRoutes/...` | `admin/horarios`, `secretaria/horarios`, `docente/horario`, `estudiante/horario` |
+| Años lectivos / Rollover | `anioLectivoRoutes/Controller/Service`, `rolloverService/Dao` | `admin/anios-lectivos` |
 | Asistencia | `asistenciaRoutes/...` | `docente/asistencia`, `admin/asistencia-qr`, `estudiante/asistencia` |
 | Calificaciones | `calificacionRoutes/...` | `docente/notas`, `estudiante/dashboard`, `docente/ficha` |
 | Tesorería | `tesoreriaRoutes/...` | `secretaria/tesoreria` (wrapper admin) |
@@ -199,10 +200,28 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   `(codigo_estudiante, anio_lectivo)` desde H49. No asumir un alumno por persona sin filtrar
   año; los históricos usan `?anio=YYYY`.
 - El **año activo** se lee de `anios_lectivos.estado='ACTIVO'` al arrancar; `ANIO_LECTIVO`
-  es bootstrap/respaldo. Cambiar el estado exige reiniciar el backend hasta 6.2.
+  es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
+  reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
 - **H49 está desplegado en Render** (código `3007dbe`; frontend verificado) pero **no
   aplicado en Supabase** (demo con 40 tablas). No aplicar la migración allí sin autorización
   y backup previo. El rollback H49 es solo para bases desechables.
+- **6.2 no agrega migración**: opera sobre H49 desde `/admin/anios-lectivos`. Si la tabla
+  `anios_lectivos` no existe, los endpoints responden `503 H49_NO_APLICADO`, no 500.
+- El rollover clona solo **grados, conceptos, períodos, carga y tutores**. No crea alumnos,
+  matrículas, pagos, notas, asistencia, actas, becas, QR ni horarios. La promoción es 6.3.
+- La activación solo acepta `PLANIFICADO → ACTIVO`, exige 1 grado y 1 concepto `MATRICULA`,
+  cierra el año activo anterior y deja un solo `ACTIVO`. No reactivar `CERRADO` en 6.2.
+  **No activar 2027 en Supabase** sin 6.3; los alumnos sin matrícula del año nuevo quedan
+  con `matricula_activa=false`.
+- La reversión solo borra un rollover vacío y exacto: año `PLANIFICADO`, no activo, sin
+  matrículas/pagos/notas/asistencia/actas/horarios y con la marca `Rollover desde YYYY` en
+  `anios_lectivos.observacion`. Una oferta manual distinta aborta con `409`.
+- El `preview_hash` se recalcula dentro de la transacción. Si cambió la fuente, la actividad
+  o los conflictos, el confirm responde `409 PREVIEW_DESACTUALIZADA`. El hash no incluye la
+  oferta del destino para que el confirm repetido sea idempotente.
+- En local `siga_uc` las 142 h de carga están en el ADMIN y el preview bloquea por
+  sobrecapacidad; es correcto. La demo de Supabase tiene 5 docentes con 30/30/30/30/25 h y
+  el E2E reequilibra su base desechable.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y
@@ -229,8 +248,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   frontend.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
-- Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (14) y
-  `npm run test:e2e` (27, base desechable); el resto del testeo es manual.
+- Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (16) y
+  `npm run test:e2e` (38, base desechable); el resto del testeo es manual.
 
 ---
 

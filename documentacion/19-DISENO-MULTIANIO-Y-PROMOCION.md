@@ -1,8 +1,9 @@
 # 19 — Diseño multi-año y promoción de alumnos
 
-> **Estado:** propuesta de diseño. **No implementada, no migrada y no ejecutada.**
-> Este documento no cambia el esquema ni el código. Cualquier SQL incluido es un
-> bosquejo para revisión, no un script listo para producción.
+> **Estado:** diseño. **Fase 6.1 (multi-año base) y Fase 6.2 (rollover anual) implementadas,
+> probadas y documentadas.** La promoción (6.3) y el histórico (6.4) siguen pendientes.
+> Este documento conserva el diseño original; lo implementado se contrasta con el código real
+> (`siga-uc-backend`, `siga-uc-frontend`) y con `documentacion/05`, `12` y `13`.
 >
 > **Alcance:** diseñar la convivencia de varios años lectivos y la promoción anual de
 > alumnos en SIGA-UC. **No** se codifica la norma peruana de promoción: los criterios
@@ -550,6 +551,13 @@ No usar `LIMIT 1` sin filtro de año. Si el rol es ESTUDIANTE y no hay fila:
 ---
 
 ## 3. Rollover anual
+
+> **Implementado en Fase 6.2.** Módulo `anioLectivoRoutes/Controller/Service`,
+> `rolloverService/Dao`, montado en `/api/anios-lectivos`, y pantalla ADMIN
+> `/admin/anios-lectivos`. El diseño de esta sección se respetó: preview de solo lectura con
+> hash, confirmación transaccional e idempotente, activación auditada y reversión de un
+> rollover vacío. **No** se clonan horarios, actas, becas, QR ni pagos, y **no** se promueven
+> alumnos (eso es 6.3).
 
 El rollover prepara la **oferta del año siguiente**. No promueve alumnos por sí solo.
 

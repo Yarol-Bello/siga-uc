@@ -166,6 +166,33 @@ No crea promociones ni clona oferta académica.
   los UNIQUE globales y elimina `anios_lectivos`/`grados.orden`; aborta si hay varias
   matrículas por persona o promociones con filas. **No ejecutarlo en producción.**
 
+### 3.1.2 Rollover anual (Fase 6.2)
+
+El rollover **no es una migración**: se ejecuta desde la pantalla ADMIN
+**Años Lectivos y Rollover** (`/admin/anios-lectivos`) o por API
+(`/api/anios-lectivos`). Requiere H49 aplicada y el backend reiniciado.
+
+1. Confirmar que H49 está aplicada y que `_param_anio` corresponde al año de la instalación
+   (2026 en la demo, 2027 en producción). Si se aplicó con el año equivocado, corregir el
+   `anios_lectivos.estado` antes de operar, no volver a ejecutar la migración a ciegas.
+2. Hacer backup y verificar que se puede restaurar (ver sección 9).
+3. Entrar como ADMIN y abrir **Años Lectivos y Rollover**.
+4. Seleccionar origen (año con oferta) y destino (año siguiente). Ejecutar **Previsualizar**.
+5. Revisar grados, conceptos, períodos, carga, tutores, bloqueos y advertencias.
+6. Marcar la responsabilidad y **Confirmar rollover**. Es transaccional e idempotente: no
+   crea alumnos, pagos, notas, actas ni horarios.
+7. Activar el año destino con el botón **Activar** y la advertencia de alumnos sin matrícula.
+   El año anterior queda `CERRADO` y el backend actualiza su caché; los demás usuarios deben
+   recargar la página.
+8. Si se confirmó por error y el año destino sigue `PLANIFICADO` y vacío, usar
+   **Revertir**. Si ya tiene matrículas, pagos, notas, asistencia, actas u horarios, la API
+   responde `409` y no borra nada.
+
+> En producción, **no activar 2027 hasta cerrar 6.3** (promoción). La activación deja a los
+> alumnos sin matrícula del nuevo año con `matricula_activa=false` y acceso académico
+> bloqueado. En la demo de Supabase, el rollover se muestra solo en **preview**; no
+> confirmar ni activar sin autorización y backup.
+
 > **No mezclar escenarios.** `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes:
 > cargar ambos duplica objetos (`ya existe una función «calcular_nota_final_area»`).
 
@@ -199,7 +226,7 @@ Y ejecutar la suite de invariantes:
 
 ```powershell
 cd siga-uc-backend
-npm run test:integridad   # 14 PASS, 0 FAIL
+npm run test:integridad   # 16 PASS, 0 FAIL
 ```
 
 ### 3.5 Extensiones
@@ -566,6 +593,8 @@ Crear una tarea diaria a las 02:00:
 | `database/migracion_h47_horarios.sql` | Crea `periodos_clase`, reemplaza `horarios` y agrega restricciones/triggers de horarios |
 | `database/migracion_h48_actas.sql` | Agrega bimestre, reapertura y unicidad de actas; backfill y validación de duplicados |
 | `database/migracion_h61_dia_semana.sql` | Normaliza `dia_semana` de asistencias a español y lo alinea con la fecha; solo datos e idempotente |
+| `database/migracion_h49_multianio_base.sql` | Crea `anios_lectivos`, `grados.orden` y UNIQUE de alumnos por año; se aplica antes del rollover |
+| `database/preparar_anio_lectivo.sql` | Utilidad histórica y parcial (conceptos + períodos); la UI de 6.2 la reemplaza |
 | `database/migracion_*.sql` | Parches idempotentes para bases existentes |
 | `database/siga_uc_backup.sql` | Backup local (ignorado) |
 
