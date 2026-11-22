@@ -81,6 +81,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'anios-lectivos',
+        loadComponent: () =>
+          import('./features/admin/anios-lectivos/admin-anios-lectivos.component').then(
+            (m) => m.AdminAniosLectivosComponent,
+          ),
+      },
+      {
         path: 'asistencia-qr',
         loadComponent: () =>
           import('./features/admin/asistencia-qr/admin-asistencia-qr.component').then(

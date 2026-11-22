@@ -52,6 +52,12 @@ export class SidebarComponent {
       roles: ['ADMIN'],
     },
     {
+      path: '/admin/anios-lectivos',
+      label: 'Años Lectivos y Rollover',
+      icon: 'fa-calendar-plus',
+      roles: ['ADMIN'],
+    },
+    {
       path: '/admin/tesoreria',
       label: 'Tesorería y Pensiones',
       icon: 'fa-wallet',

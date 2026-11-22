@@ -1,0 +1,703 @@
+<div class="anios-container">
+  <!-- BANNER -->
+  <div class="info-banner">
+    <div class="info-icon">
+      <i class="fa-solid fa-calendar-plus"></i>
+    </div>
+    <div class="info-text">
+      <h3>Años Lectivos y Rollover</h3>
+      <p>
+        Prepara la oferta del año siguiente (grados, conceptos, períodos, carga y tutores)
+        sin crear matrículas ni promover alumnos.
+      </p>
+    </div>
+    @if (anioActivo(); as activo) {
+      <span class="info-badge">Año activo {{ activo.anio }}</span>
+    } @else {
+      <span class="info-badge info-badge-warning">Sin año activo</span>
+    }
+  </div>
+
+  <!-- MENSAJES -->
+  @if (mensaje(); as aviso) {
+    <div class="alert" [ngClass]="'alert-' + aviso.tipo">
+      <i
+        class="fa-solid"
+        [ngClass]="{
+          'fa-circle-check': aviso.tipo === 'success',
+          'fa-triangle-exclamation': aviso.tipo !== 'success'
+        }"
+      ></i>
+      <span>{{ aviso.texto }}</span>
+      <button class="alert-close" type="button" (click)="mensaje.set(null)">&times;</button>
+    </div>
+  }
+
+  <!-- CATÁLOGO -->
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-list-ol"></i>
+        Catálogo de años lectivos
+      </h3>
+      <span class="badge-count">{{ anios().length }} año(s)</span>
+    </div>
+
+    @if (cargandoCatalogo()) {
+      <div class="loading-state">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <p>Cargando años lectivos...</p>
+      </div>
+    }
+
+    @if (errorCatalogo()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorCatalogo() }}
+      </div>
+    }
+
+    @if (!cargandoCatalogo()) {
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Año</th>
+              <th>Estado</th>
+              <th>Grados</th>
+              <th>Conceptos</th>
+              <th>Períodos</th>
+              <th>Carga</th>
+              <th>Tutores</th>
+              <th>Alumnos</th>
+              <th>Actas</th>
+              <th>Horarios</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (anio of anios(); track anio.anio) {
+              <tr [class.fila-activa]="anio.estado === 'ACTIVO'">
+                <td><strong>{{ anio.anio }}</strong></td>
+                <td>
+                  <span
+                    class="badge-estado"
+                    [ngClass]="'estado-' + anio.estado.toLowerCase()"
+                  >
+                    {{ etiquetaEstado(anio.estado) }}
+                  </span>
+                </td>
+                <td class="num">{{ anio.grados }}</td>
+                <td class="num">
+                  {{ anio.conceptos }}
+                  @if (anio.conceptos_matricula > 0) {
+                    <i
+                      class="fa-solid fa-circle-check texto-ok"
+                      title="Tiene concepto MATRICULA"
+                    ></i>
+                  } @else {
+                    <i
+                      class="fa-solid fa-circle-xmark texto-peligro"
+                      title="Falta concepto MATRICULA"
+                    ></i>
+                  }
+                </td>
+                <td class="num">{{ anio.periodos }}</td>
+                <td class="num">{{ anio.carga }}</td>
+                <td class="num">{{ anio.tutores }}</td>
+                <td class="num">{{ anio.alumnos }}</td>
+                <td class="num">{{ anio.actas }}</td>
+                <td class="num">{{ anio.horarios }}</td>
+                <td>
+                  <div class="acciones-tabla">
+                    @if (anio.estado === 'PLANIFICADO') {
+                      <button
+                        type="button"
+                        class="btn-mini btn-activar"
+                        [disabled]="!puedeActivar(anio)"
+                        [title]="
+                          puedeActivar(anio)
+                            ? 'Activar este año lectivo'
+                            : 'Requiere al menos 1 grado y 1 concepto MATRICULA'
+                        "
+                        (click)="abrirModalActivar(anio)"
+                      >
+                        <i class="fa-solid fa-power-off"></i> Activar
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-mini btn-revertir"
+                        [disabled]="!puedeRevertir(anio)"
+                        [title]="
+                          puedeRevertir(anio)
+                            ? 'Revertir la oferta clonada'
+                            : 'Solo se revierte un año PLANIFICADO, no activo y sin actividad'
+                        "
+                        (click)="abrirModalRevertir(anio)"
+                      >
+                        <i class="fa-solid fa-rotate-left"></i> Revertir
+                      </button>
+                    } @else {
+                      <span class="sin-acciones">—</span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (anios().length === 0) {
+        <div class="empty-state">
+          <i class="fa-solid fa-inbox"></i>
+          <h3>No hay años lectivos</h3>
+          <p>Aplique la migración H49 y reinicie el backend.</p>
+        </div>
+      }
+    }
+
+    <div class="nota-pie">
+      <i class="fa-solid fa-circle-info"></i>
+      Un solo año puede estar ACTIVO. Al activar uno nuevo, el anterior pasa a CERRADO.
+      La activación no promueve alumnos: eso corresponde a la Fase 6.3.
+    </div>
+  </div>
+
+  <!-- PREPARAR OFERTA -->
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-clone"></i>
+        Preparar oferta del año destino
+      </h3>
+      @if (preview(); as vista) {
+        <span class="badge-count">
+          {{ vista.anio_origen }} → {{ vista.anio_destino }}
+        </span>
+      }
+    </div>
+
+    <div class="toolbar-rollover">
+      <div class="selector-item">
+        <label for="origen"><i class="fa-solid fa-arrow-right-from-bracket"></i> Año origen:</label>
+        <select
+          id="origen"
+          [ngModel]="origen()"
+          (ngModelChange)="onOrigenChange($event)"
+        >
+          <option [ngValue]="null">Seleccione...</option>
+          @for (anio of aniosOrigen(); track anio.anio) {
+            <option [ngValue]="anio.anio">
+              {{ anio.anio }} — {{ etiquetaEstado(anio.estado) }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <div class="selector-item">
+        <label for="destino"><i class="fa-solid fa-arrow-right-to-bracket"></i> Año destino:</label>
+        <select
+          id="destino"
+          [ngModel]="destino()"
+          (ngModelChange)="onDestinoChange($event)"
+        >
+          <option [ngValue]="null">Seleccione...</option>
+          @for (anio of aniosDestino(); track anio) {
+            <option [ngValue]="anio">{{ anio }}</option>
+          }
+        </select>
+      </div>
+
+      <label class="chk-inline">
+        <input
+          type="checkbox"
+          [ngModel]="incluirOtros()"
+          (ngModelChange)="onIncluirOtrosChange($event)"
+        />
+        Incluir conceptos OTROS
+      </label>
+
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="cargandoPreview()"
+        (click)="previsualizar()"
+      >
+        @if (cargandoPreview()) {
+          <i class="fa-solid fa-spinner fa-spin"></i> Previsualizando...
+        } @else {
+          <i class="fa-solid fa-magnifying-glass"></i> Previsualizar
+        }
+      </button>
+    </div>
+
+    <div class="nota-pie nota-inline">
+      <i class="fa-solid fa-circle-info"></i>
+      Por defecto solo se copian MATRICULA y PENSION. Cambiar “incluir OTROS” obliga a
+      volver a previsualizar: la confirmación usa un hash del contenido revisado.
+    </div>
+
+    @if (errorPreview()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorPreview() }}
+      </div>
+    }
+
+    @if (preview(); as vista) {
+      <div class="preview-wrapper">
+        <div class="preview-head">
+          <div>
+            <h4>Resumen {{ vista.anio_origen }} → {{ vista.anio_destino }}</h4>
+            <p class="hash-line">
+              Hash: <code>{{ vista.preview_hash }}</code>
+            </p>
+          </div>
+          @if (vista.crear_anio) {
+            <span class="badge-info">
+              <i class="fa-solid fa-plus"></i>
+              El año {{ vista.anio_destino }} se creará PLANIFICADO
+            </span>
+          }
+        </div>
+
+        <div class="resumen-grid">
+          <div class="resumen-card">
+            <span class="resumen-label">Grados</span>
+            <strong>{{ vista.resumen.grados.total }}</strong>
+            <small>{{ vista.resumen.grados.nuevos }} nuevo(s) · {{ vista.resumen.grados.existentes }} existente(s)</small>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Conceptos</span>
+            <strong>{{ vista.resumen.conceptos.total }}</strong>
+            <small>
+              {{ vista.resumen.conceptos.nuevos }} nuevo(s) · {{ vista.resumen.conceptos.existentes }} existente(s)
+              @if (vista.resumen.conceptos.omitidos > 0) {
+                · {{ vista.resumen.conceptos.omitidos }} OTROS omitido(s)
+              }
+            </small>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Períodos</span>
+            <strong>{{ vista.resumen.periodos.total }}</strong>
+            <small>{{ vista.resumen.periodos.nuevos }} nuevo(s) · {{ vista.resumen.periodos.existentes }} existente(s)</small>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Carga curricular</span>
+            <strong>{{ vista.resumen.carga.total }}</strong>
+            <small>{{ vista.resumen.carga.nuevas }} nueva(s) · {{ vista.resumen.carga.existentes }} existente(s)</small>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Tutores</span>
+            <strong>{{ vista.resumen.tutores.total }}</strong>
+            <small>{{ vista.resumen.tutores.nuevos }} nuevo(s) · {{ vista.resumen.tutores.existentes }} existente(s)</small>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Capacidad horaria</span>
+            <strong>{{ vista.resumen.capacidad_horaria }} h</strong>
+            <small>{{ vista.resumen.docentes.total }} docente(s) en la carga</small>
+          </div>
+        </div>
+
+        @if (vista.bloqueos.length > 0) {
+          <div class="bloqueos-panel">
+            <h4><i class="fa-solid fa-ban"></i> Bloqueos ({{ vista.bloqueos.length }})</h4>
+            <p class="bloqueos-ayuda">No se puede confirmar mientras exista un bloqueo.</p>
+            @for (bloqueo of vista.bloqueos; track bloqueo.codigo) {
+              <div class="bloqueo-item">
+                <div class="bloqueo-titulo">
+                  <span class="bloqueo-codigo">{{ bloqueo.codigo }}</span>
+                  {{ bloqueo.mensaje }}
+                </div>
+                @if (detallesBloqueo(bloqueo).length > 0) {
+                  <ul>
+                    @for (detalle of detallesBloqueo(bloqueo); track $index) {
+                      <li>{{ detalle }}</li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="ok-panel">
+            <i class="fa-solid fa-circle-check"></i>
+            Sin bloqueos: la oferta se puede confirmar.
+          </div>
+        }
+
+        @if (vista.advertencias.length > 0) {
+          <div class="advertencias-panel">
+            <h4><i class="fa-solid fa-triangle-exclamation"></i> Advertencias</h4>
+            <ul>
+              @for (advertencia of vista.advertencias; track $index) {
+                <li>{{ advertencia }}</li>
+              }
+            </ul>
+          </div>
+        }
+
+        <div class="detalle-grid">
+          <details class="preview-section" open>
+            <summary>Grados ({{ vista.detalle.grados.length }})</summary>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Grado</th>
+                    <th>Nivel</th>
+                    <th>Sección</th>
+                    <th>Orden</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (grado of vista.detalle.grados; track grado.id_grado) {
+                    <tr>
+                      <td>{{ grado.nombre_grado }}</td>
+                      <td>{{ grado.nivel }}</td>
+                      <td>{{ grado.seccion }}</td>
+                      <td class="num">{{ grado.orden }}</td>
+                      <td>
+                        <span class="badge-mini" [ngClass]="'mini-' + grado.estado">
+                          {{ grado.estado }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
+
+          <details class="preview-section" open>
+            <summary>Conceptos de pago ({{ vista.detalle.conceptos.length }})</summary>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nombre en destino</th>
+                    <th>Tipo</th>
+                    <th>Mes</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (concepto of vista.detalle.conceptos; track concepto.id_concepto) {
+                    <tr>
+                      <td>{{ concepto.nombre }}</td>
+                      <td><span class="badge-mini mini-tipo">{{ concepto.tipo }}</span></td>
+                      <td class="num">{{ concepto.mes || '—' }}</td>
+                      <td class="num">S/ {{ concepto.monto_base | number: '1.2-2' }}</td>
+                      <td>
+                        <span class="badge-mini" [ngClass]="'mini-' + concepto.estado">
+                          {{ concepto.estado }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
+
+          <details class="preview-section">
+            <summary>Períodos de clase ({{ vista.detalle.periodos.length }})</summary>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Orden</th>
+                    <th>Nombre</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (periodo of vista.detalle.periodos; track periodo.id_periodo) {
+                    <tr>
+                      <td class="num">{{ periodo.orden }}</td>
+                      <td>{{ periodo.nombre }}</td>
+                      <td>{{ periodo.hora_inicio }}</td>
+                      <td>{{ periodo.hora_fin }}</td>
+                      <td>{{ periodo.tipo }}</td>
+                      <td>
+                        <span class="badge-mini" [ngClass]="'mini-' + periodo.estado">
+                          {{ periodo.estado }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
+
+          <details class="preview-section">
+            <summary>Carga curricular ({{ vista.detalle.carga.length }})</summary>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Grado</th>
+                    <th>Curso</th>
+                    <th>Docente</th>
+                    <th>Horas</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (carga of vista.detalle.carga; track carga.id_carga) {
+                    <tr>
+                      <td>{{ carga.nombre_grado }} {{ carga.seccion }}</td>
+                      <td>{{ carga.nombre_curso }}</td>
+                      <td>{{ carga.docente_nombre }}</td>
+                      <td class="num">{{ carga.horas_asignadas || '—' }}</td>
+                      <td>
+                        <span class="badge-mini" [ngClass]="'mini-' + carga.estado">
+                          {{ carga.estado }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
+
+          <details class="preview-section">
+            <summary>Tutores ({{ vista.detalle.tutores.length }})</summary>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Grado</th>
+                    <th>Docente</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (tutor of vista.detalle.tutores; track tutor.id_tutor) {
+                    <tr>
+                      <td>{{ tutor.nombre_grado }} {{ tutor.seccion }}</td>
+                      <td>{{ tutor.docente_nombre }}</td>
+                      <td>
+                        <span class="badge-mini" [ngClass]="'mini-' + tutor.estado">
+                          {{ tutor.estado }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+
+        <div class="confirm-panel">
+          <label class="chk-responsabilidad">
+            <input
+              type="checkbox"
+              [ngModel]="responsabilidad()"
+              (ngModelChange)="responsabilidad.set($event)"
+              [disabled]="vista.bloqueos.length > 0 || confirmando()"
+            />
+            Asumo la responsabilidad de preparar la oferta de {{ vista.anio_destino }}
+            desde {{ vista.anio_origen }}. Entiendo que no se crean alumnos, matrículas
+            ni pagos.
+          </label>
+
+          <button
+            type="button"
+            class="btn-primary btn-confirmar"
+            [disabled]="!puedeConfirmar()"
+            (click)="confirmar()"
+          >
+            @if (confirmando()) {
+              <i class="fa-solid fa-spinner fa-spin"></i> Confirmando...
+            } @else {
+              <i class="fa-solid fa-clone"></i> Confirmar rollover
+            }
+          </button>
+        </div>
+
+        @if (resultadoConfirmacion(); as resultado) {
+          <div class="resultado-panel">
+            <h4><i class="fa-solid fa-circle-check"></i> Rollover confirmado</h4>
+            <p>
+              {{ resultado.creados }} fila(s) creada(s) y
+              {{ resultado.existentes }} existente(s). El año
+              {{ resultado.anio_destino }} quedó PLANIFICADO.
+            </p>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: ACTIVAR AÑO LECTIVO -->
+<!-- ============================================================ -->
+@if (modalActivar() && anioActivar(); as anio) {
+  <div class="modal-overlay" (click)="cerrarModalActivar()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-power-off"></i> Activar año {{ anio.anio }}</h3>
+        <button class="modal-close" type="button" (click)="cerrarModalActivar()">
+          &times;
+        </button>
+      </div>
+      <div class="modal-body">
+        @if (errorActivacion()) {
+          <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            {{ errorActivacion() }}
+          </div>
+        }
+
+        <div class="aviso-warning">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <strong>Advertencia importante</strong>
+            <p>
+              Al activar {{ anio.anio }} antes de la Fase 6.3, los alumnos que aún no
+              tengan matrícula {{ anio.anio }} quedarán con
+              <code>matricula_activa=false</code> hasta que se ejecute la promoción.
+            </p>
+            <p>
+              El año activo anterior pasará a CERRADO. Los demás usuarios conectados
+              deben recargar la página para ver el nuevo año.
+            </p>
+          </div>
+        </div>
+
+        <div class="resumen-activacion">
+          <span><strong>Grados:</strong> {{ anio.grados }}</span>
+          <span><strong>Conceptos:</strong> {{ anio.conceptos }}</span>
+          <span><strong>MATRICULA:</strong> {{ anio.conceptos_matricula }}</span>
+          <span><strong>Períodos:</strong> {{ anio.periodos }}</span>
+          <span><strong>Carga:</strong> {{ anio.carga }}</span>
+        </div>
+
+        <label class="chk-responsabilidad">
+          <input
+            type="checkbox"
+            [ngModel]="aceptaActivacion()"
+            (ngModelChange)="aceptaActivacion.set($event)"
+            [disabled]="activando()"
+          />
+          Entiendo la advertencia y confirmo la activación de {{ anio.anio }}.
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn-secondary"
+          [disabled]="activando()"
+          (click)="cerrarModalActivar()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="!aceptaActivacion() || activando()"
+          (click)="activar()"
+        >
+          @if (activando()) {
+            <i class="fa-solid fa-spinner fa-spin"></i> Activando...
+          } @else {
+            <i class="fa-solid fa-check"></i> Activar {{ anio.anio }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ============================================================ -->
+<!-- MODAL: REVERTIR ROLLOVER -->
+<!-- ============================================================ -->
+@if (modalRevertir() && anioRevertir(); as anio) {
+  <div class="modal-overlay" (click)="cerrarModalRevertir()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-rotate-left"></i> Revertir rollover de {{ anio.anio }}</h3>
+        <button class="modal-close" type="button" (click)="cerrarModalRevertir()">
+          &times;
+        </button>
+      </div>
+      <div class="modal-body">
+        @if (errorReversion()) {
+          <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            {{ errorReversion() }}
+          </div>
+        }
+
+        <div class="aviso-warning">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <strong>Se eliminará la oferta clonada</strong>
+            <p>
+              Se borrarán tutores, carga curricular, períodos, conceptos y grados de
+              {{ anio.anio }}. Solo se permite si el año está PLANIFICADO, no es el
+              activo y no tiene matrículas, pagos, notas, asistencia ni actas.
+            </p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="motivo">Motivo de la reversión *</label>
+          <textarea
+            id="motivo"
+            rows="3"
+            maxlength="250"
+            [ngModel]="motivoRevertir()"
+            (ngModelChange)="motivoRevertir.set($event)"
+            [disabled]="revirtiendo()"
+            placeholder="Explique por qué revierte este rollover (mínimo 10 caracteres)"
+          ></textarea>
+          <small class="contador">{{ motivoRevertir().length }}/250</small>
+        </div>
+
+        <label class="chk-responsabilidad">
+          <input
+            type="checkbox"
+            [ngModel]="aceptaReversion()"
+            (ngModelChange)="aceptaReversion.set($event)"
+            [disabled]="revirtiendo()"
+          />
+          Entiendo que esta acción elimina la oferta y queda auditada.
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn-secondary"
+          [disabled]="revirtiendo()"
+          (click)="cerrarModalRevertir()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-danger"
+          [disabled]="!aceptaReversion() || !motivoValido() || revirtiendo()"
+          (click)="revertir()"
+        >
+          @if (revirtiendo()) {
+            <i class="fa-solid fa-spinner fa-spin"></i> Revirtiendo...
+          } @else {
+            <i class="fa-solid fa-trash"></i> Revertir rollover
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
