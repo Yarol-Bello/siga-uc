@@ -8,11 +8,12 @@
 > `anios_lectivos`, `grados.orden`, UNIQUE de `alumnos` por año, login/perfil con matrícula
 > del año activo, `matricula_activa`, `403 SIN_MATRICULA_ACTIVA`, filtros por año en las
 > consultas operativas y apoderados reutilizados por DNI. Migración
-> `database/migracion_h49_multianio_base.sql` + rollback. **No se aplicó en Supabase ni se
-> desplegó en Render.** Ver sección 1.1. `test:e2e` quedó en **27 PASS**.
+> `database/migracion_h49_multianio_base.sql` + rollback. **El código está desplegado en
+> Render (`3007dbe`); la migración H49 no se aplicó en Supabase.** Ver sección 1.1.
+> `test:e2e` quedó en **27 PASS**.
 >
-> **Próximo bloque de trabajo:** revisar/commitear 6.1 y, cuando el dueño lo autorice,
-> desplegar las Fases 3 y 4 junto con 6.1 y aplicar H49 en Supabase con backup previo.
+> **Próximo bloque de trabajo:** aplicar H49 en Supabase con backup previo y, después,
+> preparar la Fase 6.2 (rollover).
 > H64 (`/* → /index.html`, 200) sigue como configuración de Render.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
@@ -552,19 +553,21 @@ En esta fase **no** se prepara el despliegue definitivo.
 
 ---
 
-## 7. Próximo paso exacto (6.1 local → despliegue conjunto)
+## 7. Próximo paso exacto (H49 en Supabase)
 
-La Fase 6.1 está implementada y verificada **solo en local**; Supabase y Render siguen sin
-H49. No aplicar nada en Supabase/Render sin autorización explícita y backup previo.
+La Fase 6.1 está implementada, verificada y desplegada en Render (`3007dbe`); Supabase sigue
+sin H49. No aplicar la migración sin autorización explícita y backup previo.
 
-1. Revisar y commitear 6.1 en bloques atómicos (migración, backend, frontend, tests, docs).
-2. Desplegar backend y frontend juntos (Fases 3–4 + 6.1) cuando el dueño lo autorice.
-3. **Antes** de aplicar H49 en Supabase: backup verificado y ventana sin usuarios. Pegar
+1. Hacer backup de Supabase y verificar que se puede restaurar.
+2. Ejecutar el preflight de duplicados y de grados sin orden.
+3. **Antes** de aplicar H49: editar `_param_anio` a 2026 (demo) y pegar
    `database/migracion_h49_multianio_base.sql` completo en SQL Editor (no usa `psql` vars).
-4. Aplicar a mano `database/migracion_h61_dia_semana.sql` si aún no está.
-5. Configurar en Render el rewrite `/* → /index.html` con estado 200 (H64).
-6. Ejecutar smoke/E2E contra el despliegue y revisar que los deep links no dependan de
-   `404.html`. El rollback H49 **no** se ejecuta en producción.
+4. Verificar 41 tablas, `anios_lectivos` 2026 ACTIVO, `grados.orden` 1–5, 0 actas,
+   145 horarios PUBLICADO y 5 docentes demo.
+5. Reiniciar el backend en Render y verificar `/api/health` y `/api/configuracion` (2026).
+6. Aplicar a mano `database/migracion_h61_dia_semana.sql` si aún no está.
+7. Mantener 2026 activo; no activar 2027 hasta cerrar 6.2/6.3. El rollback H49 **no** se
+   ejecuta en producción.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
@@ -584,7 +587,7 @@ Nada de esta lista se hace en la fase actual.
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. **H49/6.1 no está aplicada en Supabase**: requiere backup y autorización. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. **H49/6.1 está desplegada en Render (`3007dbe`), pero no aplicada en Supabase**: requiere backup y autorización. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
 | **Integridad** | `npm run test:integridad` contra la base definitiva: 14 PASS |
 | **Multi-año** | 6.2 rollover y 6.3 promoción siguen pendientes; 6.1 no clona oferta ni promueve alumnos |
 

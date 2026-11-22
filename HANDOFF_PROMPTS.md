@@ -35,7 +35,7 @@
 | E2E | **27 PASS** |
 | Integridad (base de producción desechable) | **14 PASS** |
 | Smoke / generador H47 | 11 PASS / 4 PASS |
-| Fase 6.1 (multi-año base) | Implementada y verificada **solo en local**; H49 no aplicada en Supabase ni desplegada en Render |
+| Fase 6.1 (multi-año base) | Implementada, verificada y **desplegada en Render** (`3007dbe`); H49 **no aplicada en Supabase** |
 
 > Recordatorio: un push que solo toca `database/` o `documentacion/` **no despliega**.
 > Las migraciones se aplican a mano en Supabase.
@@ -69,9 +69,9 @@ La **Fase 6.1 (multi-año base)** quedó implementada y verificada en local:
 - Apoderados reutilizados por DNI; retiro que no desactiva si hay otra matrícula vigente.
 - Migración H49 + rollback, tests 20–27, integridad 14 invariantes.
 
-**Siguiente paso:** revisar y commitear 6.1; luego preparar el prompt de **Fase 6.2
-(rollover)**. No aplicar H49 en Supabase ni desplegar en Render sin autorización explícita y
-backup previo.
+**Siguiente paso:** H49 ya está desplegado en Render (`3007dbe`); falta aplicarlo en
+Supabase con autorización y backup previo. Después, preparar el prompt de **Fase 6.2
+(rollover)**.
 
 ---
 
@@ -157,8 +157,8 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 ## 10. Próximo paso exacto
 
 1. Revisar el cierre de **Fase 6.1** contra el código y las suites (27 E2E, 14 integridad).
-2. Verificar que H49 **no** se aplicó en Supabase/Render y que el rollback solo se usó en
-   bases desechables.
+2. Verificar que H49 **no** se aplicó en Supabase y que el rollback solo se usó en bases
+   desechables. El código ya está desplegado en Render (`3007dbe`).
 3. Preparar el prompt de **Fase 6.2 (rollover)** con: clonado de grados/conceptos/períodos/
    carga/tutores, activación auditada del año, previsualización, idempotencia y plan de
    pruebas. Sin promoción todavía (6.3).

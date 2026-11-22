@@ -200,9 +200,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   año; los históricos usan `?anio=YYYY`.
 - El **año activo** se lee de `anios_lectivos.estado='ACTIVO'` al arrancar; `ANIO_LECTIVO`
   es bootstrap/respaldo. Cambiar el estado exige reiniciar el backend hasta 6.2.
-- **H49 no está aplicado en Supabase** (demo con 40 tablas) ni desplegado en Render. No
-  aplicarlo allí sin autorización y backup previo. El rollback H49 es solo para bases
-  desechables.
+- **H49 está desplegado en Render** (código `3007dbe`; frontend verificado) pero **no
+  aplicado en Supabase** (demo con 40 tablas). No aplicar la migración allí sin autorización
+  y backup previo. El rollback H49 es solo para bases desechables.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y
