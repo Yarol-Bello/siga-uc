@@ -181,16 +181,28 @@ promociones
 
 Restricciones e invariantes:
 
-- `UNIQUE (id_alumno_origen)`: una matrícula origen solo puede promoverse una vez.
-- `UNIQUE (id_alumno_destino) WHERE id_alumno_destino IS NOT NULL`: una matrícula
-  destino no puede ser creada por dos promociones.
+- **Unicidad parcial:** `UNIQUE (id_alumno_origen) WHERE estado = 'CONFIRMADA'`. Una
+  matrícula origen solo puede tener **una promoción confirmada**, pero puede tener filas
+  `PREVISUALIZADA`, `ANULADA` o `ERROR` sin bloquear un reintento.
+- **Unicidad parcial del destino:** `UNIQUE (id_alumno_destino)
+  WHERE estado = 'CONFIRMADA' AND id_alumno_destino IS NOT NULL`. Una matrícula destino
+  no puede ser creada por dos promociones confirmadas.
 - `anio_destino` y `id_grado_destino` son `NULL` para egresados o retirados.
 - `resultado` se completa al confirmar; la previsualización no crea filas definitivas.
+  **No se agrega `TRASLADADO`** al CHECK en esta fase: un traslado externo se representa
+  como `RETIRADO` y se distingue con `alumnos.condicion = 'Traslado'`,
+  `motivo_retiro`, `colegio_destino` y `metadata.motivo = 'TRASLADO'`.
 - `metadata` guarda evidencia de la decisión: actas consultadas, notas faltantes,
   porcentaje de asistencia, deuda, política aplicada y hash de previsualización. No debe
   guardar datos sensibles innecesarios.
 - No usar `ON DELETE CASCADE` desde `promociones` hacia `alumnos`; el historial no debe
   desaparecer al borrar una matrícula. Usar `RESTRICT`/`SET NULL` según el campo.
+
+**Reversa y reintento:** al anular una promoción confirmada se conserva la fila con
+`estado='ANULADA'` para auditoría. Si el año destino no tiene actividad, se puede
+desvincular/eliminar la matrícula destino y volver a promover; el nuevo intento crea una
+fila `CONFIRMADA` nueva y enlaza la anterior con `id_promocion_reversa`. El índice parcial
+no impide ese reintento porque la fila anterior ya no está `CONFIRMADA`.
 
 ### 1.6 Política de promoción configurable (recomendada)
 
@@ -210,8 +222,14 @@ politicas_promocion
   permite_override        BOOLEAN NOT NULL DEFAULT FALSE
   creado_por              INTEGER FK usuarios
   fecha_creacion          TIMESTAMP NOT NULL DEFAULT now()
-  UNIQUE (anio_origen, anio_destino, nombre)
+  -- Unicidad con anio_destino NULL:
+  --   UNIQUE (anio_origen, nombre) WHERE anio_destino IS NULL
+  --   UNIQUE (anio_origen, anio_destino, nombre) WHERE anio_destino IS NOT NULL
 ```
+
+`permite_override` queda en **FALSE por defecto**. Un override solo se habilita en una
+política concreta y por decisión del ADMIN; no se asume permiso global. Si la política no
+lo permite, el sistema no debe ofrecer el override en la UI ni aceptarlo en la API.
 
 `criterio_academico` es un JSON **descriptivo**, no una fórmula legal escondida. Ejemplo
 de contenido a validar con dirección/UGEL:
@@ -244,7 +262,7 @@ El sistema **no** debe interpretar ese JSON como una norma nacional. La UI debe 
 | Tabla | Impacto | Acción propuesta |
 |---|---|---|
 | `usuarios` | Sin cambio de esquema | Un usuario por persona; no crear usuario nuevo al promover |
-| `apoderados` | Sin cambio obligatorio | Reutilizar el mismo `id_apoderado` entre años; no duplicar por año |
+| `apoderados` | Sin cambio de esquema; sí cambio de código | `alumnoDao.crear` hoy inserta siempre un apoderado nuevo (no busca por DNI). Con `apoderados.dni` único, dos hermanos fallan. Fase 6.0: find-or-create por DNI y reutilizar `id_apoderado` entre años; tabla puente queda para fase posterior |
 | `expediente_alumno` | Ya es único por `id_alumno` | Crear uno nuevo por matrícula anual; el histórico queda congelado |
 | `becas` | Referencia a matrícula anual | Decidir si se clonan becas activas al año siguiente; recomendación: clonar solo con confirmación y vigencia |
 | `credenciales_qr` | Única por `id_usuario` | No clonar ni regenerar por año; el carné es de la persona |
@@ -253,7 +271,7 @@ El sistema **no** debe interpretar ese JSON como una norma nacional. La UI debe 
 | `pagos` | Referencia a matrícula anual | El histórico queda en la fila anual de origen; reportes consolidados deben agrupar por `id_usuario`/DNI |
 | `notas_finales_area` | Ya tiene `anio_lectivo` | Sin cambio; la matrícula anual ya separa los registros |
 | `calificaciones` / `conclusiones_descriptivas` | Ya tienen `anio_lectivo` | Sin cambio; conservar histórico |
-| `asistencia_alumnos` | Ya tiene `anio_lectivo` | Sin cambio; conservar histórico |
+| `asistencia_alumnos` | **No tiene columna `anio_lectivo`**; el año se deriva de `fecha` | Mantener `EXTRACT(YEAR FROM fecha)` en Fase 6.0; no agregar columna. La matrícula anual ya separa `id_alumno`. Agregar/verificar índices `(id_alumno, fecha)` e `(id_grado, fecha)` |
 | `actas_bimestrales` | Por año/grado | No clonar; el año nuevo empieza sin actas |
 | `grados` | Añadir `orden` | Backfill y validación antes de crear el año siguiente |
 | `conceptos_pago` | Por año | Clonar MATRICULA/PENSION; OTROS con confirmación |
@@ -263,17 +281,30 @@ El sistema **no** debe interpretar ese JSON como una norma nacional. La UI debe 
 | `horarios` | Por año/carga | **No** publicar ni clonar automáticamente; generar en BORRADOR si se desea |
 | `cursos`, `competencias`, escala | Globales | Sin cambio; si cambia el plan curricular, evaluar versionado futuro |
 
-#### Apoderados: limitación actual que conviene decidir
+#### Apoderados: limitación actual y corrección necesaria
 
-`apoderados.dni` es único global y `alumnos.id_apoderado` es una FK simple. Para
-multi-año se puede reutilizar el mismo apoderado sin problema. Para **hermanos** con el
-mismo apoderado, el modelo actual no lo permite si se intenta insertar dos veces el mismo
-DNI. Recomendación:
+`apoderados.dni` es único global y `alumnos.id_apoderado` es una FK simple. El problema
+no es solo multi-año: `alumnoDao.crear` **hoy inserta un apoderado nuevo cada vez** que se
+crea un alumno con apoderado y no busca uno existente por DNI (bloque de creación del
+apoderado en `alumnoDao.crear`). Por eso, con `apoderados.dni` único, **dos hermanos con
+el mismo apoderado fallan** al intentar insertar el mismo DNI dos veces.
 
-- Fase 6.0: reutilizar apoderado por DNI y no duplicarlo al promover.
-- Fase posterior: evaluar una tabla puente `alumnos_apoderados` o quitar la unicidad de
-  `apoderados.dni` con una regla de deduplicación. **No** cambiar esto dentro de la
-  migración de multi-año sin una decisión explícita.
+Decisión para Fase 6.0:
+
+- **No cambiar el esquema de `apoderados`** en la migración multi-año.
+- Cambiar `alumnoDao.crear` a un flujo **find-or-create por DNI**:
+  1. Si viene DNI y ya existe, reutilizar `id_apoderado`.
+  2. Si no existe, crear una sola fila.
+  3. Si no viene DNI, crear una fila nueva (no se puede deduplicar sin documento).
+- La promoción y el reingreso **reutilizan** el `id_apoderado` de la matrícula origen; no
+  crean uno nuevo por año.
+- Si se actualizan teléfono/correo del apoderado, hacerlo de forma explícita y auditada;
+  no sobrescribir nombres silenciosamente.
+- Una tabla puente `alumnos_apoderados` (para varios apoderados por alumno o varios
+  alumnos por apoderado con roles distintos) queda para una fase posterior. No se incluye
+  en la migración de multi-año.
+- Mientras no exista la tabla puente, dos hermanos comparten la misma fila de apoderado;
+  es aceptable para el caso actual y evita el fallo de DNI duplicado.
 
 ### 1.8 Migración idempotente (bosquejo, no ejecutar)
 
@@ -403,10 +434,13 @@ CREATE TABLE IF NOT EXISTS promociones (
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_promocion_origen
-  ON promociones (id_alumno_origen);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_promocion_destino
-  ON promociones (id_alumno_destino) WHERE id_alumno_destino IS NOT NULL;
+-- Solo una promoción CONFIRMADA por matrícula origen.
+-- Las filas PREVISUALIZADA/ANULADA/ERROR no bloquean un reintento.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_promocion_origen_confirmada
+  ON promociones (id_alumno_origen) WHERE estado = 'CONFIRMADA';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_promocion_destino_confirmada
+  ON promociones (id_alumno_destino)
+  WHERE estado = 'CONFIRMADA' AND id_alumno_destino IS NOT NULL;
 CREATE INDEX IF NOT EXISTS ix_promocion_anios
   ON promociones (anio_origen, anio_destino, estado);
 
@@ -423,9 +457,16 @@ CREATE TABLE IF NOT EXISTS politicas_promocion (
   criterio_academico JSONB NOT NULL DEFAULT '{}'::jsonb,
   permite_override BOOLEAN NOT NULL DEFAULT FALSE,
   creado_por INTEGER REFERENCES usuarios(id_usuario) ON DELETE SET NULL,
-  fecha_creacion TIMESTAMP NOT NULL DEFAULT now(),
-  UNIQUE (anio_origen, anio_destino, nombre)
+  fecha_creacion TIMESTAMP NOT NULL DEFAULT now()
 );
+
+-- anio_destino NULL no puede duplicar la misma política:
+CREATE UNIQUE INDEX IF NOT EXISTS uq_politica_con_destino
+  ON politicas_promocion (anio_origen, anio_destino, nombre)
+  WHERE anio_destino IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_politica_sin_destino
+  ON politicas_promocion (anio_origen, nombre)
+  WHERE anio_destino IS NULL;
 
 COMMIT;
 ```
@@ -599,7 +640,9 @@ recalcula el hash antes de escribir.
 
 El sistema no decide la norma. La sugerencia se calcula con la política activa:
 
-1. Si `estado_matricula` es `Retirado` → `RETIRADO`, sin destino.
+1. Si `estado_matricula` es `Retirado` **o** `condicion` es `Traslado` →
+   `RETIRADO`, sin destino. Guardar `metadata.motivo = 'RETIRO' | 'TRASLADO'` y
+   conservar `motivo_retiro`/`colegio_destino`.
 2. Si no hay grado siguiente y el origen es último grado → `EGRESADO`.
 3. Si la política marca repitencia por notas/asistencia → `REPITENTE`, mismo grado.
 4. Si faltan actas/notas y la política exige completarlas → `PENDIENTE`/bloqueado.
@@ -649,23 +692,39 @@ reingreso o traslado) sin pasar por promoción.
 | Repite | `REPITENTE` | Sí, mismo grado | Requiere motivo si es override |
 | Retirado | `RETIRADO` | No | No se reactiva automáticamente |
 | Sin datos/actas | `PENDIENTE` | No hasta resolver | Se bloquea o requiere override |
-| Traslado externo | `RETIRADO`/`TRASLADO` | No | `TRASLADO` no existe hoy; evaluar ampliar el CHECK de `condicion` |
+| Traslado externo | `RETIRADO` | No | Usar `alumnos.condicion='Traslado'` (ya existe), `motivo_retiro`, `colegio_destino` y `metadata.motivo='TRASLADO'`. **No se agrega `TRASLADADO`** al CHECK de `promociones.resultado` |
+
+**Decisión explícita sobre traslados:** no se crea un resultado `TRASLADADO` ni se amplía
+`alumnos.condicion`. El traslado externo es un retiro con condición `Traslado`; el sistema
+lo muestra como tal y conserva el colegio de destino. Si en el futuro se necesita un
+reporte diferenciado, se deriva de `condicion`/`motivo_retiro` o se agrega una tabla de
+motivos, sin cambiar el significado de `estado_matricula`.
 
 No se propone agregar `Egresado` a `estado_matricula` en esta fase. Si se necesita en
 reportes, derivarlo de `promociones` o de la ausencia de matrícula activa.
 
 ### 4.5 Idempotencia, auditoría y reversión
 
-- `UNIQUE (id_alumno_origen)` impide dos promociones de la misma matrícula.
-- Confirmar dos veces con el mismo lote devuelve el resultado existente
+- `UNIQUE (id_alumno_origen) WHERE estado='CONFIRMADA'` impide dos promociones
+  confirmadas de la misma matrícula, pero **no** impide reintentar después de una
+  `ANULADA`.
+- Confirmar dos veces el mismo lote devuelve la promoción confirmada existente
   (`ya_confirmada=true`) o `409`; no duplica filas.
 - Si una fila falla, **todo el lote hace ROLLBACK**. No dejar promociones parciales.
 - Auditoría:
   - `PREVISUALIZAR`: año origen/destino, cantidad de alumnos, política aplicada.
   - `CONFIRMAR`: conteos por resultado, IDs de promociones, overrides y motivos.
   - `ANULAR`: motivo y validación de que no hay actividad en el año destino.
-- Reversión: solo si la matrícula destino no tiene pagos, notas, asistencia ni pre-tickets
-  pagados. Si ya tiene actividad, no se borra: se corrige con un procedimiento auditado.
+- Reversión:
+  1. Marcar la promoción como `ANULADA`; conservar la fila para auditoría.
+  2. Si la matrícula destino no tiene pagos, notas, asistencia ni pre-tickets pagados,
+     desvincular (`id_alumno_destino = NULL`) y eliminar la matrícula/expediente destino
+     en la misma transacción.
+  3. Si ya tiene actividad, **no borrar**; corregir con un procedimiento auditado y no
+     permitir un segundo confirmado mientras exista actividad.
+  4. Un reintento posterior crea una nueva fila `CONFIRMADA` y enlaza la anterior con
+     `id_promocion_reversa`; el índice parcial lo permite porque la anterior está
+     `ANULADA`.
 
 ---
 
@@ -683,7 +742,7 @@ reportes, derivarlo de `promociones` o de la ausencia de matrícula activa.
 | Deuda | Solo advertencia académica; no bloquear la promoción por deuda salvo decisión expresa del dueño |
 | Pre-tickets pendientes | Preflight y regularización; no arrastrar al año siguiente |
 | Override | Solo ADMIN/Dirección, con motivo obligatorio y auditoría. No relaja FKs ni transacción |
-| Doble promoción | Bloqueada por `UNIQUE (id_alumno_origen)` |
+| Doble promoción | Bloqueada por `UNIQUE (id_alumno_origen) WHERE estado='CONFIRMADA'`. Tras `ANULADA`, se permite reintento auditado |
 | Año destino | Debe existir o crearse en el rollover; no se promueve a un año sin grados |
 | Sección | Se conserva por defecto; el preview permite cambiarla con justificación |
 | Transición de nivel | Configuración explícita; si no existe, `PENDIENTE`, no adivinar |
@@ -736,8 +795,12 @@ reportes, derivarlo de `promociones` o de la ausencia de matrícula activa.
 - Las becas activas pueden clonarse al año siguiente solo con confirmación y dentro de su
   vigencia.
 - El apoderado se reutiliza; si cambia el contacto, el histórico puede reflejar el
-  contacto actual. Si se necesita una foto histórica del apoderado, se requiere una tabla
-  de historial adicional (fuera de esta fase).
+  contacto actual.
+- `alumnoDao.crear` debe cambiar de “insertar siempre” a **find-or-create por DNI**. Sin
+  ese cambio, dos hermanos con el mismo apoderado seguirán fallando por
+  `apoderados.dni` único, incluso antes de multi-año.
+- Si se necesita una foto histórica del apoderado o varios apoderados por alumno, se
+  requiere una tabla puente/historial adicional (fuera de esta fase).
 
 ---
 
@@ -754,7 +817,9 @@ reportes, derivarlo de `promociones` o de la ausencia de matrícula activa.
 7. Verificar que un `codigo_estudiante` se repite entre años pero no dentro del mismo año.
 8. Verificar `grados.orden` en 1ro–5to y que un grado sin orden aborta la migración.
 9. Verificar que ningún `id_alumno` histórico cambió y que las FKs siguen válidas.
-10. Rollback en base desechable y restauración desde backup.
+10. Insertar dos políticas con `anio_destino = NULL` y mismo `(anio_origen, nombre)`: debe
+    fallar por el índice parcial. Con destino no nulo, también debe fallar el duplicado.
+11. Rollback en base desechable y restauración desde backup.
 
 ### 7.2 Autenticación y permisos
 
@@ -785,20 +850,25 @@ reportes, derivarlo de `promociones` o de la ausencia de matrícula activa.
 2. **5to:** resultado `EGRESADO`, no crea matrícula destino, no crea pre-ticket.
 3. **Repitente:** 2do→2do, nueva matrícula en el mismo grado, motivo si es override.
 4. **Retirado:** resultado `RETIRADO`, no crea matrícula destino.
-5. **Sin notas finales:** bloqueo por defecto; con override permitido, registra motivo y
+5. **Traslado externo:** resultado `RETIRADO`, `condicion='Traslado'`, motivo y colegio de
+   destino; no crea matrícula destino ni usa un resultado `TRASLADADO`.
+6. **Sin notas finales:** bloqueo por defecto; con override permitido, registra motivo y
    evidencia.
-6. **Sin actas cerradas:** bloqueo por defecto; con override, registra qué actas faltan.
-7. **Doble promoción:** segundo intento no duplica; devuelve idempotencia o 409.
-8. **Doble clic en confirmar:** una sola transacción, un solo conjunto de filas nuevas.
-9. **Rollback:** forzar un error en una fila; ninguna matrícula del lote debe quedar
-   creada.
-10. **Histórico:** después de promover, la libreta del año anterior sigue mostrando las
+7. **Sin actas cerradas:** bloqueo por defecto; con override, registra qué actas faltan.
+8. **Doble promoción:** segundo intento con la misma promoción confirmada no duplica;
+   devuelve idempotencia o 409.
+9. **Anulación y reintento:** anular una promoción sin actividad, verificar que se puede
+   volver a confirmar y que la nueva fila enlaza la anterior con `id_promocion_reversa`.
+10. **Doble clic en confirmar:** una sola transacción, un solo conjunto de filas nuevas.
+11. **Rollback:** forzar un error en una fila; ninguna matrícula del lote debe quedar
+    creada.
+12. **Histórico:** después de promover, la libreta del año anterior sigue mostrando las
     notas y el grado anteriores.
-11. **Becas:** beca activa se clona solo si se confirma; beca vencida no se clona.
-12. **QR:** el alumno promovido conserva el mismo `codigo_qr`; no se genera uno nuevo.
-13. **Pensiones:** el año nuevo no hereda pensiones `PAGADO` del año anterior.
-14. **Pre-ticket pendiente:** el preview lo advierte; no se arrastra al año nuevo.
-15. **Auditoría:** `PREVISUALIZAR`, `CONFIRMAR` y `ANULAR` quedan con usuario, conteos y
+13. **Becas:** beca activa se clona solo si se confirma; beca vencida no se clona.
+14. **QR:** el alumno promovido conserva el mismo `codigo_qr`; no se genera uno nuevo.
+15. **Pensiones:** el año nuevo no hereda pensiones `PAGADO` del año anterior.
+16. **Pre-ticket pendiente:** el preview lo advierte; no se arrastra al año nuevo.
+17. **Auditoría:** `PREVISUALIZAR`, `CONFIRMAR` y `ANULAR` quedan con usuario, conteos y
     motivos.
 
 ### 7.5 Regresión
@@ -809,6 +879,10 @@ reportes, derivarlo de `promociones` o de la ausencia de matrícula activa.
 4. Libretas, boletas y actas PDF siguen funcionando.
 5. Caja, tesorería y asistencia no mezclan años.
 6. Un alumno con una sola matrícula sigue funcionando igual que hoy.
+7. Dos hermanos con el mismo apoderado: `alumnoDao.crear` reutiliza el `id_apoderado`
+   por DNI y no falla por el UNIQUE de `apoderados.dni`.
+8. Asistencia histórica: las consultas siguen usando `EXTRACT(YEAR FROM fecha)` y no
+   requieren una columna `anio_lectivo` nueva.
 
 ---
 
@@ -823,7 +897,7 @@ Cada pregunta incluye una recomendación, pero **ninguna se implementa sin confi
 | 3 | ¿Qué estado tiene un egresado de 5to? | No crear matrícula nueva; registrar `EGRESADO` en `promociones`, no ampliar `estado_matricula` todavía |
 | 4 | ¿El alumno promovido queda `PendientePago` hasta pagar matrícula? | Sí, si existe concepto de matrícula; si no existe, `Matriculado` con advertencia |
 | 5 | ¿La deuda del año anterior bloquea la promoción o solo la matrícula? | No bloquear la promoción por deuda; tratarla como advertencia y regla separada de matrícula |
-| 6 | ¿Se reutiliza el mismo apoderado entre años? | Sí. No duplicar por año. Para hermanos, evaluar tabla puente en fase posterior |
+| 6 | ¿Se reutiliza el mismo apoderado entre años? | Sí. Implementar find-or-create por DNI; no duplicar por año. La tabla puente solo si se necesitan varios apoderados por alumno |
 | 7 | ¿Se clonan becas activas al año siguiente? | Solo con confirmación y si están vigentes; no copiar vencidas |
 | 8 | ¿Se conserva la sección al promover? | Sí por defecto; permitir cambio justificado en la previsualización |
 | 9 | ¿Cómo se pasa de primaria a secundaria? | Configuración explícita por año; si falta, dejar `PENDIENTE`, no adivinar |
@@ -861,7 +935,7 @@ Cada pregunta incluye una recomendación, pero **ninguna se implementa sin confi
 | `usuarioDao.getAlumnoInfo` | Recibir año y devolver matrícula de ese año |
 | `authService.login` / `getPerfil` | Resolver matrícula activa; `matricula_activa` |
 | `alumnoDao.findByDni` / `alumnoService.buscarPorDni` | Aceptar `anio`; no usar `LIMIT 1` sin año |
-| `alumnoDao.crear` | Reservado para primera matrícula; no reutilizar para promoción |
+| `alumnoDao.crear` | Reservado para primera matrícula; la promoción/reingreso usan un flujo de continuidad. Implementar find-or-create de apoderado por DNI |
 | `alumnoDao.retirar` | Seguir afectando solo la matrícula anual y sus pensiones/pre-tickets |
 | `GET /alumnos` | Ya filtra por año; revisar orden y paginación con varias filas |
 | `GET /alumnos/dni/:dni` | Añadir `?anio=` y definir default activo |
@@ -878,9 +952,89 @@ Cada pregunta incluye una recomendación, pero **ninguna se implementa sin confi
 2. Un DNI puede tener como máximo una matrícula por año.
 3. Un `codigo_estudiante` puede repetirse entre años, pero no dentro del mismo año.
 4. Cada matrícula anual tiene como máximo un expediente.
-5. Cada matrícula anual puede originar como máximo una promoción.
-6. Una matrícula destino no puede ser creada por dos promociones.
+5. Cada matrícula anual puede tener como máximo una promoción **confirmada**; las
+   `ANULADA` no bloquean un reintento.
+6. Una matrícula destino no puede ser creada por dos promociones confirmadas.
 7. Un egresado o retirado no tiene matrícula destino.
 8. Un alumno con actas/notas pendientes no se promueve sin override auditado.
-9. No se crean pensiones/pagos/pre-tickets del año nuevo por el simple hecho de previsualizar.
+9. No se crean pensiones/pagos/pre-tickets del año nuevo por el simple hecho de
+   previsualizar.
 10. El año activo es único; el histórico siempre se consulta con año explícito.
+
+---
+
+## Anexo C — Inventario de consultas por DNI/usuario
+
+Esta lista es el **checklist de implementación**. Cualquier consulta que hoy asume “un
+alumno por persona” debe resolverse de una de estas dos formas:
+
+- **Operativa:** el backend resuelve la matrícula del **año activo**. El cliente no elige
+  el año para acciones actuales.
+- **Histórica:** el endpoint exige `?anio=YYYY` o un `id_alumno` anual validado contra ese
+  año. No se permite un fallback silencioso a otro año.
+
+Regla transversal: `usuarios.dni` identifica el login; `alumnos.dni` requiere año. Los
+JOIN a `alumnos` deben incluir `anio_lectivo` o partir de un `id_alumno` anual ya validado.
+
+| # | Ubicación | Supuesto actual | Regla propuesta |
+|---|---|---|---|
+| 1 | `alumnoDao.findByDni` | `WHERE a.dni = $1`, devuelve la primera fila | Añadir `anio`. Operativas: año activo; históricas: `?anio`; nunca devolver una fila arbitraria |
+| 2 | `alumnoService.crear` | Verifica DNI con `findByDni` sin año | Validar `(dni, anio)`; separar primera matrícula de reingreso/continuidad |
+| 3 | `alumnoDao.listar` / `contar` | `anio_lectivo` opcional; el controller default es el activo | Mantener default activo y exigir `?anio` para histórico. No listar dos años mezclados |
+| 4 | `alumnoDao.findById` | Por `id_alumno` anual | Aceptar el ID solo si pertenece al año solicitado cuando el endpoint sea histórico |
+| 5 | `usuarioDao.getAlumnoInfo` | `WHERE a.id_usuario = $1 LIMIT 1` | Recibir año activo; devolver la matrícula de ese año o `null`; eliminar el `LIMIT 1` ambiguo |
+| 6 | `usuarioDao.findByDni` | Login por `usuarios.dni` | Sin cambio: el DNI del usuario es global. No confundir con `alumnos.dni` |
+| 7 | `autorizacionDao.getContextoUsuario` | `LEFT JOIN alumnos ... LIMIT 1` | Añadir `AND a.anio_lectivo = $2`; si no hay fila, `id_alumno=NULL` |
+| 8 | `authService.login` / `getPerfil` | Llaman a `getAlumnoInfo` sin año | Pasar año activo; devolver `matricula_activa` y grado del año |
+| 9 | `authRoles.checkAlumnoPropio` | Compara `req.usuario.id_alumno` | Mantener, pero si el contexto no tiene matrícula activa, responder `403 SIN_MATRICULA_ACTIVA` |
+| 10 | `authRoles.checkAlumnoPorDni` | Compara DNI del token / docente sin año | Para DOCENTE, validar DNI + año activo; para ESTUDIANTE, comparar DNI de identidad (no anual) |
+| 11 | `autorizacionDao.docenteTieneAlumnoPorDni` | `WHERE a.dni = $1` y carga del docente | Añadir año; evitar que un docente vea matrículas históricas ajenas |
+| 12 | `autorizacionDao.docenteTieneAlumno` | Por `id_alumno` anual | Validar también `a.anio_lectivo` de la consulta |
+| 13 | `horarioDao.getAlumnoGrado` | `WHERE a.id_usuario = $1 LIMIT 1` | Añadir año activo; sin fila, `404 SIN_MATRICULA_ACTIVA` |
+| 14 | `horarioService.miHorario` | Usa `getAlumnoGrado` | Resolver año activo y no mostrar horario de otro año |
+| 15 | `gradoDao.listar` / `findById` | `LEFT JOIN alumnos` solo por `id_grado` | Añadir `a.anio_lectivo = g.anio_lectivo`; el `id_grado` ya es anual, pero la intención debe ser explícita |
+| 16 | `asistenciaDao.obtenerPorCursoFecha` | Alumnos por `id_grado` y fecha | Añadir `a.anio_lectivo = EXTRACT(YEAR FROM $2::date)`; el grado ya es anual |
+| 17 | `asistenciaDao.obtenerPorAlumno` / resumen / estadísticas | `id_alumno` + año en `fecha` | Mantener; el llamador debe pasar el `id_alumno` anual del año consultado |
+| 18 | `calificacionDao.obtenerPorCursoGrado` | Alumnos por `id_grado`, sin `a.anio_lectivo` | Añadir `AND a.anio_lectivo = $4`; las notas ya filtran año |
+| 19 | `calificacionDao.obtenerPorAlumnoCurso` / notas finales / conclusiones | `id_alumno` + año | Mantener; validar que el `id_alumno` corresponda al año |
+| 20 | `notificacionDao.listarDestinatarios` `GRADO` | Filtra `a.anio_lectivo` | Correcto; conservar |
+| 21 | `notificacionDao.listarDestinatarios` `ALUMNO` | `a.id_alumno = $1`, sin año | Recibir/validar año; no enviar a una matrícula histórica por accidente |
+| 22 | `notificacionService.crearMasivo` | Pasa año solo para `GRADO` | Pasar año también para `ALUMNO`; decidir si `TODOS` excluye sin matrícula activa |
+| 23 | `notificacionDao.listarDestinatariosPorIds` | IDs de usuario | Sin cambio, pero la UI debe enviar `id_usuario`, no `id_alumno` anual |
+| 24 | `reporteDao.getDashboardEjecutivo` | Alumnos y pagos por año; **pre-tickets sin año** | Filtrar pre-tickets por `a.anio_lectivo` o `c.anio_lectivo`; no sumar años |
+| 25 | `reporteDao.getAlumnosRiesgo` | `id_grado` sin `a.anio_lectivo` | Añadir `a.anio_lectivo = $3`; notas ya filtran año |
+| 26 | `reporteDao.getCuadroMerito` | `id_grado` sin `a.anio_lectivo` | Añadir `a.anio_lectivo = $3`; notas ya filtran año |
+| 27 | `reporteDao.getLibretaAlumno` / PDF | `id_alumno` sin validar año del alumno | Añadir validación `a.anio_lectivo = $3`; el PDF usa la matrícula anual |
+| 28 | `reporteDao.getResumenAsistenciaGrado` | `id_grado` sin `a.anio_lectivo` | Añadir `a.anio_lectivo = $2`; la asistencia ya usa `EXTRACT` |
+| 29 | `reporteDao.getAuditoriaDocentes` | Filtra año | Correcto; conservar |
+| 30 | `siagieDao.obtenerNotasParaSIAGIE` | Filtra año y agrupa por DNI | Correcto dentro de un año; no reutilizar el mismo grupo para otro año |
+| 31 | `tesoreriaDao.listarPreTickets` | Sin filtro de año | Añadir `?anio` y filtrar por `a.anio_lectivo` o `c.anio_lectivo`; crítico para la bandeja |
+| 32 | `tesoreriaDao.findPreTicketById` | Por ID anual | Correcto, pero validar año si el endpoint es histórico |
+| 33 | `tesoreriaDao.listarPagos` | Sin filtro de año | Añadir `?anio` para listados operativos/históricos; `findPagoById` sigue por ID anual |
+| 34 | `tesoreriaDao.listarBecas` | Sin filtro de año | Añadir `?anio` o filtrar por la matrícula anual; no mezclar becas de años |
+| 35 | `tesoreriaDao.generarPensionesAlumno` | Usa `id_alumno` y su año | Correcto; validar que la matrícula sea del año y esté `Matriculado` |
+| 36 | `tesoreriaDao.generarPensionesMensuales` | Filtra `a.anio_lectivo` | Correcto; conservar |
+| 37 | `secretaria-dashboard` (`pre-tickets`) | `GET /tesoreria/pre-tickets?estado=PENDIENTE` sin año | Enviar `?anio` desde `ConfiguracionService`; backend default activo |
+| 38 | Tesorería UI (`secretaria-tesoreria`) | `/alumnos?anio` y `/pensiones?anio`, pero pre-tickets sin año | Añadir año a pre-tickets y becas; no mostrar deuda de otro año |
+| 39 | Dashboard admin | `/alumnos?search...` default activo | Enviar `anio` explícito y revisar pre-tickets del KPI |
+| 40 | Docente ficha (`docente-ficha`) | `GET /alumnos/dni/:dni` sin año | Enviar `?anio` desde `ConfiguracionService`; el endpoint debe aceptarlo |
+| 41 | Portal estudiante | Usa `info_adicional.id_alumno` | Mantener; si `matricula_activa=false`, no consultar notas/asistencia/horario |
+| 42 | PDFs de libreta/boleta/acta | Usan el `id_alumno`/acta de un año | Correcto si el llamador resolvió ese año; no regenerar históricos con datos actuales |
+| 43 | `auditoriaDao` / actas | Filtra `anio_lectivo` | Correcto; conservar |
+| 44 | `reporteDao.getDashboardEjecutivo` / notificaciones `TODOS` | Pueden incluir usuarios sin matrícula activa | Decidir política: `TODOS` es identidad; para alumnos usar año activo |
+
+**Nota sobre asistencia:** `asistencia_alumnos` no tiene `anio_lectivo`. En Fase 6.0 se
+mantiene `EXTRACT(YEAR FROM fecha)` y la separación por `id_alumno` anual; no se agrega
+columna. Si en el futuro se necesita una columna, debe ser generada/backfill y no cambiar
+la regla de negocio.
+
+**Implementación recomendada:** centralizar dos helpers en backend:
+
+```text
+resolverAnio(req)                 -> ?anio explícito o año activo
+resolverMatricula(id_usuario,anio) -> fila anual o null
+```
+
+Ningún DAO debe repetir `LEFT JOIN alumnos ... LIMIT 1` sin año. Toda consulta que reciba
+`id_alumno` desde la URL debe validar que ese `id_alumno` pertenece al año solicitado
+cuando el endpoint sea histórico.
