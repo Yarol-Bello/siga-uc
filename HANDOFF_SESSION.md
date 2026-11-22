@@ -148,6 +148,8 @@ En esta fase **no** se prepara el despliegue definitivo.
   `grados.orden`, reemplaza los UNIQUE globales por `(dni, año)`, `(id_usuario, año)` y
   `(codigo_estudiante, año)`, y agrega índices operativos. Es idempotente, usa
   `_param_anio`/`current_setting` (sin variables `psql`) y se pega en SQL Editor.
+  Antes de aplicarla, editar `_param_anio` al año de la instalación (`2026` en demo,
+  `2027` en producción).
   `database/rollback_h49_multianio_base.sql` es solo para bases desechables.
 - **Año activo:** `config/academico.js` carga `anios_lectivos.estado='ACTIVO'` al arrancar
   (`cargarAnioActivo`), mantiene `getAnioLectivo()` síncrona y usa `ANIO_LECTIVO` como

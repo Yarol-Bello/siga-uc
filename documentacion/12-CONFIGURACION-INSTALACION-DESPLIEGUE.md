@@ -145,7 +145,7 @@ psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 competencias, escala AD/A/B/C, conceptos de pago del año indicado, carga curricular,
 una caja principal y **un único usuario ADMIN** (`74829102`) con
 `requiere_cambio_password = TRUE`. La contraseña se pasa con `-v admin_password` y el año con
-`-v anio_lectivo=YYYY` (si falta, usa el año calendario local); si la contraseña está vacía,
+`-v anio_lectivo=YYYY` (si falta, aborta); si la contraseña está vacía,
 el script aborta. No crea alumnos, apoderados, pagos, pensiones, calificaciones, asistencias,
 movimientos, bitácora ni becas.
 
@@ -158,6 +158,9 @@ No crea promociones ni clona oferta académica.
 - Es **idempotente** y se puede pegar completo en el SQL Editor de Supabase: usa una tabla
   temporal `_param_anio` y `current_setting`, no variables `psql`.
 - Marca como `ACTIVO` el año de `_param_anio` (2026 por defecto) solo si no hay otro activo.
+  **Antes de ejecutarla, editar `_param_anio` al año de la instalación**: 2026 en la demo,
+  2027 en una instalación de producción. Si se deja 2026 en una base 2027, el sistema
+  quedará apuntando a un año sin grados.
 - Si la base no tiene H47, omite los objetos de horarios sin fallar.
 - `database/rollback_h49_multianio_base.sql` es **solo para bases desechables**: restaura
   los UNIQUE globales y elimina `anios_lectivos`/`grados.orden`; aborta si hay varias

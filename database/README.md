@@ -44,6 +44,10 @@ psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 ```
 
+> **H49:** antes de ejecutar la migración, editar `_param_anio` en
+> `migracion_h49_multianio_base.sql` al año de la instalación (`2027` en este ejemplo;
+> `2026` en la demo).
+
 `seed_produccion.sql` crea únicamente catálogos y configuración: 4 roles, 5 grados, 11 cursos,
 29 competencias, escala AD/A/B/C, 11 conceptos de pago del año indicado, carga curricular
 inicial, una caja principal y **un único usuario ADMIN** con `requiere_cambio_password = TRUE`.
@@ -52,8 +56,8 @@ caja, bitácora ni becas.
 
 - El DNI del administrador inicial es `74829102`.
 - La contraseña se pasa con `-v admin_password`; si falta o está vacía, el script aborta.
-- El año se pasa con `-v anio_lectivo=YYYY` (si falta, usa el año calendario local). Ese valor
-  se usa en grados, conceptos, carga y períodos.
+- El año se pasa con `-v anio_lectivo=YYYY` (si falta, aborta). Ese valor se usa en grados,
+  conceptos, carga y períodos.
 - El admin debe cambiarla en el primer inicio de sesión.
 - El seed es idempotente: se puede volver a ejecutar sin duplicar catálogos.
 - La carga curricular inicial se asigna al administrador porque `id_personal` es NOT NULL;
@@ -121,7 +125,8 @@ reemplaza la tabla `horarios` después de copiar sus filas a `horarios_h47_backu
 ese respaldo antes de eliminarlo.
 
 **H49 (multi-año base)** se puede pegar completo en el SQL Editor de Supabase porque no usa
-variables `psql`: crea una tabla temporal `_param_anio` (2026 por defecto), marca ese año como
+variables `psql`: crea una tabla temporal `_param_anio` (2026 por defecto; **editar al año de
+la instalación**, 2027 en producción), marca ese año como
 `ACTIVO` solo si no hay otro y usa `current_setting`. Es idempotente y no crea promociones ni
 clona oferta. Aplicarla solo con backup previo y ventana sin usuarios.
 `rollback_h49_multianio_base.sql` es **exclusivo de bases desechables**; no ejecutarlo en

@@ -104,6 +104,10 @@ psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 ```
 
+> **H49:** antes de ejecutar `migracion_h49_multianio_base.sql`, editar `_param_anio` al año
+> de la instalación (`2026` en demo, `2027` en producción). El seed exige
+> `-v anio_lectivo`; si falta, aborta y no usa el año calendario.
+
 > `siga_uc_completo.sql` es el **dump de demo** (esquema + 21 alumnos ficticios +
 > pagos/pensiones de ejemplo). No usar en producción: contiene pensiones `PAGADO`
 > sin pago que las respalde. Producción usa `siga_uc.sql` + `seed_produccion.sql`,
