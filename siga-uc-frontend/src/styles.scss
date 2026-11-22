@@ -38,6 +38,35 @@
     background: #ffffff !important;
   }
 
+  /*
+   * Los documentos dentro de modales deben seguir en el flujo: si se sacan
+   * con position:absolute, el modal colapsa y recorta el contenido.
+   */
+  .documento-visible.documento-modal {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    margin: 0 auto !important;
+  }
+
+  .modal-container {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .modal-container > .modal-header,
+  .modal-container > .modal-footer,
+  .modal-container > .modal-footer-compact {
+    display: none !important;
+  }
+
+  .modal-body,
+  .modal-body-compact {
+    overflow: visible !important;
+    max-height: none !important;
+    padding: 0 !important;
+  }
+
   app-sidebar,
   app-sidebar-docente,
   app-sidebar-secretaria {
