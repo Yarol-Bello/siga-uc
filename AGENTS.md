@@ -202,9 +202,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - El **año activo** se lee de `anios_lectivos.estado='ACTIVO'` al arrancar; `ANIO_LECTIVO`
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
-- **H49 está desplegado en Render** (código `3007dbe`; frontend verificado) pero **no
-  aplicado en Supabase** (demo con 40 tablas). No aplicar la migración allí sin autorización
-  y backup previo. El rollback H49 es solo para bases desechables.
+- **6.1 y 6.2 están desplegadas en Render** (código `f05ecc5`; frontend 6.2 verificado).
+  **H49 no está aplicado en Supabase** (demo con 40 tablas): la pantalla
+  `/admin/anios-lectivos` responde `503 H49_NO_APLICADO` hasta aplicarlo. No aplicar la
+  migración allí sin autorización y backup previo. El rollback H49 es solo para bases
+  desechables. 2026 sigue activo en Supabase.
 - **6.2 no agrega migración**: opera sobre H49 desde `/admin/anios-lectivos`. Si la tabla
   `anios_lectivos` no existe, los endpoints responden `503 H49_NO_APLICADO`, no 500.
 - El rollover clona solo **grados, conceptos, períodos, carga y tutores**. No crea alumnos,

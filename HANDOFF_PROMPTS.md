@@ -24,16 +24,16 @@
 
 | Elemento | Estado |
 |---|---|
-| Código desplegado en Render | `3007dbe` (Fase 6.1); **6.2 aún no desplegada** |
-| Último commit de documentación | `d541993` (+ commits locales de 6.2) |
-| Backend / Frontend | Live en Render (6.1) |
+| Código desplegado en Render | `f05ecc5` (Fases 6.1 + 6.2) |
+| Último commit de documentación | `f05ecc5` (cierre 6.2) |
+| Backend / Frontend | Live en Render (6.2); backend sin commit expuesto en `/health` |
 | `/api/health` | OK, `database: "ok"` |
 | Supabase demo | 40 tablas, H48 aplicado, **0 actas**, 2026 activo |
 | Horarios en Supabase | **145 PUBLICADO**, 5 docentes demo (`99000001`–`99000005`) |
 | Carga en Supabase | 55 cargas, 30/30/30/30/25 h; 0 choques |
 | Local `siga_uc` | 42 tablas (41 base + `horarios_h47_backup`), H49 aplicado, 54 cargas en ADMIN, 0 horarios, 10 períodos, 2026 activo |
 | Fase 6.1 (multi-año base) | Implementada, verificada y **desplegada en Render** (`3007dbe`); H49 **no aplicada en Supabase** |
-| Fase 6.2 (rollover) | Implementada y verificada **solo en local** (`a670c06`, `44bf200`, `9b3ea6f`); no desplegada, no aplicada en Supabase |
+| Fase 6.2 (rollover) | Implementada, verificada y **desplegada en Render** (`f05ecc5`); H49 no aplicada en Supabase, la pantalla de años muestra 503 |
 | E2E | **38 PASS** |
 | Integridad (base de producción desechable) | **16 PASS** |
 | Smoke / generador H47 | 11 PASS / 4 PASS |
@@ -71,7 +71,7 @@ La **Fase 6.1 (multi-año base)** está implementada, verificada y desplegada en
 - Apoderados reutilizados por DNI; retiro que no desactiva si hay otra matrícula vigente.
 - Migración H49 + rollback, tests 20–27.
 
-La **Fase 6.2 (rollover)** quedó implementada y verificada **solo en local**:
+La **Fase 6.2 (rollover)** quedó implementada, verificada y **desplegada en Render**:
 
 - API `/api/anios-lectivos` (solo ADMIN): catálogo, preview con hash, confirm
   transaccional/idempotente, activación auditada y reversión.
@@ -80,11 +80,12 @@ La **Fase 6.2 (rollover)** quedó implementada y verificada **solo en local**:
 - Pantalla ADMIN `/admin/anios-lectivos` con preview por secciones, checkbox `incluir OTROS`,
   confirmación con responsabilidad y modales de activación/reversión.
 - Tests 28–38: **38 E2E** y **16 invariantes**; smoke 11; H47 4; build OK.
-- Commits: `a670c06` (backend), `44bf200` (UI), `9b3ea6f` (tests) y `05aa805` (docs).
+- Commits: `a670c06` (backend), `44bf200` (UI), `9b3ea6f` (tests), `05aa805` (docs) y
+  cierre `f05ecc5`.
 
 **Siguiente paso:** aplicar H49 en Supabase con autorización y backup previo (2026 activo,
-no 2027). Después, desplegar 6.2 a Render con autorización y probar en Supabase solo el
-preview. **No confirmar ni activar 2027** hasta cerrar 6.3.
+no 2027). Después, probar en Supabase solo el preview. **No confirmar ni activar 2027**
+hasta cerrar 6.3.
 
 ---
 
@@ -101,9 +102,9 @@ preview. **No confirmar ni activar 2027** hasta cerrar 6.3.
 
 - **6.1 Base:** ✅ identidad vs. matrícula anual, uniques por año, `grados.orden`,
   `anios_lectivos`, login por año, inventario de consultas y apoderados.
-- **6.2 Rollover:** ✅ implementado y verificado en local (API + UI + tests); pendiente de
-  despliegue a Render. Clona grados, conceptos, períodos, carga y tutores, activa el año con
-  auditoría y revierte un rollover vacío. **No promueve alumnos.**
+- **6.2 Rollover:** ✅ implementado, verificado y desplegado en Render (API + UI + tests).
+  Clona grados, conceptos, períodos, carga y tutores, activa el año con auditoría y revierte
+  un rollover vacío. **No promueve alumnos.** H49 sigue pendiente en Supabase.
 - **6.3 Promoción:** previsualización, confirmación, fichas del año destino,
   egresados, repitentes, becas, pre-tickets.
 - **6.4 Histórico:** selector de año y consolidados por `id_usuario`/DNI.
@@ -173,14 +174,13 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 
 ## 10. Próximo paso exacto
 
-1. Revisar el cierre de **Fase 6.2** contra el código y las suites (38 E2E, 16 integridad).
-2. Verificar que H49 **no** se aplicó en Supabase, que 2026 sigue activo y que no se
-   confirmó/activó ningún año allí. El rollback H49 solo se usó en bases desechables.
-3. Aplicar H49 en Supabase con backup y autorización; luego desplegar 6.2 a Render con
-   autorización. En Supabase, solo preview: no confirmar ni activar.
-4. Preparar el prompt de **Fase 6.3 (promoción)** con: previsualización por alumno, política
-   configurable, confirmación transaccional, egresados/repitentes, fichas del año destino y
-   plan de pruebas. No implementar 6.3 en esta sesión.
+1. Aplicar H49 en Supabase con backup y autorización; verificar 41 tablas, 2026 activo,
+   0 actas, 145 horarios y 5 docentes.
+2. Probar en Supabase **solo el preview** de 2026→2027. **No confirmar ni activar 2027**
+   hasta cerrar 6.3. 6.2 ya está desplegada en Render (`f05ecc5`).
+3. Preparar la **Fase 6.3 (promoción)**: migración de `promociones`/`politicas_promocion`,
+   previsualización por alumno, política configurable, confirmación transaccional,
+   egresados/repitentes, fichas del año destino, pre-tickets y plan de pruebas.
 
 ---
 
@@ -198,19 +198,19 @@ No implementas código, no tocas Supabase ni Render.
 4. HANDOFF_SESSION.md (estado de la sesión de código).
 
 ## Estado
-- Código desplegado: 3007dbe (Fase 6.1). Documentación: d541993 + cierre 6.2.
-- Fases 1–4 desplegadas; E2E 27 PASS en el despliegue. Fase 6.1 desplegada.
-- **Fase 6.2 implementada y verificada solo en local**: E2E 38 PASS, integridad 16 PASS.
-  No desplegada en Render ni aplicada/activada en Supabase.
+- Código desplegado: f05ecc5 (Fases 6.1 + 6.2). Documentación: f05ecc5.
+- Fases 1–4, 6.1 y 6.2 desplegadas; E2E 38 PASS en la base desechable.
+- **Fase 6.2 implementada, verificada y desplegada en Render**: E2E 38 PASS, integridad
+  16 PASS. H49 no aplicada/activada en Supabase; 2026 sigue activo.
 - Supabase demo: 40 tablas, 145 horarios publicados, 5 docentes demo, 0 actas, 2026 activo.
-- Pendiente: H49 en Supabase con backup, desplegar 6.2 y preparar 6.3 (promoción).
+- Pendiente: H49 en Supabase con backup y preparar 6.3 (promoción).
 
 ## Tarea de esta sesión
 1. Verifica el estado sin tocar producción: git, health, tablas, actas y año activo.
-2. Revisa el cierre de Fase 6.2 contra el código real y las suites (38 E2E, 16 integridad).
-3. Si está correcto, prepara el prompt de Fase 6.3 (promoción) con:
-   previsualización por alumno, política configurable, confirmación transaccional,
-   egresados/repitentes, fichas del año destino y plan de pruebas.
+2. Confirma que 6.2 sigue desplegada y que H49 no se aplicó en Supabase; 2026 activo.
+3. Prepara el prompt de Fase 6.3 (promoción) con: previsualización por alumno, política
+   configurable, confirmación transaccional, egresados/repitentes, fichas del año destino,
+   pre-tickets y plan de pruebas.
 4. No implementes código; no toques Supabase/Render sin confirmación.
 5. No confirmes ni actives 2027 en Supabase en esta fase.
 

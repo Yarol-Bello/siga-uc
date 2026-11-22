@@ -4,13 +4,14 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Actualización 22/11/2026 (Fase 6.2, solo local):** se implementó el rollover anual con
-> preview de solo lectura y hash, clonado transaccional e idempotente de grados, conceptos,
-> períodos, carga y tutores, activación auditada con un solo año ACTIVO y reversión de un
-> rollover vacío. Pantalla ADMIN `/admin/anios-lectivos` y API `/api/anios-lectivos`.
-> Commits `a670c06` (backend), `44bf200` (UI) y `9b3ea6f` (tests). **No desplegado en Render
-> ni aplicado en Supabase; 2026 sigue activo allí.** `test:e2e` quedó en **38 PASS** e
-> integridad en **16 PASS** en base nueva. Ver sección 1.2.
+> **Actualización 22/11/2026 (Fase 6.2 desplegada):** rollover anual con preview de solo
+> lectura y hash, clonado transaccional e idempotente de grados, conceptos, períodos, carga
+> y tutores, activación auditada con un solo año ACTIVO y reversión de un rollover vacío.
+> Pantalla ADMIN `/admin/anios-lectivos` y API `/api/anios-lectivos`. Commits `a670c06`
+> (backend), `44bf200` (UI), `9b3ea6f` (tests) y cierre `f05ecc5`; **desplegado en Render**.
+> **No aplicado en Supabase; 2026 sigue activo allí** y la pantalla muestra
+> `503 H49_NO_APLICADO`. `test:e2e` **38 PASS** e integridad **16 PASS** en base nueva.
+> Ver sección 1.2.
 >
 > **Próximo bloque de trabajo:** H49 en Supabase con backup y autorización; después, Fase
 > 6.3 (promoción de alumnos). No activar 2027 en producción/demo sin 6.3.
@@ -175,7 +176,7 @@ En esta fase **no** se prepara el despliegue definitivo.
   `npm run smoke` **11 PASS**; `test:h47-generador` **4 PASS**; build Angular OK;
   `node --check` OK. La base local `siga_uc` quedó con H49 (42 tablas por el backup H47).
 
-### 1.2 Fase 6.2 — Rollover anual y activación auditada (22/11/2026, solo local)
+### 1.2 Fase 6.2 — Rollover anual y activación auditada (22/11/2026, desplegada)
 
 - **Alcance:** preparar la oferta del año destino sin tocar alumnos. No promueve, no crea
   matrículas/pagos/notas/asistencia/actas ni horarios. **6.2 no agrega migración**; opera
@@ -204,14 +205,16 @@ En esta fase **no** se prepara el despliegue definitivo.
   checkbox `incluir OTROS`, confirmación con responsabilidad, modales de activación y
   reversión), ruta `admin/anios-lectivos` e ítem de sidebar solo ADMIN. Tras activar llama
   `await configuracion.cargar()` y recarga el catálogo; los demás usuarios deben recargar.
-- **Commits locales de 6.2:** `a670c06` (backend), `44bf200` (UI) y `9b3ea6f` (tests).
-  Documentación en `05aa805`. Sin push ni despliegue.
+- **Commits de 6.2:** `a670c06` (backend), `44bf200` (UI), `9b3ea6f` (tests), `05aa805`
+  (docs) y cierre `f05ecc5`. **Push y despliegue en Render**; H49 sigue pendiente en
+  Supabase.
 - **Verificación (local):** `test:e2e` **38 PASS** (27 previas + 11 de rollover);
   `test:integridad` **16 PASS** en base de producción desechable (14 previas + carga/tutores
   del mismo año); `npm run smoke` **11 PASS**; `test:h47-generador` **4 PASS**; build Angular
   OK; `node --check` OK. UI probada en navegador con ADMIN: preview 2026→2027, confirm
   (85 filas), activación 2027 (2026 CERRADO, caché actualizada), preview 2027→2028 y modal
   de reversión. Bases desechables eliminadas; `siga_uc` y Supabase no se modificaron.
+  Render recibió el push `f05ecc5` y sirve el frontend 6.2; `/api/health` OK.
 - **Trampa de la base local:** `siga_uc` tiene las 142 h de carga en el ADMIN y el preview
   bloquea por sobrecapacidad (correcto). El E2E reequilibra su base desechable (4 docentes,
   ≤40 h) para probar el camino feliz. En Supabase el reparto es 30/30/30/30/25 h.
@@ -606,18 +609,19 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **6.2:** en `siga_uc` local las 142 h están en el ADMIN y el preview bloquea por
   sobrecapacidad. Es correcto; el E2E reequilibra su base desechable. Supabase tiene
   30/30/30/30/25 h.
-- **Estado 6.2:** implementado y verificado solo en local; no desplegado en Render ni
-  aplicado/activado en Supabase. `2026` sigue activo allí.
+- **Estado 6.2:** implementado, verificado y **desplegado en Render**; no aplicado/activado
+  en Supabase. `2026` sigue activo allí y `/admin/anios-lectivos` muestra 503 hasta aplicar
+  H49.
 - H49: el rollback está probado solo en bases desechables; aborta si detecta varias
   matrículas por persona o promociones con filas. **No ejecutarlo en Supabase.**
 
 ---
 
-## 7. Próximo paso exacto (H49 en Supabase y despliegue de 6.2)
+## 7. Próximo paso exacto (H49 en Supabase; 6.2 ya desplegada)
 
-La Fase 6.1 está desplegada en Render (`3007dbe`). La Fase 6.2 está implementada y verificada
-**solo en local** (`a670c06`, `44bf200`, `9b3ea6f`); aún no se desplegó. Supabase sigue sin
-H49. No aplicar la migración ni desplegar 6.2 sin autorización explícita y backup previo.
+Las Fases 6.1 y 6.2 están desplegadas en Render (`f05ecc5`). Supabase sigue sin H49, así que
+`/admin/anios-lectivos` responde `503 H49_NO_APLICADO`. No aplicar la migración sin
+autorización explícita y backup previo.
 
 1. Hacer backup de Supabase y verificar que se puede restaurar.
 2. Ejecutar el preflight de duplicados y de grados sin orden.
@@ -629,9 +633,9 @@ H49. No aplicar la migración ni desplegar 6.2 sin autorización explícita y ba
 6. Aplicar a mano `database/migracion_h61_dia_semana.sql` si aún no está.
 7. Mantener 2026 activo; no activar 2027 hasta cerrar 6.3. El rollback H49 **no** se
    ejecuta en producción.
-8. Si se autoriza desplegar 6.2, hacerlo después de H49 y probar en Supabase **solo el
-   preview** (no confirmar ni activar). El confirm/activación/reversión se validan en una
-   base desechable. La UI muestra la advertencia de alumnos sin matrícula.
+8. 6.2 ya está desplegada; tras aplicar H49, probar en Supabase **solo el preview** (no
+   confirmar ni activar). El confirm/activación/reversión se validan en una base desechable.
+   La UI muestra la advertencia de alumnos sin matrícula.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
@@ -651,9 +655,9 @@ Nada de esta lista se hace en la fase actual.
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. **H49/6.1 está desplegada en Render (`3007dbe`), pero no aplicada en Supabase**: requiere backup y autorización. **6.2 no agrega migración**, solo código/UI sobre H49. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. **H49/6.1 y 6.2 están desplegadas en Render (`f05ecc5`), pero H49 no aplicada en Supabase**: requiere backup y autorización. **6.2 no agrega migración**, solo código/UI sobre H49. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
 | **Integridad** | `npm run test:integridad` contra la base definitiva: 16 PASS |
-| **Multi-año** | 6.2 rollover implementado y verificado en local, **pendiente de despliegue**; 6.3 promoción sigue pendiente. 2026 debe seguir activo en Supabase hasta cerrar 6.3 |
+| **Multi-año** | 6.2 rollover implementado, verificado y **desplegado en Render**; 6.3 promoción sigue pendiente. 2026 debe seguir activo en Supabase hasta cerrar 6.3 |
 
 ---
 
