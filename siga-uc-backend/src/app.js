@@ -118,6 +118,10 @@ app.use("/api/auth", authRoutes);
 const configuracionRoutes = require("./routes/configuracionRoutes");
 app.use("/api/configuracion", configuracionRoutes);
 
+// Rutas de años lectivos y rollover (H49 / Fase 6.2)
+const anioLectivoRoutes = require("./routes/anioLectivoRoutes");
+app.use("/api/anios-lectivos", anioLectivoRoutes);
+
 // Rutas de gestión académica (grados, cursos, competencias)
 const academicoRoutes = require("./routes/academicoRoutes");
 app.use("/api", academicoRoutes);
