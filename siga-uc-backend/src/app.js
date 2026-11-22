@@ -122,6 +122,10 @@ app.use("/api/configuracion", configuracionRoutes);
 const anioLectivoRoutes = require("./routes/anioLectivoRoutes");
 app.use("/api/anios-lectivos", anioLectivoRoutes);
 
+// Rutas de promociones anuales (H73 / Fase 6.3)
+const promocionRoutes = require("./routes/promocionRoutes");
+app.use("/api/promociones", promocionRoutes);
+
 // Rutas de gestión académica (grados, cursos, competencias)
 const academicoRoutes = require("./routes/academicoRoutes");
 app.use("/api", academicoRoutes);
