@@ -4,7 +4,8 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Próximo bloque de trabajo:** Fase 3 (H57); H61, H56 y H60 ya cerrados.
+> **Próximo bloque de trabajo:** Fase 3 cerrada (H61, H56, H60 y H57). Falta desplegar y
+> decidir el siguiente bloque.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
 > actas solo ADMIN) desplegados en Render con `3052f44`; **H48** (cierre/reapertura real de
@@ -12,8 +13,9 @@
 > La migración H48 ya está aplicada en Supabase (4 columnas nuevas + índice
 > `uq_acta_anio_bimestre_grado`, 0 actas). `test:e2e` quedó en **19 PASS**.
 > **H61** (día de la semana) cerrado en local el 22/11/2026; su migración de datos es
-> idempotente y aún **no** se aplicó en Supabase. **H56** (asistencia por año) y **H60**
-> (observación sin estado) también quedaron cerrados en local el 22/11/2026.
+> idempotente y aún **no** se aplicó en Supabase. **H56** (asistencia por año), **H60**
+> (observación sin estado) y **H57** (panel del estudiante) también quedaron cerrados en
+> local el 22/11/2026. La Fase 3 está completa en local; falta desplegar.
 
 ---
 
@@ -234,6 +236,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H61 | Día de la semana derivado en backend, en español y datos históricos normalizados | 22/11/2026 (local) |
 | H56 | Asistencia por año en historial, resumen, libreta, PDF y resumen por grado; H13 incluido | 22/11/2026 (local) |
 | H60 | Observación sin estado bloqueada con validación inline; con estado se guarda y persiste | 22/11/2026 (local) |
+| H57 | Grado real en sidebar, cursos desde carga curricular y mensaje neutral sin notas | 22/11/2026 (local) |
 
 ---
 
@@ -442,6 +445,10 @@ En esta fase **no** se prepara el despliegue definitivo.
   inline; no se envía al backend hasta marcar estado. El backend sigue exigiendo P/T/F.
   Verificado en navegador: sin estado no hubo confirmación ni POST; con “Presente” se
   guardó y la observación persistió tras recargar.
+- H57: el sidebar del estudiante usa `info_adicional.nombre_grado`; “Cursos Matriculados”
+  sale de `GET /carga-curricular?id_grado=&anio=`, no de las notas. La felicitación solo
+  se muestra si `tieneNotas()`. Verificado con `74829103` (2do): sidebar “2do de
+  Secundaria”, KPI 11, mensaje neutral y horario “2do de Secundaria Única”.
 
 ---
 
@@ -453,10 +460,10 @@ es la **Fase 3**, en este orden:
 1. ~~**H61 — Día de la semana (P2).**~~ ✅ Cerrado el 22/11/2026.
 2. ~~**H56 — Asistencia por año (P1).**~~ ✅ Cerrado el 22/11/2026 (incluye H13).
 3. ~~**H60 — Observación sin estado (P2).**~~ ✅ Cerrado el 22/11/2026.
-4. **H57 — Panel del estudiante (P1).** Usar el grado y los cursos reales de la matrícula;
-   no felicitar si no hay notas.
-5. Al cerrar cada hallazgo, ejecutar `npm run test:e2e` (**19 PASS**) y actualizar
-   `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`.
+4. ~~**H57 — Panel del estudiante (P1).**~~ ✅ Cerrado el 22/11/2026.
+5. **Siguiente paso:** desplegar backend/frontend juntos, aplicar
+   `migracion_h61_dia_semana.sql` a mano en Supabase y ejecutar smoke/E2E contra el
+   despliegue. No hay cambios de esquema en la Fase 3.
 6. Mantener el guion de `documentacion/17-GUION-DEMOSTRACION.md` para las demos.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios

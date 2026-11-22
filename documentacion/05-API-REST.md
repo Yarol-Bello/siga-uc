@@ -81,7 +81,7 @@ Error:
 | # | Método | Ruta | Acceso | Descripción | Body / params |
 |---|---|---|---|---|---|
 | 1 | POST | `/api/auth/login` | Público | Login DNI + contraseña; emite JWT 8 h | `{ dni, password }` |
-| 2 | GET | `/api/auth/perfil` | Autenticado | Perfil + `info_adicional` + `credencial_qr` | — |
+| 2 | GET | `/api/auth/perfil` | Autenticado | Perfil + `info_adicional` + `credencial_qr`; para ESTUDIANTE `info_adicional` incluye `id_grado`, `nombre_grado` y `seccion` (H57) | — |
 | 3 | GET | `/api/auth/verify` | Autenticado | Verifica token y devuelve payload | — |
 | 4 | POST | `/api/auth/logout` | Autenticado | Logout lógico (el cliente borra token) | — |
 | 5 | PUT | `/api/auth/cambiar-password` | Autenticado | Cambia la contraseña propia; exige la actual y limpia `requiere_cambio_password` | `{ password_actual, password_nueva, confirmar_password }` (≥6) |

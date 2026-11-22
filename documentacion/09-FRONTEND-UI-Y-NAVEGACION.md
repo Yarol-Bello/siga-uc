@@ -214,6 +214,9 @@ Cada layout contiene:
 | Mi Asistencia | `/estudiante/asistencia` |
 | Horario de Clases | `/estudiante/horario` |
 
+> El sidebar del estudiante muestra `info_adicional.nombre_grado` real; ya no usa “3ro de
+> Secundaria” fijo (H57).
+
 #### SECRETARIA
 | Ítem | Ruta |
 |---|---|
@@ -248,7 +251,7 @@ Cada layout contiene:
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo`; usa `parseFechaLocal`/`diaSemanaLocal` y muestra el día en español (H61); bloquea observación sin P/T/F con error inline (H60) |
 | `DocenteFichaComponent` | `GET /alumnos/dni/:dni`, `GET /asistencias/alumno/:id?anio=`, `/resumen?anio=`, `GET /calificaciones/notas-finales/alumno/:id?anio=`; el historial muestra el día en español que devuelve el backend (H61) y solo el año lectivo elegido (H56) |
 | `DocenteReportesComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `GET /notificaciones`, `PUT /notificaciones/:id/leer`, `PUT /leer-todas` |
-| `EstudianteDashboardComponent` | `GET /calificaciones/notas-finales/alumno/:id` |
+| `EstudianteDashboardComponent` | `GET /calificaciones/notas-finales/alumno/:id?anio=`, `GET /carga-curricular?id_grado=&anio=`; KPI de cursos desde la carga y mensaje neutral sin notas (H57) |
 | `EstudianteAsistenciaComponent` | `GET /asistencias/alumno/:id/resumen?anio=`, `GET /asistencias/alumno/:id?id_curso=&anio=`; muestra el año lectivo activo (H56) |
 | `EstudianteHorarioComponent` | `GET /horarios/mi-horario` |
 | `AdminHorariosComponent` | `GET/POST/PUT/DELETE /horarios`, `/periodos`, `/generar`, `/publicar`, `/despublicar` |

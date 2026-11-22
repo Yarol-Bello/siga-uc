@@ -511,7 +511,7 @@ si no      → C
 - Agrupa por alumno del grado.
 - Cuenta P/T/F y porcentaje.
 - Ordena por porcentaje ascendente.
-- **Ignora el parámetro `anio`** en la consulta (bug).
+- Filtra por año lectivo (`EXTRACT(YEAR FROM asis.fecha) = $2`); H56 resolvió el bug de H13.
 
 ### P11.5 Auditoría de docentes
 
@@ -520,6 +520,13 @@ si no      → C
 - Cuenta alumnos con nota final distinta de NULL.
 - Calcula porcentaje.
 - No usa `estado_carga_docentes`.
+
+### P11.6 Panel del estudiante (H57)
+
+- El sidebar muestra `info_adicional.nombre_grado` del perfil, no un grado fijo.
+- “Cursos Matriculados” cuenta los cursos de `carga_curricular` del grado y año, no las notas.
+- La felicitación solo aparece si el alumno tiene al menos una nota; sin notas se muestra un mensaje neutral.
+- La tabla de calificaciones puede seguir mostrando solo cursos con notas, pero ya no alimenta el KPI de matrícula.
 
 ---
 
@@ -912,7 +919,7 @@ revocación ni rotación. `credenciales_qr.activo` no se usa en la marcación.
 | P08 Asistencia personal | Media | Completo | QR simulado por DNI |
 | P09 Calificaciones | Alta | Completo | Sin validación de docente-curso |
 | P10 Nota final | Alta | Endpoint listo | Sin UI que lo dispare |
-| P11 Reportes | Alta | Completo | Resumen ignora año |
+| P11 Reportes | Alta | Completo | Resumen filtrado por año (H56); panel del estudiante corregido (H57) |
 | P12 SIAGIE | Alta | Completo con limitaciones | Solo 4 cursos |
 | P13 Tesorería base | Alta | Parcial | Sin UI de pre-tickets/becas/generación |
 | P14 Pago/boleta | Alta | Completo | Boleta simulada |

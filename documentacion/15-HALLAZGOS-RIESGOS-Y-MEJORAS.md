@@ -62,6 +62,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 22/11/2026 (H60):** una observación sin estado P/T/F ya no se pierde:
 > la UI la bloquea con validación inline. Ver H60 en la sección 3.
+>
+> **Actualización 22/11/2026 (H57):** el panel del estudiante usa el grado real y los
+> cursos de la carga curricular; no felicita si no hay notas. Ver H57 en la sección 3.
 
 ---
 
@@ -647,6 +650,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Exigir estado cuando hay observación y mostrar validación inline; el backend mantiene la validación P/T/F |
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (22/11/2026): si hay observación sin estado, la fila se marca en rojo y el guardado se bloquea con un mensaje inline; si hay estado, la observación se envía y persiste. El backend no se relajó: sigue rechazando estados distintos de P/T/F |
+
+### H57 — Panel del estudiante engañoso
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | El sidebar fijaba “3ro de Secundaria”; la felicitación era fija; “Cursos Matriculados” usaba `cursos().length` (cursos con notas) |
+| Impacto | Un alumno de 2do veía 3ro en el sidebar y 0 cursos aunque tuviera 11 en su carga; se lo felicitaba sin notas |
+| Recomendación | Usar el grado real del perfil y los cursos de la carga curricular; condicionar la felicitación a que existan notas |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): sidebar con `info_adicional.nombre_grado`; KPI desde `GET /carga-curricular?id_grado=&anio=`; mensaje neutral sin notas. Verificado con el alumno de 2do `74829103`: sidebar “2do de Secundaria”, panel “Cursos Matriculados 11”, mensaje neutral y horario “2do de Secundaria Única” |
 
 ---
 

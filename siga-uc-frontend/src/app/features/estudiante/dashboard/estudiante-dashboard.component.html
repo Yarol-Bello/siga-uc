@@ -18,7 +18,11 @@
   <div class="welcome-banner">
     <div class="welcome-text">
       <h2>¡Hola, {{ usuario()?.nombres }}! 👋</h2>
+      @if (tieneNotas()) {
       <p>Vas por un excelente rendimiento académico este periodo. ¡Sigue así!</p>
+      } @else {
+      <p>Aún no hay calificaciones registradas en este periodo. Cuando tus docentes las ingresen, verás aquí tu avance.</p>
+      }
     </div>
     <div class="welcome-stats">
       <div class="w-stat-item">
@@ -27,7 +31,7 @@
       </div>
       <div class="w-stat-item" style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 20px;">
         <span>Cursos Matriculados</span>
-        <strong>{{ cursos().length }}</strong>
+        <strong>{{ cursosMatriculados() ?? '-' }}</strong>
       </div>
     </div>
   </div>

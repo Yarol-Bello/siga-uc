@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
@@ -35,10 +35,18 @@ export class EstudianteDashboardComponent implements OnInit {
   cargando = signal(true);
   error = signal<string | null>(null);
   cursos = signal<CursoConNotas[]>([]);
+  cursosMatriculados = signal<number | null>(null);
   promedioGeneral = signal<string>('-');
+
+  tieneNotas = computed(() =>
+    this.cursos().some((curso) =>
+      Object.values(curso.bimestres || {}).some((nota) => !!nota),
+    ),
+  );
 
   ngOnInit(): void {
     this.cargarNotas();
+    this.cargarCursosMatriculados();
   }
 
   cargarNotas(): void {
@@ -68,6 +76,39 @@ export class EstudianteDashboardComponent implements OnInit {
           console.error('❌ Error:', err);
           this.error.set('No se pudieron cargar las calificaciones.');
           this.cargando.set(false);
+        },
+      });
+  }
+
+  /**
+   * Contar los cursos de la carga curricular del grado, no los cursos con notas.
+   * Así un alumno sin notas no ve “Cursos Matriculados 0” (H57).
+   */
+  cargarCursosMatriculados(): void {
+    const idGrado = this.usuario()?.info_adicional?.id_grado;
+    if (!idGrado) {
+      this.cursosMatriculados.set(0);
+      return;
+    }
+
+    this.http
+      .get<any>(`${environment.apiUrl}/carga-curricular`, {
+        params: {
+          id_grado: idGrado,
+          anio: this.anioLectivo(),
+        },
+      })
+      .subscribe({
+        next: (response) => {
+          if (!response.success) return;
+          const ids = new Set(
+            (response.data || []).map((carga: any) => Number(carga.id_curso)),
+          );
+          this.cursosMatriculados.set(ids.size);
+        },
+        error: (err) => {
+          console.error('❌ Error al cargar la carga curricular:', err);
+          this.cursosMatriculados.set(null);
         },
       });
   }

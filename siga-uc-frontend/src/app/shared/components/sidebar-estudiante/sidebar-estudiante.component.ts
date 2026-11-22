@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
@@ -18,6 +18,11 @@ export class SidebarEstudianteComponent {
   private authService = inject(AuthService);
 
   usuario = this.authService.usuario;
+
+  gradoAlumno = computed(() => {
+    const grado = this.usuario()?.info_adicional?.nombre_grado;
+    return grado || 'Grado no asignado';
+  });
 
   menuItems = [
     { path: '/estudiante', label: 'Mis Cursos y Notas', icon: 'fa-book-open' },

@@ -160,6 +160,7 @@ top = 10
 | RN-75 | Mérito top 10 | `LIMIT 10` | — |
 | RN-76 | Riesgo = 2+ cursos distintos con C | `HAVING >= 2` | No cuenta competencias |
 | RN-77 | Libreta combina notas, conclusión y asistencia | `reporteDao` | No persiste |
+| RN-77.1 | El panel del estudiante usa el grado real y los cursos de `carga_curricular`; la felicitación exige notas | `estudiante-dashboard`, `sidebar-estudiante` | H57 |
 | RN-78 | Resumen de asistencia por grado filtra por año | `getResumenAsistenciaGrado` | Resuelto con H56 (`EXTRACT(YEAR FROM asis.fecha) = $2`) |
 | RN-79 | Auditoría docente compara notas finales vs alumnos | `reporteDao` | No usa estado_carga |
 
