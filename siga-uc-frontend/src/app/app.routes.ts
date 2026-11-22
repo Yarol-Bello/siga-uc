@@ -88,6 +88,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'promociones',
+        loadComponent: () =>
+          import('./features/admin/promociones/admin-promociones.component').then(
+            (m) => m.AdminPromocionesComponent,
+          ),
+      },
+      {
         path: 'asistencia-qr',
         loadComponent: () =>
           import('./features/admin/asistencia-qr/admin-asistencia-qr.component').then(

@@ -1,0 +1,732 @@
+<div class="promociones-container">
+  <!-- BANNER -->
+  <div class="info-banner">
+    <div class="info-icon">
+      <i class="fa-solid fa-arrow-up-right-dots"></i>
+    </div>
+    <div class="info-text">
+      <h3>Promoción de Alumnos</h3>
+      <p>
+        Recomienda el resultado de cada matrícula, permite un override auditado y confirma
+        las matrículas del año destino. No activa el año lectivo.
+      </p>
+    </div>
+    @if (anioActivo(); as activo) {
+      <span class="info-badge">Año activo {{ activo.anio }}</span>
+    } @else {
+      <span class="info-badge info-badge-warning">Sin año activo</span>
+    }
+  </div>
+
+  @if (mensaje(); as aviso) {
+    <div class="alert" [ngClass]="'alert-' + aviso.tipo">
+      <i
+        class="fa-solid"
+        [ngClass]="{
+          'fa-circle-check': aviso.tipo === 'success',
+          'fa-triangle-exclamation': aviso.tipo !== 'success'
+        }"
+      ></i>
+      <span>{{ aviso.texto }}</span>
+      <button class="alert-close" type="button" (click)="mensaje.set(null)">&times;</button>
+    </div>
+  }
+
+  @if (errorCatalogo()) {
+    <div class="alert alert-danger">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      {{ errorCatalogo() }}
+    </div>
+  }
+
+  <!-- CONFIGURACIÓN -->
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-sliders"></i>
+        Preparar promoción
+      </h3>
+      <button type="button" class="btn-secondary btn-sm" (click)="abrirModalPolitica()">
+        <i class="fa-solid fa-plus"></i> Nueva política
+      </button>
+    </div>
+
+    <div class="toolbar-promocion">
+      <div class="selector-item">
+        <label for="origen"><i class="fa-solid fa-arrow-right-from-bracket"></i> Año origen:</label>
+        <select id="origen" [ngModel]="origen()" (ngModelChange)="onOrigenChange($event)">
+          <option [ngValue]="null">Seleccione...</option>
+          @for (anio of aniosOrigen(); track anio.anio) {
+            <option [ngValue]="anio.anio">
+              {{ anio.anio }} — {{ anio.estado }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <div class="selector-item">
+        <label for="destino"><i class="fa-solid fa-arrow-right-to-bracket"></i> Año destino:</label>
+        <select id="destino" [ngModel]="destino()" (ngModelChange)="onDestinoChange($event)">
+          <option [ngValue]="null">Seleccione...</option>
+          @for (anio of aniosDestino(); track anio) {
+            <option [ngValue]="anio">{{ anio }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="selector-item selector-politica">
+        <label for="politica"><i class="fa-solid fa-scale-balanced"></i> Política:</label>
+        <select id="politica" [ngModel]="idPolitica()" (ngModelChange)="onPoliticaChange($event)">
+          <option [ngValue]="null">Seleccione...</option>
+          @for (politica of politicasDisponibles(); track politica.id_politica) {
+            <option [ngValue]="politica.id_politica">{{ politica.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      @if (politicaSeleccionada(); as politica) {
+        <button
+          type="button"
+          class="btn-link"
+          (click)="abrirModalPolitica(politica)"
+          title="Editar política"
+        >
+          <i class="fa-solid fa-pen-to-square"></i> Editar
+        </button>
+      }
+
+      <div class="selector-item">
+        <label for="grado"><i class="fa-solid fa-graduation-cap"></i> Grado:</label>
+        <select id="grado" [ngModel]="idGrado()" (ngModelChange)="onGradoChange($event)">
+          <option [ngValue]="null">Todos</option>
+          @for (grado of gradosOrigen(); track grado.id_grado) {
+            <option [ngValue]="grado.id_grado">
+              {{ grado.nombre_grado }} {{ grado.seccion }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <label class="chk-inline">
+        <input
+          type="checkbox"
+          [ngModel]="incluirRetirados()"
+          (ngModelChange)="onIncluirRetiradosChange($event)"
+        />
+        Incluir retirados/traslados
+      </label>
+
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="cargandoPreview() || destinoSinOferta()"
+        (click)="previsualizar()"
+      >
+        @if (cargandoPreview()) {
+          <i class="fa-solid fa-spinner fa-spin"></i> Previsualizando...
+        } @else {
+          <i class="fa-solid fa-magnifying-glass"></i> Previsualizar
+        }
+      </button>
+    </div>
+
+    @if (destinoSinOferta()) {
+      <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>
+          El año destino no tiene oferta (grados). Ejecute el rollover primero.
+          <a routerLink="/admin/anios-lectivos">Ir a Años Lectivos y Rollover</a>.
+        </span>
+      </div>
+    }
+
+    @if (politicasDisponibles().length === 0 && !destinoSinOferta()) {
+      <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>
+          No hay una política activa para {{ origen() }} → {{ destino() }}.
+          Cree una política para poder previsualizar.
+        </span>
+      </div>
+    }
+
+    <div class="nota-pie nota-inline">
+      <i class="fa-solid fa-circle-info"></i>
+      La sugerencia es una recomendación. Si cambia el resultado, debe indicar un motivo y
+      volver a previsualizar; el confirm usa un hash del contenido revisado.
+    </div>
+
+    @if (errorPreview()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorPreview() }}
+      </div>
+    }
+
+    @if (previewDesactualizada()) {
+      <div class="alert alert-warning">
+        <i class="fa-solid fa-rotate"></i>
+        Cambió una decisión. Pulse <strong>Previsualizar</strong> otra vez antes de
+        confirmar.
+      </div>
+    }
+
+    @if (preview(); as vista) {
+      <div class="preview-wrapper">
+        <div class="preview-head">
+          <div>
+            <h4>Resumen {{ vista.anio_origen }} → {{ vista.anio_destino }}</h4>
+            <p class="hash-line">
+              Hash: <code>{{ vista.preview_hash }}</code>
+            </p>
+          </div>
+          <div class="preview-badges">
+            <span class="badge-info">
+              <i class="fa-solid fa-users"></i>
+              {{ vista.resumen.total }} alumno(s)
+            </span>
+            @if (vista.resumen.bloqueados > 0) {
+              <span class="badge-peligro">
+                <i class="fa-solid fa-ban"></i>
+                {{ vista.resumen.bloqueados }} bloqueado(s)
+              </span>
+            }
+            @if (vista.resumen.ya_confirmadas > 0) {
+              <span class="badge-info">
+                <i class="fa-solid fa-check-double"></i>
+                {{ vista.resumen.ya_confirmadas }} ya confirmada(s)
+              </span>
+            }
+          </div>
+        </div>
+
+        <div class="resumen-grid">
+          <div class="resumen-card">
+            <span class="resumen-label">Promovidos</span>
+            <strong>{{ vista.resumen.por_resultado.PROMOVIDO || 0 }}</strong>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Repitentes</span>
+            <strong>{{ vista.resumen.por_resultado.REPITENTE || 0 }}</strong>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Egresados</span>
+            <strong>{{ vista.resumen.por_resultado.EGRESADO || 0 }}</strong>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Retirados</span>
+            <strong>{{ vista.resumen.por_resultado.RETIRADO || 0 }}</strong>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Pendientes</span>
+            <strong>{{ vista.resumen.por_resultado.PENDIENTE || 0 }}</strong>
+          </div>
+          <div class="resumen-card">
+            <span class="resumen-label">Overrides</span>
+            <strong>{{ vista.resumen.overrides }}</strong>
+          </div>
+        </div>
+
+        @if (vista.destino.tiene_matricula) {
+          <div class="ok-panel">
+            <i class="fa-solid fa-circle-check"></i>
+            La oferta del destino tiene concepto MATRICULA: los promovidos quedarán
+            PendientePago y con pre-ticket.
+          </div>
+        } @else {
+          <div class="alert alert-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            El destino no tiene concepto MATRICULA: los promovidos quedarán Matriculado sin
+            pre-ticket.
+          </div>
+        }
+
+        @if (vista.advertencias.length > 0) {
+          <div class="advertencias-panel">
+            <h4><i class="fa-solid fa-triangle-exclamation"></i> Advertencias</h4>
+            <ul>
+              @for (advertencia of vista.advertencias; track $index) {
+                <li><strong>{{ advertencia.codigo }}:</strong> {{ advertencia.mensaje }}</li>
+              }
+            </ul>
+          </div>
+        }
+
+        <div class="table-responsive tabla-promociones">
+          <table>
+            <thead>
+              <tr>
+                <th>Alumno</th>
+                <th>Grado</th>
+                <th>Estado</th>
+                <th>Actas</th>
+                <th>Notas</th>
+                <th>Asist.</th>
+                <th>Deuda</th>
+                <th>Beca</th>
+                <th>Sugerido</th>
+                <th>Resultado final</th>
+                <th>Bloqueos / advertencias</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (alumno of vista.alumnos; track alumno.id_alumno_origen) {
+                <tr [class.fila-bloqueada]="alumno.bloqueado">
+                  <td>
+                    <strong>{{ alumno.apellidos }}, {{ alumno.nombres }}</strong>
+                    <small class="dni-line">{{ alumno.dni }}</small>
+                  </td>
+                  <td>{{ alumno.nombre_grado }} {{ alumno.seccion }}</td>
+                  <td>
+                    <span class="badge-mini">{{ alumno.estado_matricula }}</span>
+                    @if (alumno.condicion === 'Traslado') {
+                      <span class="badge-mini badge-traslado">Traslado</span>
+                    }
+                  </td>
+                  <td class="num">
+                    @if (alumno.actas.faltantes.length === 0) {
+                      <span class="texto-ok">
+                        <i class="fa-solid fa-circle-check"></i>
+                        {{ alumno.actas.cerradas.length }}/{{ alumno.actas.requeridas.length }}
+                      </span>
+                    } @else {
+                      <span class="texto-peligro" [title]="'Faltan: ' + alumno.actas.faltantes.join(', ')">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        {{ alumno.actas.cerradas.length }}/{{ alumno.actas.requeridas.length }}
+                      </span>
+                    }
+                  </td>
+                  <td class="num">
+                    @if (alumno.notas.faltantes.length === 0) {
+                      <span class="texto-ok">
+                        <i class="fa-solid fa-circle-check"></i>
+                        {{ alumno.notas.registradas }}/{{ alumno.notas.requeridas }}
+                      </span>
+                    } @else {
+                      <span class="texto-peligro" [title]="'Faltan: ' + alumno.notas.faltantes.join(', ')">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        {{ alumno.notas.registradas }}/{{ alumno.notas.requeridas }}
+                      </span>
+                    }
+                  </td>
+                  <td class="num">
+                    @if (alumno.asistencia.porcentaje === null) {
+                      <span class="texto-muted">—</span>
+                    } @else {
+                      <span [ngClass]="alumno.asistencia.cumple ? 'texto-ok' : 'texto-warning'">
+                        {{ alumno.asistencia.porcentaje }}%
+                      </span>
+                    }
+                  </td>
+                  <td class="num">
+                    @if (alumno.deuda.monto > 0) {
+                      <span class="texto-warning">S/ {{ alumno.deuda.monto | number: '1.2-2' }}</span>
+                    } @else {
+                      <span class="texto-muted">—</span>
+                    }
+                  </td>
+                  <td class="num">
+                    @if (alumno.becas.length > 0) {
+                      <span class="badge-mini badge-beca">{{ alumno.becas.length }}</span>
+                    } @else {
+                      <span class="texto-muted">—</span>
+                    }
+                  </td>
+                  <td>
+                    <span class="badge-resultado" [ngClass]="claseResultado(alumno.resultado_sugerido)">
+                      {{ nombreResultado(alumno.resultado_sugerido) }}
+                    </span>
+                  </td>
+                  <td class="celda-resultado">
+                    @if (alumno.ya_confirmada) {
+                      <span class="badge-resultado resultado-promovido">
+                        <i class="fa-solid fa-check-double"></i>
+                        {{ nombreResultado(alumno.resultado_final) }}
+                      </span>
+                      <small class="texto-muted">ID {{ alumno.id_promocion }}</small>
+                    } @else {
+                      <select
+                        [ngModel]="resultadoFila(alumno)"
+                        (ngModelChange)="onResultadoChange(alumno, $event)"
+                      >
+                        @for (resultado of resultados; track resultado) {
+                          <option [ngValue]="resultado">{{ nombreResultado(resultado) }}</option>
+                        }
+                      </select>
+                      @if (mostrarMotivo(alumno)) {
+                        <input
+                          type="text"
+                          maxlength="250"
+                          placeholder="Motivo del override (mín. 5)"
+                          [ngModel]="motivoFila(alumno)"
+                          (ngModelChange)="onMotivoChange(alumno, $event)"
+                        />
+                      }
+                    }
+                  </td>
+                  <td>
+                    @for (bloqueo of alumno.bloqueos; track bloqueo.codigo) {
+                      <span class="badge-peligro badge-bloqueo" [title]="bloqueo.mensaje">
+                        {{ bloqueo.codigo }}
+                      </span>
+                    }
+                    @for (advertencia of alumno.advertencias; track advertencia.codigo) {
+                      <span class="badge-warning badge-bloqueo" [title]="advertencia.mensaje">
+                        {{ advertencia.codigo }}
+                      </span>
+                    }
+                    @if (alumno.bloqueos.length === 0 && alumno.advertencias.length === 0) {
+                      <span class="texto-muted">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (vista.resumen.total === 0) {
+          <div class="empty-state">
+            <i class="fa-solid fa-inbox"></i>
+            <h3>No hay matrículas para los filtros</h3>
+            <p>Cambie el año, el grado o incluya retirados.</p>
+          </div>
+        }
+
+        <div class="confirm-panel">
+          @if (totalBecas() > 0) {
+            <label class="chk-responsabilidad">
+              <input
+                type="checkbox"
+                [ngModel]="copiarBecas()"
+                (ngModelChange)="onCopiarBecasChange($event)"
+                [disabled]="confirmando()"
+              />
+              Copiar las becas activas y vigentes al año destino ({{ totalBecas() }}).
+            </label>
+          }
+
+          <label class="chk-responsabilidad">
+            <input
+              type="checkbox"
+              [ngModel]="responsabilidad()"
+              (ngModelChange)="responsabilidad.set($event)"
+              [disabled]="vista.resumen.bloqueados > 0 || confirmando()"
+            />
+            Asumo la responsabilidad de confirmar la promoción {{ vista.anio_origen }} →
+            {{ vista.anio_destino }}. Entiendo que se crean matrículas, expedientes y
+            pre-tickets, pero no se activa el año ni se copian notas, pagos o pensiones.
+          </label>
+
+          <button
+            type="button"
+            class="btn-primary btn-confirmar"
+            [disabled]="!puedeConfirmar()"
+            (click)="confirmar()"
+          >
+            @if (confirmando()) {
+              <i class="fa-solid fa-spinner fa-spin"></i> Confirmando...
+            } @else {
+              <i class="fa-solid fa-check-double"></i> Confirmar promoción
+            }
+          </button>
+        </div>
+
+        @if (resultadoConfirmacion(); as resultado) {
+          <div class="resultado-panel">
+            <h4><i class="fa-solid fa-circle-check"></i> Resultado de la confirmación</h4>
+            <p>
+              {{ resultado.creados }} promoción(es) procesada(s).
+              @if (resultado.ya_confirmada) {
+                El lote ya estaba confirmado; no se duplicó nada.
+              }
+            </p>
+            @if (resultado.promociones.length > 0) {
+              <div class="tabla-resultados">
+                @for (promocion of resultado.promociones; track promocion.id_promocion) {
+                  <span class="badge-mini">
+                    ID {{ promocion.id_promocion }} · {{ nombreResultado(promocion.resultado) }}
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        Promociones registradas
+      </h3>
+      <div class="historial-filtros">
+        <select
+          [ngModel]="filtroEstadoPromocion()"
+          (ngModelChange)="onEstadoPromocionChange($event)"
+        >
+          <option value="">Todas</option>
+          <option value="CONFIRMADA">Confirmadas</option>
+          <option value="ANULADA">Anuladas</option>
+          <option value="PENDIENTE">Pendientes</option>
+        </select>
+        <button type="button" class="btn-secondary btn-sm" (click)="cargarPromociones()">
+          <i class="fa-solid fa-rotate"></i> Actualizar
+        </button>
+      </div>
+    </div>
+
+    @if (promociones().length === 0) {
+      <div class="empty-state">
+        <i class="fa-solid fa-inbox"></i>
+        <h3>No hay promociones registradas</h3>
+        <p>Las promociones confirmadas o anuladas aparecerán aquí.</p>
+      </div>
+    } @else {
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Alumno origen</th>
+              <th>Años</th>
+              <th>Grado destino</th>
+              <th>Resultado</th>
+              <th>Estado</th>
+              <th>Override</th>
+              <th>Fecha</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (promocion of promociones(); track promocion.id_promocion) {
+              <tr>
+                <td><strong>{{ promocion.id_promocion }}</strong></td>
+                <td>
+                  {{ promocion.alumno_origen_nombre }}
+                  <small class="dni-line">{{ promocion.alumno_origen_dni }}</small>
+                </td>
+                <td>{{ promocion.anio_origen }} → {{ promocion.anio_destino || '—' }}</td>
+                <td>
+                  @if (promocion.grado_destino_nombre) {
+                    {{ promocion.grado_destino_nombre }} {{ promocion.grado_destino_seccion }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  <span class="badge-resultado" [ngClass]="claseResultado(promocion.resultado)">
+                    {{ nombreResultado(promocion.resultado) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge-mini" [ngClass]="promocion.estado === 'CONFIRMADA' ? 'badge-confirmada' : 'badge-anulada'">
+                    {{ promocion.estado }}
+                  </span>
+                </td>
+                <td>
+                  @if (promocion.es_override) {
+                    <span class="badge-warning" [title]="promocion.motivo || ''">Sí</span>
+                  } @else {
+                    <span class="texto-muted">No</span>
+                  }
+                </td>
+                <td>{{ promocion.fecha_confirmacion | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>
+                  @if (promocion.estado === 'CONFIRMADA') {
+                    <button
+                      type="button"
+                      class="btn-mini btn-revertir"
+                      (click)="abrirModalAnular(promocion)"
+                    >
+                      <i class="fa-solid fa-ban"></i> Anular
+                    </button>
+                  } @else {
+                    <span class="texto-muted">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: ANULAR PROMOCIÓN -->
+<!-- ============================================================ -->
+@if (modalAnular() && promocionAnular(); as promocion) {
+  <div class="modal-overlay" (click)="cerrarModalAnular()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-ban"></i> Anular promoción {{ promocion.id_promocion }}</h3>
+        <button class="modal-close" type="button" (click)="cerrarModalAnular()">&times;</button>
+      </div>
+      <div class="modal-body">
+        @if (errorAnular()) {
+          <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            {{ errorAnular() }}
+          </div>
+        }
+
+        <div class="aviso-warning">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <strong>Anulación auditada</strong>
+            <p>
+              Se marcará la promoción como ANULADA y se conservará el registro. Si la
+              matrícula destino no tiene pagos, notas, asistencia, pensiones ni pre-tickets
+              pagados, se eliminará la matrícula/expediente/pre-ticket y podrá reintentar.
+              Si tiene actividad, la API responderá 409 y no borrará nada.
+            </p>
+          </div>
+        </div>
+
+        <div class="resumen-activacion">
+          <span><strong>Alumno:</strong> {{ promocion.alumno_origen_nombre }}</span>
+          <span><strong>Resultado:</strong> {{ nombreResultado(promocion.resultado) }}</span>
+          <span><strong>Destino:</strong> {{ promocion.grado_destino_nombre || 'Sin matrícula' }}</span>
+        </div>
+
+        <div class="form-group">
+          <label for="motivo-anular">Motivo de la anulación *</label>
+          <textarea
+            id="motivo-anular"
+            rows="3"
+            maxlength="250"
+            [ngModel]="motivoAnular()"
+            (ngModelChange)="motivoAnular.set($event)"
+            [disabled]="anulando()"
+            placeholder="Explique por qué anula la promoción (mínimo 10 caracteres)"
+          ></textarea>
+          <small class="contador">{{ motivoAnular().length }}/250</small>
+        </div>
+
+        <label class="chk-responsabilidad">
+          <input
+            type="checkbox"
+            [ngModel]="aceptaAnular()"
+            (ngModelChange)="aceptaAnular.set($event)"
+            [disabled]="anulando()"
+          />
+          Entiendo que la anulación queda auditada y que no se borra el año lectivo.
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" [disabled]="anulando()" (click)="cerrarModalAnular()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-danger"
+          [disabled]="!aceptaAnular() || !motivoAnularValido() || anulando()"
+          (click)="anular()"
+        >
+          @if (anulando()) {
+            <i class="fa-solid fa-spinner fa-spin"></i> Anulando...
+          } @else {
+            <i class="fa-solid fa-ban"></i> Anular promoción
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ============================================================ -->
+<!-- MODAL: POLÍTICA DE PROMOCIÓN -->
+<!-- ============================================================ -->
+@if (modalPolitica()) {
+  <div class="modal-overlay" (click)="cerrarModalPolitica()">
+    <div class="modal-container modal-politica" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>
+          <i class="fa-solid fa-scale-balanced"></i>
+          {{ politicaEditando() ? 'Editar política' : 'Nueva política de promoción' }}
+        </h3>
+        <button class="modal-close" type="button" (click)="cerrarModalPolitica()">&times;</button>
+      </div>
+      <div class="modal-body">
+        @if (errorPolitica()) {
+          <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            {{ errorPolitica() }}
+          </div>
+        }
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" maxlength="120" [(ngModel)]="formPolitica.nombre" />
+          </div>
+          <div class="form-group">
+            <label>Año origen *</label>
+            <input type="number" min="2000" max="2100" [(ngModel)]="formPolitica.anio_origen" />
+          </div>
+          <div class="form-group">
+            <label>Año destino</label>
+            <input type="number" min="2000" max="2100" [(ngModel)]="formPolitica.anio_destino" />
+            <small class="texto-muted">Vacío = política general del año origen.</small>
+          </div>
+          <div class="form-group">
+            <label>Umbral de asistencia (%)</label>
+            <input type="number" min="0" max="100" step="0.01" [(ngModel)]="formPolitica.umbral_asistencia" />
+            <small class="texto-muted">Vacío = solo advertencia, sin comparación.</small>
+          </div>
+        </div>
+
+        <div class="checks-politica">
+          <label class="chk-inline">
+            <input type="checkbox" [(ngModel)]="formPolitica.activo" /> Activa
+          </label>
+          <label class="chk-inline">
+            <input type="checkbox" [(ngModel)]="formPolitica.requiere_actas_cerradas" />
+            Exigir actas cerradas
+          </label>
+          <label class="chk-inline">
+            <input type="checkbox" [(ngModel)]="formPolitica.requiere_notas_finales" />
+            Exigir notas finales
+          </label>
+          <label class="chk-inline">
+            <input type="checkbox" [(ngModel)]="formPolitica.permite_override" />
+            Permitir override con motivo
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label for="criterio">Criterio académico (JSON descriptivo) *</label>
+          <textarea
+            id="criterio"
+            rows="9"
+            [ngModel]="criterioTexto()"
+            (ngModelChange)="criterioTexto.set($event)"
+            [disabled]="guardandoPolitica()"
+          ></textarea>
+          <small class="texto-muted">
+            Claves: modo_repitencia (DESACTIVADA/UMBRAL), notas_bimestre (1-4),
+            bimestres_requeridos, min_cursos_desaprobados, notas_desaprobadas,
+            transiciones, observacion. No se codifica la norma nacional.
+          </small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" [disabled]="guardandoPolitica()" (click)="cerrarModalPolitica()">
+          Cancelar
+        </button>
+        <button type="button" class="btn-primary" [disabled]="guardandoPolitica()" (click)="guardarPolitica()">
+          @if (guardandoPolitica()) {
+            <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+          } @else {
+            <i class="fa-solid fa-check"></i> Guardar política
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

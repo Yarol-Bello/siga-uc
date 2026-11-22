@@ -58,6 +58,12 @@ export class SidebarComponent {
       roles: ['ADMIN'],
     },
     {
+      path: '/admin/promociones',
+      label: 'Promoción de Alumnos',
+      icon: 'fa-arrow-up-right-dots',
+      roles: ['ADMIN'],
+    },
+    {
       path: '/admin/tesoreria',
       label: 'Tesorería y Pensiones',
       icon: 'fa-wallet',
