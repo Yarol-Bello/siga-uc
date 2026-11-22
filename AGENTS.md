@@ -34,7 +34,7 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | No existen |
 
-**Conteos actuales:** 39 tablas · 103 endpoints · 4 roles · 14 routers · 14 controladores ·
+**Conteos actuales:** 40 tablas · 103 endpoints · 4 roles · 14 routers · 14 controladores ·
 19 servicios · 15 DAOs · 72 archivos JS backend · 118 archivos frontend (49 TS).
 
 ---
@@ -84,6 +84,7 @@ psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
@@ -93,6 +94,7 @@ psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 ```
 
 > `siga_uc_completo.sql` es el **dump de demo** (esquema + 21 alumnos ficticios +
@@ -204,7 +206,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Visión, alcance, glosario | `documentacion/01-VISION-GENERAL-Y-ALCANCE.md` |
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
-| 39 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
+| 40 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
 | 103 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |

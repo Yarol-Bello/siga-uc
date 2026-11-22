@@ -6,6 +6,9 @@
 const { query, getClient } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
 
+const ejecutar = (client, text, params) =>
+  client ? client.query(text, params) : query(text, params);
+
 /**
  * Listar toda la carga curricular (con filtros)
  */
@@ -66,11 +69,12 @@ const listar = async (filtros = {}) => {
 /**
  * Buscar carga curricular por ID
  */
-const findById = async (id) => {
+const findById = async (id, client = null) => {
   const sql = `
     SELECT 
       cc.*,
       g.nombre_grado,
+      g.seccion,
       c.nombre_curso,
       u.nombres || ' ' || u.apellidos AS docente_nombre_completo
     FROM carga_curricular cc
@@ -80,7 +84,18 @@ const findById = async (id) => {
     INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
     WHERE cc.id_carga = $1
   `;
-  const result = await query(sql, [id]);
+  const result = await ejecutar(client, sql, [id]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Bloquear una carga para actualizarla/eliminarla en una transacción.
+ */
+const findByIdForUpdate = async (id, client) => {
+  const result = await client.query(
+    `SELECT id_carga FROM carga_curricular WHERE id_carga = $1 FOR UPDATE`,
+    [id],
+  );
   return result.rows[0] || null;
 };
 
@@ -157,6 +172,38 @@ const getTutor = async (id_grado, anioLectivo = getAnioLectivo()) => {
 };
 
 /**
+ * Verificar que el grado, curso y año formen una combinación válida.
+ */
+const validarDestino = async (
+  { id_grado, id_curso, anio_lectivo },
+  client = null,
+) => {
+  const result = await ejecutar(
+    client,
+    `SELECT g.id_grado, c.id_curso, g.anio_lectivo
+     FROM grados g
+     CROSS JOIN cursos c
+     WHERE g.id_grado = $1
+       AND c.id_curso = $2
+       AND g.anio_lectivo = $3`,
+    [id_grado, id_curso, anio_lectivo],
+  );
+  return result.rows[0] || null;
+};
+
+/**
+ * Verificar que exista una ficha de personal.
+ */
+const existePersonal = async (id_personal, client = null) => {
+  const result = await ejecutar(
+    client,
+    `SELECT id_personal FROM personal WHERE id_personal = $1`,
+    [id_personal],
+  );
+  return result.rows[0] || null;
+};
+
+/**
  * Crear asignación de carga curricular
  */
 const crear = async (data) => {
@@ -178,24 +225,34 @@ const crear = async (data) => {
 /**
  * Actualizar carga curricular
  */
-const actualizar = async (id, data) => {
+const actualizar = async (id, data, client = null) => {
   const sql = `
     UPDATE carga_curricular SET
-      id_personal = COALESCE($1, id_personal),
-      horas_asignadas = COALESCE($2, horas_asignadas)
-    WHERE id_carga = $3
+      id_grado = COALESCE($1, id_grado),
+      id_curso = COALESCE($2, id_curso),
+      id_personal = COALESCE($3, id_personal),
+      anio_lectivo = COALESCE($4, anio_lectivo),
+      horas_asignadas = COALESCE($5, horas_asignadas)
+    WHERE id_carga = $6
     RETURNING *
   `;
-  const result = await query(sql, [data.id_personal, data.horas_asignadas, id]);
+  const result = await ejecutar(client, sql, [
+    data.id_grado,
+    data.id_curso,
+    data.id_personal,
+    data.anio_lectivo,
+    data.horas_asignadas,
+    id,
+  ]);
   return result.rows[0] || null;
 };
 
 /**
  * Eliminar carga curricular
  */
-const eliminar = async (id) => {
+const eliminar = async (id, client = null) => {
   const sql = `DELETE FROM carga_curricular WHERE id_carga = $1 RETURNING *`;
-  const result = await query(sql, [id]);
+  const result = await ejecutar(client, sql, [id]);
   return result.rows[0] || null;
 };
 
@@ -238,6 +295,9 @@ const asignarTutor = async (data) => {
 module.exports = {
   listar,
   findById,
+  findByIdForUpdate,
+  validarDestino,
+  existePersonal,
   listarPorGrado,
   listarPorDocente,
   getTutor,

@@ -119,6 +119,10 @@ app.use("/api/configuracion", configuracionRoutes);
 const academicoRoutes = require("./routes/academicoRoutes");
 app.use("/api", academicoRoutes);
 
+// Rutas de horarios (H47)
+const horarioRoutes = require("./routes/horarioRoutes");
+app.use("/api/horarios", horarioRoutes);
+
 // Rutas de gestión de alumnos
 const alumnoRoutes = require("./routes/alumnoRoutes");
 app.use("/api/alumnos", alumnoRoutes);

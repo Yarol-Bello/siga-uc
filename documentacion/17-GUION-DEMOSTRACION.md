@@ -220,7 +220,7 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 
 - [ ] Frontend y backend responden; health check en `ok`.
 - [ ] Commit desplegado identificado y documentado.
-- [ ] 39 tablas y migraciones H32, H10/H38, H07 y H45 aplicadas.
+- [ ] 40 tablas y migraciones H32, H10/H38, H07, H45 y H47 aplicadas.
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
 - [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
 - [ ] `npm run test:e2e` local: **14 PASS, 0 FAIL** (exit 0).

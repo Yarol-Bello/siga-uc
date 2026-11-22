@@ -230,6 +230,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Producción:** `siga_uc.sql` → `seed_produccion.sql` (con `-v admin_password`) →
   `migracion_h32_anulacion_pagos.sql` → `migracion_h10_h38_concurrencia_pagos.sql` →
   `migracion_h07_auditoria.sql` → `migracion_h45_pensiones_anuladas.sql` →
+`migracion_h47_horarios.sql` →
   migraciones futuras, en ese orden.
 - No mezclar ambos escenarios: `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes.
 - `seed_produccion.sql` crea una ficha `personal` mínima del admin porque
@@ -358,5 +359,6 @@ psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 cd siga-uc-backend; npm run test:integridad   # 10 PASS
 ```

@@ -40,6 +40,7 @@ const MIGRACIONES = [
   path.join(RAIZ_REPO, "database", "migracion_h32_anulacion_pagos.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h10_h38_concurrencia_pagos.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h07_auditoria.sql"),
+  path.join(RAIZ_REPO, "database", "migracion_h47_horarios.sql"),
 ];
 
 const PUERTO = 3101;

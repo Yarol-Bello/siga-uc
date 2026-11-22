@@ -7,7 +7,7 @@ I.E.P. Unión Científica.
 
 ### A. Desarrollo / demostración
 
-`siga_uc_completo.sql` es un **dump completo**: crea el esquema (39 tablas), funciones,
+`siga_uc_completo.sql` es un **dump completo**: crea el esquema (40 tablas), funciones,
 triggers, índices y carga los **datos ficticios de demostración** (21 alumnos, apoderados,
 pagos y pensiones de ejemplo). **Nunca debe usarse como base de producción.**
 
@@ -18,6 +18,7 @@ psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -33,6 +34,7 @@ psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 ```
 
 `seed_produccion.sql` crea únicamente catálogos y configuración: 4 roles, 5 grados, 11 cursos,
@@ -59,13 +61,14 @@ caja, bitácora ni becas.
 | Archivo | Uso |
 |---|---|
 | `siga_uc_completo.sql` | **Solo desarrollo/demo**: esquema + datos ficticios + funciones/índices. No usar en producción. |
-| `siga_uc.sql` | **Esquema base** (39 tablas, sin datos). Primer paso de una instalación de producción. |
+| `siga_uc.sql` | **Esquema base** (40 tablas, sin datos). Primer paso de una instalación de producción. |
 | `seed_produccion.sql` | **Catálogos y configuración** para producción + admin inicial. Requiere `-v admin_password`. |
 | `migracion_*.sql` | Parches **idempotentes** para bases existentes. Se aplican en orden después del esquema o de la migración anterior. |
 | `migracion_h32_anulacion_pagos.sql` | Añade campos de anulación en `pagos` y `ANULADO` en `boletas_electronicas`. |
 | `migracion_h10_h38_concurrencia_pagos.sql` | Crea `UNIQUE (serie, numero)` y `ux_pago_pension_activo` si no hay duplicados; avisa y omite el índice si los hay. |
 | `migracion_h07_auditoria.sql` | Índices `ix_bitacora_fecha` e `ix_bitacora_usuario` para la bitácora. |
 | `migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` al CHECK de `pensiones` y regulariza deuda futura de alumnos ya retirados. |
+| `migracion_h47_horarios.sql` | Crea `periodos_clase`, reemplaza `horarios` por el modelo con `id_carga`/período/estado, migra las filas antiguas a `horarios_h47_backup` y agrega restricciones y triggers. |
 | `fix_tesoreria_pagos.sql` | **Histórico**: corrige el trigger de caja y genera pre-tickets de matrícula. Ya está incorporado en el esquema actual (`siga_uc.sql`) y en el dump; no se ejecuta en instalaciones nuevas. |
 | `preparar_anio_lectivo.sql` | Utilidad idempotente para copiar conceptos `MATRICULA`/`PENSION` a un año nuevo (`-v anio=2027`). |
 | `siga_uc_backup.sql` | Backup local con datos. Ignorado por Git; no se usa para instalar. |
@@ -73,7 +76,7 @@ caja, bitácora ni becas.
 ## Verificación
 
 ```sql
--- 39 tablas
+-- 40 tablas
 SELECT COUNT(*) FROM information_schema.tables
 WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 
@@ -101,7 +104,9 @@ npm run test:integridad   # 10 invariantes; debe dar 10 PASS en una base de prod
 2. Ejecutar solo las migraciones pendientes, en orden.
 3. Verificar que no queden objetos duplicados ni errores.
 
-Las migraciones no eliminan datos ni vuelven a crear el esquema.
+Las migraciones no eliminan datos ni vuelven a crear el esquema. **Excepción H47:**
+reemplaza la tabla `horarios` después de copiar sus filas a `horarios_h47_backup`; revise
+ese respaldo antes de eliminarlo.
 
 ## Tecnología
 

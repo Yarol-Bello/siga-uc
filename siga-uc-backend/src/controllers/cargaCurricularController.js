@@ -4,8 +4,18 @@
  */
 
 const cargaCurricularService = require("../services/cargaCurricularService");
+const auditoriaService = require("../services/auditoriaService");
 const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
+
+const resumenCarga = (carga) => ({
+  id_carga: carga.id_carga,
+  id_grado: carga.id_grado,
+  id_curso: carga.id_curso,
+  id_personal: carga.id_personal,
+  anio_lectivo: carga.anio_lectivo,
+  horas_asignadas: carga.horas_asignadas,
+});
 
 const listar = async (req, res) => {
   try {
@@ -69,30 +79,73 @@ const listarPorDocente = async (req, res) => {
 const crear = async (req, res) => {
   try {
     const data = await cargaCurricularService.crear(req.body);
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "CargaCurricular",
+      accion: "CREAR",
+      descripcion: `Carga creada: grado ${data.id_grado}, curso ${data.id_curso}, docente ${data.id_personal}`,
+      nuevo: resumenCarga(data),
+    });
     return response.success(res, 201, "Asignación creada", data);
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 
 const actualizar = async (req, res) => {
   try {
+    const anterior = await cargaCurricularService.obtener(req.params.id);
     const data = await cargaCurricularService.actualizar(
       req.params.id,
       req.body,
+      req.usuario.id_usuario,
     );
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "CargaCurricular",
+      accion: "MODIFICAR",
+      descripcion: `Carga actualizada: grado ${data.id_grado}, curso ${data.id_curso}, docente ${data.id_personal}`,
+      anterior: resumenCarga(anterior),
+      nuevo: {
+        ...resumenCarga(data),
+        horarios_actualizados: data.horarios_actualizados || 0,
+        horarios_eliminados: data.horarios_eliminados || 0,
+        advertencia: data.advertencia || null,
+      },
+    });
     return response.success(res, 200, "Asignación actualizada", data);
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 
 const eliminar = async (req, res) => {
   try {
+    const anterior = await cargaCurricularService.obtener(req.params.id);
     const data = await cargaCurricularService.eliminar(req.params.id);
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "CargaCurricular",
+      accion: "ELIMINAR",
+      descripcion: `Carga eliminada: grado ${anterior.id_grado}, curso ${anterior.id_curso}`,
+      anterior: resumenCarga(anterior),
+      nuevo: { horarios_eliminados: data.horarios_eliminados || 0 },
+    });
     return response.success(res, 200, "Asignación eliminada", data);
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 

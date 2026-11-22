@@ -250,7 +250,34 @@ WHERE g.anio_lectivo = EXTRACT(YEAR FROM CURRENT_DATE)::int
 ON CONFLICT (id_grado, id_curso, anio_lectivo) DO NOTHING;
 
 -- ============================================================
--- 10. Caja principal (cerrada; se apertura desde la UI)
+-- 10. Malla de períodos de clase (H47)
+--     Solo se inserta si el año en curso no tiene malla.
+-- ============================================================
+DO $$
+DECLARE
+  v_anio integer := EXTRACT(YEAR FROM CURRENT_DATE)::int;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM periodos_clase WHERE anio_lectivo = v_anio
+  ) THEN
+    INSERT INTO periodos_clase
+      (anio_lectivo, nombre, orden, hora_inicio, hora_fin, tipo, activo)
+    VALUES
+      (v_anio, '1ra hora',  1, '07:30', '08:15', 'CLASE',   true),
+      (v_anio, '2da hora',  2, '08:15', '09:00', 'CLASE',   true),
+      (v_anio, 'Receso',    3, '09:00', '09:30', 'RECREO',  true),
+      (v_anio, '3ra hora',  4, '09:30', '10:15', 'CLASE',   true),
+      (v_anio, '4ta hora',  5, '10:15', '11:00', 'CLASE',   true),
+      (v_anio, '5ta hora',  6, '11:00', '11:45', 'CLASE',   true),
+      (v_anio, '6ta hora',  7, '11:45', '12:30', 'CLASE',   true),
+      (v_anio, 'Almuerzo',  8, '12:30', '13:00', 'ALMUERZO', true),
+      (v_anio, '7ma hora',  9, '13:00', '13:45', 'CLASE',   true),
+      (v_anio, '8va hora', 10, '13:45', '14:30', 'CLASE',   true);
+  END IF;
+END $$;
+
+-- ============================================================
+-- 11. Caja principal (cerrada; se apertura desde la UI)
 -- ============================================================
 INSERT INTO cajas (nombre_caja, responsable, estado)
 SELECT 'Caja Principal', u.id_usuario, 'CERRADA'
@@ -261,7 +288,7 @@ WHERE u.dni = '74829102'
   );
 
 -- ============================================================
--- 11. Conclusiones descriptivas
+-- 12. Conclusiones descriptivas
 --    NO se siembran: la tabla depende de id_alumno y es un dato
 --    operativo, no un catálogo MINEDU. Queda vacía a propósito.
 -- ============================================================

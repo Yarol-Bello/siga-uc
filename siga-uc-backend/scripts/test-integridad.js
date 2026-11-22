@@ -96,6 +96,7 @@ const TABLAS_ESPERADAS = [
   "notificaciones",
   "pagos",
   "pensiones",
+  "periodos_clase",
   "personal",
   "pre_tickets",
   "recuperacion_password",
@@ -192,10 +193,10 @@ async function main() {
     return;
   }
 
-  // 1. Las 39 tablas del esquema existen.
+  // 1. Las 40 tablas del esquema existen.
   await verificarInvariante(
     1,
-    "Las 39 tablas esperadas existen",
+    "Las 40 tablas esperadas existen",
     `
       SELECT q.*, COUNT(*) OVER() AS _total
       FROM (
