@@ -1,7 +1,7 @@
 # 19 — Diseño multi-año y promoción de alumnos
 
-> **Estado:** diseño. **Fase 6.1 (multi-año base) y Fase 6.2 (rollover anual) implementadas,
-> probadas y documentadas.** La promoción (6.3) y el histórico (6.4) siguen pendientes.
+> **Estado:** diseño. **Fases 6.1 (multi-año base), 6.2 (rollover anual) y 6.3 (promoción)
+> implementadas, probadas y documentadas.** El histórico (6.4) sigue pendiente.
 > Este documento conserva el diseño original; lo implementado se contrasta con el código real
 > (`siga-uc-backend`, `siga-uc-frontend`) y con `documentacion/05`, `12` y `13`.
 >
@@ -621,6 +621,13 @@ conjunto de datos revisado.
 
 ## 4. Promoción de alumnos
 
+> **Implementado en Fase 6.3.** Migración `database/migracion_h73_promociones.sql`,
+> módulo `/api/promociones` y pantalla ADMIN `/admin/promociones`. El diseño de esta sección
+> se respetó: la promoción es recomendación + confirmación humana, con política configurable,
+> preview por alumno con hash, confirmación transaccional e idempotente, egresados,
+> repitentes, retirados/traslados y anulación con reversa. **No** se codifica la norma
+> nacional ni se activa el año destino.
+
 La promoción es el paso **después** del rollover y antes de la matrícula del año nuevo.
 
 ### 4.1 Previsualización por alumno
@@ -923,15 +930,16 @@ Cada pregunta incluye una recomendación, pero **ninguna se implementa sin confi
 
 ---
 
-## 9. Fases de implementación sugeridas (sin ejecutar ahora)
+## 9. Fases de implementación sugeridas (estado actual)
 
-1. **Diseño y validación** con dirección/UGEL de la política de promoción.
-2. **Migración** de esquema en base desechable + pruebas de idempotencia.
-3. **Autenticación multi-año** y perfil por año.
-4. **Rollover** con preview/confirmación y activación de año.
-5. **Promoción** con preview, confirmación transaccional y auditoría.
-6. **Histórico** en reportes/libretas y ajustes de UI.
-7. **Pruebas de regresión** y despliegue controlado.
+1. **Diseño y validación** con dirección/UGEL de la política de promoción. ✅ Documento 19.
+2. **Migración** de esquema en base desechable + pruebas de idempotencia. ✅ H49 (6.1) y H73 (6.3).
+3. **Autenticación multi-año** y perfil por año. ✅ 6.1.
+4. **Rollover** con preview/confirmación y activación de año. ✅ 6.2.
+5. **Promoción** con preview, confirmación transaccional y auditoría. ✅ 6.3 en local.
+6. **Histórico** en reportes/libretas y ajustes de UI. ⏳ 6.4.
+7. **Pruebas de regresión** y despliegue controlado. ✅ 54 E2E / 20 integridad; 6.3 aún no
+   desplegada ni aplicada en Supabase.
 
 ---
 

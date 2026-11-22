@@ -102,7 +102,8 @@ TZ=America/Lima
 
 #### A. Desarrollo / demostración
 
-`siga_uc_completo.sql` es un **dump completo**: esquema (40 tablas; **41** tras aplicar H49),
+`siga_uc_completo.sql` es un **dump completo**: esquema (40 tablas; **41** tras aplicar H49,
+**43** tras H73),
 funciones, triggers, índices y **datos ficticios de demostración** (21 alumnos, apoderados,
 pagos y pensiones de ejemplo). **Nunca debe usarse en producción**: contiene más de 140
 pensiones marcadas `PAGADO` sin un pago que las respalde (144 medidas por `test:integridad`
@@ -120,6 +121,7 @@ psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -138,6 +140,7 @@ psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -193,6 +196,23 @@ El rollover **no es una migración**: se ejecuta desde la pantalla ADMIN
 > bloqueado. En la demo de Supabase, el rollover se muestra solo en **preview**; no
 > confirmar ni activar sin autorización y backup.
 
+### 3.1.3 Migración H73 (promociones, Fase 6.3)
+
+`database/migracion_h73_promociones.sql` crea `politicas_promocion` y `promociones`.
+**Requiere H49 aplicada** (usa `anios_lectivos`, `grados.orden` y la matrícula anual).
+No modifica el CHECK de `alumnos.estado_matricula`, no crea usuarios ni QR, y no agrega
+`TRASLADADO`. Es **idempotente** y se pega completo en el SQL Editor de Supabase.
+
+- Orden obligatorio: `siga_uc.sql`/dump → H49 → **H73** → migraciones futuras.
+- En Supabase: backup verificado, ventana sin usuarios y ejecución manual. **No aplicar
+  sin autorización explícita.**
+- La migración siembra una política "Política estándar" para el año `ACTIVO` (si existe).
+  El ADMIN puede editarla o crear políticas por par origen/destino.
+- `database/rollback_h73_promociones.sql` es **solo para bases desechables**. En Supabase
+  se restaura el backup; no se ejecuta el rollback.
+- Tras aplicarla, reiniciar el backend. Los endpoints responden
+  `503 PROMOCIONES_NO_APLICADAS` si faltan las tablas.
+
 > **No mezclar escenarios.** `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes:
 > cargar ambos duplica objetos (`ya existe una función «calcular_nota_final_area»`).
 
@@ -202,7 +222,7 @@ El rollover **no es una migración**: se ejecuta desde la pantalla ADMIN
 psql -U postgres -d siga_uc -c "\dt"
 ```
 
-Debe listar **41 tablas base** (42 en local si existe `horarios_h47_backup`; no 26, la
+Debe listar **43 tablas base** (44 en local si existe `horarios_h47_backup`; no 26, la
 documentación antigua está mal).
 
 ```powershell
@@ -226,7 +246,7 @@ Y ejecutar la suite de invariantes:
 
 ```powershell
 cd siga-uc-backend
-npm run test:integridad   # 16 PASS, 0 FAIL
+npm run test:integridad   # 20 PASS, 0 FAIL
 ```
 
 ### 3.5 Extensiones
@@ -394,7 +414,7 @@ tiene otro nombre.
 ### 7.3 Checklist de despliegue
 
 - [ ] PostgreSQL creado con `siga_uc.sql` + `seed_produccion.sql` + migraciones (sin dump demo).
-- [ ] `npm run test:integridad` → 16 PASS, 0 FAIL.
+- [ ] `npm run test:integridad` → 20 PASS, 0 FAIL.
 - [ ] Confirmado: 0 alumnos, 0 pagos, 0 pensiones, 1 usuario.
 - [ ] Admin inicial cambió su contraseña temporal.
 - [ ] Variables de entorno cargadas.
@@ -465,7 +485,7 @@ psql -U postgres -d siga_uc_restore_test -c "SELECT COUNT(*) FROM information_sc
 dropdb -U postgres siga_uc_restore_test
 ```
 
-La restauración de prueba debe devolver **41 tablas base** (42 si existe
+La restauración de prueba debe devolver **43 tablas base** (44 si existe
 `horarios_h47_backup`) y datos en `usuarios`, `alumnos`, etc.
 
 ### 9.3 Variables para Supabase
@@ -594,6 +614,8 @@ Crear una tarea diaria a las 02:00:
 | `database/migracion_h48_actas.sql` | Agrega bimestre, reapertura y unicidad de actas; backfill y validación de duplicados |
 | `database/migracion_h61_dia_semana.sql` | Normaliza `dia_semana` de asistencias a español y lo alinea con la fecha; solo datos e idempotente |
 | `database/migracion_h49_multianio_base.sql` | Crea `anios_lectivos`, `grados.orden` y UNIQUE de alumnos por año; se aplica antes del rollover |
+| `database/migracion_h73_promociones.sql` | Crea `politicas_promocion` y `promociones`; requiere H49 y se aplica antes de operar 6.3 |
+| `database/rollback_h73_promociones.sql` | Solo bases desechables: elimina las tablas de promoción |
 | `database/preparar_anio_lectivo.sql` | Utilidad histórica y parcial (conceptos + períodos); la UI de 6.2 la reemplaza |
 | `database/migracion_*.sql` | Parches idempotentes para bases existentes |
 | `database/siga_uc_backup.sql` | Backup local (ignorado) |

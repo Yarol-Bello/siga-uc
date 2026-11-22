@@ -72,8 +72,8 @@ verificar el checklist.
 ```powershell
 cd siga-uc-backend
 npm run smoke              # 11 PASS, 0 FAIL, 0 SKIP (exit 0)
-npm run test:integridad    # 16 invariantes; los FAIL de seed son esperados en demo
-npm run test:e2e           # 38 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
+npm run test:integridad    # 20 invariantes; los FAIL de seed son esperados en demo
+npm run test:e2e           # 54 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
 ```
 
 `npm run smoke` contra Render **no** se ejecuta sin confirmación explícita: hace login y
@@ -89,7 +89,7 @@ variable y `dotenv` carga la key real.
   ADMIN local `74829102` con `SMOKE_ADMIN_PASSWORD` de `.env`.
 - `npm run test:integridad`: **8 PASS, 2 FAIL** esperados por el seed de demo
   (pagos sin INGRESO y pensiones `PAGADO` sin pago).
-- `npm run test:e2e`: **38 PASS, 0 FAIL** (exit 0), base `siga_uc_e2e` eliminada.
+- `npm run test:e2e`: **54 PASS, 0 FAIL** (exit 0), base `siga_uc_e2e` eliminada.
 - Notificación con Resend deshabilitado: **guardada 1, correos enviados 0, fallidos 1**,
   visible en la campanita. Los residuos de la prueba se eliminaron.
 
@@ -215,6 +215,24 @@ horario en borrador no es visible”.
 una fase separada y se confirmará con dirección. En esta demo solo mostramos la
 previsualización.”
 
+### Paso 7d — Promoción de alumnos (solo preview, 3 min)
+
+1. En **ADMIN** → **Promoción de Alumnos**, elegir origen 2026, destino con oferta (por
+   ejemplo 2027/2028), una política y un grado. Pulsar **Previsualizar**.
+2. Recorrer la tabla: DNI, grado, estado, actas, notas, asistencia, deuda, beca, resultado
+   sugerido, resultado final y bloqueos. Señalar que el preview no escribe nada.
+3. Mostrar un bloqueo real: actas/notas faltantes, transición sin configurar o alumno ya
+   matriculado en el destino. Explicar que el confirm queda bloqueado.
+4. Si la política permite override, cambiar un resultado, escribir un motivo y volver a
+   previsualizar. Mostrar que el hash cambia y que el override queda auditado.
+5. **No confirmar la promoción en Supabase durante la demo.** La confirmación crea
+   matrículas del año destino; se prueba en una base desechable con dirección.
+6. Recalcar que la promoción **no activa el año** ni copia notas, pagos, pensiones,
+   asistencia ni QR.
+
+**Mensaje:** “El sistema recomienda, pero la decisión es humana. La promoción crea la
+matrícula del año siguiente; activar el año es una acción separada de la Fase 6.2.”
+
 ### Paso 8 — Notificación interna (2 min)
 
 1. En **ADMIN** → dashboard → **Nueva Notificación**.
@@ -255,12 +273,12 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 
 - [ ] Frontend y backend responden; health check en `ok`.
 - [ ] Commit desplegado identificado y documentado.
-- [ ] 41 tablas base y migraciones H32, H10/H38, H07, H45, H47, H48, H61 y H49 aplicadas
-      (42 en local si existe `horarios_h47_backup`).
+- [ ] 43 tablas base y migraciones H32, H10/H38, H07, H45, H47, H48, H61, H49 y H73
+      aplicadas (44 en local si existe `horarios_h47_backup`).
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
 - [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
-- [ ] `npm run test:e2e` local: **38 PASS, 0 FAIL** (exit 0).
-- [ ] `npm run test:integridad` revisado; **16 PASS** en base nueva y los FAIL de seed
+- [ ] `npm run test:e2e` local: **54 PASS, 0 FAIL** (exit 0).
+- [ ] `npm run test:integridad` revisado; **20 PASS** en base nueva y los FAIL de seed
       local explicados.
 
 ### Datos de demo

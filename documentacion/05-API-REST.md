@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **119 endpoints** - 65 GET, 34 POST, 15 PUT, 5 DELETE.
+**Total verificado:** **127 endpoints** - 68 GET, 37 POST, 17 PUT, 5 DELETE.
 
 ---
 
@@ -107,6 +107,51 @@ Reglas verificadas:
   oferta manual distinta.
 - Auditoría: acciones `ROLLOVER`, `ACTIVAR` y `REVERTIR_ROLLOVER` en el módulo
   `Años Lectivos`, siempre **después del COMMIT**.
+
+### 2.2 Promociones anuales — `/api/promociones` (8)
+
+Requiere JWT. **ADMIN** puede escribir, confirmar y anular; **SECRETARIA** puede listar
+políticas, previsualizar y consultar promociones; **DOCENTE/ESTUDIANTE reciben 403**.
+Si faltan las tablas H73, responden **503 `PROMOCIONES_NO_APLICADAS`**; si falta H49,
+**503 `H49_NO_APLICADO`**.
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/promociones/politicas` | ADMIN/SECRETARIA | Lista políticas; filtros `anio_origen`, `anio_destino`, `activo` |
+| POST | `/api/promociones/politicas` | ADMIN | Crea política configurable; `permite_override` es `false` por defecto |
+| PUT | `/api/promociones/politicas/:id` | ADMIN | Actualiza una política |
+| POST | `/api/promociones/preview` | ADMIN/SECRETARIA | **Solo lectura.** `{ anio_origen, anio_destino, id_politica, id_grado?, incluir_retirados?, decisiones? }`; devuelve alumnos, sugerencias, bloqueos, advertencias y `preview_hash` |
+| POST | `/api/promociones/confirmar` | ADMIN | Mismos datos + `preview_hash`, `confirmar:true`, `decisiones[]` y `copiar_becas?`; transacción única |
+| GET | `/api/promociones` | ADMIN/SECRETARIA | Lista promociones por años, estado, resultado o grado |
+| GET | `/api/promociones/:id` | ADMIN/SECRETARIA | Detalle de una promoción |
+| PUT | `/api/promociones/:id/anular` | ADMIN | Body `{ motivo }`; anula y revierte si el destino no tiene actividad |
+
+Reglas verificadas:
+
+- La oferta del destino debe existir (grados del año destino); si falta, **422
+  `DESTINO_SIN_OFERTA`**. No activa el año destino.
+- Sugerencias: `RETIRADO` (retirado o traslado), `EGRESADO` (último grado), `REPITENTE`
+  (política de umbral), `PENDIENTE` (actas/notas faltantes o transición no configurada) y
+  `PROMOVIDO` (resto).
+- Actas: se reutiliza la regla H48 (bimestres configurados y acta global `CERRADO`).
+  Notas: `notas_finales_area` del bimestre configurado. Asistencia y deuda son
+  **advertencias**, no exclusiones automáticas.
+- Override: solo si la política lo permite, con motivo obligatorio y `es_override=true`.
+  Sin override permitido, el confirm responde **422 `PROMOCION_BLOQUEADA`**.
+- Confirmación: advisory lock `promocion:origen:destino`, hash recalculado dentro de la
+  transacción; hash viejo → **409 `PREVIEW_DESACTUALIZADA`**. Crea matrícula, expediente y
+  pre-ticket de matrícula; no copia notas, asistencia, pagos, pensiones ni pre-tickets.
+  Conserva `id_usuario`, DNI, código y QR; no crea usuarios ni QR.
+- Idempotencia: repetir el confirm con el mismo hash devuelve `ya_confirmada=true` o `409`;
+  el índice parcial impide dos promociones confirmadas por matrícula origen.
+- Anulación: solo promociones `CONFIRMADA`; si el destino no tiene pagos, notas, asistencia,
+  pensiones ni pre-tickets pagados, desvincula y borra matrícula/expediente/pre-ticket; si
+  tiene actividad, **409 `PROMOCION_CON_ACTIVIDAD`**. El reintento enlaza la promoción
+  anterior con `id_promocion_reversa`.
+- Auditoría: `PREVISUALIZAR`, `CONFIRMAR`, `ANULAR`, `CREAR_POLITICA` y
+  `ACTUALIZAR_POLITICA` en el módulo `Promociones`, después del COMMIT.
+- No se agrega `TRASLADADO`: un traslado es `RETIRADO` + `alumnos.condicion='Traslado'` y
+  `metadata.retiro.motivo='TRASLADO'`.
 
 ---
 
@@ -598,6 +643,8 @@ contraseñas.
 | Módulo | Endpoints |
 |---|---|
 | Generales | 3 |
+| Años lectivos (6.2) | 5 |
+| Promociones (6.3) | 8 |
 | Auth | 9 |
 | Académico | 6 |
 | Alumnos | 6 |
@@ -612,20 +659,21 @@ contraseñas.
 | Auditoría | 8 |
 | SIAGIE | 1 |
 | Notificaciones | 8 |
-| **Total** | **114** |
+| **Total** | **127** |
 
 | Verbo | Cantidad |
 |---|---|
-| GET | 64 |
-| POST | 32 |
-| PUT | 14 |
-| DELETE | 4 |
+| GET | 68 |
+| POST | 37 |
+| PUT | 17 |
+| DELETE | 5 |
 
 Acceso: el detalle exacto está en la columna **Acceso** de cada tabla. Con H47 se retiró
 el endpoint abierto `/api/horarios/grado/:id_grado` y se agregaron 12 endpoints de horarios.
+Con 6.2 se agregaron 5 de años lectivos y con 6.3, 8 de promociones.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo correcto, revisando `verificarRol(...)` en los 14 routers, es 57/38.
+> El conteo vigente es 127 (68 GET, 37 POST, 17 PUT, 5 DELETE).
 
 ---
 

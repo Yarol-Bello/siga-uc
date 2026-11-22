@@ -8,7 +8,7 @@ I.E.P. Unión Científica.
 ### A. Desarrollo / demostración
 
 `siga_uc_completo.sql` es un **dump completo**: crea el esquema (40 tablas) y, tras aplicar
-la migración H49, queda en **41 tablas base** (42 en local con `horarios_h47_backup`), funciones,
+la migración H49 y H73, queda en **43 tablas base** (44 en local con `horarios_h47_backup`), funciones,
 triggers, índices y carga los **datos ficticios de demostración** (21 alumnos, apoderados,
 pagos y pensiones de ejemplo). **Nunca debe usarse como base de producción.**
 
@@ -23,6 +23,7 @@ psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -42,11 +43,16 @@ psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 ```
 
 > **H49:** antes de ejecutar la migración, editar `_param_anio` en
 > `migracion_h49_multianio_base.sql` al año de la instalación (`2027` en este ejemplo;
 > `2026` en la demo).
+>
+> **H73:** aplicar **después** de H49. Crea `politicas_promocion` y `promociones`; es
+> idempotente y se pega completo en el SQL Editor. No se aplica en Supabase sin backup y
+> autorización.
 
 `seed_produccion.sql` crea únicamente catálogos y configuración: 4 roles, 5 grados, 11 cursos,
 29 competencias, escala AD/A/B/C, 11 conceptos de pago del año indicado, carga curricular
@@ -74,7 +80,7 @@ caja, bitácora ni becas.
 | Archivo | Uso |
 |---|---|
 | `siga_uc_completo.sql` | **Solo desarrollo/demo**: esquema + datos ficticios + funciones/índices. No usar en producción. |
-| `siga_uc.sql` | **Esquema base** (40 tablas, sin datos); H49 lo lleva a 41. Primer paso de una instalación de producción. |
+| `siga_uc.sql` | **Esquema base** (40 tablas, sin datos); H49/H73 lo llevan a 43. Primer paso de una instalación de producción. |
 | `seed_produccion.sql` | **Catálogos y configuración** para producción + admin inicial. Requiere `-v anio_lectivo=YYYY -v admin_password=...`. |
 | `migracion_*.sql` | Parches **idempotentes** para bases existentes. Se aplican en orden después del esquema o de la migración anterior. |
 | `migracion_h32_anulacion_pagos.sql` | Añade campos de anulación en `pagos` y `ANULADO` en `boletas_electronicas`. |
@@ -85,6 +91,8 @@ caja, bitácora ni becas.
 | `migracion_h48_actas.sql` | Agrega `bimestre`, reapertura y unicidad por año/bimestre/grado a `actas_bimestrales`; backfill de bimestre y aborto ante vacíos/duplicados. Idempotente. |
 | `migracion_h61_dia_semana.sql` | Solo datos: normaliza `asistencia_alumnos.dia_semana` a español y lo alinea con `fecha`. Idempotente; no cambia el esquema. |
 | `migracion_h49_multianio_base.sql` | Crea `anios_lectivos`, agrega `grados.orden` y reemplaza los UNIQUE globales de `alumnos` por UNIQUE por año. No crea promociones ni clona oferta. Se pega completo en SQL Editor (sin variables psql). Idempotente. |
+| `migracion_h73_promociones.sql` | Crea `politicas_promocion` y `promociones` (H73/6.3). Requiere H49. Idempotente; no agrega `TRASLADADO` ni toca el CHECK de alumnos. |
+| `rollback_h73_promociones.sql` | Solo base desechable: elimina `promociones` y `politicas_promocion`. En producción se restaura el backup. |
 | `rollback_h49_multianio_base.sql` | Solo para base desechable: restaura los UNIQUE globales y elimina `anios_lectivos`/`grados.orden`. Aborta si hay varias matrículas por persona o promociones con filas. |
 | `preparar_anio_lectivo.sql` | Utilidad **histórica y parcial**: solo copia conceptos `MATRICULA`/`PENSION` y períodos. No crea grados, carga ni tutores. La reemplaza la pantalla ADMIN de 6.2 (años lectivos y rollover). |
 | `siga_uc_backup.sql` | Backup local con datos. Ignorado por Git; no se usa para instalar. |
@@ -92,7 +100,7 @@ caja, bitácora ni becas.
 ## Verificación
 
 ```sql
--- 41 tablas base (después de H49; 42 en local con horarios_h47_backup)
+-- 43 tablas base (después de H49 y H73; 44 en local con horarios_h47_backup)
 SELECT COUNT(*) FROM information_schema.tables
 WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 
@@ -111,7 +119,7 @@ SELECT
 Además, desde `siga-uc-backend`:
 
 ```powershell
-npm run test:integridad   # 16 invariantes; debe dar 16 PASS en una base de producción limpia
+npm run test:integridad   # 20 invariantes; debe dar 20 PASS en una base de producción limpia
 ```
 
 ## Migraciones sobre una base existente

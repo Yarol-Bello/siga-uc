@@ -4,6 +4,18 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
+> **Actualización 22/11/2026 (Fase 6.3, solo local):** promoción anual con política
+> configurable, preview por alumno y hash, confirmación transaccional e idempotente,
+> egresados/repitentes/retirados/traslados y anulación con reversa. Migración H73
+> (`promociones`, `politicas_promocion`; 43 tablas base), API `/api/promociones` y pantalla
+> ADMIN `/admin/promociones`. **H73 está aplicada en `siga_uc` local, no en Supabase.**
+> `test:e2e` **54 PASS** e integridad **20 PASS** en base nueva. 6.3 **no desplegada** en
+> Render ni aplicada en Supabase; 2026 sigue activo allí. Ver sección 1.3.
+>
+> **Próximo bloque de trabajo:** H49 y H73 en Supabase con backup y autorización; desplegar
+> 6.3 con autorización y, después, Fase 6.4 (histórico). No activar 2027 en producción/demo
+> sin aprobación del colegio.
+>
 > **Actualización 22/11/2026 (Fase 6.2 desplegada):** rollover anual con preview de solo
 > lectura y hash, clonado transaccional e idempotente de grados, conceptos, períodos, carga
 > y tutores, activación auditada con un solo año ACTIVO y reversión de un rollover vacío.
@@ -219,6 +231,50 @@ En esta fase **no** se prepara el despliegue definitivo.
   bloquea por sobrecapacidad (correcto). El E2E reequilibra su base desechable (4 docentes,
   ≤40 h) para probar el camino feliz. En Supabase el reparto es 30/30/30/30/25 h.
 
+### 1.3 Fase 6.3 — Promoción de alumnos (22/11/2026, solo local)
+
+- **Alcance:** promoción = recomendación + confirmación humana. Crea matrículas del año
+  destino, expedientes y pre-tickets; registra egresados, repitentes y retirados. **No**
+  activa el año, no copia notas/asistencia/pagos/pensiones, no crea usuarios ni QR y no
+  codifica la norma peruana.
+- **Migración:** `database/migracion_h73_promociones.sql` crea `politicas_promocion` y
+  `promociones`, con UNIQUE parcial de origen/destino confirmado, FKs RESTRICT/SET NULL,
+  índices y una política estándar para el año ACTIVO. No agrega `TRASLADADO`. Rollback
+  `rollback_h73_promociones.sql` solo para bases desechables. 43 tablas base (44 local con
+  `horarios_h47_backup`).
+- **Backend:** `/api/promociones` con políticas (`GET`, `POST`, `PUT`), `POST /preview`,
+  `POST /confirmar`, `GET /`, `GET /:id` y `PUT /:id/anular`. DAOs
+  `promocionDao`/`politicaPromocionDao`; servicios `promocionService`/
+  `politicaPromocionService`. Si faltan las tablas H73, responde **503
+  PROMOCIONES_NO_APLICADAS**; si falta H49, **503 H49_NO_APLICADO**.
+- **Preview:** solo lectura; por alumno calcula resultado sugerido, actas (H48), notas,
+  asistencia (advertencia), deuda (advertencia), becas, bloqueos y override. Hash SHA-256
+  estable con años, política, decisiones, conteos y bloqueos. El confirm recalcula el hash
+  dentro de la transacción; hash viejo → `409 PREVIEW_DESACTUALIZADA`.
+- **Confirmación:** advisory lock `promocion:origen:destino`; transacción única. Crea
+  matrícula destino con `PendientePago` si hay MATRICULA (si no, `Matriculado` con
+  advertencia), expediente nuevo y pre-ticket. Egresados/retirados no crean matrícula
+  destino. Idempotente: mismo hash devuelve `ya_confirmada=true`; no duplica.
+- **Override:** solo si `permite_override=true`, con motivo ≥5 y `es_override=true`. Sin
+  permiso o sin motivo, el confirm falla con `422 PROMOCION_BLOQUEADA`.
+- **Anulación:** solo `CONFIRMADA`; si el destino no tiene pagos/notas/asistencia/pensiones/
+  pre-tickets pagados, desvincula y borra matrícula/expediente/pre-ticket y permite
+  reintento con `id_promocion_reversa`. Si hay actividad, `409 PROMOCION_CON_ACTIVIDAD`.
+- **Frontend:** servicio `promocion.service.ts`, pantalla `admin/promociones` con filtros,
+  preview por alumno, override con motivo, confirmación con responsabilidad, historial y
+  anulación, y modal de políticas. No activa el año. SECRETARIA puede leer/previsualizar por
+  API; DOCENTE/ESTUDIANTE 403.
+- **Verificación (local):** migración H73 aplicada en `siga_uc` tras backup; `test:e2e`
+  **54 PASS** (38 previas + 16 de promoción); `test:integridad` **20 PASS** en base de
+  producción desechable y **18 PASS / 2 FAIL** de seed en local; `npm run smoke` **11 PASS**;
+  `test:h47-generador` **4 PASS**; build Angular OK; `node --check` OK. UI probada en
+  navegador con ADMIN: preview 2026→2028, confirm (2 matrículas), historial y override con
+  re-previsualización.
+- **Cambios locales de 6.3:** migración `c893e02`, backend `cf8efb3`, UI `8b15041`,
+  tests `7226003`; documentación en el commit de cierre. Sin push ni despliegue.
+- **Estado:** implementado y verificado solo en local; **no desplegado en Render ni aplicado
+  en Supabase**. Allí siguen 40 tablas, H48 aplicado, 2026 activo y 2027 sin activar.
+
 ---
 
 ## 2. Entorno
@@ -244,9 +300,10 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **No hay staging.**
 - Render gratuito puede dormir por inactividad y Supabase gratuito puede pausarse; entrar
   unos minutos antes de la demo para despertar ambos servicios.
-- La BD local `siga_uc` tiene **H47 y H49 aplicados**: **42 tablas** (41 base +
+- La BD local `siga_uc` tiene **H47, H49 y H73 aplicados**: **44 tablas** (43 base +
   `horarios_h47_backup`), **10 períodos**, **0 horarios** tras la limpieza y **13 filas**
   en el backup. `anios_lectivos` tiene 2026 `ACTIVO`; `grados.orden` 1..5.
+  `politicas_promocion` tiene la "Política estándar" de 2026 y `promociones` está vacía.
 - Datos locales tras la limpieza: **21 alumnos, 29 usuarios, 54 cargas/142 h todas en el
   ADMIN** (ficha personal nueva del ADMIN), **0 usuarios/personal/QR demo** y **0 horarios**.
   El índice `ux_pago_pension_activo` existe.
@@ -260,12 +317,12 @@ En esta fase **no** se prepara el despliegue definitivo.
   SKIP; `1` si hay FAIL; `2` si hay SKIP sin `SMOKE_ALLOW_SKIP=1`.
 - Verificación local del 21/11/2026: **11 PASS, 0 FAIL, 0 SKIP** (exit 0) con las tres
   cuentas; **3 PASS, 0 FAIL, 8 SKIP** (exit 2) sin credenciales.
-- `npm run test:integridad` (`scripts/test-integridad.js`): 16 invariantes de solo lectura
+- `npm run test:integridad` (`scripts/test-integridad.js`): 20 invariantes de solo lectura
   sobre cualquier base. Fuerza `default_transaction_read_only=on`. Exit 1 si hay FAIL.
 - `npm run test:e2e` (`scripts/test-e2e.js`): crea `siga_uc_e2e`, carga el dump y las
-  migraciones (incluida H49), arranca el backend en el puerto 3101, ejecuta 38 flujos y
-  elimina la base con `dropdb --force`. Verificado: **38 PASS, 0 FAIL** y exit 0 (incluye
-  H48, H49, H50, H51, H63 y el rollover 6.2).
+  migraciones (incluidas H49 y H73), arranca el backend en el puerto 3101, ejecuta 54 flujos
+  y elimina la base con `dropdb --force`. Verificado: **54 PASS, 0 FAIL** y exit 0 (incluye
+  H48, H49, H50, H51, H63, rollover 6.2 y promociones 6.3).
 - Integridad local del 22/11/2026: **14 PASS, 2 FAIL** por datos de seed reales
   (invariantes 4 y 8: 5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El
   invariante 7 ya no marca al ADMIN: solo exige ficha a ESTUDIANTE (rol 4) y
@@ -273,7 +330,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 - `database/seed_produccion.sql` crea solo catálogos, una caja y un ADMIN inicial
   (`74829102`, `requiere_cambio_password=TRUE`) con contraseña recibida por
   `-v admin_password` y año por `-v anio_lectivo`. En la base desechable de 6.2 (2027):
-  **16 PASS, 0 FAIL**, **0 alumnos, 0 pagos, 0 pensiones, 1 usuario**, 41 tablas.
+  **20 PASS, 0 FAIL**, **0 alumnos, 0 pagos, 0 pensiones, 1 usuario**, 43 tablas.
   Login inicial bloqueado con `CAMBIO_PASSWORD_REQUERIDO`; tras cambiarla, login y
   `/alumnos` funcionan.
 - `POST /api/notificaciones/masivo` acepta `TODOS`, `PERSONAL`, `ROL`, `GRADO` y
@@ -480,7 +537,7 @@ En esta fase **no** se prepara el despliegue definitivo.
   `PENDIENTE` sin tocar montos ni descuentos. El generador mensual global no cambió.
 - La migración H45 se aplicó dos veces en `siga_uc_h45` (idempotente) y la base se
   eliminó; `siga_uc` no se tocó.
-- H47: Supabase ya tiene **40 tablas** y local **42** (41 base + `horarios_h47_backup`);
+- H47: Supabase ya tiene **40 tablas** y local **44** (43 base + `horarios_h47_backup`);
   H49 está solo en local. Una base creada con `siga_uc_completo.sql` debe aplicar
   `migracion_h47_horarios.sql` y `migracion_h49_multianio_base.sql` a mano; el dump no se
   editó.
@@ -530,8 +587,8 @@ En esta fase **no** se prepara el despliegue definitivo.
   están aplicadas en `siga-uc-prod`.
 - **Credenciales:** el ADMIN local y el ADMIN de producción **no comparten contraseña**.
   La de producción es la real del dueño y no está en `.env`.
-- H47: `test:integridad` espera 41 tablas base + H49; `test:e2e` aplica H45, H47, H48, H61
-  y H49. `npm run test:h47-generador` no toca BD (**4 PASS**).
+- H47: `test:integridad` espera 43 tablas base (H49 + H73); `test:e2e` aplica H45, H47,
+  H48, H61, H49 y H73. `npm run test:h47-generador` no toca BD (**4 PASS**).
 - H47: el frontend viejo llama al endpoint retirado `/horarios/grado/:id_grado`; desplegar
   backend y frontend juntos o esperar 404 en la vista del alumno.
 - H50: `/caja/actual` devuelve `total_ingresos_efectivo`, `total_ingresos_digital`,
@@ -612,30 +669,52 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Estado 6.2:** implementado, verificado y **desplegado en Render**; no aplicado/activado
   en Supabase. `2026` sigue activo allí y `/admin/anios-lectivos` muestra 503 hasta aplicar
   H49.
+- **6.3:** requiere H73 aplicada después de H49. No hay `TRASLADADO`; el traslado es
+  `RETIRADO` + `alumnos.condicion='Traslado'` + `metadata.retiro.motivo='TRASLADO'`.
+- **6.3:** el preview es de solo lectura. El hash incluye años, política, decisiones,
+  conteos y bloqueos de origen; **no** incluye las matrículas creadas en el destino, para que
+  el confirm idempotente conserve el mismo hash. No “arreglar” eso incluyéndolas.
+- **6.3:** el confirm crea matrícula/expediente/pre-ticket; no crea usuario, QR, notas,
+  asistencia, pagos, pensiones ni pre-tickets heredados. `PendientePago` si hay MATRICULA;
+  si no, `Matriculado` con advertencia.
+- **6.3:** un override exige `permite_override=true` y motivo ≥5; sin eso, el confirm
+  responde `422 PROMOCION_BLOQUEADA`. La asistencia bajo umbral es advertencia, no exclusión.
+- **6.3:** la anulación borra la matrícula destino solo si no hay pagos/notas/asistencia/
+  pensiones/pre-tickets pagados; si hay actividad, `409 PROMOCION_CON_ACTIVIDAD`. El
+  reintento se enlaza con `id_promocion_reversa`. La promoción no activa el año.
+- **6.3:** `SECRETARIA` puede listar políticas, previsualizar y consultar promociones por
+  API; confirmar y anular son solo ADMIN. DOCENTE/ESTUDIANTE reciben 403.
+- **Estado 6.3:** implementado y verificado solo en local; H73 aplicada en `siga_uc`, **no**
+  en Supabase. 54 E2E, 20 integridad en base nueva y 18/2 en local. 6.3 no desplegada en
+  Render; 2026 sigue activo en Supabase y 2027 no se activa.
 - H49: el rollback está probado solo en bases desechables; aborta si detecta varias
   matrículas por persona o promociones con filas. **No ejecutarlo en Supabase.**
 
 ---
 
-## 7. Próximo paso exacto (H49 en Supabase; 6.2 ya desplegada)
+## 7. Próximo paso exacto (H49 y H73 en Supabase)
 
-Las Fases 6.1 y 6.2 están desplegadas en Render (`f05ecc5`). Supabase sigue sin H49, así que
-`/admin/anios-lectivos` responde `503 H49_NO_APLICADO`. No aplicar la migración sin
-autorización explícita y backup previo.
+Las Fases 6.1 y 6.2 están desplegadas en Render (`f05ecc5`); la 6.3 está implementada y
+verificada **solo en local**. Supabase sigue sin H49, así que `/admin/anios-lectivos`
+responde `503 H49_NO_APLICADO`. No aplicar H49/H73 sin autorización explícita y backup
+previo.
 
 1. Hacer backup de Supabase y verificar que se puede restaurar.
 2. Ejecutar el preflight de duplicados y de grados sin orden.
 3. **Antes** de aplicar H49: editar `_param_anio` a 2026 (demo) y pegar
    `database/migracion_h49_multianio_base.sql` completo en SQL Editor (no usa `psql` vars).
-4. Verificar 41 tablas, `anios_lectivos` 2026 ACTIVO, `grados.orden` 1–5, 0 actas,
+4. Verificar 41 tablas tras H49, `anios_lectivos` 2026 ACTIVO, `grados.orden` 1–5, 0 actas,
    145 horarios PUBLICADO y 5 docentes demo.
-5. Reiniciar el backend en Render y verificar `/api/health` y `/api/configuracion` (2026).
-6. Aplicar a mano `database/migracion_h61_dia_semana.sql` si aún no está.
-7. Mantener 2026 activo; no activar 2027 hasta cerrar 6.3. El rollback H49 **no** se
-   ejecuta en producción.
-8. 6.2 ya está desplegada; tras aplicar H49, probar en Supabase **solo el preview** (no
-   confirmar ni activar). El confirm/activación/reversión se validan en una base desechable.
-   La UI muestra la advertencia de alumnos sin matrícula.
+5. Aplicar a mano `database/migracion_h61_dia_semana.sql` si aún no está.
+6. Aplicar a mano `database/migracion_h73_promociones.sql` **después** de H49. Verificar
+   **43 tablas**, `politicas_promocion` con la política estándar y `promociones` vacía.
+7. Reiniciar el backend en Render y verificar `/api/health`, `/api/configuracion` (2026),
+   `/api/anios-lectivos` y `/api/promociones/politicas`.
+8. Mantener 2026 activo; no activar 2027 hasta la aprobación del colegio. El rollback H49/H73
+   **no** se ejecuta en producción.
+9. Tras aplicar H49/H73, probar en Supabase **solo previews** de rollover y promoción (no
+   confirmar, no activar, no anular). El confirm/activación/reversión se validan en una base
+   desechable. La UI muestra las advertencias de alumnos sin matrícula y de actividad.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
@@ -655,9 +734,10 @@ Nada de esta lista se hace en la fase actual.
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. **H49/6.1 y 6.2 están desplegadas en Render (`f05ecc5`), pero H49 no aplicada en Supabase**: requiere backup y autorización. **6.2 no agrega migración**, solo código/UI sobre H49. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
-| **Integridad** | `npm run test:integridad` contra la base definitiva: 16 PASS |
-| **Multi-año** | 6.2 rollover implementado, verificado y **desplegado en Render**; 6.3 promoción sigue pendiente. 2026 debe seguir activo en Supabase hasta cerrar 6.3 |
+| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. **H49/6.1 y 6.2 están desplegadas en Render (`f05ecc5`), pero H49 no aplicada en Supabase**: requiere backup y autorización. **H73/6.3 está solo en local**, pendiente de aplicar después de H49 y de desplegar. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Integridad** | `npm run test:integridad` contra la base definitiva: 20 PASS |
+| **Multi-año** | 6.2 rollover desplegado en Render; **6.3 promoción implementada y verificada solo en local**, pendiente de despliegue y de H73 en Supabase. 6.4 histórico sigue pendiente. 2026 debe seguir activo en Supabase hasta la aprobación |
+| **Promociones** | 6.3 no crea usuarios ni QR; no copia notas/pagos/pensiones; no activa el año. La política estándar se siembra con el año ACTIVO. Revisar con dirección/UGEL los criterios de repitencia y transición |
 
 ---
 
@@ -665,26 +745,27 @@ Nada de esta lista se hace en la fase actual.
 
 ```powershell
 git log -1 --oneline
-# Solo si la base aún no tiene H47/H48/H61/H49:
+# Solo si la base aún no tiene H47/H48/H61/H49/H73:
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT anio, estado FROM anios_lectivos ORDER BY anio; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
 # Requiere el backend corriendo en localhost:3000
 curl.exe -s http://localhost:3000/api/health
 cd siga-uc-backend; npm run smoke          # 11 PASS, exit 0
-npm run test:integridad                    # 16 invariantes; revisar FAIL reales
-npm run test:e2e                           # 38 PASS, exit 0; elimina siga_uc_e2e
+npm run test:integridad                    # 20 invariantes; revisar FAIL reales
+npm run test:e2e                           # 54 PASS, exit 0; elimina siga_uc_e2e
 npm run test:h47-generador                 # 4 PASS; no toca BD
 ```
 
-El primero confirma el commit; los `psql` aplican H47/H48/H61/H49 si faltan; el conteo debe
-devolver **41** sin backup o **42** con `horarios_h47_backup`; `anios_lectivos` debe tener un
-solo `ACTIVO`; el health debe devolver `success: true` y `database: "ok"` **con el backend en
-marcha**; el smoke debe terminar en **11 PASS, 0 FAIL**; integridad puede reportar
-violaciones reales de seed; E2E debe terminar en **38 PASS, 0 FAIL** y dejar `siga_uc_e2e`
-eliminada; el generador en **4 PASS**. La base nueva de producción debe dar **16 PASS**.
+El primero confirma el commit; los `psql` aplican H47/H48/H61/H49/H73 si faltan; el conteo
+debe devolver **43** sin backup o **44** con `horarios_h47_backup`; `anios_lectivos` debe
+tener un solo `ACTIVO`; el health debe devolver `success: true` y `database: "ok"` **con el
+backend en marcha**; el smoke debe terminar en **11 PASS, 0 FAIL**; integridad puede reportar
+violaciones reales de seed; E2E debe terminar en **54 PASS, 0 FAIL** y dejar `siga_uc_e2e`
+eliminada; el generador en **4 PASS**. La base nueva de producción debe dar **20 PASS**.
 
 Para una base **definitiva** (solo después de la aprobación):
 
@@ -700,5 +781,6 @@ psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
-cd siga-uc-backend; npm run test:integridad   # 16 PASS
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+cd siga-uc-backend; npm run test:integridad   # 20 PASS
 ```

@@ -166,15 +166,54 @@ rollover de 6.2. No se usa en la operación normal.
 **Recomendación:** no volver a introducir literales `2026` en controllers, DAOs ni componentes;
 usar `getAnioLectivo()` en backend y `ConfiguracionService.anioLectivo` en frontend.
 
+### 3.6 Promociones anuales (Fase 6.3)
+
+La promoción crea las matrículas del año destino. **No activa el año** y no copia notas,
+asistencia, pagos, pensiones ni pre-tickets. Requiere H73 aplicada y la oferta del destino
+creada por el rollover.
+
+1. Hacer backup y confirmar que H73 está aplicada:
+   ```sql
+   SELECT COUNT(*) FROM politicas_promocion;
+   SELECT COUNT(*) FROM promociones;
+   ```
+2. En **ADMIN → Promoción de Alumnos**, elegir origen, destino, política y grado.
+3. Pulsar **Previsualizar**. Revisar actas, notas, asistencia, deuda, becas, resultado
+   sugerido y bloqueos. El preview no escribe.
+4. Si un alumno debe apartarse de la sugerencia, elegir otro resultado, escribir un motivo
+   (mínimo 5 caracteres) y **volver a previsualizar**. Solo funciona si la política tiene
+   `permite_override=true`.
+5. Marcar la responsabilidad y **Confirmar promoción**. Se crean:
+   - matrícula del año destino (`PendientePago` si hay MATRICULA; si no, `Matriculado` con
+     advertencia);
+   - expediente nuevo (`congelado=false`);
+   - pre-ticket `MATRICULA` pendiente si existe el concepto;
+   - promoción `CONFIRMADA` con metadata/evidencia.
+   No se crea usuario, QR ni pensión.
+6. **Anular** una promoción confirmada solo si la matrícula destino no tiene pagos, notas,
+   asistencia, pensiones ni pre-tickets pagados. La anulación conserva la fila, borra la
+   matrícula/expediente/pre-ticket y permite reintentar; el reintento se enlaza con
+   `id_promocion_reversa`.
+7. Si el destino ya tiene actividad, la API responde `409 PROMOCION_CON_ACTIVIDAD`; no se
+   borra nada. Se corrige con un plan de reconciliación auditado.
+8. Revisar la bitácora: `PREVISUALIZAR`, `CONFIRMAR`, `ANULAR`, `CREAR_POLITICA` y
+   `ACTUALIZAR_POLITICA` en el módulo **Promociones**.
+
+> Política: `permite_override` es `false` por defecto. La repitencia se activa con
+> `criterio_academico.modo_repitencia='UMBRAL'`, `min_cursos_desaprobados` y
+> `notas_desaprobadas`. Las actas/notas se exigen según `requiere_actas_cerradas`,
+> `requiere_notas_finales`, `bimestres_requeridos` y `notas_bimestre`. La asistencia bajo
+> umbral es una advertencia, no una exclusión automática.
+
 ---
 
 ## 4. Testeo
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(16 invariantes de datos, solo lectura) y **E2E** (38 flujos sobre una base desechable,
-incluidos los de multi-año H49 y rollover 6.2). El resto de la estrategia sigue siendo
-manual y por rol.
+(20 invariantes de datos, solo lectura) y **E2E** (54 flujos sobre una base desechable,
+incluidos los de multi-año H49, rollover 6.2 y promociones 6.3). El resto de la estrategia
+sigue siendo manual y por rol.
 
 ### 4.1 Preparación
 
@@ -350,11 +389,13 @@ cd siga-uc-backend
 npm run test:integridad
 ```
 
-- Verifica **16 invariantes**: 41 tablas base, índices críticos de pagos/boletas y multi-año
-  (`uq_alumno_*_anio`, `uq_anio_activo`), pagos/pensiones/boletas coherentes, movimientos de
-  caja, usuarios activos asociados, escala AD/A/B/C, alumnos matriculados con usuario activo,
-  matrículas anuales con grado del mismo año, `grados.orden` válido, y carga/tutores con
-  `id_grado` del mismo `anio_lectivo`.
+- Verifica **20 invariantes**: 43 tablas base, índices críticos de pagos/boletas, multi-año
+  y promociones (`uq_alumno_*_anio`, `uq_anio_activo`, `uq_promocion_*`,
+  `uq_politica_*`), pagos/pensiones/boletas coherentes, movimientos de caja, usuarios
+  activos asociados, escala AD/A/B/C, alumnos matriculados con usuario activo, matrículas
+  anuales con grado del mismo año, `grados.orden` válido, carga/tutores del mismo año y las
+  invariantes de promociones (una confirmada por origen, destino del año/grado correcto,
+  egresados/retirados sin destino y política única).
 - Fuerza `default_transaction_read_only=on`: no escribe nada.
 - Usa `DATABASE_URL` si existe; si no, `DB_*`. Puede ejecutarse contra local, una réplica
   de lectura o producción.
@@ -363,11 +404,12 @@ npm run test:integridad
 - **Cuándo:** después de restaurar un backup, antes de cada despliegue y semanalmente.
   En producción, usar preferentemente una conexión/replica de solo lectura.
 
-> En la base local del 21/11/2026 hay violaciones reales de seed en los invariantes 4 y 8
+> En la base local del 22/11/2026 hay violaciones reales de seed en los invariantes 4 y 8
 > (5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El invariante 7 solo exige ficha
 > a ESTUDIANTE/DOCENTE; ADMIN y SECRETARIA están exentos. No son fallos de la suite: deben
-> revisarse antes de cargar datos reales. Una base de producción sembrada con
-> `siga_uc.sql` + `seed_produccion.sql` + migraciones (incluida H49) da **16 PASS**.
+> revisarse antes de cargar datos reales. La base local da **18 PASS / 2 FAIL**; una base de
+> producción sembrada con `siga_uc.sql` + `seed_produccion.sql` + migraciones (incluidas H49
+> y H73) da **20 PASS**.
 
 #### `test:e2e` — base desechable
 
@@ -377,16 +419,20 @@ npm run test:e2e
 ```
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
-  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`), arranca el backend en
-  `http://localhost:3101` y ejecuta **38 flujos**: alta/retiro de alumno, matrícula, pensión,
+  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`), arranca el backend en
+  `http://localhost:3101` y ejecuta **54 flujos**: alta/retiro de alumno, matrícula, pensión,
   doble pago, anulación, doble anulación, calificaciones, guardado masivo, PDFs, RBAC,
   auditoría, cierre/reapertura real de actas, bloqueo global, caja con efectivo/Yape (con y
-  sin anulación), PDF de acta ADMIN-only, multi-año (41 tablas, uniques por año, apoderado
+  sin anulación), PDF de acta ADMIN-only, multi-año (43 tablas, uniques por año, apoderado
   compartido, login sin matrícula activa, consultas por año, retiro con matrícula en otro año,
-  login con año activo 2027 y pre-tickets/pendientes sin mezclar años) y rollover 6.2:
-  preview sin escrituras, confirm idempotente, oferta distinta, docente inactivo/sobrecarga,
+  login con año activo 2027 y pre-tickets/pendientes sin mezclar años), rollover 6.2
+  (preview sin escrituras, confirm idempotente, oferta distinta, docente inactivo/sobrecarga,
   hash desactualizado, activación con caché y auditoría, activación sin oferta, reversión con
-  y sin actividad, RBAC del módulo y rollback forzado sin filas parciales.
+  y sin actividad, RBAC del módulo y rollback forzado sin filas parciales) y promociones 6.3
+  (política por defecto, preview, confirm normal, egresado, repitente, retirado/traslado,
+  bloqueo por actas/notas y override, asistencia bajo umbral, doble confirmación, anulación
+  sin/con actividad, reintento con reversa, rollback forzado, QR/código/pre-ticket, RBAC,
+  auditoría e histórico).
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -394,7 +440,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **38 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **54 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -522,8 +568,8 @@ WHERE m.id_movimiento IS NULL;
 | Mejora | Beneficio |
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
-| ~~Integridad de datos~~ ✅ | 16 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 38 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~Integridad de datos~~ ✅ | 20 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
+| ~~E2E de flujos críticos~~ ✅ | 54 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

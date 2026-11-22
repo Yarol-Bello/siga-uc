@@ -14,6 +14,7 @@ El backup `siga_uc_backup.sql` no se versiona.
 |---|---|---|
 | Seguridad | `roles`, `usuarios`, `recuperacion_password`, `personal`, `asistencia_personal`, `bitacora_auditoria`, `notificaciones`, `credenciales_qr` | 8 |
 | Multi-año | `anios_lectivos` | 1 |
+| Promociones | `promociones`, `politicas_promocion` | 2 |
 | Curricular | `grados`, `cursos`, `competencias`, `carga_curricular`, `tutores_grado`, `horarios`, `periodos_clase`, `escala_calificacion` | 8 |
 | Alumnos | `apoderados`, `alumnos`, `expediente_alumno` | 3 |
 | Asistencia | `asistencia_alumnos`, `resumen_asistencia_curso` | 2 |
@@ -22,7 +23,7 @@ El backup `siga_uc_backup.sql` no se versiona.
 | Caja | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` | 4 |
 | SIAGIE | `exportaciones_siagie`, `estado_carga_docentes` | 2 |
 | Reportes | `cuadro_merito`, `alumnos_riesgo` | 2 |
-| **Total** | | **41** |
+| **Total** | | **43** |
 
 > **Tablas de solo estructura / históricas:** `resumen_asistencia_curso`, `libretas`,
 > `cuadro_merito`, `alumnos_riesgo` y `estado_carga_docentes` existen en el esquema, pero el
@@ -388,6 +389,34 @@ DELETE SET NULL · `fecha_cierre` · `estado` CHECK `CUADRADO/SOBRANTE/FALTANTE`
 `id_riesgo` PK · `id_alumno` FK · `id_grado` FK · `bimestre` · `cursos_logro_c` text · `id_tutor`
 FK → `personal` ON DELETE SET NULL · `accion_correctiva` text · UNIQUE (`id_alumno`,
 `bimestre`).
+
+### 3.9 Promociones (H73/6.3)
+
+#### `politicas_promocion`
+`id_politica` PK serial · `anio_origen` · `anio_destino` nullable · `nombre` · `activo` ·
+`requiere_actas_cerradas` · `requiere_notas_finales` · `umbral_asistencia` (0–100 o NULL) ·
+`criterio_academico` jsonb descriptivo (**no** codifica la norma nacional) ·
+`permite_override` (default `FALSE`) · `creado_por` FK → `usuarios` ON DELETE SET NULL ·
+`fecha_creacion`. CHECK `anio_destino > anio_origen` cuando no es NULL.
+UNIQUE parcial `(anio_origen, anio_destino, nombre)` con destino y `(anio_origen, nombre)`
+sin destino.
+
+`criterio_academico` admite `modo_repitencia` (`DESACTIVADA`/`UMBRAL`), `notas_bimestre`
+(1–4), `bimestres_requeridos`, `min_cursos_desaprobados`, `notas_desaprobadas`,
+`transiciones` y `observacion`. El sistema solo aplica lo que el ADMIN configure.
+
+#### `promociones`
+`id_promocion` PK bigserial · `id_alumno_origen` FK → `alumnos` RESTRICT ·
+`id_alumno_destino` FK → `alumnos` SET NULL · `anio_origen` · `anio_destino` nullable ·
+`id_grado_origen` FK → `grados` RESTRICT · `id_grado_destino` FK → `grados` RESTRICT ·
+`estado` (`PREVISUALIZADA/CONFIRMADA/ANULADA/ERROR`) · `resultado`
+(`PROMOVIDO/REPITENTE/EGRESADO/RETIRADO/PENDIENTE`) · `es_override` · `motivo` ·
+`observacion` · `id_usuario` FK → `usuarios` SET NULL · `fecha_creacion` ·
+`fecha_confirmacion` · `id_promocion_reversa` FK a sí misma SET NULL · `metadata` jsonb.
+
+Índices parciales: una sola promoción `CONFIRMADA` por `id_alumno_origen` y una sola
+matrícula destino por promoción confirmada. No usa `ON DELETE CASCADE`; no agrega
+`TRASLADADO` (traslado = `RETIRADO` + condición `Traslado`).
 
 ---
 

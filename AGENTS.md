@@ -32,11 +32,11 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | Excel | ExcelJS + Multer (SIAGIE) |
 | PDF | PDFKit + fuentes estándar (libretas) |
 | SQL | Crudo parametrizado (sin ORM) |
-| Tests/CI/Docker | No existen |
+| Tests/CI/Docker | Suites manuales (`smoke`, integridad, E2E); sin CI ni Docker |
 
-**Conteos actuales:** 41 tablas base (42 en local con `horarios_h47_backup`) · 119 endpoints ·
-4 roles · 16 routers · 16 controladores · 24 servicios · 20 DAOs · 86 archivos JS backend ·
-142 archivos frontend (59 TS).
+**Conteos actuales:** 43 tablas base (44 en local con `horarios_h47_backup`) · 127 endpoints ·
+4 roles · 17 routers · 17 controladores · 26 servicios · 22 DAOs · 92 archivos JS backend ·
+146 archivos frontend (61 TS).
 
 ---
 
@@ -176,6 +176,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Carga curricular | `cargaCurricularRoutes/...` | `admin/carga-curricular` |
 | Horarios | `horarioRoutes/...` | `admin/horarios`, `secretaria/horarios`, `docente/horario`, `estudiante/horario` |
 | Años lectivos / Rollover | `anioLectivoRoutes/Controller/Service`, `rolloverService/Dao` | `admin/anios-lectivos` |
+| Promociones | `promocionRoutes/Controller/Service`, `politicaPromocionService/Dao` | `admin/promociones` |
 | Asistencia | `asistenciaRoutes/...` | `docente/asistencia`, `admin/asistencia-qr`, `estudiante/asistencia` |
 | Calificaciones | `calificacionRoutes/...` | `docente/notas`, `estudiante/dashboard`, `docente/ficha` |
 | Tesorería | `tesoreriaRoutes/...` | `secretaria/tesoreria` (wrapper admin) |
@@ -224,6 +225,30 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - En local `siga_uc` las 142 h de carga están en el ADMIN y el preview bloquea por
   sobrecapacidad; es correcto. La demo de Supabase tiene 5 docentes con 30/30/30/30/25 h y
   el E2E reequilibra su base desechable.
+- **6.3 no se despliega ni aplica en Supabase sin autorización.** La migración
+  `migracion_h73_promociones.sql` requiere H49 y crea `promociones`/`politicas_promocion`
+  (43 tablas base; 44 en local con `horarios_h47_backup`). Si faltan las tablas, los
+  endpoints responden `503 PROMOCIONES_NO_APLICADAS`.
+- La promoción es **recomendación + confirmación humana**; no se codifica la norma peruana.
+  La política (`politicas_promocion`) define actas, notas, umbral de asistencia, repitencia y
+  `permite_override` (default `FALSE`).
+- El preview de promoción es **solo lectura** y devuelve `preview_hash`. El confirm recalcula
+  el hash dentro de la transacción; si cambió, `409 PREVIEW_DESACTUALIZADA`. El hash incluye
+  años, política, decisiones, conteos y bloqueos de origen; **no** incluye las matrículas
+  creadas en el destino, para permitir el confirm idempotente.
+- El confirm crea **matrícula destino, expediente y pre-ticket MATRICULA**; no crea usuario,
+  QR, notas, asistencia, pagos, pensiones ni pre-tickets heredados. `PendientePago` si hay
+  MATRICULA; si no, `Matriculado` con advertencia.
+- Egresados y retirados/traslados **no** crean matrícula destino. El traslado es `RETIRADO` +
+  `alumnos.condicion='Traslado'` + `metadata.retiro.motivo='TRASLADO'`; no existe
+  `TRASLADADO`.
+- La anulación solo procede si el destino no tiene pagos, notas, asistencia, pensiones ni
+  pre-tickets pagados; si tiene actividad, `409 PROMOCION_CON_ACTIVIDAD`. El reintento enlaza
+  la fila anterior con `id_promocion_reversa`. La promoción **no activa** el año.
+- La pantalla ADMIN es `/admin/promociones`; SECRETARIA puede listar/previsualizar por API,
+  pero no confirmar ni anular. DOCENTE/ESTUDIANTE reciben 403.
+- Estado 6.3: implementado y verificado solo en local; H73 aplicada en `siga_uc`, **no** en
+  Supabase. 2026 sigue activo allí y 2027 no se activa.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y
@@ -250,8 +275,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   frontend.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
-- Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (16) y
-  `npm run test:e2e` (38, base desechable); el resto del testeo es manual.
+- Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (20) y
+  `npm run test:e2e` (54, base desechable); el resto del testeo es manual.
 
 ---
 
@@ -262,8 +287,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Visión, alcance, glosario | `documentacion/01-VISION-GENERAL-Y-ALCANCE.md` |
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
-| 41 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 119 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 43 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
+| 127 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |
