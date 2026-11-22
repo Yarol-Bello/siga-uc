@@ -142,8 +142,6 @@ calificaciones, asistencias, movimientos, bitácora ni becas.
 
 > **No mezclar escenarios.** `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes:
 > cargar ambos duplica objetos (`ya existe una función «calcular_nota_final_area»`).
-> `fix_tesoreria_pagos.sql` es histórico y ya está incorporado en el dump; no se ejecuta
-> en instalaciones nuevas.
 
 ### 3.2 Verificar
 

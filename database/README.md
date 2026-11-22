@@ -69,7 +69,6 @@ caja, bitácora ni becas.
 | `migracion_h07_auditoria.sql` | Índices `ix_bitacora_fecha` e `ix_bitacora_usuario` para la bitácora. |
 | `migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` al CHECK de `pensiones` y regulariza deuda futura de alumnos ya retirados. |
 | `migracion_h47_horarios.sql` | Crea `periodos_clase`, reemplaza `horarios` por el modelo con `id_carga`/período/estado, migra las filas antiguas a `horarios_h47_backup` y agrega restricciones y triggers. |
-| `fix_tesoreria_pagos.sql` | **Histórico**: corrige el trigger de caja y genera pre-tickets de matrícula. Ya está incorporado en el esquema actual (`siga_uc.sql`) y en el dump; no se ejecuta en instalaciones nuevas. |
 | `preparar_anio_lectivo.sql` | Utilidad idempotente para copiar conceptos `MATRICULA`/`PENSION` a un año nuevo (`-v anio=2027`). |
 | `siga_uc_backup.sql` | Backup local con datos. Ignorado por Git; no se usa para instalar. |
 

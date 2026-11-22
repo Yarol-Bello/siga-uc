@@ -56,7 +56,9 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Fecha:** 21/11/2026
 - **Commit base de esta sesión:** `22e06f6 fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)`
 - **Código desplegado en Render (backend y frontend Live):** `64a90dc`.
-- **Último commit del repo:** `a9acf24` (script de demo; solo toca `database/`, no redepliega).
+- **Último commit de código/datos:** `a9acf24` (script de demo; solo toca `database/`,
+  no redepliega).
+- **Commits de cierre:** `b9c92a8` (handoff) y el commit de limpieza (hash en `git log -1`).
 - **Commits de esta sesión:** aviso de correo en modo prueba, documentación de la fase de
   demostración, **H47** (esquema+CRUD `cf3c988`, generador `e65f60f`, UI `65e73a3`) y
   **datos demo H47** (`a9acf24`).
