@@ -101,7 +101,7 @@ TZ=America/Lima
 
 #### A. Desarrollo / demostración
 
-`siga_uc_completo.sql` es un **dump completo**: esquema (39 tablas), funciones, triggers,
+`siga_uc_completo.sql` es un **dump completo**: esquema (40 tablas), funciones, triggers,
 índices y **datos ficticios de demostración** (21 alumnos, apoderados, pagos y pensiones de
 ejemplo). **Nunca debe usarse en producción**: contiene más de 140 pensiones marcadas
 `PAGADO` sin un pago que las respalde (144 medidas por `test:integridad` en la base local).
@@ -114,6 +114,7 @@ psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -128,6 +129,7 @@ psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -149,7 +151,7 @@ calificaciones, asistencias, movimientos, bitácora ni becas.
 psql -U postgres -d siga_uc -c "\dt"
 ```
 
-Debe listar **39 tablas** (no 26; la documentación antigua está mal).
+Debe listar **40 tablas** (no 26; la documentación antigua está mal).
 
 ```powershell
 psql -U postgres -d siga_uc -c "SELECT indexname FROM pg_indexes WHERE indexname = 'ux_pago_pension_activo';"
@@ -411,7 +413,7 @@ psql -U postgres -d siga_uc_restore_test -c "SELECT COUNT(*) FROM information_sc
 dropdb -U postgres siga_uc_restore_test
 ```
 
-La restauración de prueba debe devolver **39 tablas** y datos en `usuarios`, `alumnos`, etc.
+La restauración de prueba debe devolver **40 tablas** y datos en `usuarios`, `alumnos`, etc.
 
 ### 9.3 Variables para Supabase
 
@@ -532,9 +534,10 @@ Crear una tarea diaria a las 02:00:
 | `siga-uc-frontend/src/environments/environment.prod.ts` | API producción |
 | `siga-uc-frontend/angular.json` | Build, budgets, fileReplacements |
 | `database/siga_uc_completo.sql` | Demo: esquema + datos ficticios; no usar en producción |
-| `database/siga_uc.sql` | Esquema base para producción (39 tablas, sin datos) |
+| `database/siga_uc.sql` | Esquema base para producción (40 tablas, sin datos) |
 | `database/seed_produccion.sql` | Catálogos + admin inicial; requiere `-v admin_password` |
 | `database/migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` a pensiones y regulariza deuda futura de retirados |
+| `database/migracion_h47_horarios.sql` | Crea `periodos_clase`, reemplaza `horarios` y agrega restricciones/triggers de horarios |
 | `database/migracion_*.sql` | Parches idempotentes para bases existentes |
 | `database/siga_uc_backup.sql` | Backup local (ignorado) |
 

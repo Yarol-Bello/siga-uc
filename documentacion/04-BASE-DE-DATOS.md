@@ -13,7 +13,7 @@ El backup `siga_uc_backup.sql` no se versiona.
 | Módulo | Tablas | Total |
 |---|---|---|
 | Seguridad | `roles`, `usuarios`, `recuperacion_password`, `personal`, `asistencia_personal`, `bitacora_auditoria`, `notificaciones`, `credenciales_qr` | 8 |
-| Curricular | `grados`, `cursos`, `competencias`, `carga_curricular`, `tutores_grado`, `horarios`, `escala_calificacion` | 7 |
+| Curricular | `grados`, `cursos`, `competencias`, `carga_curricular`, `tutores_grado`, `horarios`, `periodos_clase`, `escala_calificacion` | 8 |
 | Alumnos | `apoderados`, `alumnos`, `expediente_alumno` | 3 |
 | Asistencia | `asistencia_alumnos`, `resumen_asistencia_curso` | 2 |
 | Calificaciones | `calificaciones`, `notas_finales_area`, `conclusiones_descriptivas`, `actas_bimestrales`, `libretas` | 5 |
@@ -21,7 +21,7 @@ El backup `siga_uc_backup.sql` no se versiona.
 | Caja | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` | 4 |
 | SIAGIE | `exportaciones_siagie`, `estado_carga_docentes` | 2 |
 | Reportes | `cuadro_merito`, `alumnos_riesgo` | 2 |
-| **Total** | | **39** |
+| **Total** | | **40** |
 
 > **Tablas de solo estructura / históricas:** `resumen_asistencia_curso`, `libretas`,
 > `cuadro_merito`, `alumnos_riesgo` y `estado_carga_docentes` existen en el esquema, pero el
@@ -191,11 +191,21 @@ DELETE CASCADE · `id_personal` FK → `personal` ON DELETE CASCADE · `anio_lec
 `id_tutor` PK · `id_grado` FK → `grados` ON DELETE CASCADE · `id_personal` FK → `personal` ON
 DELETE CASCADE · `anio_lectivo` integer · UNIQUE (`id_grado`, `anio_lectivo`).
 
+#### `periodos_clase`
+`id_periodo` PK · `anio_lectivo` integer · `nombre` varchar(30) · `orden` integer · `hora_inicio`,
+`hora_fin` · `tipo` CHECK `CLASE/RECREO/ALMUERZO` · `activo` boolean · UNIQUE
+(`anio_lectivo`, `orden`) · trigger que impide solapes de tiempo dentro del mismo año.
+
 #### `horarios`
-`id_horario` PK · `id_grado` FK → `grados` ON DELETE CASCADE · `id_curso` FK → `cursos` ON
-DELETE SET NULL · `id_personal` FK → `personal` ON DELETE SET NULL · `dia_semana` CHECK
-`Lunes..Sábado` · `hora_inicio`, `hora_fin` · `tipo_bloque` CHECK `CLASE/RECREO/ALMUERZO` ·
-CHECK `hora_fin > hora_inicio`.
+`id_horario` PK · `id_carga` FK → `carga_curricular` ON DELETE RESTRICT · `id_grado` FK →
+`grados` RESTRICT · `id_curso` FK → `cursos` RESTRICT · `id_personal` FK → `personal`
+RESTRICT · `anio_lectivo` · `dia_semana` CHECK `Lunes..Viernes` · `id_periodo` FK →
+`periodos_clase` RESTRICT · `aula` nullable · `estado` CHECK `BORRADOR/PUBLICADO` ·
+`creado_por`, `actualizado_por`, `creado_en`, `actualizado_en` · UNIQUE
+(`anio_lectivo`, `id_grado`, `dia_semana`, `id_periodo`) · UNIQUE
+(`anio_lectivo`, `id_personal`, `dia_semana`, `id_periodo`) · índice único parcial de
+`aula` (sin distinguir mayúsculas/espacios) · trigger que valida año/grado/curso/docente
+contra `id_carga` y que el período sea `CLASE`.
 
 #### `escala_calificacion`
 `id_escala` PK · `codigo` varchar(5) UNIQUE CHECK `AD/A/B/C` · `descripcion` · `orden`.
@@ -383,9 +393,10 @@ FK → `personal` ON DELETE SET NULL · `accion_correctiva` text · UNIQUE (`id_
 | `cajas` | `estado` | ABIERTA, CERRADA |
 | `movimientos_caja` | `tipo` | INGRESO, EGRESO, APERTURA |
 | `cierres_caja` | `estado` | CUADRADO, SOBRANTE, FALTANTE |
-| `horarios` | `dia_semana` | Lunes … Sábado |
-| `horarios` | `tipo_bloque` | CLASE, RECREO, ALMUERZO |
-| `horarios` | `hora_fin` | > `hora_inicio` |
+| `horarios` | `dia_semana` | Lunes … Viernes |
+| `periodos_clase` | `tipo` | CLASE, RECREO, ALMUERZO |
+| `periodos_clase` | `hora_fin` | > `hora_inicio` |
+| `horarios` | `estado` | BORRADOR, PUBLICADO |
 | `actas_bimestrales` | `estado` | ABIERTO, CERRADO |
 | `becas` | `tipo` | SOCIOECONOMICA, HERMANOS, EXCELENCIA |
 | `becas` | `porcentaje_descuento` | 0–100 |

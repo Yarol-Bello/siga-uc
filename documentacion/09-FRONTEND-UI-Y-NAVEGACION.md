@@ -33,6 +33,7 @@ index.html
 | `admin/alumnos` | `AdminAlumnosComponent` | hereda | Admin |
 | `admin/personal` | `AdminPersonalComponent` | hereda | Admin |
 | `admin/carga-curricular` | `AdminCargaCurricularComponent` | hereda | Admin |
+| `admin/horarios` | `AdminHorariosComponent` | hereda | Admin |
 | `admin/asistencia-qr` | `AdminAsistenciaQrComponent` | hereda | Admin |
 | `admin/tesoreria` | `AdminTesoreriaComponent` (wrapper) | hereda | Admin |
 | `admin/caja` | `AdminCajaComponent` (wrapper) | hereda | Admin |
@@ -40,6 +41,7 @@ index.html
 | `admin/reportes` | `AdminReportesComponent` | hereda | Admin |
 | `admin/auditoria` | `AdminAuditoriaComponent` | hereda | Admin |
 | `docente` | `DocenteLayoutComponent` | `authGuard`, `roleGuard(['DOCENTE'])` | Docente |
+| `docente/horario` | `DocenteHorarioComponent` | hereda | Docente |
 | `docente/notas` | `DocenteNotasComponent` | hereda | Docente |
 | `docente/asistencia` | `DocenteAsistenciaComponent` | hereda | Docente |
 | `docente/ficha-estudiante` | `DocenteFichaComponent` | hereda | Docente |
@@ -52,6 +54,7 @@ index.html
 | `secretaria/tesoreria` | `SecretariaTesoreriaComponent` | hereda | Secretaría |
 | `secretaria/caja` | `SecretariaCajaComponent` | hereda | Secretaría |
 | `secretaria/asistencia-qr` | `SecretariaAsistenciaQrComponent` (wrapper) | hereda | Secretaría |
+| `secretaria/horarios` | `SecretariaHorariosComponent` | hereda | Secretaría |
 | `en-construccion` | `EnConstruccionComponent` | `authGuard` | Simple |
 | `**` | redirect `/login` | — | — |
 
@@ -187,6 +190,7 @@ Cada layout contiene:
 | Personal & Usuarios | `/admin/personal` |
 | Control Asistencia QR | `/admin/asistencia-qr` |
 | Carga Curricular | `/admin/carga-curricular` |
+| Horarios | `/admin/horarios` |
 | Tesorería y Pensiones | `/admin/tesoreria` |
 | Cuadre de Caja | `/admin/caja` |
 | Exportación SIAGIE | `/admin/siagie` |
@@ -197,6 +201,7 @@ Cada layout contiene:
 | Ítem | Ruta |
 |---|---|
 | Mis Cursos y Horarios | `/docente` |
+| Mi Horario | `/docente/horario` |
 | Control de Asistencia | `/docente/asistencia` |
 | Registro de Notas | `/docente/notas` |
 | Ficha del Estudiante | `/docente/ficha-estudiante` |
@@ -217,6 +222,7 @@ Cada layout contiene:
 | Tesorería y Pensiones | `/secretaria/tesoreria` |
 | Cuadre de Caja | `/secretaria/caja` |
 | Control Asistencia QR | `/secretaria/asistencia-qr` |
+| Horarios | `/secretaria/horarios` |
 
 > El sidebar ADMIN declara `roles` en cada ítem, pero no filtra en el template; el acceso real
 > lo impone la ruta. Secretaría usa su propio sidebar.
@@ -244,7 +250,10 @@ Cada layout contiene:
 | `DocenteReportesComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `GET /notificaciones`, `PUT /notificaciones/:id/leer`, `PUT /leer-todas` |
 | `EstudianteDashboardComponent` | `GET /calificaciones/notas-finales/alumno/:id` |
 | `EstudianteAsistenciaComponent` | `GET /asistencias/alumno/:id/resumen`, `GET /asistencias/alumno/:id?id_curso=` |
-| `EstudianteHorarioComponent` | `GET /horarios/grado/:id` |
+| `EstudianteHorarioComponent` | `GET /horarios/mi-horario` |
+| `AdminHorariosComponent` | `GET/POST/PUT/DELETE /horarios`, `/periodos`, `/generar`, `/publicar`, `/despublicar` |
+| `SecretariaHorariosComponent` | `GET /horarios`, `GET /horarios/periodos` |
+| `DocenteHorarioComponent` | `GET /horarios/mi-horario` |
 | `SecretariaDashboardComponent` | `GET /tesoreria/estadisticas`, `GET /tesoreria/pre-tickets?estado=PENDIENTE` |
 
 > En **Tesorería**, el detalle de un alumno distingue tres estados:

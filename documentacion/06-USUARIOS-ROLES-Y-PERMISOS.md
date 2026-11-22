@@ -98,7 +98,9 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 | Grados / cursos / competencias / escala | ✅ | ✅ | ✅ | ✅ |
 | Carga curricular: consultar | ✅ | ✅ | ✅ | ✅ |
 | Carga curricular: crear / editar / eliminar / tutor | ✅ | ❌ | ❌ | ❌ |
-| Horarios: consultar | ✅ | ✅ | ✅ | ✅ |
+| Horarios: consultar | ✅ | ✅ | 👁 (solo suyo) | 👁 (solo su grado) |
+| Horarios: crear / editar / eliminar / publicar / generar | ✅ | ❌ | ❌ | ❌ |
+| Horarios: malla de períodos | ✅ | 👁 | 👁 | 👁 |
 | Asistencia alumnos: consultar | ✅ | ✅ | ✅ | ✅ |
 | Asistencia alumnos: registrar / masivo | ✅ | ❌ | ✅ | ❌ |
 | Asistencia personal: consultar | ✅ | ✅ | ✅ | ✅ |
@@ -148,7 +150,10 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 | `/secretaria/tesoreria` | Tesorería | ❌ | ✅ | ❌ | ❌ |
 | `/secretaria/caja` | Caja | ❌ | ✅ | ❌ | ❌ |
 | `/secretaria/asistencia-qr` | QR (wrapper) | ❌ | ✅ | ❌ | ❌ |
+| `/secretaria/horarios` | Horarios (solo lectura) | ❌ | ✅ | ❌ | ❌ |
+| `/admin/horarios` | Horarios (edición) | ✅ | ❌ | ❌ | ❌ |
 | `/docente` | Mis cursos | ❌ | ❌ | ✅ | ❌ |
+| `/docente/horario` | Mi horario | ❌ | ❌ | ✅ | ❌ |
 | `/docente/notas` | Notas | ❌ | ❌ | ✅ | ❌ |
 | `/docente/asistencia` | Asistencia | ❌ | ❌ | ✅ | ❌ |
 | `/docente/ficha-estudiante` | Ficha | ❌ | ❌ | ✅ | ❌ |

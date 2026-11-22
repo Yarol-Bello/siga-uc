@@ -442,10 +442,10 @@ Wrapper de `AdminAsistenciaQrComponent`; mismo flujo que §1.5.
 
 ### 5.3 Horario (`/estudiante/horario`)
 
-1. Usa `info_adicional.id_grado` del login.
-2. `GET /api/horarios/grado/:id_grado`.
-3. Agrupa por bloque horario y día (Lunes–Viernes).
-4. Distingue `CLASE`, `RECREO` y `ALMUERZO`.
+1. `GET /api/horarios/mi-horario`; el backend deriva el grado del token, no de la URL.
+2. Solo recibe bloques `PUBLICADO`; si el grado no está publicado, muestra el aviso.
+3. La grilla usa los períodos del año (incluye recreo y almuerzo).
+4. No acepta IDs de grado ni de otro alumno.
 
 ### 5.4 Carné y contraseña
 

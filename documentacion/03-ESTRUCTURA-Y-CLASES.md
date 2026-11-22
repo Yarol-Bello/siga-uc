@@ -1,7 +1,7 @@
 # 03 — Estructura y Mapa de Clases
 
-> Conteo verificado el 21/11/2026: **72 archivos JS backend**, **118 archivos frontend
-> (49 TypeScript)**, **14 routers**, **14 controladores**, **19 servicios** y **15 DAOs**.
+> Conteo verificado el 21/11/2026: **80 archivos JS backend**, **129 archivos frontend
+> (53 TypeScript)**, **15 routers**, **15 controladores**, **21 servicios** y **17 DAOs**.
 
 ## 1. Backend
 
@@ -41,7 +41,8 @@
 |---|---|---|
 | `authController.js` | `login`, `perfil`, `verify`, `logout`, `resetPassword`, `solicitarRecuperacion`, `validarToken`, `restablecerPassword`, `cambiarPassword` | `validationResult` en login y cambio de contraseña; recuperación delega a `recuperacionService` |
 | `configuracionController.js` | `obtener` | Devuelve el año lectivo activo |
-| `academicoController.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion`, `listarHorariosPorGrado` | Solo lectura |
+| `academicoController.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion` | Solo lectura |
+| `horarioController.js` | `listarPeriodos`, CRUD de períodos, `listar`, `miHorario`, CRUD de bloques, `generar`, `publicar`, `despublicar` | H47; ADMIN/SECRETARIA/DOCENTE/ESTUDIANTE según ruta |
 | `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda, año, `limit`, `solo_activos` y paginación (`page`/`pageSize`) |
 | `personalController.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | Roles excluyen ESTUDIANTE |
 | `cargaCurricularController.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `crear`, `actualizar`, `eliminar`, `asignarTutor`, `getTutor` | `listarPorDocente` usa el año lectivo configurado |
@@ -60,7 +61,10 @@
 |---|---|---|
 | `authService.js` | `login`, `verificarToken`, `getPerfil`, `resetPassword`, `cambiarPassword` | Usuario activo, bcrypt, JWT, info adicional por rol, QR en perfil, cambio de contraseña con verificación de la actual |
 | `configuracionService.js` | `obtenerConfiguracion` | Año lectivo activo desde `ANIO_LECTIVO` |
-| `academicoService.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion`, `listarHorariosPorGrado` | 404 si no existe; agrega tutor/competencias |
+| `academicoService.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion` | 404 si no existe; agrega tutor/competencias |
+| `horarioService.js` | `listar`, `miHorario`, CRUD de bloques, `generar`, `publicar`, `despublicar` | Alcance por token, conflictos, publicación y auditoría |
+| `periodoClaseService.js` | `listar`, `crear`, `actualizar`, `eliminar` | Malla por año, sin solapes |
+| `horarioGenerator.js` | `generarHorario` | Algoritmo puro con semilla, sin publicar |
 | `alumnoService.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | DNI único, campos obligatorios, no retirar dos veces |
 | `personalService.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | DNI de 8, cese con motivo, no cesar dos veces |
 | `cargaCurricularService.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `getTutor`, `crear`, `actualizar`, `eliminar`, `asignarTutor` | Campos obligatorios y 404 |
@@ -85,7 +89,9 @@
 | `usuarioDao.js` | `usuarios`, `roles`, `alumnos`, `personal`, `credenciales_qr`, `recuperacion_password` | `findByDni`, `findByCorreo`, `findByDniOCorreo`, `findById`, `getCredencialQR`, reset/actualizar password |
 | `alumnoDao.js` | `apoderados`, `usuarios`, `alumnos`, `expediente_alumno`, `credenciales_qr` | Listado con filtros, búsqueda `unaccent` por DNI/nombre completo, `LIMIT` opcional y `LIMIT/OFFSET` con `contar`; código `EST-XXX`, matrícula transaccional, retiro |
 | `personalDao.js` | `usuarios`, `personal`, `credenciales_qr` | Listado con rol, creación transaccional, cese/reactivación, reset |
-| `gradoDao.js` | `grados`, `alumnos`, `tutores_grado`, `horarios` | Grados con conteo, tutor, horario ordenado por día/hora |
+| `gradoDao.js` | `grados`, `alumnos`, `tutores_grado` | Grados con conteo y tutor |
+| `horarioDao.js` | `horarios`, `carga_curricular`, `periodos_clase` | Listados, conflictos, generación y publicación |
+| `periodoClaseDao.js` | `periodos_clase` | CRUD y solapes |
 | `cursoDao.js` | `cursos`, `competencias`, `escala_calificacion` | Listado con conteo de competencias, escala |
 | `cargaCurricularDao.js` | `carga_curricular`, `tutores_grado` | Listados por grado/docente, asignación de tutor transaccional |
 | `asistenciaDao.js` | `asistencia_alumnos`, `asistencia_personal` | Matriz por curso/fecha, historial, resumen, upserts |
@@ -143,6 +149,8 @@
 | Admin | `AdminAlumnosComponent` | `/admin/alumnos` | ts/html/scss |
 | Admin | `AdminPersonalComponent` | `/admin/personal` | ts/html/scss |
 | Admin | `AdminCargaCurricularComponent` | `/admin/carga-curricular` | ts/html/scss |
+| Admin | `AdminHorariosComponent` | `/admin/horarios` | ts/html/scss |
+| Shared | `HorarioGridComponent` | grilla reutilizable | ts/html/scss |
 | Admin | `AdminAsistenciaQrComponent` | `/admin/asistencia-qr` | ts/html/scss |
 | Admin | `AdminTesoreriaComponent` (wrapper) | `/admin/tesoreria` | ts |
 | Admin | `AdminCajaComponent` (wrapper) | `/admin/caja` | ts |
@@ -151,6 +159,7 @@
 | Admin | `AdminAuditoriaComponent` | `/admin/auditoria` | ts/html/scss |
 | Docente | `DocenteDashboardComponent` | `/docente` | ts/html/scss |
 | Docente | `DocenteNotasComponent` | `/docente/notas` | ts/html/scss |
+| Docente | `DocenteHorarioComponent` | `/docente/horario` | ts/html/scss |
 | Docente | `DocenteAsistenciaComponent` | `/docente/asistencia` | ts/html/scss |
 | Docente | `DocenteFichaComponent` | `/docente/ficha-estudiante` | ts/html/scss |
 | Docente | `DocenteReportesComponent` | `/docente/reportes` | ts/html/scss |
@@ -162,6 +171,7 @@
 | Secretaría | `SecretariaTesoreriaComponent` | `/secretaria/tesoreria` | ts/html/scss |
 | Secretaría | `SecretariaCajaComponent` | `/secretaria/caja` | ts/html/scss |
 | Secretaría | `SecretariaAsistenciaQrComponent` (wrapper) | `/secretaria/asistencia-qr` | ts |
+| Secretaría | `SecretariaHorariosComponent` | `/secretaria/horarios` | ts/html/scss |
 | Genérico | `EnConstruccionComponent` | `/en-construccion` | ts/html/scss |
 
 ### 2.4 Patrón de componente

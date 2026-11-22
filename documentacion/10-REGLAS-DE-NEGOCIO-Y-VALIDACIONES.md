@@ -75,10 +75,16 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-43 | Un curso puede tener varias competencias ordenadas | `competencias.orden` | — |
 | RN-44 | Una carga es única por grado, curso y año | BD `UNIQUE` | Error de llave duplicada |
 | RN-45 | Un grado tiene un solo tutor por año | BD `UNIQUE` + reemplazo transaccional | — |
-| RN-46 | El horario debe tener `hora_fin > hora_inicio` | BD `CHECK` | Error |
-| RN-47 | Los días válidos son Lunes a Sábado | BD `CHECK` | Error |
-| RN-48 | Los bloques son CLASE, RECREO o ALMUERZO | BD `CHECK` | Error |
+| RN-46 | Cada período debe tener `hora_fin > hora_inicio` y no solaparse con otro del mismo año | BD `CHECK` + trigger | 409/400 |
+| RN-47 | Los días válidos son Lunes a Viernes | BD `CHECK` | Error |
+| RN-48 | Los tipos de período son CLASE, RECREO o ALMUERZO; `horarios` solo acepta CLASE | BD `CHECK` + trigger | 409 |
 | RN-49 | El año lectivo por defecto sale de `ANIO_LECTIVO` | `config/academico.js` + controllers/DAOs/UI | Configurable por `.env` |
+| RN-49.1 | Un grado, un docente y un aula no se repiten en el mismo año/día/período | UNIQUE + índice parcial | 409 |
+| RN-49.2 | Máximo 2 bloques del mismo curso por día (configurable) | Service + generador | 409 |
+| RN-49.3 | Solo se crea/edita/genera/publica en el año lectivo activo | Service | 400 |
+| RN-49.4 | BORRADOR visible solo para ADMIN/SECRETARIA; DOCENTE/ESTUDIANTE solo PUBLICADO | Queries de `mi-horario`/listado | Filtrado |
+| RN-49.5 | Publicar exige horas completas, salvo `permitir_parcial` explícito | `horarioService.publicar` | 409 con faltantes |
+| RN-49.6 | Cambiar docente/estructura de una carga con horario publicado exige despublicar; en BORRADOR se actualiza o elimina en la misma transacción | `cargaCurricularService` | 409 |
 
 ## 6. Asistencia de alumnos
 

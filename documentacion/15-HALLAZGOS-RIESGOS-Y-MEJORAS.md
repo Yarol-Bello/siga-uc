@@ -396,7 +396,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Esfuerzo | M |
 | Estado | ✅ Resuelto (21/11/2026): `PUT /tesoreria/pagos/:id/anular` (ADMIN/SECRETARIA) con transacción, `SELECT ... FOR UPDATE`, EGRESO en caja abierta, pensión/pre-ticket a PENDIENTE y boleta con watermark ANULADA; UI en caja e historial |
 
-### H33 — Sin CRUD de horarios, competencias, conclusiones
+### H33 - Sin CRUD de horarios, competencias, conclusiones
 
 | Campo | Detalle |
 |---|---|
@@ -405,6 +405,18 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | La institución no puede mantener su malla desde la UI |
 | Recomendación | Módulos de configuración académica |
 | Esfuerzo | L |
+| Estado | 🟡 Parcial (21/11/2026): **horarios resuelto con H47** (malla, CRUD, generación y publicación). Competencias y conclusiones siguen pendientes |
+
+### H47 - Horarios sin bloqueo, publicación ni generación (resuelto)
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta (IDOR + ausencia de mantenimiento) |
+| Evidencia | `GET /api/horarios/grado/:id_grado` accesible a cualquier autenticado; tabla sin año, estado, aula ni UNIQUE de solape |
+| Impacto | Cualquier usuario podía leer el horario de otro grado; ADMIN no podía mantener la malla |
+| Recomendación | Modelo por bloques, `mi-horario` derivado del token, CRUD ADMIN, publicación estricta y generador en BORRADOR |
+| Estado | ✅ Resuelto (21/11/2026): `periodos_clase` por año, `horarios` con `id_carga`/período/estado/aula, UNIQUE de grado/docente/aula, `mi-horario`, publicación con `permitir_parcial`, generador con preflight y auditoría `CREAR/MODIFICAR/ELIMINAR/PUBLICAR/DESPUBLICAR/GENERAR` |
+| Verificación | Base desechable: 142 bloques completos en carga coherente; 20 h sin ubicar con docente sobrecargado; 4 PASS del generador; build Angular y E2E |
 
 ### H34 — Sin PDFs reales (resuelto)
 

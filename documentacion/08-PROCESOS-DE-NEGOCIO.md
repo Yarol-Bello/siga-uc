@@ -283,9 +283,19 @@ carga, no puede operar.
 
 ### P06.4 Horarios
 
-- Solo lectura por grado (`GET /api/horarios/grado/:id_grado`).
-- Bloques con día, hora inicio/fin y tipo (`CLASE`, `RECREO`, `ALMUERZO`).
-- El estudiante ve su horario; no hay pantalla de edición.
+- Malla de períodos por año (`periodos_clase`): 8 bloques de clase, recreo y almuerzo.
+- ADMIN crea/edita bloques, genera borradores y publica; SECRETARIA consulta todo;
+  DOCENTE consulta solo sus bloques; ESTUDIANTE solo los de su grado.
+- El horario referencia `carga_curricular` (`id_carga`), no duplica la asignación docente.
+- Restricciones duras: un grado, un docente y un aula no pueden repetirse en el mismo
+  día/período; máximo 2 bloques del mismo curso por día.
+- La generación automática nunca publica: deja BORRADOR y reporta horas sin ubicar.
+- Publicar exige que cada carga tenga sus horas completas, salvo publicación parcial
+  explícita del ADMIN.
+- Cambiar el docente de una carga con horario publicado exige despublicar primero; en
+  BORRADOR los bloques se reasignan en la misma transacción.
+- El endpoint abierto `/api/horarios/grado/:id_grado` fue retirado (H47); el alumno usa
+  `/api/horarios/mi-horario`, que deriva su grado del token.
 
 ---
 
@@ -869,7 +879,7 @@ revocación ni rotación. `credenciales_qr.activo` no se usa en la marcación.
 | P03 Matrícula | Alta | Completo | Transaccional |
 | P04 Retiro | Media | Completo | Transaccional: usuario INACTIVO + expediente congelado |
 | P05 Personal | Alta | Completo | Sin borrado |
-| P06 Configuración | Alta | Parcial | Sin CRUD de horarios/competencias |
+| P06 Configuración | Alta | Parcial | Horarios resuelto con H47; faltan CRUD de competencias y conclusiones |
 | P07 Asistencia alumnos | Alta | Completo | Éxito parcial en lote |
 | P08 Asistencia personal | Media | Completo | QR simulado por DNI |
 | P09 Calificaciones | Alta | Completo | Sin validación de docente-curso |

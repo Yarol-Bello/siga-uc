@@ -55,11 +55,15 @@ En esta fase **no** se prepara el despliegue definitivo.
 
 - **Fecha:** 21/11/2026
 - **Commit base de esta sesión:** `22e06f6 fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)`
-- **Commits de esta sesión:** aviso de correo en modo prueba en el modal de notificaciones
-  y documentación de la fase de demostración (hashes exactos en `git log`).
-- **Estado:** fase de demostración fijada; sin cambios de esquema ni de configuración de
-  producción; árbol limpio.
-- **Verificación local:** `npm run smoke` **11 PASS** (exit 0), `npm run test:e2e`
+- **Commits de esta sesión:** aviso de correo en modo prueba, documentación de la fase de
+  demostración y **H47** (esquema+CRUD `cf3c988`, generador `e65f60f`, UI `65e73a3`).
+- **Estado:** fase de demostración fijada. **H47 implementado en código y probado en bases
+  desechables; no aplicado a `siga_uc` ni a Supabase.** Sin cambios en producción.
+- **Verificación H47:** base desechable con 142 bloques completos en carga coherente; 20 h
+  sin ubicar con docente sobrecargado; `test:h47-generador` **4 PASS**; E2E **14 PASS**;
+  build Angular OK. La UI se probó en navegador con ADMIN, SECRETARIA, DOCENTE y
+  ESTUDIANTE.
+- **Verificación local previa:** `npm run smoke` **11 PASS** (exit 0), `npm run test:e2e`
   **14 PASS** (exit 0) e integridad **8 PASS / 2 FAIL** esperados del seed. Notificación
   sin correo: guardada y visible en la campanita. La contraseña del ADMIN local se alineó
   con `SMOKE_ADMIN_PASSWORD` de `.env` (no se documentó).
@@ -77,7 +81,8 @@ En esta fase **no** se prepara el despliegue definitivo.
   - Backend: <https://siga-uc-api-prod.onrender.com/api>
   - Ambos **Live** en el commit `22e06f6`, con servicios **gratuitos**.
 - Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **39 tablas**.
-  Migraciones **H32, H10/H38, H07 y H45 aplicadas a mano**.
+  Migraciones **H32, H10/H38, H07 y H45 aplicadas a mano**. **H47 está implementado en el
+  repo pero NO aplicado a Supabase**; el esquema nuevo tiene **40 tablas**.
 - Datos de la demo: solo usuarios y alumno de prueba; noviembre y diciembre ya generados.
   **No hay datos reales.**
 - **No hay staging.**
@@ -176,6 +181,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H44 | Pensiones por alumno generadas al matricular y por botón manual | `fix(tesoreria): generar pensiones del alumno al matricular (H44)` |
 | H46 | Especialidad solo para DOCENTE y roles de Personal 1-3 | `fix(personal): especialidad solo para docentes y roles de personal (H46)` |
 | H45 | Anulación de pensiones/pre-tickets futuros al retirar | `fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)` |
+| H47 | Horarios por bloques, `mi-horario`, CRUD, publicación, generador y UI | `cf3c988`, `e65f60f`, `65e73a3` |
 
 ---
 
@@ -194,7 +200,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H29 | Tablas de reportes no persistidas | Baja | S |
 | H30 | Título e identidad menores | Baja | S |
 | H31 | Endpoint de logout sin uso | Baja | S |
-| H33 | Sin CRUD de horarios, competencias y conclusiones | Media | L |
+| H33 | Competencias y conclusiones sin CRUD (horarios resuelto con H47) | Media | L |
 | H35 | Estudiantes sin pantalla de libreta | Baja | S |
 | H36 | Rate limit de login por IP compartida en red escolar | Media | S |
 
@@ -299,18 +305,47 @@ En esta fase **no** se prepara el despliegue definitivo.
   `PENDIENTE` sin tocar montos ni descuentos. El generador mensual global no cambió.
 - La migración H45 se aplicó dos veces en `siga_uc_h45` (idempotente) y la base se
   eliminó; `siga_uc` no se tocó.
+- H47: el esquema nuevo tiene **40 tablas**; `siga_uc` y Supabase siguen en 39 hasta
+  aplicar `migracion_h47_horarios.sql` a mano. `siga_uc_completo.sql` no se editó.
+- H47: la migración guarda las filas antiguas en `horarios_h47_backup`, mapea los 10
+  bloques CLASE a BORRADOR y convierte los 3 recreos en el período de receso. Si algo no
+  mapea, aborta sin borrar.
+- H47: el alumno de 2do deja de ver el horario migrado hasta que ADMIN publique; es
+  intencional (BORRADOR invisible).
+- H47: el generador **no publica**. Preflight 422 si un docente/grado supera la capacidad;
+  `forzar=true` genera parcial y devuelve `sin_ubicar`. El seed de producción tiene 55
+  cargas/145 h en el ADMIN (capacidad 40), así que primero hay que reasignar docentes.
+- H47: generar sobre un grado con bloques PUBLICADO responde 409; hay que despublicar.
+- H47: editar/eliminar un bloque publicado exige `confirmar=true` y devuelve todo el grado
+  a BORRADOR. Cambiar docente de una carga publicada responde 409 con el mensaje exacto
+  “Despublique el horario antes de cambiar el docente.”.
+- H47: en BORRADOR, cambiar docente reasigna los bloques en la misma transacción; un
+  choque con el nuevo docente devuelve 409. Cambiar grado/curso/año exige `confirmar=true`
+  y elimina los bloques en borrador.
+- H47: el generador considera los bloques de **otros grados** para el mismo docente. El
+  aula es nullable y su UNIQUE es parcial e insensible a mayúsculas/espacios.
+- H47: cambiar `id_personal` de una carga con SQL directo deja los horarios apuntando al
+  docente anterior; usar `PUT /api/carga-curricular/:id`, que reasigna o bloquea.
+- H47: `test:integridad` espera 40 tablas + `periodos_clase`; `test:e2e` aplica H47.
+  `npm run test:h47-generador` no toca BD (**4 PASS**).
+- H47: el frontend viejo llama al endpoint retirado `/horarios/grado/:id_grado`; desplegar
+  backend y frontend juntos o esperar 404 en la vista del alumno.
 
 ---
 
 ## 7. Próximo paso exacto (fase demo)
 
-1. **Ensayar el guion** de `documentacion/17-GUION-DEMOSTRACION.md` en local, **sin
-   correos reales**, y completar el checklist “listo para demostrar”.
-2. Ejecutar en local `npm run smoke` (11 PASS), `npm run test:integridad` y
-   `npm run test:e2e` (14 PASS). **No** ejecutar nada contra Render/Supabase sin
-   confirmación del dueño.
-3. Corregir solo lo que impida la demo; nada de preparar producción.
-4. Después de la demo, limpiar los datos de prueba recreando la base (nunca si hubiera
+1. **Aplicar H47 a Supabase solo con confirmación**: backup, ejecutar
+   `database/migracion_h47_horarios.sql` a mano y verificar 40 tablas + 10 períodos.
+   Producción tiene 0 horarios; el riesgo de datos es nulo.
+2. Tras aplicar H47, el seed de producción sigue con **55 cargas/145 h en el ADMIN**;
+   reasignar docentes antes de generar o el preflight responderá 422.
+3. **Ensayar el guion** de `documentacion/17-GUION-DEMOSTRACION.md` en local, **sin
+   correos reales**, incluyendo horarios: generar, publicar, ver como docente/alumno.
+4. Ejecutar en local `npm run smoke` (11 PASS), `npm run test:integridad`,
+   `npm run test:e2e` (14 PASS) y `npm run test:h47-generador` (4 PASS). **No** ejecutar
+   nada contra Render/Supabase sin confirmación del dueño.
+5. Después de la demo, limpiar los datos de prueba recreando la base (nunca si hubiera
    datos reales).
 
 ---
@@ -331,23 +366,27 @@ Nada de esta lista se hace en la fase actual.
 
 ---
 
-## 9. Verificar el entorno en 6 comandos
+## 9. Verificar el entorno en 8 comandos
 
 ```powershell
 git log -1 --oneline
+# Solo si la base aún no tiene H47:
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
 # Requiere el backend corriendo en localhost:3000
 curl.exe -s http://localhost:3000/api/health
 cd siga-uc-backend; npm run smoke          # 11 PASS, exit 0
 npm run test:integridad                    # 10 invariantes; revisar FAIL reales
 npm run test:e2e                           # 14 PASS, exit 0; elimina siga_uc_e2e
+npm run test:h47-generador                 # 4 PASS; no toca BD
 ```
 
-El primero confirma el commit; el segundo debe devolver **39** y
-`ux_pago_pension_activo`; el tercero debe devolver `success: true` y
-`database: "ok"` **con el backend en marcha**; el cuarto debe terminar en
-**11 PASS, 0 FAIL**; el quinto puede reportar violaciones reales de seed; el sexto
-debe terminar en **14 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada.
+El primero confirma el commit; el segundo aplica H47 si falta; el tercero debe devolver
+**40** y `ux_pago_pension_activo`; el cuarto debe devolver `success: true` y
+`database: "ok"` **con el backend en marcha**; el quinto debe terminar en
+**11 PASS, 0 FAIL**; el sexto puede reportar violaciones reales de seed; el séptimo
+debe terminar en **14 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada; el octavo en
+**4 PASS**.
 
 Para una base **definitiva** (solo después de la aprobación):
 

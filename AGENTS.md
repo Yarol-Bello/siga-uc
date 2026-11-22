@@ -34,8 +34,8 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | No existen |
 
-**Conteos actuales:** 40 tablas · 103 endpoints · 4 roles · 14 routers · 14 controladores ·
-19 servicios · 15 DAOs · 72 archivos JS backend · 118 archivos frontend (49 TS).
+**Conteos actuales:** 40 tablas · 113 endpoints · 4 roles · 15 routers · 15 controladores ·
+21 servicios · 17 DAOs · 80 archivos JS backend · 129 archivos frontend (53 TS).
 
 ---
 
@@ -161,6 +161,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Alumnos | `alumnoRoutes/Controller/Service/Dao` | `admin/alumnos`, `secretaria/padron` |
 | Personal | `personalRoutes/...` | `admin/personal` |
 | Carga curricular | `cargaCurricularRoutes/...` | `admin/carga-curricular` |
+| Horarios | `horarioRoutes/...` | `admin/horarios`, `secretaria/horarios`, `docente/horario`, `estudiante/horario` |
 | Asistencia | `asistenciaRoutes/...` | `docente/asistencia`, `admin/asistencia-qr`, `estudiante/asistencia` |
 | Calificaciones | `calificacionRoutes/...` | `docente/notas`, `estudiante/dashboard`, `docente/ficha` |
 | Tesorería | `tesoreriaRoutes/...` | `secretaria/tesoreria` (wrapper admin) |
@@ -207,7 +208,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 40 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 103 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 113 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |

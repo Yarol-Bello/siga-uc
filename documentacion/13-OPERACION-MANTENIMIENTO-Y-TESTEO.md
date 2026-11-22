@@ -287,7 +287,7 @@ cd siga-uc-backend
 npm run test:integridad
 ```
 
-- Verifica **10 invariantes**: 39 tablas, índices críticos, pagos/pensiones/boletas
+- Verifica **10 invariantes**: 40 tablas, índices críticos, pagos/pensiones/boletas
   coherentes, movimientos de caja, usuarios activos asociados, escala AD/A/B/C y alumnos
   matriculados con usuario activo.
 - Fuerza `default_transaction_read_only=on`: no escribe nada.

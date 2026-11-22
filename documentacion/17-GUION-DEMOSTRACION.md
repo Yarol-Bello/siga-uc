@@ -180,6 +180,24 @@ veces”.
 > Si la libreta sale vacía, faltan `notas_finales_area`. Guardar notas del bimestre antes
 > de la demo y verificarlo.
 
+### Paso 7b — Horario publicado (3 min)
+
+1. En **ADMIN** → **Horarios**, elegir año y grado; mostrar la grilla de 8 bloques, recreo
+   y almuerzo.
+2. Si la carga está balanceada, usar **Generar automático**; si el preflight avisa
+   sobrecarga, mostrar el mensaje y la lista de horas sin ubicar (es una validación real).
+3. Revisar la grilla en **BORRADOR** y pulsar **Publicar**.
+4. Entrar como **ESTUDIANTE** → **Horario de Clases**: solo debe ver su grado y lo
+   publicado.
+5. Entrar como **DOCENTE** → **Mi Horario**: debe ver sus bloques en varios grados.
+
+**Mensaje:** “El docente no se duplica y el alumno no puede consultar otro grado; el
+horario en borrador no es visible”.
+
+> Para una demo completa, preparar la carga con docentes balanceados o publicar un horario
+> parcial consciente. El seed de producción asigna las 55 cargas al ADMIN y el preflight
+> responderá que no es posible generar.
+
 ### Paso 8 — Notificación interna (2 min)
 
 1. En **ADMIN** → dashboard → **Nueva Notificación**.
@@ -195,7 +213,7 @@ producción se verificará el dominio para que también salga el correo”.
 ### Paso 9 — Auditoría (2 min)
 
 1. Ir a **Auditoría**.
-2. Filtrar por acción `CREAR`, `ANULAR`, `ENVIAR` y `DESCARGAR`.
+2. Filtrar por acción `CREAR`, `ANULAR`, `PUBLICAR`, `GENERAR`, `ENVIAR` y `DESCARGAR`.
 3. Abrir el detalle de un evento: usuario, rol, módulo, descripción, IP y fecha.
 
 **Mensaje:** “Cada operación crítica queda con responsable y evidencia”.

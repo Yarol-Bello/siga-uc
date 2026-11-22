@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **103 endpoints** — 64 GET, 25 POST, 12 PUT, 2 DELETE
+**Total verificado:** **113 endpoints** - 64 GET, 31 POST, 14 PUT, 4 DELETE.
 
 ---
 
@@ -129,11 +129,31 @@ anteriores. Respuesta genérica; si el usuario existe pero no tiene correo devue
 |---|---|---|---|---|
 | 9 | GET | `/api/grados?anio=2026` | Autenticado | Grados del año con total de alumnos |
 | 10 | GET | `/api/grados/:id` | Autenticado | Grado + tutor |
-| 11 | GET | `/api/horarios/grado/:id_grado` | Autenticado | Horario del grado ordenado por día/hora |
+| 11 | GET | `/api/horarios/mi-horario` | DOCENTE/ESTUDIANTE | Horario propio derivado del token (H47) |
 | 12 | GET | `/api/cursos` | Autenticado | Cursos + total de competencias |
 | 13 | GET | `/api/cursos/:id` | Autenticado | Curso + competencias |
 | 14 | GET | `/api/cursos/:id/competencias` | Autenticado | Competencias del curso |
 | 15 | GET | `/api/escala-calificacion` | Autenticado | Escala AD/A/B/C |
+
+### 4.1 Horarios — `/api/horarios` (H47, 12 endpoints)
+
+El endpoint anterior `GET /api/horarios/grado/:id_grado` fue retirado por IDOR. El acceso
+personal ya no recibe IDs de grado/docente en la URL.
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/horarios/mi-horario` | DOCENTE/ESTUDIANTE | Deriva el alcance del token; ADMIN/SECRETARIA → 400 |
+| GET | `/api/horarios?anio&id_grado&id_personal&estado` | ADMIN/SECRETARIA | Listado administrativo con borradores y publicados |
+| GET | `/api/horarios/periodos?anio` | Autenticado | Malla de períodos del año |
+| POST | `/api/horarios` | ADMIN | Crear bloque; deriva grado/curso/docente desde `id_carga` |
+| PUT | `/api/horarios/:id` | ADMIN | Editar bloque; publicado exige `confirmar` |
+| DELETE | `/api/horarios/:id` | ADMIN | Eliminar bloque; publicado exige `confirmar` |
+| POST | `/api/horarios/generar` | ADMIN | Generación automática en BORRADOR; `forzar` para sobrecarga |
+| POST | `/api/horarios/publicar` | ADMIN | Publica el año/grado; `permitir_parcial` con advertencia |
+| POST | `/api/horarios/despublicar` | ADMIN | Devuelve el alcance a BORRADOR |
+| POST | `/api/horarios/periodos` | ADMIN | Crear período de la malla |
+| PUT | `/api/horarios/periodos/:id` | ADMIN | Editar período; no permite cambiar horario/tipo si tiene bloques |
+| DELETE | `/api/horarios/periodos/:id` | ADMIN | Eliminar período solo si no tiene bloques |
 
 ---
 
@@ -498,6 +518,7 @@ contraseñas.
 | Alumnos | 6 |
 | Personal | 8 |
 | Carga curricular | 9 |
+| Horarios (H47) | 12 |
 | Asistencias | 9 |
 | Calificaciones | 6 |
 | Tesorería | 13 |
@@ -506,20 +527,17 @@ contraseñas.
 | Auditoría | 7 |
 | SIAGIE | 1 |
 | Notificaciones | 8 |
-| **Total** | **102** |
+| **Total** | **113** |
 
 | Verbo | Cantidad |
 |---|---|
 | GET | 64 |
-| POST | 25 |
-| PUT | 11 |
-| DELETE | 2 |
+| POST | 31 |
+| PUT | 14 |
+| DELETE | 4 |
 
-Acceso:
-- **Públicos:** 7 (raíz, health, configuración, login, recuperar, validar token, restablecer).
-- **Solo JWT (sin rol específico):** 57.
-- **Restringidos por rol:** 38.
-- Total único: 102.
+Acceso: el detalle exacto está en la columna **Acceso** de cada tabla. Con H47 se retiró
+el endpoint abierto `/api/horarios/grado/:id_grado` y se agregaron 12 endpoints de horarios.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
 > El conteo correcto, revisando `verificarRol(...)` en los 14 routers, es 57/38.

@@ -63,6 +63,8 @@ sequenceDiagram
 - `verificarRol(...)` en escrituras críticas y reportes.
 - Notificaciones: el DAO filtra por `id_usuario_destino`.
 - Libreta: cualquier autenticado, sin validar que el alumno sea el propio.
+- Horarios: `mi-horario` deriva `id_personal`/`id_grado` del token; el listado completo
+  está restringido a ADMIN/SECRETARIA (H47). Ya no existe `/horarios/grado/:id_grado`.
 
 ### 2.2 Lo que no se valida
 
@@ -174,6 +176,8 @@ sequenceDiagram
 | Descargas de libreta/boleta/acta | ✅ | `DESCARGAR` (`Reportes` / `Tesorería`) |
 | Cierre de acta | ✅ | `CERRAR` (`Evaluaciones`) + `cerrado_por` y hash |
 | SIAGIE | ✅ | `IMPORTAR` (`SIAGIE`) |
+| Horarios: crear/editar/eliminar | ✅ | `CREAR` / `MODIFICAR` / `ELIMINAR` (`Horarios`) |
+| Horarios: publicar/despublicar/generar | ✅ | `PUBLICAR` / `DESPUBLICAR` / `GENERAR` (`Horarios`) |
 
 Los eventos de seguridad y dinero se insertan **después** del COMMIT del negocio. Un fallo de
 auditoría se registra en consola y nunca revierte la operación (`auditoriaService.registrar`
