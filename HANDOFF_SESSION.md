@@ -76,6 +76,8 @@ En esta fase **no** se prepara el despliegue definitivo.
   demostración, **H47** (esquema+CRUD `cf3c988`, generador `e65f60f`, UI `65e73a3`),
   **datos demo H47** (`a9acf24`), **H50/H63** (`2449cf3`, desplegados con `3052f44`) y
   **H48/H51** (`d9071e5`, desplegados con `9648689`).
+- **Commits Fase 3 (local, 22/11/2026):** H61 `269e1ae`, H56 `15aab48`, H60 `410b35d`,
+  H57 `2cf8477`. No modifican el esquema; solo H61 trae una migración de datos idempotente.
 - **Estado:** demo desplegada y actualizada; Supabase tiene H47 y H48 aplicados y los datos
   demo cargados. La base local quedó limpia y el script demo probado.
 - **Datos demo H47:** `database/demo_h47_docentes.sql` crea solo los docentes que faltan
@@ -88,6 +90,13 @@ En esta fase **no** se prepara el despliegue definitivo.
   sin ubicar con docente sobrecargado; `test:h47-generador` **4 PASS**; E2E **19 PASS**
   (incluye H48, H50, H51 y H63); build Angular OK. La UI se probó en navegador con ADMIN,
   SECRETARIA, DOCENTE y ESTUDIANTE.
+- **Verificación Fase 3 (22/11/2026, local):** `test:e2e` **19 PASS** tras H61, H56, H60 y
+  H57; build Angular OK y `node --check` OK. H61: migración idempotente normalizó 12 filas
+  (6 días desfasados + 6 en inglés; 2 ya correctas) y una prueba API con `dia_semana`
+  incorrecto guardó/leyó `Lunes`. H56: base desechable con 2026/2027 devolvió solo el año
+  pedido en historial, resumen, libreta y resumen por grado. H60: navegador real, sin
+  estado no hubo POST y con “Presente” la observación persistió. H57: alumno `74829103`
+  (2do) mostró sidebar “2do de Secundaria”, KPI 11, mensaje neutral y horario coherente.
 - **Verificación datos demo H47 (21/11/2026):** script ejecutado dos veces sin duplicados;
   local **54 cargas/142 h**, docentes 30/30/30/27/25; generación **142/142**, 0 sin ubicar;
   2do y 3ro publicados; Demo 1 vio 12 bloques en dos grados; alumno de 2do vio solo su grado
@@ -233,10 +242,10 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H63 | PDF de actas restringido a ADMIN; DOCENTE recibe 403 | `2449cf3` (22/11/2026), desplegado con `3052f44` |
 | H48 | Cierre/reapertura reales de actas, bloqueo global y migración H48 | `d9071e5` (22/11/2026), desplegado con `9648689` |
 | H51 | Selector de bimestre en libretas y PDF por bimestre | `d9071e5` (22/11/2026), desplegado con `9648689` |
-| H61 | Día de la semana derivado en backend, en español y datos históricos normalizados | 22/11/2026 (local) |
-| H56 | Asistencia por año en historial, resumen, libreta, PDF y resumen por grado; H13 incluido | 22/11/2026 (local) |
-| H60 | Observación sin estado bloqueada con validación inline; con estado se guarda y persiste | 22/11/2026 (local) |
-| H57 | Grado real en sidebar, cursos desde carga curricular y mensaje neutral sin notas | 22/11/2026 (local) |
+| H61 | Día de la semana derivado en backend, en español y datos históricos normalizados | `269e1ae` (22/11/2026, local) |
+| H56 | Asistencia por año en historial, resumen, libreta, PDF y resumen por grado; H13 incluido | `15aab48` (22/11/2026, local) |
+| H60 | Observación sin estado bloqueada con validación inline; con estado se guarda y persiste | `410b35d` (22/11/2026, local) |
+| H57 | Grado real en sidebar, cursos desde carga curricular y mensaje neutral sin notas | `2cf8477` (22/11/2026, local) |
 
 ---
 
