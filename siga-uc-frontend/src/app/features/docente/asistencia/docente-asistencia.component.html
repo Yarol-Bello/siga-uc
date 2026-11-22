@@ -122,7 +122,9 @@
         <i class="fa-solid fa-clipboard-user"></i>
         {{ cursoSeleccionado()!.nombre_curso }} — {{ cursoSeleccionado()!.nombre_grado }}
       </h3>
-      <span class="badge-fecha">{{ fecha() }}</span>
+      <span class="badge-fecha">
+        {{ diaSemanaActual }}, {{ fecha() }}
+      </span>
     </div>
 
     <div class="table-responsive">

@@ -318,14 +318,15 @@ carga, no puede operar.
 **Registro**
 
 1. Docente marca P/T/F por alumno.
-2. Frontend envía solo los cambios.
-3. Backend valida `estado ∈ {P,T,F}`.
+2. Frontend envía solo los cambios y calcula la fecha con el helper local (nunca `new Date('YYYY-MM-DD')`).
+3. Backend valida `estado ∈ {P,T,F}` y deriva `dia_semana` desde `fecha` con `EXTRACT(ISODOW)`; no usa el día enviado por el cliente (H61).
 4. Upsert:
    ```sql
    INSERT ... ON CONFLICT (id_alumno, id_curso, fecha)
-   DO UPDATE SET estado, observacion, justificada, motivo_justificacion
+   DO UPDATE SET dia_semana, estado, observacion, justificada, motivo_justificacion
    ```
 5. Transacción por lote; errores por fila se acumulan en `errores[]` y no revierten el resto.
+6. El historial devuelve `dia_semana` en español calculado desde la fecha, también para registros antiguos (H61).
 
 **Cálculos**
 
@@ -337,6 +338,7 @@ carga, no puede operar.
 
 - Un alumno solo puede tener un registro por curso y fecha.
 - Alumno debe estar `Matriculado` para aparecer.
+- `dia_semana` es un dato derivado de `fecha`: se guarda y se muestra en español, sin depender de la zona horaria del navegador (H61).
 - No se valida que el docente tenga asignado el curso (la API acepta cualquier `id_curso`).
 
 **Riesgos**

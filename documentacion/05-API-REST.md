@@ -257,9 +257,9 @@ grado/año en una transacción.
 | 46 | POST | `/api/asistencias` | ADMIN/DOCENTE | Registra/actualiza una asistencia |
 | 47 | POST | `/api/asistencias/masivo` | ADMIN/DOCENTE | Upsert masivo |
 
-**POST individual:** `{ id_alumno, id_curso, id_personal, id_grado, fecha, dia_semana, estado: "P|T|F", observacion?, justificada?, motivo_justificacion? }`.
+**POST individual:** `{ id_alumno, id_curso, id_personal, id_grado, fecha, estado: "P|T|F", observacion?, justificada?, motivo_justificacion? }`. `dia_semana` se deriva en el backend desde `fecha` con `EXTRACT(ISODOW)` y se guarda en español; si el cliente lo envía, se ignora (H61).
 
-**Masivo:** `{ registros: [ ... ] }` → `{ insertados, errores[] }`.
+**Masivo:** `{ registros: [ ... ] }` → `{ insertados, errores[] }`. Cada registro sigue la misma regla: el backend calcula `dia_semana` y no confía en el valor del frontend (H61).
 
 **Personal:** `{ id_personal, fecha, hora_ingreso, estado: "Puntual|Tardanza|Falta", observacion? }`.
 

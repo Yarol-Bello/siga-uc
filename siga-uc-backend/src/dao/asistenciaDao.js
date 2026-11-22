@@ -90,7 +90,15 @@ const obtenerPorAlumno = async (id_alumno, filtros = {}, idPersonal = null) => {
     SELECT 
       asis.id_asistencia,
       asis.fecha,
-      TO_CHAR(asis.fecha, 'Day') AS dia_semana,
+      CASE EXTRACT(ISODOW FROM asis.fecha)
+        WHEN 1 THEN 'Lunes'
+        WHEN 2 THEN 'Martes'
+        WHEN 3 THEN 'Miércoles'
+        WHEN 4 THEN 'Jueves'
+        WHEN 5 THEN 'Viernes'
+        WHEN 6 THEN 'Sábado'
+        WHEN 7 THEN 'Domingo'
+      END AS dia_semana,
       asis.estado,
       asis.observacion,
       asis.justificada,
@@ -184,9 +192,22 @@ const registrar = async (data) => {
     INSERT INTO asistencia_alumnos (
       id_alumno, id_curso, id_personal, id_grado, 
       fecha, dia_semana, estado, observacion, justificada, motivo_justificacion
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    ) VALUES (
+      $1, $2, $3, $4, $5,
+      CASE EXTRACT(ISODOW FROM $5::date)
+        WHEN 1 THEN 'Lunes'
+        WHEN 2 THEN 'Martes'
+        WHEN 3 THEN 'Miércoles'
+        WHEN 4 THEN 'Jueves'
+        WHEN 5 THEN 'Viernes'
+        WHEN 6 THEN 'Sábado'
+        WHEN 7 THEN 'Domingo'
+      END,
+      $6, $7, $8, $9
+    )
     ON CONFLICT (id_alumno, id_curso, fecha) 
     DO UPDATE SET
+      dia_semana = EXCLUDED.dia_semana,
       estado = EXCLUDED.estado,
       observacion = EXCLUDED.observacion,
       justificada = EXCLUDED.justificada,
@@ -199,7 +220,6 @@ const registrar = async (data) => {
     data.id_personal,
     data.id_grado,
     data.fecha,
-    data.dia_semana || null,
     data.estado,
     data.observacion || null,
     data.justificada || false,
@@ -255,9 +275,22 @@ const registrarMasivo = async (registros) => {
           INSERT INTO asistencia_alumnos (
             id_alumno, id_curso, id_personal, id_grado, 
             fecha, dia_semana, estado, observacion, justificada, motivo_justificacion
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          ) VALUES (
+            $1, $2, $3, $4, $5,
+            CASE EXTRACT(ISODOW FROM $5::date)
+              WHEN 1 THEN 'Lunes'
+              WHEN 2 THEN 'Martes'
+              WHEN 3 THEN 'Miércoles'
+              WHEN 4 THEN 'Jueves'
+              WHEN 5 THEN 'Viernes'
+              WHEN 6 THEN 'Sábado'
+              WHEN 7 THEN 'Domingo'
+            END,
+            $6, $7, $8, $9
+          )
           ON CONFLICT (id_alumno, id_curso, fecha) 
           DO UPDATE SET
+            dia_semana = EXCLUDED.dia_semana,
             estado = EXCLUDED.estado,
             observacion = EXCLUDED.observacion,
             justificada = EXCLUDED.justificada,
@@ -269,7 +302,6 @@ const registrarMasivo = async (registros) => {
           reg.id_personal,
           reg.id_grado,
           reg.fecha,
-          reg.dia_semana || null,
           reg.estado,
           reg.observacion || null,
           reg.justificada || false,

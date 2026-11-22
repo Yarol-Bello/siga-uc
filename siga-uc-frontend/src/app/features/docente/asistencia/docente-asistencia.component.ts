@@ -4,7 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
-import { fechaLocalISO } from '../../../core/utils/fecha.util';
+import {
+  diaSemanaLocal,
+  fechaLocalISO,
+} from '../../../core/utils/fecha.util';
 
 interface AlumnoAsistencia {
   id_alumno: number;
@@ -62,6 +65,10 @@ export class DocenteAsistenciaComponent implements OnInit {
   // Selección
   cursoSeleccionado = signal<CursoAsignado | null>(null);
   fecha = signal<string>(fechaLocalISO());
+
+  get diaSemanaActual(): string {
+    return diaSemanaLocal(this.fecha());
+  }
 
   // Cache de cambios (id_alumno -> {estado, observacion})
   cambios: { [key: number]: { estado: string; observacion: string } } = {};
@@ -223,9 +230,7 @@ export class DocenteAsistenciaComponent implements OnInit {
 
     const usuarioActual = this.usuario();
     const id_personal = usuarioActual?.info_adicional?.id_personal;
-    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const diaSemana = diasSemana[new Date(this.fecha()).getDay()];
-
+    // El backend deriva dia_semana desde la fecha; no se envía desde la UI.
     const registros: any[] = [];
     Object.keys(this.cambios).forEach((key) => {
       const idAlumno = Number(key);
@@ -237,7 +242,6 @@ export class DocenteAsistenciaComponent implements OnInit {
           id_personal,
           id_grado: curso.id_grado,
           fecha: this.fecha(),
-          dia_semana: diaSemana,
           estado: cambio.estado,
           observacion: cambio.observacion || null,
         });

@@ -245,8 +245,8 @@ Cada layout contiene:
 | `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `POST /actas/:id/reabrir`, `GET /actas/:id/pdf`; tarjeta de cierre, badge global, modal de reapertura (H48) |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id` |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo` |
-| `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo` |
-| `DocenteFichaComponent` | `GET /alumnos/dni/:dni`, `GET /asistencias/alumno/:id`, `/resumen`, `GET /calificaciones/notas-finales/alumno/:id` |
+| `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo`; usa `parseFechaLocal`/`diaSemanaLocal` y muestra el día en español (H61) |
+| `DocenteFichaComponent` | `GET /alumnos/dni/:dni`, `GET /asistencias/alumno/:id`, `/resumen`, `GET /calificaciones/notas-finales/alumno/:id`; el historial muestra el día en español que devuelve el backend (H61) |
 | `DocenteReportesComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `GET /notificaciones`, `PUT /notificaciones/:id/leer`, `PUT /leer-todas` |
 | `EstudianteDashboardComponent` | `GET /calificaciones/notas-finales/alumno/:id` |
 | `EstudianteAsistenciaComponent` | `GET /asistencias/alumno/:id/resumen`, `GET /asistencias/alumno/:id?id_curso=` |

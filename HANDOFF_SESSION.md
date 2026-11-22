@@ -4,13 +4,15 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Próximo bloque de trabajo:** Fase 3 (H56, H61, H60, H57).
+> **Próximo bloque de trabajo:** Fase 3 (H56, H60, H57); H61 ya cerrado.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
 > actas solo ADMIN) desplegados en Render con `3052f44`; **H48** (cierre/reapertura real de
 > actas y bloqueo global) y **H51** (libretas por bimestre) desplegados con `9648689`.
 > La migración H48 ya está aplicada en Supabase (4 columnas nuevas + índice
 > `uq_acta_anio_bimestre_grado`, 0 actas). `test:e2e` quedó en **19 PASS**.
+> **H61** (día de la semana) cerrado en local el 22/11/2026; su migración de datos es
+> idempotente y aún **no** se aplicó en Supabase.
 
 ---
 
@@ -228,6 +230,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H63 | PDF de actas restringido a ADMIN; DOCENTE recibe 403 | `2449cf3` (22/11/2026), desplegado con `3052f44` |
 | H48 | Cierre/reapertura reales de actas, bloqueo global y migración H48 | `d9071e5` (22/11/2026), desplegado con `9648689` |
 | H51 | Selector de bimestre en libretas y PDF por bimestre | `d9071e5` (22/11/2026), desplegado con `9648689` |
+| H61 | Día de la semana derivado en backend, en español y datos históricos normalizados | 22/11/2026 (local) |
 
 ---
 
@@ -418,6 +421,14 @@ En esta fase **no** se prepara el despliegue definitivo.
   0 actas); en local se ejecutó 3 veces sin errores.
 - H51: el selector de bimestre de libretas quedó visible; el PDF usa el bimestre elegido.
   El valor por defecto sigue siendo 2.
+- H61: `dia_semana` se deriva de `fecha` en el backend con `EXTRACT(ISODOW)` y se guarda en
+  español; el valor que envíe el frontend se ignora. La migración
+  `database/migracion_h61_dia_semana.sql` es solo de datos (no cambia esquema) y es
+  idempotente. En local normalizó 12 filas (6 días desfasados y 6 en inglés; 2 ya estaban
+  correctas). Aún no se aplicó en Supabase.
+- H61: para fechas `YYYY-MM-DD` usar `parseFechaLocal`/`diaSemanaLocal` de
+  `core/utils/fecha.util.ts`; `new Date('YYYY-MM-DD')` se interpreta como UTC y en Lima
+  devuelve el día anterior.
 
 ---
 
@@ -426,10 +437,9 @@ En esta fase **no** se prepara el despliegue definitivo.
 El despliegue quedó al día: Render en `9648689` y Supabase con H47/H48. El siguiente bloque
 es la **Fase 3**, en este orden:
 
-1. **H56 — Asistencia por año (P1).** Filtrar libreta, resumen y estadísticas del alumno
+1. ~~**H61 — Día de la semana (P2).**~~ ✅ Cerrado el 22/11/2026.
+2. **H56 — Asistencia por año (P1).** Filtrar libreta, resumen y estadísticas del alumno
    por año lectivo y enviar `?anio=` desde la UI.
-2. **H61 — Día de la semana (P2).** Parsear la fecha como local o derivar `dia_semana` en
-   backend; mostrar los días en español.
 3. **H60 — Observación sin estado (P2).** Exigir estado cuando hay observación o guardarla
    con un estado por defecto, con validación en la UI.
 4. **H57 — Panel del estudiante (P1).** Usar el grado y los cursos reales de la matrícula;

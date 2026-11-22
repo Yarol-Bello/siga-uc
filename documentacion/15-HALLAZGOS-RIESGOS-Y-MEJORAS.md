@@ -51,6 +51,10 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 22/11/2026 (H48/H51):** cierre y reapertura reales de actas, bloqueo
 > global y libretas por bimestre. Ver H48/H51 en la sección 3.
+>
+> **Actualización 22/11/2026 (H61):** el día de la semana se deriva de la fecha en el
+> backend, se guarda en español y se corrigieron los datos históricos con una migración
+> idempotente. Ver H61 en la sección 3.
 
 ---
 
@@ -602,6 +606,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Especialidad exclusiva de DOCENTE; backend valida roles 1-3 y limpia la especialidad de los demás; UI filtra ESTUDIANTE y muestra el campo solo para docentes |
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (21/11/2026): `personalService` valida roles 1-3, `personalDao.crear` guarda especialidad solo para DOCENTE y `personalDao.actualizar` la limpia al cambiar de rol; UI condiciona el campo y filtra roles. Verificado con 8 PASS de API y UI (alta ADMIN/SECRETARIA/DOCENTE, cambio DOCENTE→ADMIN, selector sin ESTUDIANTE, lista y cese). Datos existentes no se modificaron: en local hay **1** usuario no docente con especialidad |
+
+### H61 — Día de la semana desfasado y en inglés
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Baja |
+| Evidencia | La UI calculaba el día con `new Date('YYYY-MM-DD').getDay()` (UTC) y el DAO usaba `TO_CHAR(fecha,'Day')` (inglés) |
+| Impacto | Asistencias de lunes podían guardarse como domingo y el historial mostraba “Monday/Martes” en una UI en español |
+| Recomendación | Parsear la fecha como local, derivar `dia_semana` en el backend con `EXTRACT(ISODOW)` y normalizar los datos históricos |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): `fecha.util.parseFechaLocal`/`diaSemanaLocal`; `asistenciaDao` calcula y actualiza `dia_semana` en español tanto en el alta individual como en el masivo; la UI muestra el día en español. Migración idempotente `migracion_h61_dia_semana.sql`: en local corrigió **12** filas (6 días desfasados y 6 en inglés; 2 ya estaban correctas). Verificado por API: se envió `dia_semana="Domingo"` para el lunes 2026-11-23 y la BD/API devolvieron `Lunes` |
 
 ---
 
