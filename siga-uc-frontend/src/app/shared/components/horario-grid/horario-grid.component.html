@@ -1,0 +1,81 @@
+<div class="horario-grid-wrap">
+  <div class="table-responsive">
+    <table class="horario-table">
+      <thead>
+        <tr>
+          <th class="col-hora">Hora</th>
+          @for (dia of DIAS; track dia) {
+          <th>{{ dia }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (periodo of periodos(); track trackPeriodo($index, periodo)) {
+        @if (esEspecial(periodo)) {
+        <tr class="fila-especial">
+          <td class="hora-cell">
+            <strong>{{ periodo.nombre }}</strong>
+            <small>{{ hora(periodo) }}</small>
+          </td>
+          <td colspan="5" class="especial-cell">
+            <span class="badge-especial" [class.almuerzo]="periodo.tipo === 'ALMUERZO'">
+              <i
+                class="fa-solid"
+                [class.fa-mug-hot]="periodo.tipo === 'RECREO'"
+                [class.fa-utensils]="periodo.tipo === 'ALMUERZO'"
+              ></i>
+              {{ periodo.nombre }}
+            </span>
+          </td>
+        </tr>
+        } @else {
+        <tr class="fila-clase">
+          <td class="hora-cell">
+            <strong>{{ periodo.nombre }}</strong>
+            <small>{{ hora(periodo) }}</small>
+          </td>
+          @for (dia of DIAS; track dia) {
+          <td
+            class="celda-clase"
+            [class.celda-editable]="puedeEditar()"
+            (click)="onClick(dia, periodo, bloqueEn(dia, periodo.id_periodo))"
+          >
+            @if (bloqueEn(dia, periodo.id_periodo); as bloque) {
+            <div class="clase-item">
+              <div class="clase-nombre">{{ bloque.nombre_curso }}</div>
+              @if (mostrarGrado()) {
+              <div class="clase-grado">
+                <i class="fa-solid fa-graduation-cap"></i>
+                {{ bloque.nombre_grado }} {{ bloque.seccion }}
+              </div>
+              }
+              <div class="clase-docente">
+                <i class="fa-solid fa-user-tie"></i>
+                {{ bloque.docente_nombre || 'Sin asignar' }}
+              </div>
+              @if (bloque.aula) {
+              <div class="clase-aula">
+                <i class="fa-solid fa-door-open"></i>
+                {{ bloque.aula }}
+              </div>
+              }
+            </div>
+            } @else {
+            <span class="celda-vacia">{{ puedeEditar() ? '+' : '—' }}</span>
+            }
+          </td>
+          }
+        </tr>
+        } }
+      </tbody>
+    </table>
+  </div>
+
+  @if (periodos().length === 0) {
+  <div class="empty-state">
+    <i class="fa-solid fa-calendar-xmark"></i>
+    <h3>No hay períodos configurados</h3>
+    <p>El ADMIN debe configurar la malla horaria del año.</p>
+  </div>
+  }
+</div>

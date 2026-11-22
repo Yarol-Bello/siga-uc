@@ -25,6 +25,7 @@ export class SidebarSecretariaComponent {
     { path: '/secretaria/tesoreria', label: 'Tesorería y Pensiones', icon: 'fa-wallet' },
     { path: '/secretaria/caja', label: 'Cuadre de Caja', icon: 'fa-cash-register' },
     { path: '/secretaria/asistencia-qr', label: 'Control Asistencia QR', icon: 'fa-qrcode' },
+    { path: '/secretaria/horarios', label: 'Horarios', icon: 'fa-calendar-days' },
   ];
 
   logout(): void {

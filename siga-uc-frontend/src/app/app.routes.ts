@@ -74,6 +74,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'horarios',
+        loadComponent: () =>
+          import('./features/admin/horarios/admin-horarios.component').then(
+            (m) => m.AdminHorariosComponent,
+          ),
+      },
+      {
         path: 'asistencia-qr',
         loadComponent: () =>
           import('./features/admin/asistencia-qr/admin-asistencia-qr.component').then(
@@ -132,6 +139,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/docente/notas/docente-notas.component').then(
             (m) => m.DocenteNotasComponent,
+          ),
+      },
+      {
+        path: 'horario',
+        loadComponent: () =>
+          import('./features/docente/horario/docente-horario.component').then(
+            (m) => m.DocenteHorarioComponent,
           ),
       },
       {
@@ -230,6 +244,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/secretaria/asistencia-qr/secretaria-asistencia-qr.component').then(
             (m) => m.SecretariaAsistenciaQrComponent,
+          ),
+      },
+      {
+        path: 'horarios',
+        loadComponent: () =>
+          import('./features/secretaria/horarios/secretaria-horarios.component').then(
+            (m) => m.SecretariaHorariosComponent,
           ),
       },
       // 👇 AGREGAR ESTA LÍNEA

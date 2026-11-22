@@ -46,6 +46,12 @@ export class SidebarComponent {
       roles: ['ADMIN'],
     },
     {
+      path: '/admin/horarios',
+      label: 'Horarios',
+      icon: 'fa-calendar-days',
+      roles: ['ADMIN'],
+    },
+    {
       path: '/admin/tesoreria',
       label: 'Tesorería y Pensiones',
       icon: 'fa-wallet',

@@ -1,0 +1,191 @@
+.horario-grid-wrap {
+  width: 100%;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.horario-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 820px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+
+  thead th {
+    background: #800020;
+    color: #ffffff;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 12px 8px;
+    text-align: center;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+
+    &:last-child {
+      border-right: none;
+    }
+
+    &.col-hora {
+      width: 130px;
+      text-align: left;
+      padding-left: 14px;
+    }
+  }
+
+  tbody td {
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 8px;
+    vertical-align: top;
+
+    &:last-child {
+      border-right: none;
+    }
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.hora-cell {
+  background: #f8fafc;
+  width: 130px;
+  min-width: 130px;
+  text-align: left;
+
+  strong {
+    display: block;
+    font-size: 0.78rem;
+    color: #0f172a;
+  }
+
+  small {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.7rem;
+    color: #64748b;
+  }
+}
+
+.fila-especial td {
+  background: #fffbeb;
+}
+
+.especial-cell {
+  text-align: center;
+  vertical-align: middle !important;
+}
+
+.badge-especial {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+
+  &.almuerzo {
+    background: #e0f2fe;
+    color: #075985;
+    border-color: #7dd3fc;
+  }
+}
+
+.celda-clase {
+  min-width: 120px;
+  transition: background 0.15s ease;
+
+  &.celda-editable {
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+  }
+}
+
+.clase-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clase-nombre {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.clase-grado,
+.clase-docente,
+.clase-aula {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: 0.7rem;
+  color: #475569;
+  line-height: 1.25;
+
+  i {
+    color: #800020;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+}
+
+.clase-grado i {
+  color: #0369a1;
+}
+
+.celda-vacia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  color: #cbd5e1;
+  font-size: 1rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 45px 20px;
+  color: #64748b;
+
+  i {
+    font-size: 2rem;
+    color: #cbd5e1;
+    margin-bottom: 10px;
+  }
+
+  h3 {
+    margin: 0 0 6px;
+    color: #0f172a;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+}
+
+@media print {
+  .horario-table {
+    min-width: 0;
+    font-size: 0.7rem;
+  }
+}

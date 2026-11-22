@@ -338,8 +338,16 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'crear';
       case 'MODIFICAR':
         return 'modificar';
+      case 'ELIMINAR':
+        return 'eliminar';
       case 'ANULAR':
         return 'anular';
+      case 'PUBLICAR':
+        return 'publicar';
+      case 'DESPUBLICAR':
+        return 'despublicar';
+      case 'GENERAR':
+        return 'generar';
       case 'LOGIN':
         return 'login';
       case 'LOGIN_FALLIDO':
@@ -376,8 +384,16 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'fa-plus-circle';
       case 'MODIFICAR':
         return 'fa-pen-to-square';
+      case 'ELIMINAR':
+        return 'fa-trash';
       case 'ANULAR':
         return 'fa-ban';
+      case 'PUBLICAR':
+        return 'fa-bullhorn';
+      case 'DESPUBLICAR':
+        return 'fa-eye-slash';
+      case 'GENERAR':
+        return 'fa-wand-magic-sparkles';
       case 'LOGIN':
         return 'fa-sign-in-alt';
       case 'LOGIN_FALLIDO':

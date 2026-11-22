@@ -239,7 +239,20 @@ export class AdminCargaCurricularComponent implements OnInit {
           error: (err) => {
             this.guardando.set(false);
             console.error('Error al actualizar:', err);
-            this.errorModal.set(err.error?.message || 'Error al actualizar la asignación');
+            const codigo = err.error?.errors?.codigo;
+            if (codigo === 'HORARIO_PUBLICADO') {
+              this.errorModal.set(
+                'Despublique el horario en el módulo Horarios antes de cambiar el docente.',
+              );
+            } else if (codigo === 'CONFLICTO_REASIGNACION') {
+              this.errorModal.set(
+                `${err.error?.message || 'El nuevo docente tiene un choque de horario.'} Regenera o ajusta el horario en el módulo Horarios.`,
+              );
+            } else {
+              this.errorModal.set(
+                err.error?.message || 'Error al actualizar la asignación',
+              );
+            }
           },
         });
     } else {
@@ -339,7 +352,16 @@ export class AdminCargaCurricularComponent implements OnInit {
           this.seleccionarGrado(this.gradoSeleccionado()!);
         }
       },
-      error: (err) => alert('Error: ' + (err.error?.message || 'Error al eliminar')),
+      error: (err) => {
+        const codigo = err.error?.errors?.codigo;
+        if (codigo === 'HORARIO_PUBLICADO') {
+          alert(
+            'Despublique el horario en el módulo Horarios antes de eliminar la carga.',
+          );
+        } else {
+          alert('Error: ' + (err.error?.message || 'Error al eliminar'));
+        }
+      },
     });
   }
 

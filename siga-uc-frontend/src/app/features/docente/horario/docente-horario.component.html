@@ -1,0 +1,44 @@
+<div class="docente-horario-container">
+  <div class="info-banner">
+    <div class="info-icon">
+      <i class="fa-solid fa-calendar-days"></i>
+    </div>
+    <div class="info-text">
+      <h3>Mi Horario de Clases</h3>
+      <p>
+        @if (docente()) {
+          {{ docente() }} — bloques publicados de todos los grados que dicta.
+        } @else {
+          Consulta de solo lectura de tus bloques publicados.
+        }
+      </p>
+    </div>
+    @if (anio()) {
+    <span class="info-badge">Año Lectivo {{ anio() }}</span>
+    }
+  </div>
+
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando tu horario...</p>
+  </div>
+  } @else if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  } @else if (!publicado()) {
+  <div class="empty-state">
+    <i class="fa-solid fa-calendar-xmark"></i>
+    <h3>Tu horario aún no está publicado</h3>
+    <p>El administrador debe publicar el horario para que puedas verlo.</p>
+  </div>
+  } @else {
+  <app-horario-grid
+    [periodos]="periodos()"
+    [bloques]="bloques()"
+    [mostrarGrado]="true"
+  ></app-horario-grid>
+  }
+</div>

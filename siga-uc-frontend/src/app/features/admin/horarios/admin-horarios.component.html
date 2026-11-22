@@ -1,0 +1,431 @@
+<div class="horarios-container">
+  <div class="info-banner">
+    <div class="info-icon">
+      <i class="fa-solid fa-calendar-days"></i>
+    </div>
+    <div class="info-text">
+      <h3>Horarios por Bloques</h3>
+      <p>
+        Configure la malla, genere propuestas en borrador y publique el horario
+        del grado. Los estudiantes y docentes solo ven lo publicado.
+      </p>
+    </div>
+    <span class="info-badge">Año Lectivo {{ anioSeleccionado() }}</span>
+  </div>
+
+  <div class="toolbar-horarios">
+    <div class="selector-item">
+      <label><i class="fa-solid fa-calendar"></i> Año:</label>
+      <select [ngModel]="anioSeleccionado()" (ngModelChange)="onAnioChange($event)">
+        @for (anio of anios(); track anio) {
+        <option [ngValue]="anio">{{ anio }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="selector-item">
+      <label><i class="fa-solid fa-graduation-cap"></i> Grado:</label>
+      <select
+        [ngModel]="gradoSeleccionado()"
+        (ngModelChange)="onGradoChange($event)"
+        [disabled]="grados().length === 0"
+      >
+        @for (grado of grados(); track grado.id_grado) {
+        <option [ngValue]="grado.id_grado">
+          {{ grado.nombre_grado }} — {{ grado.seccion }}
+        </option>
+        }
+      </select>
+    </div>
+
+    @if (!esAnioActivo()) {
+    <span class="badge-readonly">
+      <i class="fa-solid fa-lock"></i> Solo lectura
+    </span>
+    }
+
+    <div class="toolbar-actions">
+      @if (puedeEditar()) {
+      <button class="btn-secondary" (click)="abrirPeriodos()">
+        <i class="fa-solid fa-clock"></i> Bloques horarios
+      </button>
+      <button class="btn-secondary" (click)="nuevoBloque()">
+        <i class="fa-solid fa-plus"></i> Nuevo bloque
+      </button>
+      <button
+        class="btn-secondary"
+        (click)="generar()"
+        [disabled]="generando() || resumen().publicados > 0"
+      >
+        @if (generando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Generando...
+        } @else {
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Generar automático
+        }
+      </button>
+      <button
+        class="btn-secondary"
+        (click)="despublicar()"
+        [disabled]="publicando() || resumen().publicados === 0"
+      >
+        <i class="fa-solid fa-eye-slash"></i> Despublicar
+      </button>
+      <button
+        class="btn-primary"
+        (click)="publicar()"
+        [disabled]="publicando() || resumen().total === 0"
+      >
+        @if (publicando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Publicando...
+        } @else {
+        <i class="fa-solid fa-bullhorn"></i> Publicar
+        }
+      </button>
+      }
+    </div>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  @if (mensaje()) {
+  <div class="alert alert-success">
+    <i class="fa-solid fa-circle-check"></i>
+    {{ mensaje() }}
+  </div>
+  }
+
+  @if (advertencias().length > 0) {
+  <div class="alert alert-warning">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <div>
+      @for (advertencia of advertencias(); track advertencia) {
+      <div>{{ advertencia }}</div>
+      }
+    </div>
+  </div>
+  }
+
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando horario...</p>
+  </div>
+  } @else if (!gradoSeleccionado()) {
+  <div class="empty-state">
+    <i class="fa-solid fa-calendar-xmark"></i>
+    <h3>No hay grados para el año seleccionado</h3>
+    <p>Seleccione otro año o configure los grados.</p>
+  </div>
+  } @else {
+  <div class="resumen-bar">
+    <span class="badge-total">
+      <i class="fa-solid fa-layer-group"></i> {{ resumen().total }} bloques
+    </span>
+    <span class="badge-publicado">
+      <i class="fa-solid fa-bullhorn"></i> {{ resumen().publicados }} publicados
+    </span>
+    <span class="badge-borrador">
+      <i class="fa-solid fa-pen"></i> {{ resumen().borradores }} en borrador
+    </span>
+  </div>
+
+  <app-horario-grid
+    [periodos]="periodos()"
+    [bloques]="bloques()"
+    [puedeEditar]="puedeEditar()"
+    (celdaClick)="abrirCelda($event)"
+  ></app-horario-grid>
+
+  @if (resultadoGeneracion(); as resultado) {
+  <div class="resultado-generacion">
+    <div class="resultado-header">
+      <h3>
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        Resultado de la generación
+        @if (resultado.parcial) {
+        <span class="badge-parcial">Parcial</span>
+        }
+      </h3>
+      <span class="badge-seed">Semilla {{ resultado.seed }}</span>
+    </div>
+
+    <div class="resultado-resumen">
+      <span>{{ resultado.generados }} bloque(s) generados</span>
+      <span>{{ resultado.reemplazados }} bloque(s) anteriores reemplazados</span>
+      <span>{{ resultado.intentos }} intento(s)</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="resultado-table">
+        <thead>
+          <tr>
+            <th>Grado</th>
+            <th>Requeridas</th>
+            <th>Colocadas</th>
+            <th>Faltan</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (grado of resultado.por_grado; track grado.id_grado) {
+          <tr>
+            <td>{{ grado.nombre_grado }} {{ grado.seccion }}</td>
+            <td>{{ grado.requeridas }}</td>
+            <td>{{ grado.colocadas }}</td>
+            <td [class.faltante]="grado.faltan > 0">{{ grado.faltan }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (resultado.sin_ubicar.length > 0) {
+    <h4 class="sin-ubicar-titulo">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      Bloques sin ubicar ({{ resultado.sin_ubicar.length }})
+    </h4>
+    <div class="table-responsive">
+      <table class="resultado-table">
+        <thead>
+          <tr>
+            <th>Grado</th>
+            <th>Curso</th>
+            <th>Docente</th>
+            <th>Req.</th>
+            <th>Coloc.</th>
+            <th>Faltan</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of resultado.sin_ubicar; track item.id_carga) {
+          <tr>
+            <td>{{ item.nombre_grado }} {{ item.seccion }}</td>
+            <td>{{ item.nombre_curso }}</td>
+            <td>{{ item.docente_nombre }}</td>
+            <td>{{ item.requeridas }}</td>
+            <td>{{ item.colocadas }}</td>
+            <td class="faltante">{{ item.faltan }}</td>
+            <td>{{ item.motivo }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="resultado-nota">
+      La generación dejó todo en BORRADOR. Revise la grilla y publique cuando
+      esté conforme.
+    </p>
+    }
+  </div>
+  } }
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: BLOQUE -->
+<!-- ============================================================ -->
+@if (modalBloque()) {
+<div class="modal-overlay" (click)="cerrarModalBloque()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        <i class="fa-solid fa-calendar-plus"></i>
+        {{ bloqueEditando() ? 'Editar bloque' : 'Nuevo bloque' }}
+      </h3>
+      <button class="modal-close" (click)="cerrarModalBloque()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      @if (errorModal()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorModal() }}
+      </div>
+      }
+
+      <div class="form-group">
+        <label>Curso / Carga curricular *</label>
+        <select [(ngModel)]="formBloque.id_carga">
+          <option [ngValue]="null">Seleccione un curso...</option>
+          @for (carga of cargas(); track carga.id_carga) {
+          <option [ngValue]="carga.id_carga">
+            {{ carga.nombre_curso }} — {{ carga.docente_nombre_completo }}
+          </option>
+          }
+        </select>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Día *</label>
+          <select [(ngModel)]="formBloque.dia_semana">
+            @for (dia of ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']; track dia) {
+            <option [ngValue]="dia">{{ dia }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Bloque *</label>
+          <select [(ngModel)]="formBloque.id_periodo">
+            <option [ngValue]="null">Seleccione...</option>
+            @for (periodo of periodos(); track periodo.id_periodo) {
+            @if (periodo.tipo === 'CLASE') {
+            <option
+              [ngValue]="periodo.id_periodo"
+              [disabled]="!periodo.activo && periodo.id_periodo !== formBloque.id_periodo"
+            >
+              {{ periodo.nombre }} ({{ periodo.hora_inicio.substring(0, 5) }}–{{ periodo.hora_fin.substring(0, 5) }})
+            </option>
+            } }
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Aula (opcional)</label>
+        <input
+          type="text"
+          maxlength="50"
+          [(ngModel)]="formBloque.aula"
+          placeholder="Ej. A-101, Laboratorio 1"
+        />
+        <small>Se valida que el aula no se repita en el mismo día y bloque.</small>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      @if (bloqueEditando()) {
+      <button
+        class="btn-danger"
+        (click)="eliminarBloque()"
+        [disabled]="guardando()"
+      >
+        <i class="fa-solid fa-trash"></i> Eliminar
+      </button>
+      }
+      <button class="btn-secondary" (click)="cerrarModalBloque()" [disabled]="guardando()">
+        Cancelar
+      </button>
+      <button class="btn-primary" (click)="guardarBloque()" [disabled]="guardando()">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-save"></i> Guardar
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- MODAL: MALLA DE PERÍODOS -->
+<!-- ============================================================ -->
+@if (modalPeriodos()) {
+<div class="modal-overlay" (click)="cerrarPeriodos()">
+  <div class="modal-container modal-large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-clock"></i> Malla de bloques horarios</h3>
+      <button class="modal-close" (click)="cerrarPeriodos()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      @if (errorPeriodo()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorPeriodo() }}
+      </div>
+      }
+
+      <div class="table-responsive">
+        <table class="periodos-table">
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Nombre</th>
+              <th>Tipo</th>
+              <th>Horario</th>
+              <th>Activo</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (periodo of periodos(); track periodo.id_periodo) {
+            <tr>
+              <td>{{ periodo.orden }}</td>
+              <td><strong>{{ periodo.nombre }}</strong></td>
+              <td>{{ periodo.tipo }}</td>
+              <td>{{ periodo.hora_inicio.substring(0, 5) }}–{{ periodo.hora_fin.substring(0, 5) }}</td>
+              <td>{{ periodo.activo ? 'Sí' : 'No' }}</td>
+              <td>
+                <div class="action-icons">
+                  <i class="fa-solid fa-pen-to-square" title="Editar" (click)="editarPeriodo(periodo)"></i>
+                  <i class="fa-solid fa-trash" title="Eliminar" (click)="eliminarPeriodo(periodo)"></i>
+                </div>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="periodo-form">
+        <h4>{{ periodoEditando() ? 'Editar período' : 'Nuevo período' }}</h4>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" maxlength="30" [(ngModel)]="formPeriodo.nombre" />
+          </div>
+          <div class="form-group">
+            <label>Orden *</label>
+            <input type="number" min="1" [(ngModel)]="formPeriodo.orden" />
+          </div>
+          <div class="form-group">
+            <label>Hora inicio *</label>
+            <input type="time" [(ngModel)]="formPeriodo.hora_inicio" />
+          </div>
+          <div class="form-group">
+            <label>Hora fin *</label>
+            <input type="time" [(ngModel)]="formPeriodo.hora_fin" />
+          </div>
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select [(ngModel)]="formPeriodo.tipo">
+              <option value="CLASE">Clase</option>
+              <option value="RECREO">Recreo</option>
+              <option value="ALMUERZO">Almuerzo</option>
+            </select>
+          </div>
+          <div class="form-group checkbox-group">
+            <label>
+              <input type="checkbox" [(ngModel)]="formPeriodo.activo" />
+              Activo
+            </label>
+          </div>
+        </div>
+        <div class="periodo-form-actions">
+          <button class="btn-secondary" (click)="nuevoPeriodo()" [disabled]="guardando()">
+            <i class="fa-solid fa-plus"></i> Limpiar / nuevo
+          </button>
+          <button class="btn-primary" (click)="guardarPeriodo()" [disabled]="guardando()">
+            @if (guardando()) {
+            <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+            } @else {
+            <i class="fa-solid fa-save"></i> Guardar período
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarPeriodos()">Cerrar</button>
+    </div>
+  </div>
+</div>
+}
