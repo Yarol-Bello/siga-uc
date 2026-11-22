@@ -229,7 +229,9 @@ no lanza).
 - Incluye `NOW()`, por lo que no es reproducible.
 - No se encadena con las notas ni con el contenido del acta.
 - No hay verificación posterior del hash.
-- El cierre **no impide** modificar notas.
+- El cierre **sí bloquea** la edición de notas desde H48: un acta global `CERRADO`
+  bloquea todos los grados y una por grado bloquea solo ese grado. Reabrir exige motivo y
+  vuelve a habilitar la edición.
 - **Permisos del PDF (H63, 22/11/2026):** `GET /api/auditoria/actas/:id_acta/pdf` es
   ADMIN-only. Una eventual descarga para DOCENTE debe validar `acta.id_grado` con
   `checkGradoDocente`; las actas globales (`id_grado NULL`) quedan ADMIN-only.

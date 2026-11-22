@@ -24,7 +24,7 @@
 | Entender capas, patrones y ciclo de una petición | `02-ARQUITECTURA-Y-PATRONES.md` |
 | Ubicar archivos, controladores, servicios y DAOs | `03-ESTRUCTURA-Y-CLASES.md` |
 | Conocer las 40 tablas, relaciones, triggers y seeds | `04-BASE-DE-DATOS.md` |
-| Consumir o auditar la API (102 endpoints) | `05-API-REST.md` |
+| Consumir o auditar la API (114 endpoints) | `05-API-REST.md` |
 | Ver roles, usuarios semilla y matriz de permisos | `06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Reproducir el recorrido completo de cada rol | `07-FLUJOS-POR-ROL.md` |
 | Entender un proceso de negocio de inicio a fin | `08-PROCESOS-DE-NEGOCIO.md` |
@@ -48,13 +48,13 @@
 | Paneles frontend | 4 + autenticación |
 | Tablas PostgreSQL | 40 |
 | Funciones + triggers | 15 objetos (8 funciones, 7 triggers) |
-| Endpoints REST | 113 (64 GET, 31 POST, 14 PUT, 4 DELETE) |
+| Endpoints REST | 114 (64 GET, 32 POST, 14 PUT, 4 DELETE) |
 | Routers backend | 15 |
 | Controladores backend | 15 |
-| Servicios backend | 21 |
-| DAOs backend | 17 |
+| Servicios backend | 22 |
+| DAOs backend | 18 |
 | Archivos backend | 80 JS |
-| Archivos frontend | 129 (53 TypeScript) |
+| Archivos frontend | 134 (56 TypeScript) |
 | Transacciones de negocio | Matrícula, pago+boleta, cierre de caja, carga masiva, asignación de tutor |
 | Autenticación | JWT (8 h) + bcrypt (coste 10) |
 | Correo transaccional | Resend (API HTTP), con degradación no bloqueante |

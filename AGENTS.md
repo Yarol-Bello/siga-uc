@@ -34,8 +34,8 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | No existen |
 
-**Conteos actuales:** 40 tablas · 113 endpoints · 4 roles · 15 routers · 15 controladores ·
-21 servicios · 17 DAOs · 80 archivos JS backend · 129 archivos frontend (53 TS).
+**Conteos actuales:** 40 tablas · 114 endpoints · 4 roles · 15 routers · 15 controladores ·
+22 servicios · 18 DAOs · 80 archivos JS backend · 134 archivos frontend (56 TS).
 
 ---
 
@@ -85,6 +85,7 @@ psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
+psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
@@ -95,6 +96,7 @@ psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
+psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 ```
 
 > `siga_uc_completo.sql` es el **dump de demo** (esquema + 21 alumnos ficticios +
@@ -208,7 +210,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 40 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 113 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 114 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |

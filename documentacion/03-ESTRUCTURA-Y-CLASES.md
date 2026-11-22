@@ -51,7 +51,7 @@
 | `tesoreriaController.js` | `listarConceptos`, `listarPreTickets`, `obtenerPreTicket`, `crearPreTicket`, `listarPagos`, `obtenerPago`, `getBoletaPdf`, `registrarPago`, `listarPensionesAlumno`, `generarPensionesMes`, `listarBecas`, `aplicarBeca`, `getEstadisticas` | Inyecta `id_usuario` del token; PDF de boleta |
 | `cajaController.js` | `obtenerCajaAbierta`, `listarCajas`, `listarAperturas`, `obtenerApertura`, `aperturar`, `listarMovimientos`, `registrarEgreso`, `cerrar`, `listarCierres` | Inyecta usuario de apertura/egreso/cierre |
 | `reporteController.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getLibretaPdf`, `getResumenAsistencia`, `getAuditoriaDocentes` | KPIs, reportes y PDF de libreta |
-| `auditoriaController.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `getActaPdf`, `cerrarActa`, `getEstadisticas` | Inyecta `cerrado_por`; PDF de acta; paginación con `page`/`pageSize` |
+| `auditoriaController.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `getActaPdf`, `cerrarActa`, `reabrirActa`, `getEstadisticas` | Inyecta `cerrado_por`; PDF de acta; cierre/reapertura auditados; paginación con `page`/`pageSize` |
 | `siagieController.js` | `generarExcel` | Valida archivo/parámetros, borra temporal y descarga |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
@@ -76,7 +76,7 @@
 | `libretaPdfService.js` | `generarLibretaPdf` | PDFKit, Helvetica, A4, tabla paginada y pie de página |
 | `boletaPdfService.js` | `generarBoletaPdf` | PDFKit, comprobante de pago y datos SUNAT/hash |
 | `actaPdfService.js` | `generarActaPdf` | PDFKit, acta landscape, matriz real, watermark para borrador |
-| `auditoriaService.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `getEstadisticas` | Periodo/año/Usuario de cierre |
+| `auditoriaService.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `reabrirActa`, `getEstadisticas` | Valida bimestre/año/grado; periodo canónico; 404/409; motivo de reapertura |
 | `siagieService.js` | `generarExcel` | Detecta encabezados, inyecta notas, guarda archivo, audita exportación |
 | `notificacionService.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Correo no bloqueante, propiedad del destinatario; el masivo resuelve TODOS/GRADO/ALUMNO y cuenta correos enviados/fallidos |
 | `recuperacionService.js` | `solicitarRecuperacion`, `validarToken`, `restablecerPassword` | Token 32 bytes, 2 h, un uso, no revelar existencia |
@@ -99,7 +99,7 @@
 | `tesoreriaDao.js` | `conceptos_pago`, `pre_tickets`, `pagos`, `boletas_electronicas`, `pensiones`, `becas` | Pago transaccional, numeración de boleta, generación de pensiones |
 | `cajaDao.js` | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` | Caja abierta, apertura/egreso/cierre con arqueo |
 | `reporteDao.js` | Múltiples tablas | Dashboard, mérito, riesgo, libreta, asistencia, auditoría docente |
-| `auditoriaDao.js` | `bitacora_auditoria`, `actas_bimestrales` | Bitácora filtrada con `COUNT` y `LIMIT/OFFSET` (sin `page` máx. 200), actas, hash MD5 |
+| `auditoriaDao.js` | `bitacora_auditoria`, `actas_bimestrales` | Bitácora filtrada con `COUNT` y `LIMIT/OFFSET` (sin `page` máx. 200); actas con `INSERT ... ON CONFLICT`, reapertura y `actaEstaCerrada` con bloqueo global |
 | `notificacionDao.js` | `notificaciones`, `usuarios`, `alumnos`, `grados` | Listar/contar/marcar/eliminar por destinatario; `listarDestinatarios` por TODOS/GRADO/ALUMNO e inserción masiva con `unnest` |
 | `siagieDao.js` | `alumnos`, `cursos`, `notas_finales_area`, `grados`, `exportaciones_siagie` | Notas por grado/bimestre, grado, registro de exportación |
 | `recuperacionDao.js` | `recuperacion_password`, `usuarios` | Crear token (expira en PostgreSQL), validar, marcar usado |

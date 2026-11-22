@@ -277,9 +277,14 @@ DELETE SET NULL · `justificacion_modificacion` text · UNIQUE (`id_alumno`, `id
 `id_curso`, `bimestre`, `anio_lectivo`).
 
 #### `actas_bimestrales`
-`id_acta` PK · `periodo` varchar(30) · `anio_lectivo` · `id_grado` FK → `grados` ON DELETE
-CASCADE (nullable) · `estado` CHECK `ABIERTO/CERRADO` default `ABIERTO` · `fecha_cierre` ·
-`cerrado_por` FK → `usuarios` ON DELETE SET NULL · `hash_integridad` varchar(255).
+`id_acta` PK · `periodo` varchar(30) · `anio_lectivo` · `bimestre` NOT NULL CHECK 1-4 ·
+`id_grado` FK → `grados` ON DELETE CASCADE (nullable; `NULL` = acta global) · `estado`
+CHECK `ABIERTO/CERRADO` default `ABIERTO` · `fecha_cierre` · `cerrado_por` FK → `usuarios`
+ON DELETE SET NULL · `reabierto_por` FK → `usuarios` ON DELETE SET NULL ·
+`fecha_reapertura` · `motivo_reapertura` varchar(250) · `hash_integridad` varchar(255).
+UNIQUE `(anio_lectivo, bimestre, id_grado)` con `NULLS NOT DISTINCT`
+(`uq_acta_anio_bimestre_grado`), migración `migracion_h48_actas.sql`. Un acta global
+`CERRADO` bloquea las notas de todos los grados.
 
 #### `libretas` (estructura, no persistida por el código)
 `id_libreta` PK · `id_alumno` FK · `bimestre` · `anio_lectivo` · `id_tutor` FK → `personal` ON
@@ -406,10 +411,11 @@ FK → `personal` ON DELETE SET NULL · `accion_correctiva` text · UNIQUE (`id_
 
 ## 5. Índices
 
-Además de los índices automáticos de PK/UNIQUE, el esquema define **25 índices btree**:
+Además de los índices automáticos de PK/UNIQUE, el esquema define **26 índices btree**:
 
 | Tabla | Índices |
 |---|---|
+| `actas_bimestrales` | UNIQUE `(anio_lectivo, bimestre, id_grado)` `NULLS NOT DISTINCT` (H48) |
 | `alumnos` | `anio_lectivo`, `dni`, `estado_matricula`, `id_grado` |
 | `asistencia_alumnos` | `id_alumno`, `(id_curso, fecha)`, `fecha` |
 | `asistencia_personal` | `fecha` |

@@ -241,8 +241,8 @@ Cada layout contiene:
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
 | `AdminSiagieComponent` | `GET /grados`, `GET /reportes/auditoria-docentes/:id`, `POST /siagie/generar-excel`, `GET /personal/:id`, `POST /notificaciones` |
-| `AdminReportesComponent` | `GET /grados`, `GET /alumnos`, `GET /reportes/cuadro-merito/:id`, `/alumnos-riesgo/:id`, `/libreta/:id`, `/libreta/:id/pdf` |
-| `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `GET /actas/:id/pdf` |
+| `AdminReportesComponent` | `GET /grados`, `GET /alumnos`, `GET /reportes/cuadro-merito/:id`, `/alumnos-riesgo/:id`, `/libreta/:id`, `/libreta/:id/pdf`; selector de bimestre 1-4 también en libretas (H51) |
+| `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `POST /actas/:id/reabrir`, `GET /actas/:id/pdf`; tarjeta de cierre, badge global, modal de reapertura (H48) |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id` |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo` |
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo` |
@@ -386,6 +386,6 @@ del rol original; el backend debe permitir ambos roles.
 5. ~~Añadir paginación real (hoy listas completas).~~ ✅ Parcial (H23): alumnos y bitácora; falta personal, pagos y pre-tickets.
 6. Evitar N+1 en tesorería (cargar pensiones en un endpoint agregado).
 7. ~~Parametrizar año lectivo y conceptos (hoy hardcodeados).~~ ✅ (H12: `ANIO_LECTIVO` + `GET /api/configuracion`).
-8. Añadir botón “Calcular notas finales” y “Cerrar acta” con bloqueo real.
+8. ~~Añadir “Cerrar acta” con bloqueo real.~~ ✅ (H48: tarjeta de cierre, reapertura, acta global y bloqueo). Nota final automática desde H04.
 9. Mejorar responsive del sidebar.
 10. Cambiar el título de `index.html` a “SIGA-UC”.

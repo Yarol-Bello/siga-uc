@@ -19,9 +19,10 @@
 > menor o higiene operativa.
 >
 > **Actualización 22/11/2026:** **H50** (caja efectivo/digital) y **H63** (PDF de actas
-> ADMIN-only) fueron corregidos en `2449cf3` después de este informe. `test:e2e` pasó a
-> **17 PASS**; ver `HANDOFF_SESSION.md` y `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`. El resto de
-> hallazgos de este documento sigue vigente.
+> ADMIN-only) se corrigieron en `2449cf3`; **H48** (actas reales) y **H51** (libretas por
+> bimestre) se corrigieron después. `test:e2e` pasó a **19 PASS**; ver
+> `HANDOFF_SESSION.md` y `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`. El resto de hallazgos de este
+> documento sigue vigente.
 
 ---
 

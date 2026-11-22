@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **113 endpoints** - 64 GET, 31 POST, 14 PUT, 4 DELETE.
+**Total verificado:** **114 endpoints** - 64 GET, 32 POST, 14 PUT, 4 DELETE.
 
 ---
 
@@ -408,26 +408,39 @@ alumno no existe y `400` si no está `Matriculado`. Audita `CREAR` en `Tesorerí
 
 ---
 
-## 13. Auditoría — `/api/auditoria` (7)
+## 13. Auditoría — `/api/auditoria` (8)
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 84 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=&page=&pageSize=` | Autenticado | Bitácora; `page` activa paginación (default 1, máx. 100); sin `page` máx. 200 |
-| 85 | GET | `/api/auditoria/modulos` | Autenticado | Módulos distintos |
-| 86 | GET | `/api/auditoria/estadisticas` | Autenticado | Totales por acción |
-| 87 | GET | `/api/auditoria/actas` | Autenticado | Actas bimestrales |
+| 84 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=&page=&pageSize=` | ADMIN | Bitácora; `page` activa paginación (default 1, máx. 100); sin `page` máx. 200 |
+| 85 | GET | `/api/auditoria/modulos` | ADMIN | Módulos distintos |
+| 86 | GET | `/api/auditoria/estadisticas` | ADMIN | Totales por acción |
+| 87 | GET | `/api/auditoria/actas` | ADMIN | Actas bimestrales |
 | 88 | GET | `/api/auditoria/actas/:id_acta/pdf` | ADMIN | PDF de acta con matriz real de notas (H63) |
-| 89 | GET | `/api/auditoria/:id` | Autenticado | Detalle de registro |
-| 90 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra acta con hash |
+| 89 | GET | `/api/auditoria/:id` | ADMIN | Detalle de registro |
+| 90 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra o crea un acta con hash (H48) |
+| 90b | POST | `/api/auditoria/actas/:id/reabrir` | ADMIN | Reabre un acta CERRADA con motivo (H48) |
 
 > El `COUNT(*)` de la bitácora usa los mismos filtros del listado (`módulo`, `acción`,
 > `búsqueda`, fechas), por lo que `total` y `totalPages` reflejan lo filtrado.
 > El dashboard de alumnos y la bitácora consumen `pagination`; tesorería, reportes y el
 > buscador de notificaciones siguen pidiendo el arreglo completo (sin `page`).
 
-**Cerrar acta body:** `{ periodo, anio_lectivo, id_grado }`.
-Respuesta: acta con `estado = CERRADO`, `fecha_cierre`, `cerrado_por`, `hash_integridad`
-(MD5 de periodo + año + NOW + grado).
+**Cerrar acta body:** `{ bimestre, anio_lectivo, id_grado? }`. `id_grado` omitido o
+`null` crea/cierra el acta global. El backend deriva el periodo canónico. Hace
+`INSERT ... ON CONFLICT (anio_lectivo, bimestre, id_grado) DO UPDATE` y devuelve **409**
+si el acta ya estaba `CERRADO`.
+Respuesta: acta con `estado = CERRADO`, `fecha_cierre`, `cerrado_por`,
+`hash_integridad` (MD5 de periodo + año + NOW + grado; algoritmo sin cambios), `bimestre`
+y `estado_anterior`. Mensaje: **"Acta cerrada correctamente"**.
+
+**Reabrir body:** `{ motivo }`, mínimo 10 y máximo 250 caracteres. Solo actas `CERRADO`;
+devuelve **409** si el acta no está cerrada y **404** si no existe. Limpia
+`hash_integridad` y guarda `reabierto_por`, `fecha_reapertura` y `motivo_reapertura`.
+Mensaje: **"Acta reabierta correctamente"**.
+
+> Un acta global (`id_grado NULL`) en `CERRADO` bloquea las notas de **todos** los grados
+> del año/bimestre. Un acta por grado solo bloquea ese grado.
 
 > `GET /api/auditoria/:id` está después de las rutas fijas para evitar colisiones.
 
@@ -514,7 +527,7 @@ contraseñas.
 |---|---|
 | Generales | 3 |
 | Auth | 9 |
-| Académico | 7 |
+| Académico | 6 |
 | Alumnos | 6 |
 | Personal | 8 |
 | Carga curricular | 9 |
@@ -524,15 +537,15 @@ contraseñas.
 | Tesorería | 13 |
 | Caja | 9 |
 | Reportes | 7 |
-| Auditoría | 7 |
+| Auditoría | 8 |
 | SIAGIE | 1 |
 | Notificaciones | 8 |
-| **Total** | **113** |
+| **Total** | **114** |
 
 | Verbo | Cantidad |
 |---|---|
 | GET | 64 |
-| POST | 31 |
+| POST | 32 |
 | PUT | 14 |
 | DELETE | 4 |
 

@@ -48,6 +48,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > **Actualización 22/11/2026 (H50/H63):** la caja separa efectivo y digital (H50) y el PDF
 > de actas queda restringido a ADMIN (H63). Ver la sección 3 y
 > `18-AUDITORIA-PRODUCCION-2026-11-22.md`.
+>
+> **Actualización 22/11/2026 (H48/H51):** cierre y reapertura reales de actas, bloqueo
+> global y libretas por bimestre. Ver H48/H51 en la sección 3.
 
 ---
 
@@ -445,6 +448,30 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (22/11/2026): la ruta quedó detrás del `checkRole(["ADMIN"])` global |
 | Verificación | `test:e2e` 17: ADMIN 200 (PDF), DOCENTE 403, sin token 401 |
+
+### H48 — Actas sin creación real ni bloqueo global (resuelto)
+
+| Campo | Detalle |
+|---|---|
+| Severidad | **Crítica** (integridad académica) |
+| Evidencia | `cerrarActa` solo hacía `UPDATE`; una base nueva sin actas devolvía 500. `actaEstaCerrada` ignoraba las actas globales, que la UI mostraba como "Acta Firmada". El seed de producción no crea actas. |
+| Impacto | El cierre de bimestre no se podía ejecutar en una base nueva y, en la demo, las notas seguían editables con actas globales cerradas. |
+| Recomendación | Migración H48 con `bimestre`, reapertura y unicidad por año/bimestre/grado; `INSERT ... ON CONFLICT`; bloqueo global; reapertura auditada. |
+| Esfuerzo | M |
+| Estado | ✅ Resuelto (22/11/2026): `database/migracion_h48_actas.sql` (idempotente); `actas_bimestrales.bimestre` 1-4, `reabierto_por`, `fecha_reapertura`, `motivo_reapertura`; índice único `uq_acta_anio_bimestre_grado` `NULLS NOT DISTINCT`; `POST /actas/cerrar` crea o cierra; `POST /actas/:id/reabrir`; `actaEstaCerrada` bloquea si el acta global está `CERRADO`; auditoría `CERRAR`/`REABRIR`. |
+| Verificación | `test:e2e` 14: cierre real 200, nota 409, reapertura 200, nota 201; 18: global bloquea 1ro y 5to, reabrir libera; 19: doble cierre 409, motivo corto 400, DOCENTE/SECRETARIA 403, sin token 401. UI: cierre 2do grado 2do bimestre, badge, nota 409, reapertura y nota 200. Migración ejecutada dos veces. |
+
+### H51 — Libretas fijas al II Bimestre (resuelto)
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Media |
+| Evidencia | `AdminReportesComponent` ocultaba el selector de bimestre en la pestaña de libretas y mantenía `bimestre = 2`; la tabla y el PDF usaban ese valor fijo. |
+| Impacto | No se podían consultar ni descargar libretas de I, III o IV bimestre. |
+| Recomendación | Mostrar el selector en todas las pestañas y usar `this.bimestre()` en tabla, encabezado y PDF; estado vacío claro. |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): selector visible en libretas, valor por defecto 2, PDF y encabezado usan el bimestre elegido; aviso cuando no hay calificaciones. |
+| Verificación | UI local: I, III y IV; encabezado y PDF con `?bimestre=1/3/4`; estado vacío en un bimestre sin notas. |
 
 ### H34 — Sin PDFs reales (resuelto)
 

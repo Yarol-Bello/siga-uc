@@ -837,22 +837,41 @@ el `ROLLBACK` revierte pago, boleta, movimiento y matrícula.
 
 ### P17.2 Cierre de acta
 
-1. Admin selecciona acta `ABIERTO`.
-2. Confirma.
-3. `POST /api/auditoria/actas/cerrar` con periodo, año y grado.
-4. `UPDATE actas_bimestrales`:
-   - `estado = 'CERRADO'`
-   - `fecha_cierre = NOW()`
-   - `cerrado_por = usuario`
-   - `hash_integridad = MD5(periodo || año || NOW() || grado)`
-5. Devuelve acta.
+1. El ADMIN elige bimestre (1-4), año lectivo y grado, o **Todos los grados**
+   (`id_grado = NULL`).
+2. Confirma el alcance.
+3. `POST /api/auditoria/actas/cerrar` con `{ bimestre, anio_lectivo, id_grado? }`.
+4. El service valida bimestre, año, grado (si existe y pertenece al año) y toma
+   `cerrado_por` del token.
+5. El DAO hace `INSERT ... ON CONFLICT (anio_lectivo, bimestre, id_grado) DO UPDATE`
+   únicamente si el acta no estaba `CERRADO`:
+   - `periodo` canónico (`1er`…`4to Bimestre`)
+   - `estado = 'CERRADO'`, `fecha_cierre = NOW()`, `cerrado_por`
+   - `hash_integridad = MD5(periodo || año || NOW() || grado)` (algoritmo sin cambios)
+6. Si ya estaba cerrada devuelve **409**. El cierre y la reapertura se auditan como
+   `CERRAR` / `REABRIR` con módulo `Actas`.
+
+**Reapertura**
+
+1. El ADMIN pulsa **Reabrir** en un acta `CERRADO`.
+2. `POST /api/auditoria/actas/:id/reabrir` con `{ motivo }` (mínimo 10, máximo 250).
+3. `UPDATE` a `ABIERTO`, guarda `reabierto_por`, `fecha_reapertura`,
+   `motivo_reapertura` y limpia `hash_integridad`.
+4. **409** si no está cerrada; **404** si no existe. Solo ADMIN.
+
+**Bloqueo de notas**
+
+- Un acta global (`id_grado NULL`) en `CERRADO` bloquea las notas de **todos** los
+  grados del año/bimestre.
+- Un acta por grado bloquea solo ese grado.
+- `calificacionService` consulta `actaEstaCerrada` antes de registrar o recalcular.
 
 **Limitaciones**
 
-- No bloquea modificaciones de notas.
-- El hash es MD5 y depende de la fecha; no es una firma digital.
-- No hay validación de que todas las notas estén completas.
-- No hay acta por grado si `id_grado` es NULL (seed tiene actas globales).
+- El hash es MD5 y depende de la fecha; **no es una firma digital**. La UI lo llama
+  "hash de integridad".
+- No se valida que todas las notas estén completas antes de cerrar.
+- PDF de acta: solo ADMIN (H63).
 
 ---
 

@@ -110,7 +110,7 @@ usar `getAnioLectivo()` en backend y `ConfiguracionService.anioLectivo` en front
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 21/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(10 invariantes de datos, solo lectura) y **E2E** (17 flujos sobre una base desechable).
+(10 invariantes de datos, solo lectura) y **E2E** (19 flujos sobre una base desechable).
 El resto de la estrategia sigue siendo manual y por rol.
 
 ### 4.1 Preparación
@@ -312,10 +312,11 @@ npm run test:e2e
 ```
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
-  (`h32`, `h10_h38`, `h07`, `h47`), arranca el backend en `http://localhost:3101` y ejecuta
-  **17 flujos**: alta/retiro de alumno, matrícula, pensión, doble pago, anulación, doble
-  anulación, calificaciones, guardado masivo, PDFs, RBAC, auditoría, acta cerrada, caja
-  con efectivo/Yape (con y sin anulación) y PDF de acta ADMIN-only.
+  (`h32`, `h10_h38`, `h07`, `h47`, `h48`), arranca el backend en `http://localhost:3101` y
+  ejecuta **19 flujos**: alta/retiro de alumno, matrícula, pensión, doble pago, anulación,
+  doble anulación, calificaciones, guardado masivo, PDFs, RBAC, auditoría, cierre/reapertura
+  real de actas, bloqueo global, caja con efectivo/Yape (con y sin anulación) y PDF de acta
+  ADMIN-only.
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -323,7 +324,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **17 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **19 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -452,7 +453,7 @@ WHERE m.id_movimiento IS NULL;
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
 | ~~Integridad de datos~~ ✅ | 10 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 17 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~E2E de flujos críticos~~ ✅ | 19 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

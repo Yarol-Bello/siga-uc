@@ -229,13 +229,16 @@ top = 10
 
 | ID | Regla | Dónde | Detalle |
 |---|---|---|---|
-| RN-123 | Solo ADMIN cierra actas | Router | 403 |
-| RN-124 | El acta debe tener periodo y año | Service | 400 |
-| RN-125 | El cierre genera hash MD5 | DAO | No es firma digital |
-| RN-126 | El hash depende de la fecha de cierre | DAO | No reproducible |
-| RN-127 | El cierre no bloquea notas | Código actual | Brecha |
-| RN-128 | La bitácora se lista máximo 200 | DAO | — |
-| RN-129 | Solo calificaciones se auditan automáticamente | Trigger | Brecha |
+| RN-123 | Solo ADMIN cierra y reabre actas | Router | 403 |
+| RN-124 | El acta exige bimestre 1-4 y año lectivo; grado opcional | Service + BD `CHECK` | 400 |
+| RN-125 | Un acta global (`id_grado NULL`) en `CERRADO` bloquea todos los grados | `actaEstaCerrada` | 409 al guardar notas |
+| RN-126 | Cerrar un acta ya `CERRADO` devuelve 409; crear una nueva la inserta | DAO `INSERT ... ON CONFLICT` | 409 / 200 |
+| RN-127 | Reabrir exige motivo de 10-250 caracteres y solo aplica a `CERRADO` | Service | 400/404/409 |
+| RN-128 | El hash es MD5 de periodo+año+NOW+grado; no es firma digital | DAO | No reproducible |
+| RN-129 | Reabrir limpia el hash y registra `reabierto_por`/fecha/motivo | DAO | — |
+| RN-130 | Las libretas se consultan por bimestre 1-4 | Frontend + API | H51 |
+| RN-131 | La bitácora se lista máximo 200 sin paginación | DAO | Con `page` usa paginación server-side |
+| RN-132 | Se auditan escrituras, accesos y descargas; no lecturas | Servicios de auditoría | H07 |
 
 ## 15. Recuperación de contraseña
 

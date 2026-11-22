@@ -5,8 +5,9 @@
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
-> actas solo ADMIN) corregidos en `2449cf3`. `test:e2e` subió a **17 PASS**. El código nuevo
-> aún no está desplegado en Render.
+> actas solo ADMIN) corregidos en `2449cf3`; **H48** (cierre/reapertura real de actas y
+> bloqueo global) y **H51** (libretas por bimestre) en `d9071e5`. `test:e2e` subió a
+> **19 PASS**. El código nuevo aún no está desplegado en Render.
 
 ---
 
@@ -76,22 +77,27 @@ En esta fase **no** se prepara el despliegue definitivo.
   todas las cargas quedaron en ADMIN; una nueva ejecución en local detectará 0 docentes con
   carga y creará los 5.
 - **Verificación H47:** base desechable con 142 bloques completos en carga coherente; 20 h
-  sin ubicar con docente sobrecargado; `test:h47-generador` **4 PASS**; E2E **17 PASS**
-  (incluye H50 y H63); build Angular OK. La UI se probó en navegador con ADMIN, SECRETARIA,
-  DOCENTE y ESTUDIANTE.
+  sin ubicar con docente sobrecargado; `test:h47-generador` **4 PASS**; E2E **19 PASS**
+  (incluye H48, H50, H51 y H63); build Angular OK. La UI se probó en navegador con ADMIN,
+  SECRETARIA, DOCENTE y ESTUDIANTE.
 - **Verificación datos demo H47 (21/11/2026):** script ejecutado dos veces sin duplicados;
   local **54 cargas/142 h**, docentes 30/30/30/27/25; generación **142/142**, 0 sin ubicar;
   2do y 3ro publicados; Demo 1 vio 12 bloques en dos grados; alumno de 2do vio solo su grado
   y solo PUBLICADO; limpieza dejó **54 cargas en ADMIN, 0 usuarios/personal/QR demo,
   0 horarios y backup de 13 filas intacto**.
 - **Verificación local previa:** `npm run smoke` **11 PASS** (exit 0), `npm run test:e2e`
-  **17 PASS** (exit 0) e integridad **8 PASS / 2 FAIL** esperados del seed. Notificación
+  **19 PASS** (exit 0) e integridad **8 PASS / 2 FAIL** esperados del seed. Notificación
   sin correo: guardada y visible en la campanita. La contraseña del ADMIN local se alineó
   con `SMOKE_ADMIN_PASSWORD` de `.env` (no se documentó). **La contraseña del ADMIN de
   producción es la real del dueño y NO está en `.env`.**
 - **H50/H63 (22/11/2026):** `/caja/actual` devuelve totales de efectivo y digital por
   separado; el cierre usa solo efectivo para `efectivo_esperado` y reporta `total_digital`.
   El PDF de actas quedó restringido a ADMIN. Verificación `test:e2e` 15/16/17 PASS.
+- **H48/H51 (22/11/2026):** migración `migracion_h48_actas.sql` con `bimestre`,
+  reapertura y UNIQUE por año/bimestre/grado; cierre con `INSERT ... ON CONFLICT`;
+  acta global `CERRADO` bloquea todos los grados; reapertura con motivo auditada. Libretas
+  con selector de bimestre 1-4 y PDF por bimestre. Verificación `test:e2e` 14/18/19 PASS y
+  UI local.
 
 ---
 
@@ -133,8 +139,9 @@ En esta fase **no** se prepara el despliegue definitivo.
 - `npm run test:integridad` (`scripts/test-integridad.js`): 10 invariantes de solo lectura
   sobre cualquier base. Fuerza `default_transaction_read_only=on`. Exit 1 si hay FAIL.
 - `npm run test:e2e` (`scripts/test-e2e.js`): crea `siga_uc_e2e`, carga el dump y las
-  migraciones, arranca el backend en el puerto 3101, ejecuta 17 flujos y elimina la base
-  con `dropdb --force`. Verificado: **17 PASS, 0 FAIL** y exit 0 (incluye H50 y H63).
+  migraciones, arranca el backend en el puerto 3101, ejecuta 19 flujos y elimina la base
+  con `dropdb --force`. Verificado: **19 PASS, 0 FAIL** y exit 0 (incluye H48, H50, H51 y
+  H63).
 - Integridad local del 21/11/2026: **8 PASS, 2 FAIL** por datos de seed reales
   (invariantes 4 y 8: 5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El
   invariante 7 ya no marca al ADMIN: solo exige ficha a ESTUDIANTE (rol 4) y
@@ -214,6 +221,8 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H47 | Horarios por bloques, `mi-horario`, CRUD, publicación, generador y UI | `cf3c988`, `e65f60f`, `65e73a3`, `a9acf24` |
 | H50 | Caja separa efectivo y digital; el cierre no descuenta Yape/transferencia del cajón | `2449cf3` (22/11/2026) |
 | H63 | PDF de actas restringido a ADMIN; DOCENTE recibe 403 | `2449cf3` (22/11/2026) |
+| H48 | Cierre/reapertura reales de actas, bloqueo global y migración H48 | `d9071e5` (22/11/2026) |
+| H51 | Selector de bimestre en libretas y PDF por bimestre | `d9071e5` (22/11/2026) |
 
 ---
 
@@ -268,8 +277,8 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Producción:** `siga_uc.sql` → `seed_produccion.sql` (con `-v admin_password`) →
   `migracion_h32_anulacion_pagos.sql` → `migracion_h10_h38_concurrencia_pagos.sql` →
   `migracion_h07_auditoria.sql` → `migracion_h45_pensiones_anuladas.sql` →
-`migracion_h47_horarios.sql` →
-  migraciones futuras, en ese orden.
+  `migracion_h47_horarios.sql` → `migracion_h48_actas.sql` → migraciones futuras, en ese
+  orden.
 - No mezclar ambos escenarios: `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes.
 - `seed_produccion.sql` crea una ficha `personal` mínima del admin porque
   `carga_curricular.id_personal` es NOT NULL; la carga inicial queda asignada al admin
@@ -395,6 +404,13 @@ En esta fase **no** se prepara el despliegue definitivo.
   No volver a usar `total_ingresos` para el arqueo.
 - H63: `GET /api/auditoria/actas/:id_acta/pdf` es ADMIN-only; DOCENTE recibe 403. Si se
   habilita DOCENTE, validar `acta.id_grado` y no exponer actas globales.
+- H48: el cierre usa `INSERT ... ON CONFLICT (anio_lectivo, bimestre, id_grado)`; el
+  periodo se deriva del bimestre. Un acta global `CERRADO` bloquea **todos** los grados.
+  Cerrar dos veces da 409; reabrir exige motivo de 10-250 y solo aplica a `CERRADO`.
+- H48: la migración agrega `bimestre`, reapertura y el índice único `NULLS NOT DISTINCT`.
+  Hay que aplicarla antes de desplegar el backend; el dump demo tiene actas globales 1 y 2.
+- H51: el selector de bimestre de libretas quedó visible; el PDF usa el bimestre elegido.
+  El valor por defecto sigue siendo 2.
 
 ---
 
@@ -432,27 +448,27 @@ Nada de esta lista se hace en la fase actual.
 
 ---
 
-## 9. Verificar el entorno en 8 comandos
+## 9. Verificar el entorno
 
 ```powershell
 git log -1 --oneline
-# Solo si la base aún no tiene H47:
+# Solo si la base aún no tiene H47/H48:
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
+psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
 # Requiere el backend corriendo en localhost:3000
 curl.exe -s http://localhost:3000/api/health
 cd siga-uc-backend; npm run smoke          # 11 PASS, exit 0
 npm run test:integridad                    # 10 invariantes; revisar FAIL reales
-npm run test:e2e                           # 17 PASS, exit 0; elimina siga_uc_e2e
+npm run test:e2e                           # 19 PASS, exit 0; elimina siga_uc_e2e
 npm run test:h47-generador                 # 4 PASS; no toca BD
 ```
 
-El primero confirma el commit; el segundo aplica H47 si falta; el tercero debe devolver
-**40** y `ux_pago_pension_activo`; el cuarto debe devolver `success: true` y
-`database: "ok"` **con el backend en marcha**; el quinto debe terminar en
-**11 PASS, 0 FAIL**; el sexto puede reportar violaciones reales de seed; el séptimo
-debe terminar en **17 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada; el octavo en
-**4 PASS**.
+El primero confirma el commit; los dos `psql` aplican H47/H48 si faltan; el conteo debe
+devolver **40** y `ux_pago_pension_activo`; el health debe devolver `success: true` y
+`database: "ok"` **con el backend en marcha**; el smoke debe terminar en **11 PASS, 0
+FAIL**; integridad puede reportar violaciones reales de seed; E2E debe terminar en
+**19 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada; el generador en **4 PASS**.
 
 Para una base **definitiva** (solo después de la aprobación):
 
@@ -465,5 +481,6 @@ psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
+psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 cd siga-uc-backend; npm run test:integridad   # 10 PASS
 ```
