@@ -164,6 +164,8 @@ En esta fase **no** se prepara el despliegue definitivo.
   matrícula no retirada.
 - **Frontend:** ficha docente y pre-tickets envían `?anio`; el panel del estudiante muestra
   “Sin matrícula {año}” y el sidebar no inventa grado.
+- **Commits locales de 6.1:** `39f2eb4` (DB/H49), `84c4c5c` (backend), `72c68df`
+  (frontend), `a10e324` (tests) y `952ecc4` (docs). Sin push ni despliegue.
 - **Verificación (local):** migración dos veces en `siga_uc_h49` (idempotente); rollback OK;
   seed de producción con `-v anio_lectivo=2027` (41 tablas, 0 alumnos, admin OK);
   `test:integridad` **14 PASS** en base de producción desechable; `test:e2e` **27 PASS**;
