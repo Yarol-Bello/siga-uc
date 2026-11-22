@@ -34,6 +34,7 @@ export class EstudianteDashboardComponent implements OnInit {
 
   cargando = signal(true);
   error = signal<string | null>(null);
+  sinMatricula = signal(false);
   cursos = signal<CursoConNotas[]>([]);
   cursosMatriculados = signal<number | null>(null);
   promedioGeneral = signal<string>('-');
@@ -45,6 +46,12 @@ export class EstudianteDashboardComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    const info = this.usuario()?.info_adicional;
+    if (info?.matricula_activa === false) {
+      this.sinMatricula.set(true);
+      this.cargando.set(false);
+      return;
+    }
     this.cargarNotas();
     this.cargarCursosMatriculados();
   }

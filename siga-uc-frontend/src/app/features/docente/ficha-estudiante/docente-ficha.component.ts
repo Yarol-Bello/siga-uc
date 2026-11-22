@@ -88,7 +88,11 @@ export class DocenteFichaComponent {
     this.notas.set([]);
     this.resumenAsistencia.set(null);
 
-    this.http.get<any>(`${environment.apiUrl}/alumnos/dni/${dni}`).subscribe({
+    this.http
+      .get<any>(
+        `${environment.apiUrl}/alumnos/dni/${dni}?anio=${this.anioLectivo()}`,
+      )
+      .subscribe({
       next: (res) => {
         if (res.success) {
           this.alumno.set(res.data);

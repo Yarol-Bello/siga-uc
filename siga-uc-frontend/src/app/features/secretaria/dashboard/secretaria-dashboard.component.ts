@@ -64,7 +64,11 @@ export class SecretariaDashboardComponent implements OnInit {
       });
 
     // Cargar pre-tickets pendientes
-    this.http.get<any>(`${environment.apiUrl}/tesoreria/pre-tickets?estado=PENDIENTE`).subscribe({
+    this.http
+      .get<any>(
+        `${environment.apiUrl}/tesoreria/pre-tickets?estado=PENDIENTE&anio=${anioActual}`,
+      )
+      .subscribe({
       next: (res) => {
         if (res.success) this.preTickets.set(res.data);
         this.cargando.set(false);

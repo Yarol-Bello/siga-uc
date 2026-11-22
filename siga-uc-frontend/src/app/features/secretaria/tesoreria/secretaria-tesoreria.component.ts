@@ -162,7 +162,11 @@ export class SecretariaTesoreriaComponent implements OnInit {
     });
 
     // Cargar pre-tickets
-    this.http.get<any>(`${environment.apiUrl}/tesoreria/pre-tickets?estado=PENDIENTE`).subscribe({
+    this.http
+      .get<any>(
+        `${environment.apiUrl}/tesoreria/pre-tickets?estado=PENDIENTE&anio=${anio}`,
+      )
+      .subscribe({
       next: (res) => {
         if (res.success) this.preTickets.set(res.data);
         this.preticketsListos = true;

@@ -13,7 +13,14 @@
   </div>
   }
 
-  @if (!cargando() && !error()) {
+  @if (sinMatricula()) {
+  <div class="alert alert-warning">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    No tienes matrícula en el año lectivo {{ anioLectivo() }}. Contacta a Secretaría.
+  </div>
+  }
+
+  @if (!cargando() && !error() && !sinMatricula()) {
   <!-- BANNER BIENVENIDA -->
   <div class="welcome-banner">
     <div class="welcome-text">
