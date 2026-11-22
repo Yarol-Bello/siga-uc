@@ -394,7 +394,7 @@ tiene otro nombre.
 ### 7.3 Checklist de despliegue
 
 - [ ] PostgreSQL creado con `siga_uc.sql` + `seed_produccion.sql` + migraciones (sin dump demo).
-- [ ] `npm run test:integridad` → 14 PASS, 0 FAIL.
+- [ ] `npm run test:integridad` → 16 PASS, 0 FAIL.
 - [ ] Confirmado: 0 alumnos, 0 pagos, 0 pensiones, 1 usuario.
 - [ ] Admin inicial cambió su contraseña temporal.
 - [ ] Variables de entorno cargadas.

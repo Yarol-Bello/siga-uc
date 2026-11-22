@@ -261,7 +261,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 41 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 114 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 119 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |
