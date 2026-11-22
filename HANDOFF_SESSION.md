@@ -56,13 +56,27 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Fecha:** 21/11/2026
 - **Commit base de esta sesión:** `22e06f6 fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)`
 - **Commits de esta sesión:** aviso de correo en modo prueba, documentación de la fase de
-  demostración y **H47** (esquema+CRUD `cf3c988`, generador `e65f60f`, UI `65e73a3`).
-- **Estado:** fase de demostración fijada. **H47 implementado en código y probado en bases
-  desechables; no aplicado a `siga_uc` ni a Supabase.** Sin cambios en producción.
+  demostración, **H47** (esquema+CRUD `cf3c988`, generador `e65f60f`, UI `65e73a3`) y
+  **datos demo H47** (`c4be5ac`).
+- **Estado:** fase de demostración fijada. **H47 está aplicado en `siga_uc`**; Supabase
+  tiene H47 desplegado según el dueño. El script de datos demo está probado y la base local
+  quedó limpia (cargas en ADMIN, sin usuarios demo, backup intacto). Sin cambios en
+  producción.
+- **Datos demo H47:** `database/demo_h47_docentes.sql` crea solo los docentes que faltan
+  según las cargas existentes. En local, con la distribución original de 4 docentes, crea
+  únicamente a **Docente Demo 1** (`99000001`, contraseña `99000001`). En Supabase, donde
+  todas las cargas están en ADMIN, crea **Docente Demo 1–5** (`99000001`–`99000005`,
+  contraseña = DNI). Tras la limpieza local, todas las cargas quedaron en ADMIN; una nueva
+  ejecución del script en local detectará 0 docentes con carga y creará los 5.
 - **Verificación H47:** base desechable con 142 bloques completos en carga coherente; 20 h
   sin ubicar con docente sobrecargado; `test:h47-generador` **4 PASS**; E2E **14 PASS**;
   build Angular OK. La UI se probó en navegador con ADMIN, SECRETARIA, DOCENTE y
   ESTUDIANTE.
+- **Verificación datos demo H47 (21/11/2026):** script ejecutado dos veces sin duplicados;
+  local **54 cargas/142 h**, docentes 30/30/30/27/25; generación **142/142**, 0 sin ubicar;
+  2do y 3ro publicados; Demo 1 vio 12 bloques en dos grados; alumno de 2do vio solo su grado
+  y solo PUBLICADO; limpieza dejó **54 cargas en ADMIN, 0 usuarios/personal/QR demo,
+  0 horarios y backup de 13 filas intacto**.
 - **Verificación local previa:** `npm run smoke` **11 PASS** (exit 0), `npm run test:e2e`
   **14 PASS** (exit 0) e integridad **8 PASS / 2 FAIL** esperados del seed. Notificación
   sin correo: guardada y visible en la campanita. La contraseña del ADMIN local se alineó
@@ -80,18 +94,19 @@ En esta fase **no** se prepara el despliegue definitivo.
   - Frontend: <https://siga-uc-web.onrender.com>
   - Backend: <https://siga-uc-api-prod.onrender.com/api>
   - Ambos **Live** en el commit `22e06f6`, con servicios **gratuitos**.
-- Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **39 tablas**.
-  Migraciones **H32, H10/H38, H07 y H45 aplicadas a mano**. **H47 está implementado en el
-  repo pero NO aplicado a Supabase**; el esquema nuevo tiene **40 tablas**.
+- Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **H47 desplegado**
+  (según el dueño; no consultado en esta sesión), **10 períodos**. Carga 2026:
+  **55 cargas/145 h, todas en el ADMIN** antes de aplicar el script demo.
 - Datos de la demo: solo usuarios y alumno de prueba; noviembre y diciembre ya generados.
   **No hay datos reales.**
 - **No hay staging.**
 - Render gratuito puede dormir por inactividad y Supabase gratuito puede pausarse; entrar
   unos minutos antes de la demo para despertar ambos servicios.
-- La BD local de demo se recreó con la secuencia del dump: **39 tablas** y el índice
-  `ux_pago_pension_activo` **existe** (verificado el 21/11/2026).
-- Datos locales tras la recreación: **21 alumnos, 29 usuarios, 10 pagos de seed
-  (+1 pago de prueba existente), 180 pensiones, 0 pensiones duplicadas**.
+- La BD local `siga_uc` tiene **H47 aplicado**: **41 tablas** (40 + `horarios_h47_backup`),
+  **10 períodos**, **0 horarios** tras la limpieza y **13 filas** en el backup.
+- Datos locales tras la limpieza: **21 alumnos, 29 usuarios, 54 cargas/142 h todas en el
+  ADMIN** (ficha personal nueva del ADMIN), **0 usuarios/personal/QR demo** y **0 horarios**.
+  El índice `ux_pago_pension_activo` existe.
 - Credenciales de prueba: `docs/CREDENCIALES.md`. La clave de PostgreSQL local está en
   `siga-uc-backend/.env` (`DB_PASSWORD`); no se escribe en este documento.
 - `npm run smoke` existe (`siga-uc-backend/scripts/smoke.js`): 11 pruebas de solo lectura,
@@ -326,6 +341,21 @@ En esta fase **no** se prepara el despliegue definitivo.
   aula es nullable y su UNIQUE es parcial e insensible a mayúsculas/espacios.
 - H47: cambiar `id_personal` de una carga con SQL directo deja los horarios apuntando al
   docente anterior; usar `PUT /api/carga-curricular/:id`, que reasigna o bloquea.
+- H47 demo: `database/demo_h47_docentes.sql` es **solo para demo**. Detecta docentes por
+  cargas existentes (no por nombres): en local reutiliza a Pérez/Aguilar/Vilchez/Gómez y crea
+  solo a Demo 1; en Supabase, sin docentes con carga, crea Demo 1–5. Credenciales:
+  `99000001`–`99000005` con contraseña igual al DNI.
+- H47 demo: el script aborta si hay horarios PUBLICADOS o generados (`creado_por` no nulo).
+  Los 10 borradores migrados de local tienen `creado_por` nulo y no bloquean; el generador
+  los reemplaza.
+- H47 demo: la limpieza borra los horarios generados por el ADMIN, asegura ficha del ADMIN,
+  devuelve todas las cargas al ADMIN y elimina usuarios/personal/QR demo. **No borra
+  `horarios_h47_backup`**.
+- H47 demo: tras la limpieza, las cargas quedan en el ADMIN. Si se vuelve a ejecutar el
+  script en local, como no hay docentes con cargas, creará los 5 demo; es el comportamiento
+  esperado de la detección por cargas.
+- H47 demo: los correos son `docente.demoN@demo.local`; el QR usa el patrón real
+  `QR-<DNI>-<UPPER(MD5(DNI || 'SIGAUC'))>`.
 - H47: `test:integridad` espera 40 tablas + `periodos_clase`; `test:e2e` aplica H47.
   `npm run test:h47-generador` no toca BD (**4 PASS**).
 - H47: el frontend viejo llama al endpoint retirado `/horarios/grado/:id_grado`; desplegar
@@ -335,11 +365,13 @@ En esta fase **no** se prepara el despliegue definitivo.
 
 ## 7. Próximo paso exacto (fase demo)
 
-1. **Aplicar H47 a Supabase solo con confirmación**: backup, ejecutar
-   `database/migracion_h47_horarios.sql` a mano y verificar 40 tablas + 10 períodos.
-   Producción tiene 0 horarios; el riesgo de datos es nulo.
-2. Tras aplicar H47, el seed de producción sigue con **55 cargas/145 h en el ADMIN**;
-   reasignar docentes antes de generar o el preflight responderá 422.
+1. **Aplicar los datos demo a Supabase solo con confirmación del dueño**:
+   ```powershell
+   psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f database/demo_h47_docentes.sql
+   ```
+   El script creará Demo 1–5 (55 cargas/145 h) y no toca horarios ni el backup.
+2. Generar en Supabase `POST /api/horarios/generar { anio: 2026 }`; esperado **145/145**,
+   0 sin ubicar. Luego publicar los grados que se mostrarán en la demo.
 3. **Ensayar el guion** de `documentacion/17-GUION-DEMOSTRACION.md` en local, **sin
    correos reales**, incluyendo horarios: generar, publicar, ver como docente/alumno.
 4. Ejecutar en local `npm run smoke` (11 PASS), `npm run test:integridad`,
