@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
@@ -11,6 +12,7 @@ interface Estadisticas {
 
 interface PreTicket {
   id_preticket: number;
+  id_alumno: number;
   monto: string;
   estado: string;
   fecha_emision: string;
@@ -33,6 +35,7 @@ interface PreTicket {
 export class SecretariaDashboardComponent implements OnInit {
   private http = inject(HttpClient);
   private configuracion = inject(ConfiguracionService);
+  private router = inject(Router);
 
   cargando = signal(true);
   error = signal<string | null>(null);
@@ -75,6 +78,13 @@ export class SecretariaDashboardComponent implements OnInit {
   }
 
   cobrarPreticket(id: number): void {
-    alert(`🚧 Cobro del pre-ticket ${id} próximamente`);
+    const preTicket = this.preTickets().find((pt) => pt.id_preticket === id);
+    const queryParams: Record<string, number> = { id_preticket: id };
+
+    if (preTicket?.id_alumno) {
+      queryParams['id_alumno'] = preTicket.id_alumno;
+    }
+
+    this.router.navigate(['/secretaria/tesoreria'], { queryParams });
   }
 }

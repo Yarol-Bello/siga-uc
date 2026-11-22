@@ -247,6 +247,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H60 | Observación sin estado bloqueada con validación inline; con estado se guarda y persiste | `410b35d` (22/11/2026, local) |
 | H57 | Grado real en sidebar, cursos desde carga curricular y mensaje neutral sin notas | `2cf8477` (22/11/2026, local) |
 | H53 | Botones Asistencia/Notas del docente navegan con curso/grado preseleccionado | 22/11/2026 (local) |
+| H54 | “Cobrar” navega a tesorería con pre-ticket/alumno y reutiliza el modal de cobro | 22/11/2026 (local) |
 
 ---
 
@@ -468,8 +469,7 @@ El despliegue quedó al día: Render en `9648689` y Supabase con H47/H48. El sig
 es la **Fase 3**, en este orden:
 
 1. ~~**H53 — Botones del docente (P1).**~~ ✅ Cerrado el 22/11/2026.
-2. **H54 — Cobrar pre-ticket desde Secretaría (P1).** Navegar a tesorería con
-   `id_alumno`/`id_preticket` y reutilizar el cobro existente.
+2. ~~**H54 — Cobrar pre-ticket desde Secretaría (P1).**~~ ✅ Cerrado el 22/11/2026.
 3. **H55 — Carné QR real del personal (P1).** Generar el QR con `codigo_qr`.
 4. **H58 — Impresión y PDF (P2).** Descargar PDF de backend cuando exista y aislar la
    impresión del documento.

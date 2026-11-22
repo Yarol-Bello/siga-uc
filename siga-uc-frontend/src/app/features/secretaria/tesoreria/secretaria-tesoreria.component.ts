@@ -2,6 +2,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
@@ -74,8 +75,14 @@ interface PreTicket {
 export class SecretariaTesoreriaComponent implements OnInit {
   private http = inject(HttpClient);
   private configuracion = inject(ConfiguracionService);
+  private route = inject(ActivatedRoute);
 
   anioLectivo = this.configuracion.anioLectivo;
+
+  // Preselección desde el dashboard de Secretaría (H54)
+  private preticketQueryProcesado = false;
+  private preticketsListos = false;
+  private alumnosListos = false;
 
   // Estado principal
   cargando = signal(true);
@@ -158,8 +165,14 @@ export class SecretariaTesoreriaComponent implements OnInit {
     this.http.get<any>(`${environment.apiUrl}/tesoreria/pre-tickets?estado=PENDIENTE`).subscribe({
       next: (res) => {
         if (res.success) this.preTickets.set(res.data);
+        this.preticketsListos = true;
+        this.abrirPreticketDesdeQuery();
       },
-      error: (err) => console.error('Error pre-tickets:', err),
+      error: (err) => {
+        console.error('Error pre-tickets:', err);
+        this.preticketsListos = true;
+        this.abrirPreticketDesdeQuery();
+      },
     });
 
     // Cargar conceptos del año lectivo activo
@@ -196,13 +209,56 @@ export class SecretariaTesoreriaComponent implements OnInit {
     Promise.all(promesas)
       .then((alumnosConPensiones) => {
         this.alumnos.set(alumnosConPensiones);
+        this.alumnosListos = true;
         this.cargando.set(false);
+        this.abrirPreticketDesdeQuery();
       })
       .catch((err) => {
         console.error('Error al cargar pensiones:', err);
+        this.alumnosListos = true;
         this.error.set('No se pudieron cargar las pensiones');
         this.cargando.set(false);
+        this.abrirPreticketDesdeQuery();
       });
+  }
+
+  /**
+   * Abre el cobro del pre-ticket indicado por el dashboard (H54).
+   * Espera a que alumnos y pre-tickets estén cargados y reutiliza cobrarPreticket.
+   */
+  private abrirPreticketDesdeQuery(): void {
+    if (this.preticketQueryProcesado) return;
+    if (!this.preticketsListos || !this.alumnosListos) return;
+
+    this.preticketQueryProcesado = true;
+
+    const idPreticket = Number(
+      this.route.snapshot.queryParamMap.get('id_preticket'),
+    );
+    if (!idPreticket) return;
+
+    const idAlumnoQuery = Number(
+      this.route.snapshot.queryParamMap.get('id_alumno'),
+    );
+    const preTicket = this.preTickets().find(
+      (pt) => pt.id_preticket === idPreticket,
+    );
+
+    if (!preTicket) {
+      this.error.set('El pre-ticket ya no está pendiente o no existe.');
+      return;
+    }
+
+    const alumno = this.alumnos().find(
+      (a) => a.id_alumno === (preTicket.id_alumno || idAlumnoQuery),
+    );
+
+    if (!alumno) {
+      this.error.set('No se encontró el alumno del pre-ticket.');
+      return;
+    }
+
+    this.cobrarPreticket(preTicket);
   }
 
   /**

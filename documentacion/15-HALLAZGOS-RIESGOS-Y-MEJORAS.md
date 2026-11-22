@@ -68,6 +68,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 22/11/2026 (H53):** los botones Asistencia/Notas del docente navegan a
 > sus módulos reales y preseleccionan el curso por query params. Ver H53 en la sección 3.
+>
+> **Actualización 22/11/2026 (H54):** “Cobrar” en el panel de Secretaría navega a
+> Tesorería con el pre-ticket y alumno preseleccionados. Ver H54 en la sección 3.
 
 ---
 
@@ -664,6 +667,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Navegar a las rutas reales pasando el curso/grado y preseleccionarlo en destino |
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (22/11/2026): los botones navegan con `id_curso` e `id_grado`; Asistencia y Notas leen los query params y seleccionan ese curso, con fallback al primero |
+
+### H54 — “Cobrar” un pre-ticket en el panel de Secretaría solo mostraba un alert
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | `secretaria-dashboard.component.ts` mostraba `alert("Cobro del pre-ticket ... próximamente")`; el cobro real ya existía en `secretaria-tesoreria` |
+| Impacto | La acción principal de la bandeja de matrículas pendientes no cobraba nada y obligaba a ir manualmente a Tesorería |
+| Recomendación | Navegar a `/secretaria/tesoreria` con `id_alumno` e `id_preticket` y reutilizar el flujo de cobro existente |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): el dashboard navega con ambos IDs; Tesorería espera la carga de alumnos/pre-tickets, busca el pre-ticket y abre el modal de cobro existente. No se duplicó la lógica de pago |
 
 ### H57 — Panel del estudiante engañoso
 

@@ -257,7 +257,7 @@ Cada layout contiene:
 | `AdminHorariosComponent` | `GET/POST/PUT/DELETE /horarios`, `/periodos`, `/generar`, `/publicar`, `/despublicar` |
 | `SecretariaHorariosComponent` | `GET /horarios`, `GET /horarios/periodos` |
 | `DocenteHorarioComponent` | `GET /horarios/mi-horario` |
-| `SecretariaDashboardComponent` | `GET /tesoreria/estadisticas`, `GET /tesoreria/pre-tickets?estado=PENDIENTE` |
+| `SecretariaDashboardComponent` | `GET /tesoreria/estadisticas`, `GET /tesoreria/pre-tickets?estado=PENDIENTE`; “Cobrar” navega a tesorería con `id_preticket`/`id_alumno` (H54) |
 
 > En **Tesorería**, el detalle de un alumno distingue tres estados:
 >
@@ -277,7 +277,7 @@ Cada layout contiene:
 > pendientes y no aparecen en el selector de cobro (solo se ofrecen `PENDIENTE`). El
 > modal de retiro de Admin → Alumnos avisa que se anularán las pensiones y pre-tickets
 > pendientes de meses posteriores al retiro, manteniendo la pensión del mes de retiro.
-| `SecretariaTesoreriaComponent` | `GET /alumnos`, `GET /tesoreria/pensiones/alumno/:id` (N+1), `GET /tesoreria/pre-tickets`, `POST /tesoreria/pagos`, `POST /tesoreria/pensiones/alumno/:id/generar` |
+| `SecretariaTesoreriaComponent` | `GET /alumnos`, `GET /tesoreria/pensiones/alumno/:id` (N+1), `GET /tesoreria/pre-tickets`, `POST /tesoreria/pagos`, `POST /tesoreria/pensiones/alumno/:id/generar`; abre el cobro si recibe `id_preticket`/`id_alumno` (H54) |
 | `SecretariaCajaComponent` | `GET /caja/actual`, `GET /caja/movimientos/:id`, `POST /caja/aperturar`, `POST /caja/egresos`, `POST /caja/cerrar`, `GET /tesoreria/boletas/:id/pdf` |
 
 ## 7. Patrones de implementación
