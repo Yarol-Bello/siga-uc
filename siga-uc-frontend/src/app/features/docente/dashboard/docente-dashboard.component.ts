@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -29,6 +30,7 @@ interface CursoAsignado {
 export class DocenteDashboardComponent implements OnInit {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private router = inject(Router);
 
   usuario = this.authService.usuario;
 
@@ -89,20 +91,26 @@ export class DocenteDashboardComponent implements OnInit {
   }
 
   /**
-   * Ir al módulo de Asistencia (temporalmente un alert)
+   * Ir al módulo de Asistencia con el curso/grado ya elegido.
    */
   irAAsistencia(curso: CursoAsignado): void {
-    alert(
-      `🚧 Módulo de Asistencia para ${curso.nombre_curso} - ${curso.nombre_grado} (${curso.seccion}) próximamente`,
-    );
+    this.router.navigate(['/docente/asistencia'], {
+      queryParams: {
+        id_curso: curso.id_curso,
+        id_grado: curso.id_grado,
+      },
+    });
   }
 
   /**
-   * Ir al módulo de Notas (temporalmente un alert)
+   * Ir al módulo de Notas con el curso/grado ya elegido.
    */
   irANotas(curso: CursoAsignado): void {
-    alert(
-      `🚧 Módulo de Notas para ${curso.nombre_curso} - ${curso.nombre_grado} (${curso.seccion}) próximamente`,
-    );
+    this.router.navigate(['/docente/notas'], {
+      queryParams: {
+        id_curso: curso.id_curso,
+        id_grado: curso.id_grado,
+      },
+    });
   }
 }

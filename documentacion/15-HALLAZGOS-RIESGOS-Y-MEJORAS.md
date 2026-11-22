@@ -65,6 +65,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 22/11/2026 (H57):** el panel del estudiante usa el grado real y los
 > cursos de la carga curricular; no felicita si no hay notas. Ver H57 en la sección 3.
+>
+> **Actualización 22/11/2026 (H53):** los botones Asistencia/Notas del docente navegan a
+> sus módulos reales y preseleccionan el curso por query params. Ver H53 en la sección 3.
 
 ---
 
@@ -650,6 +653,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Exigir estado cuando hay observación y mostrar validación inline; el backend mantiene la validación P/T/F |
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (22/11/2026): si hay observación sin estado, la fila se marca en rojo y el guardado se bloquea con un mensaje inline; si hay estado, la observación se envía y persiste. El backend no se relajó: sigue rechazando estados distintos de P/T/F |
+
+### H53 — Botones “Asistencia” y “Notas” del docente solo mostraban alerts
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Media |
+| Evidencia | `docente-dashboard.component.ts` lanzaba `alert("próximamente")` aunque las rutas `/docente/asistencia` y `/docente/notas` ya existían |
+| Impacto | El docente no podía iniciar la tarea desde el panel y creía que el módulo no existía |
+| Recomendación | Navegar a las rutas reales pasando el curso/grado y preseleccionarlo en destino |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): los botones navegan con `id_curso` e `id_grado`; Asistencia y Notas leen los query params y seleccionan ese curso, con fallback al primero |
 
 ### H57 — Panel del estudiante engañoso
 

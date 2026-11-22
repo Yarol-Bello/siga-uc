@@ -4,8 +4,8 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Próximo bloque de trabajo:** Fase 3 cerrada (H61, H56, H60 y H57). Falta desplegar y
-> decidir el siguiente bloque.
+> **Próximo bloque de trabajo:** Fase 4 (H53, H54, H55, H58 y H72); H64 es configuración
+> de Render. La Fase 3 quedó cerrada en local y falta desplegarla.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
 > actas solo ADMIN) desplegados en Render con `3052f44`; **H48** (cierre/reapertura real de
@@ -246,6 +246,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H56 | Asistencia por año en historial, resumen, libreta, PDF y resumen por grado; H13 incluido | `15aab48` (22/11/2026, local) |
 | H60 | Observación sin estado bloqueada con validación inline; con estado se guarda y persiste | `410b35d` (22/11/2026, local) |
 | H57 | Grado real en sidebar, cursos desde carga curricular y mensaje neutral sin notas | `2cf8477` (22/11/2026, local) |
+| H53 | Botones Asistencia/Notas del docente navegan con curso/grado preseleccionado | 22/11/2026 (local) |
 
 ---
 
@@ -466,14 +467,16 @@ En esta fase **no** se prepara el despliegue definitivo.
 El despliegue quedó al día: Render en `9648689` y Supabase con H47/H48. El siguiente bloque
 es la **Fase 3**, en este orden:
 
-1. ~~**H61 — Día de la semana (P2).**~~ ✅ Cerrado el 22/11/2026.
-2. ~~**H56 — Asistencia por año (P1).**~~ ✅ Cerrado el 22/11/2026 (incluye H13).
-3. ~~**H60 — Observación sin estado (P2).**~~ ✅ Cerrado el 22/11/2026.
-4. ~~**H57 — Panel del estudiante (P1).**~~ ✅ Cerrado el 22/11/2026.
-5. **Siguiente paso:** desplegar backend/frontend juntos, aplicar
-   `migracion_h61_dia_semana.sql` a mano en Supabase y ejecutar smoke/E2E contra el
-   despliegue. No hay cambios de esquema en la Fase 3.
-6. Mantener el guion de `documentacion/17-GUION-DEMOSTRACION.md` para las demos.
+1. ~~**H53 — Botones del docente (P1).**~~ ✅ Cerrado el 22/11/2026.
+2. **H54 — Cobrar pre-ticket desde Secretaría (P1).** Navegar a tesorería con
+   `id_alumno`/`id_preticket` y reutilizar el cobro existente.
+3. **H55 — Carné QR real del personal (P1).** Generar el QR con `codigo_qr`.
+4. **H58 — Impresión y PDF (P2).** Descargar PDF de backend cuando exista y aislar la
+   impresión del documento.
+5. **H72 — 404 y returnUrl (P2).** Página 404 propia y volver a la ruta original.
+6. **H64:** configuración de Render (`/* → /index.html`, 200), no se toca en el repo.
+7. Al cerrar, desplegar backend/frontend juntos, aplicar
+   `migracion_h61_dia_semana.sql` a mano en Supabase y ejecutar smoke/E2E.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y

@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
@@ -46,6 +47,7 @@ export class DocenteNotasComponent implements OnInit {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
   private configuracion = inject(ConfiguracionService);
+  private route = inject(ActivatedRoute);
 
   usuario = this.authService.usuario;
 
@@ -94,9 +96,10 @@ export class DocenteNotasComponent implements OnInit {
       next: (res) => {
         if (res.success) {
           this.cursos.set(res.data);
-          // Si hay cursos, seleccionar el primero automáticamente
+          // Si hay cursos, seleccionar el enviado por el dashboard o el primero.
           if (res.data.length > 0) {
-            this.seleccionarCurso(res.data[0]);
+            const cursoInicial = this.buscarCursoDesdeQuery(res.data);
+            this.seleccionarCurso(cursoInicial || res.data[0]);
           }
         }
         this.cargando.set(false);
@@ -107,6 +110,24 @@ export class DocenteNotasComponent implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  /**
+   * Preselecciona el curso/grado enviado por el dashboard (H53).
+   */
+  private buscarCursoDesdeQuery(cursos: CursoAsignado[]): CursoAsignado | null {
+    const idCurso = Number(this.route.snapshot.queryParamMap.get('id_curso'));
+    const idGrado = Number(this.route.snapshot.queryParamMap.get('id_grado'));
+
+    if (!idCurso) return null;
+
+    return (
+      cursos.find(
+        (curso) =>
+          curso.id_curso === idCurso &&
+          (!idGrado || curso.id_grado === idGrado),
+      ) || null
+    );
   }
 
   /**

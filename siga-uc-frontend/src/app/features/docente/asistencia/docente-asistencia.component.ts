@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import {
@@ -43,6 +44,7 @@ interface CursoAsignado {
 export class DocenteAsistenciaComponent implements OnInit {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
 
   usuario = this.authService.usuario;
 
@@ -93,7 +95,8 @@ export class DocenteAsistenciaComponent implements OnInit {
         if (res.success) {
           this.cursos.set(res.data);
           if (res.data.length > 0) {
-            this.seleccionarCurso(res.data[0]);
+            const cursoInicial = this.buscarCursoDesdeQuery(res.data);
+            this.seleccionarCurso(cursoInicial || res.data[0]);
           }
         }
         this.cargando.set(false);
@@ -104,6 +107,24 @@ export class DocenteAsistenciaComponent implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  /**
+   * Preselecciona el curso/grado enviado por el dashboard (H53).
+   */
+  private buscarCursoDesdeQuery(cursos: CursoAsignado[]): CursoAsignado | null {
+    const idCurso = Number(this.route.snapshot.queryParamMap.get('id_curso'));
+    const idGrado = Number(this.route.snapshot.queryParamMap.get('id_grado'));
+
+    if (!idCurso) return null;
+
+    return (
+      cursos.find(
+        (curso) =>
+          curso.id_curso === idCurso &&
+          (!idGrado || curso.id_grado === idGrado),
+      ) || null
+    );
   }
 
   seleccionarCurso(curso: CursoAsignado): void {
