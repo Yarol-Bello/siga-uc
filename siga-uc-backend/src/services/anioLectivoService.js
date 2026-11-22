@@ -39,6 +39,20 @@ const traducirError = (error) => {
       { codigo: "H49_NO_APLICADO" },
     );
   }
+  if (error?.code === "23505") {
+    return crearError(
+      "La operación entra en conflicto con otro registro existente. Vuelva a previsualizar.",
+      409,
+      { codigo: "CONFLICTO_UNICIDAD" },
+    );
+  }
+  if (error?.code === "23503") {
+    return crearError(
+      "No se puede completar la operación porque el año tiene registros relacionados.",
+      409,
+      { codigo: "REGISTRO_RELACIONADO" },
+    );
+  }
   return error;
 };
 
