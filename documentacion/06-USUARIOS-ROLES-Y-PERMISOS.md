@@ -7,7 +7,7 @@
 | 1 | `ADMIN` | Administrador General del sistema | Control total |
 | 2 | `DOCENTE` | Docente de aula | Asistencia, notas, ficha, reportes de aula |
 | 3 | `SECRETARIA` | Secretaría y Tesorería | Padrón, tesorería, caja, QR de personal |
-| 4 | `ESTUDIANTE` | Estudiante matriculado | Consulta de notas, asistencia y horario |
+| 4 | `ESTUDIANTE` | Cuenta de estudiante | Consulta de notas, asistencia y horario de su matrícula anual |
 
 Restricción en BD:
 
@@ -45,12 +45,30 @@ stateDiagram-v2
     ACTIVO --> [*]: eliminación en cascada (no hay UI)
 ```
 
+### 2.1 Identidad vs. matrícula anual (H49/6.1)
+
+- `usuarios` es la **identidad**: DNI único, credencial QR única, login único.
+- `alumnos` es la **matrícula anual**: una fila por año. El mismo `id_usuario` puede tener
+  una fila en 2026 y otra en 2027 con distinto grado, sección, código y estado.
+- Los UNIQUE globales de `alumnos.dni`, `alumnos.id_usuario` y
+  `alumnos.codigo_estudiante` ya no existen; se reemplazaron por
+  `(dni, anio_lectivo)`, `(id_usuario, anio_lectivo)` y `(codigo_estudiante, anio_lectivo)`.
+- El apoderado también es identidad: se reutiliza por DNI al matricular a un hermano y no se
+  sobrescriben sus nombres ni contactos existentes.
+- Los apoderados, expedientes, credenciales QR y datos de `usuarios` no se duplican por año.
+
 - El login exige `estado = 'ACTIVO'`.
 - `CESADO` e `INACTIVO` no pueden iniciar sesión.
 - El middleware revalida el estado en cada request: un usuario cesado o retirado queda
   bloqueado aunque su JWT no haya expirado (H02).
-- El retiro de un alumno pasa `alumnos.estado_matricula` a `Retirado`, deja el usuario
-  `INACTIVO` y congela el expediente (H19).
+- El retiro de una matrícula anual pasa `alumnos.estado_matricula` a `Retirado`, congela el
+  expediente (H19) y anula pensiones/pre-tickets futuros (H45). El usuario pasa a `INACTIVO`
+  **solo si no le queda otra matrícula no retirada** en ningún año; si tiene una matrícula
+  vigente en otro año, conserva el acceso (H49).
+- Una cuenta `ESTUDIANTE` puede existir sin matrícula en el año activo. El login funciona y
+  devuelve `info_adicional.matricula_activa = false`; las vistas académicas muestran el
+  mensaje “Sin matrícula {año}” y la API responde `403 SIN_MATRICULA_ACTIVA` cuando intenta
+  resolver datos propios que dependen de la matrícula.
 
 ## 3. Autenticación
 
@@ -76,8 +94,10 @@ stateDiagram-v2
 > bloquea todos los endpoints salvo el cambio de contraseña, el perfil, la verificación de
 > token y el logout. El flag se limpia al cambiar la contraseña.
 
-> El año lectivo activo se configura con `ANIO_LECTIVO` (env) y se expone al frontend en
-> `GET /api/configuracion`; no hay año hardcodeado en la UI.
+> El año lectivo activo se lee de `anios_lectivos.estado='ACTIVO'` al arrancar el backend y
+> se expone al frontend en `GET /api/configuracion`; `ANIO_LECTIVO` solo es bootstrap/respaldo.
+> No hay año hardcodeado en la UI. El login y el perfil resuelven la matrícula del año activo,
+> no “la primera” del usuario.
 
 ## 4. Matriz de permisos efectivos (API)
 

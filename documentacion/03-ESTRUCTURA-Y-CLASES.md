@@ -65,7 +65,7 @@
 | `horarioService.js` | `listar`, `miHorario`, CRUD de bloques, `generar`, `publicar`, `despublicar` | Alcance por token, conflictos, publicación y auditoría |
 | `periodoClaseService.js` | `listar`, `crear`, `actualizar`, `eliminar` | Malla por año, sin solapes |
 | `horarioGenerator.js` | `generarHorario` | Algoritmo puro con semilla, sin publicar |
-| `alumnoService.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | DNI único, campos obligatorios, no retirar dos veces |
+| `alumnoService.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | DNI único por año, campos obligatorios, no retirar dos veces |
 | `personalService.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | DNI de 8, cese con motivo, no cesar dos veces |
 | `cargaCurricularService.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `getTutor`, `crear`, `actualizar`, `eliminar`, `asignarTutor` | Campos obligatorios y 404 |
 | `asistenciaService.js` | `obtenerPorCursoFecha`, `obtenerPorAlumno`, `obtenerResumenPorAlumno`, `registrar`, `registrarMasivo`, `listarAsistenciaPersonal`, `buscarPersonalPorDni`, `registrarAsistenciaPersonal`, `obtenerResumenAsistenciaPersonal` | Estados `P/T/F`, personal activo |

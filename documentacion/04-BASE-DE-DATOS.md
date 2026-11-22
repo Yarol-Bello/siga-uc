@@ -13,6 +13,7 @@ El backup `siga_uc_backup.sql` no se versiona.
 | Módulo | Tablas | Total |
 |---|---|---|
 | Seguridad | `roles`, `usuarios`, `recuperacion_password`, `personal`, `asistencia_personal`, `bitacora_auditoria`, `notificaciones`, `credenciales_qr` | 8 |
+| Multi-año | `anios_lectivos` | 1 |
 | Curricular | `grados`, `cursos`, `competencias`, `carga_curricular`, `tutores_grado`, `horarios`, `periodos_clase`, `escala_calificacion` | 8 |
 | Alumnos | `apoderados`, `alumnos`, `expediente_alumno` | 3 |
 | Asistencia | `asistencia_alumnos`, `resumen_asistencia_curso` | 2 |
@@ -21,7 +22,7 @@ El backup `siga_uc_backup.sql` no se versiona.
 | Caja | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` | 4 |
 | SIAGIE | `exportaciones_siagie`, `estado_carga_docentes` | 2 |
 | Reportes | `cuadro_merito`, `alumnos_riesgo` | 2 |
-| **Total** | | **40** |
+| **Total** | | **41** |
 
 > **Tablas de solo estructura / históricas:** `resumen_asistencia_curso`, `libretas`,
 > `cuadro_merito`, `alumnos_riesgo` y `estado_carga_docentes` existen en el esquema, pero el
@@ -35,7 +36,7 @@ El backup `siga_uc_backup.sql` no se versiona.
 ```mermaid
 erDiagram
     ROLES ||--o{ USUARIOS : tiene
-    USUARIOS ||--o| ALUMNOS : es
+    USUARIOS ||--o{ ALUMNOS : matricula_por_anio
     USUARIOS ||--o| PERSONAL : es
     USUARIOS ||--o| CREDENCIALES_QR : posee
     USUARIOS ||--o{ NOTIFICACIONES : recibe
@@ -43,6 +44,7 @@ erDiagram
     USUARIOS ||--o{ RECUPERACION_PASSWORD : solicita
 
     APODERADOS ||--o{ ALUMNOS : apodera
+    ANIOS_LECTIVOS ||--o{ ALUMNOS : contiene
     GRADOS ||--o{ ALUMNOS : agrupa
     ALUMNOS ||--o| EXPEDIENTE_ALUMNO : tiene
 
@@ -170,9 +172,17 @@ erDiagram
 
 ### 3.2 Curricular
 
+#### `anios_lectivos` (H49/6.1)
+`anio` PK CHECK 2000..2100 · `estado` CHECK `PLANIFICADO/ACTIVO/CERRADO` · `fecha_inicio`,
+`fecha_fin` · `creado_por`, `fecha_creacion`, `cerrado_por`, `fecha_cierre`, `observacion`.
+Índice único parcial `uq_anio_activo` sobre `estado` cuando es `ACTIVO`: solo puede existir
+un año activo. `ANIO_LECTIVO` queda como bootstrap/fallback.
+
 #### `grados`
 `id_grado` PK · `nombre_grado` varchar(50) · `nivel` varchar(20) · `seccion` varchar(10) ·
-`anio_lectivo` integer · UNIQUE (`nombre_grado`, `seccion`, `anio_lectivo`).
+`anio_lectivo` integer · `orden` integer NOT NULL CHECK > 0 · UNIQUE
+(`nombre_grado`, `seccion`, `anio_lectivo`) · UNIQUE
+(`anio_lectivo`, `nivel`, `seccion`, `orden`) (`uq_grado_anio_nivel_seccion_orden`).
 
 #### `cursos`
 `id_curso` PK · `nombre_curso` varchar(100) UNIQUE · `area_academica` varchar(50) ·
@@ -220,8 +230,8 @@ contra `id_carga` y que el período sea `CLASE`.
 | Columna | Tipo | Restricción |
 |---|---|---|
 | `id_alumno` | integer | PK |
-| `id_usuario` | integer | UNIQUE, FK → `usuarios` ON DELETE CASCADE |
-| `dni` | char(8) | UNIQUE, CHECK 8 dígitos |
+| `id_usuario` | integer | FK → `usuarios` ON DELETE CASCADE · UNIQUE (`id_usuario`, `anio_lectivo`) |
+| `dni` | char(8) | CHECK 8 dígitos · UNIQUE (`dni`, `anio_lectivo`) |
 | `nombres`, `apellidos` | varchar(100) | NOT NULL |
 | `fecha_nacimiento` | date | NOT NULL |
 | `id_apoderado` | integer | FK → `apoderados` ON DELETE SET NULL |
@@ -232,9 +242,15 @@ contra `id_carga` y que el período sea `CLASE`.
 | `fecha_retiro` | date | — |
 | `motivo_retiro`, `colegio_destino` | varchar(200) | — |
 | `resolucion_directoral` | varchar(100) | — |
-| `codigo_estudiante` | varchar(20) | UNIQUE (`EST-XXX`) |
+| `codigo_estudiante` | varchar(20) | UNIQUE (`codigo_estudiante`, `anio_lectivo`); puede ser NULL |
 | `anio_lectivo` | integer | NOT NULL |
 | `fecha_creacion` | timestamp | default `now()` |
+
+Una fila de `alumnos` es una **matrícula anual**, no la identidad permanente. `usuarios`
+sigue siendo único por DNI y `credenciales_qr` sigue siendo una por usuario. El mismo
+`id_usuario`, DNI o código puede repetirse en años distintos, pero no dentro del mismo año.
+La migración H49 (`migracion_h49_multianio_base.sql`) reemplaza los UNIQUE globales por
+`uq_alumno_dni_anio`, `uq_alumno_usuario_anio` y `uq_alumno_codigo_anio`.
 
 #### `expediente_alumno`
 `id_expediente` PK · `id_alumno` UNIQUE FK → `alumnos` ON DELETE CASCADE ·
@@ -249,7 +265,9 @@ ON DELETE CASCADE · `id_personal` FK → `personal` ON DELETE SET NULL · `id_g
 `grados` ON DELETE CASCADE · `fecha` date · `dia_semana` varchar(15) · `estado` char(1) CHECK
 `P/T/F` · `observacion` varchar(250) · `justificada` boolean default `false` ·
 `motivo_justificacion` varchar(250) · `fecha_registro` timestamp · UNIQUE (`id_alumno`,
-`id_curso`, `fecha`).
+`id_curso`, `fecha`). **No tiene columna `anio_lectivo`**: el año se deriva de `fecha` con
+`EXTRACT(YEAR FROM fecha)` y la matrícula anual ya separa `id_alumno`. Se recomiendan índices
+`(id_alumno, fecha)` e `(id_grado, fecha)`, no una columna nueva en 6.1.
 
 #### `resumen_asistencia_curso` (estructura, no persistida por el código)
 `id_resumen` PK · `id_alumno` FK · `id_curso` FK · `porcentaje_asistencia` · `total_presente`

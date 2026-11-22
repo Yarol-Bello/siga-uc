@@ -11,7 +11,7 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 |---|---|---|---|
 | RN-01 | El DNI debe tener exactamente 8 dígitos numéricos | Frontend, backend (login/alumno/personal), BD `CHECK` | 400 / error de BD |
 | RN-02 | `usuarios.dni` es único | BD | Error de unicidad |
-| RN-03 | `alumnos.dni` es único | BD y `alumnoService` | 409 “Ya existe un alumno con ese DNI” |
+| RN-03 | `alumnos.dni` es único **por año lectivo**; la identidad `usuarios.dni` sigue siendo única | BD (`uq_alumno_dni_anio`) y `alumnoService` | 409 “Ya existe una matrícula para ese DNI en el año lectivo” |
 | RN-04 | `correo_institucional` es único | BD | Error de unicidad |
 | RN-05 | El usuario debe estar `ACTIVO` para login | `authService` | 403 con estado |
 | RN-06 | La contraseña debe tener al menos 6 caracteres | Frontend y validadores de recuperación | 400 |
@@ -43,14 +43,28 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-22 | No se puede retirar dos veces | `alumnoService.retirar` | 400 |
 | RN-23 | `condicion` solo admite Regular, Traslado, Retirado | BD `CHECK` | Error de BD |
 | RN-24 | `estado_matricula` solo admite Matriculado, PendientePago, Retirado | BD `CHECK` | Error de BD |
-| RN-25 | Código de estudiante `EST-XXX` único | BD + DAO | Colisión posible en concurrencia |
+| RN-25 | Código de estudiante `EST-XXX` único por año | BD + DAO | Colisión posible en concurrencia |
 | RN-26 | Contraseña temporal del alumno = `UC<DNI>` | `alumnoDao.crear` | Se muestra una vez |
 | RN-27 | La matrícula es transaccional | `BEGIN/COMMIT` | Rollback total |
 | RN-28 | El expediente se crea vacío | `expediente_alumno` | Nivel NULL, asistencia 0 |
 | RN-29 | El QR se genera al crear el alumno | `credenciales_qr` | `QR-<DNI>-<MD5>` |
 | RN-30 | El retiro congela el expediente | `alumnoDao.retirar` (transacción) | `congelado = TRUE` |
-| RN-31 | El retiro desactiva el usuario | `alumnoDao.retirar` (transacción) | `estado = INACTIVO`; bloquea login y JWT |
+| RN-31 | El retiro desactiva el usuario solo si no le queda otra matrícula no retirada | `alumnoDao.retirar` (transacción) | `estado = INACTIVO`; si tiene matrícula vigente en otro año, sigue `ACTIVO` |
 | RN-32 | Editar nombres/apellidos sincroniza `usuarios` | `alumnoDao.actualizar` | `COALESCE` dentro de la transacción |
+
+### 3.1 Identidad y matrícula anual (H49/6.1)
+
+| ID | Regla | Dónde | Detalle |
+|---|---|---|---|
+| RN-147 | `usuarios` es la identidad única por DNI; `alumnos` es una matrícula por año | BD | El mismo usuario puede tener 2026 y 2027 |
+| RN-148 | UNIQUE de matrícula: `(dni, año)`, `(id_usuario, año)`, `(codigo_estudiante, año)` | BD (`uq_alumno_*_anio`) | 23505 si se duplica dentro del año |
+| RN-149 | El `id_grado` debe pertenecer al año de la matrícula | `alumnoDao.crear` / `actualizar` | 400 |
+| RN-150 | El concepto `MATRICULA` debe existir para el año de la matrícula | `alumnoDao.crear` | 400 |
+| RN-151 | Un apoderado se reutiliza por DNI; no se sobrescriben sus datos | `alumnoDao` | Cero duplicados para hermanos |
+| RN-152 | Un estudiante sin matrícula en el año activo puede iniciar sesión | `authService` | `matricula_activa=false` |
+| RN-153 | Los endpoints académicos propios sin matrícula responden `403` | `authRoles` / `horarioService` | `errors.codigo = "SIN_MATRICULA_ACTIVA"` |
+| RN-154 | Consultas operativas usan el año activo; `?anio` explícito permite históricos | Controllers/DAOs | Nunca mezclar años |
+| RN-155 | `asistencia_alumnos` no tiene `anio_lectivo`; el año se deriva de `fecha` | `asistenciaDao` | `EXTRACT(YEAR FROM fecha)` |
 
 ## 4. Personal
 
@@ -78,7 +92,7 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-46 | Cada período debe tener `hora_fin > hora_inicio` y no solaparse con otro del mismo año | BD `CHECK` + trigger | 409/400 |
 | RN-47 | Los días válidos son Lunes a Viernes | BD `CHECK` | Error |
 | RN-48 | Los tipos de período son CLASE, RECREO o ALMUERZO; `horarios` solo acepta CLASE | BD `CHECK` + trigger | 409 |
-| RN-49 | El año lectivo por defecto sale de `ANIO_LECTIVO` | `config/academico.js` + controllers/DAOs/UI | Configurable por `.env` |
+| RN-49 | El año lectivo activo sale de `anios_lectivos.estado='ACTIVO'`; `ANIO_LECTIVO` es respaldo | `config/academico.js` + controllers/DAOs/UI | Configurable por tabla o `.env` |
 | RN-49.1 | Un grado, un docente y un aula no se repiten en el mismo año/día/período | UNIQUE + índice parcial | 409 |
 | RN-49.2 | Máximo 2 bloques del mismo curso por día (configurable) | Service + generador | 409 |
 | RN-49.3 | Solo se crea/edita/genera/publica en el año lectivo activo | Service | 400 |
@@ -100,7 +114,7 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-54 | `justificada` no afecta el porcentaje | Reportes | Solo informativa |
 | RN-55 | Porcentaje = presentes / total × 100 | Queries | `NULLIF` evita división por cero |
 | RN-55.1 | Historial, resumen, estadísticas, libreta y resumen por grado filtran por año | `asistenciaDao`, `reporteDao` | `EXTRACT(YEAR FROM fecha)` (H56) |
-| RN-55.2 | Sin `?anio=` se usa `ANIO_LECTIVO`; un año explícito tiene prioridad | `asistenciaService`, controllers | H56 |
+| RN-55.2 | Sin `?anio=` se usa el año activo (`anios_lectivos` o `ANIO_LECTIVO` de respaldo); un año explícito tiene prioridad | `asistenciaService`, controllers | H56/H49 |
 | RN-56 | No se valida fecha futura | Código actual | Brecha |
 | RN-57 | No se valida docente-curso | Código actual | Brecha |
 
@@ -271,4 +285,4 @@ top = 10
 | RN-143 | El backend escucha en `0.0.0.0` | `app.js` |
 | RN-144 | CORS solo permite orígenes configurados | `app.js` |
 | RN-145 | Helmet está activo | `app.js` |
-| RN-146 | El año lectivo se configura con `ANIO_LECTIVO`; `?anio=YYYY` explícito tiene prioridad para consultas históricas | `.env` + controllers/DAOs | — |
+| RN-146 | El año activo se lee de `anios_lectivos.estado='ACTIVO'` al arrancar; `ANIO_LECTIVO` es bootstrap/respaldo. `?anio=YYYY` explícito tiene prioridad para consultas históricas | `config/academico` + controllers/DAOs | - |

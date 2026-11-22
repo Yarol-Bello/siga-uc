@@ -34,8 +34,9 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | No existen |
 
-**Conteos actuales:** 40 tablas · 114 endpoints · 4 roles · 15 routers · 15 controladores ·
-22 servicios · 18 DAOs · 80 archivos JS backend · 134 archivos frontend (56 TS).
+**Conteos actuales:** 41 tablas base (42 en local con `horarios_h47_backup`) · 114 endpoints ·
+4 roles · 15 routers · 15 controladores · 22 servicios · 18 DAOs · 80 archivos JS backend ·
+134 archivos frontend (56 TS).
 
 ---
 
@@ -87,11 +88,12 @@ psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
+psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
 psql -U postgres -d siga_uc -f database/siga_uc.sql
-psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
+psql -U postgres -d siga_uc -v anio_lectivo=2027 -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
@@ -99,6 +101,7 @@ psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
+psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 ```
 
 > `siga_uc_completo.sql` es el **dump de demo** (esquema + 21 alumnos ficticios +
@@ -148,9 +151,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 8. **Números de PostgreSQL:** usar `Number(x) || 0`.
 9. **Orden de rutas:** fijas antes de paramétricas (`/roles` antes de `/:id`; `reset-password`
    antes de `**`).
-10. **Año lectivo configurable:** usar `ANIO_LECTIVO` y `getAnioLectivo()` en backend;
-    `ConfiguracionService` en frontend. No introducir literales `2026`. `?anio=YYYY` explícito
-    tiene prioridad para consultas históricas.
+10. **Año lectivo configurable:** `ANIO_LECTIVO` es bootstrap/fallback; la fuente principal
+    es `anios_lectivos.estado='ACTIVO'`, cargada por `cargarAnioActivo()` al arrancar.
+    `getAnioLectivo()` sigue siendo síncrona; `ConfiguracionService` en frontend. No
+    introducir literales `2026`. `?anio=YYYY` explícito tiene prioridad para históricos.
+    `alumnos` es matrícula anual: no asumir un alumno por persona sin filtrar año.
 11. **No cambiar el stack** sin justificación.
 12. **Commits:** `feat:`, `Fix:`, `Add:`, `DB:`, `docs:`, `chore:` + módulo + descripción en
     español, atómicos.
@@ -182,25 +187,46 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - `siga_uc_completo.sql` es **solo demo**: 21 alumnos ficticios y más de 140 pensiones
   `PAGADO` sin pago. Producción se instala con `siga_uc.sql` + `seed_produccion.sql`.
   No cargar ambos escenarios en la misma base.
-- La documentación antigua decía 26 tablas; son **39**.
+- La documentación antigua decía 26 tablas; son **41 base** (42 en local con
+  `horarios_h47_backup`).
 - El correo es **Resend**, no SMTP/Nodemailer.
+- **`alumnos` es matrícula anual**, no identidad: `usuarios` es único por DNI; `alumnos` es
+  único por `(dni, anio_lectivo)`, `(id_usuario, anio_lectivo)` y
+  `(codigo_estudiante, anio_lectivo)` desde H49. No asumir un alumno por persona sin filtrar
+  año; los históricos usan `?anio=YYYY`.
+- El **año activo** se lee de `anios_lectivos.estado='ACTIVO'` al arrancar; `ANIO_LECTIVO`
+  es bootstrap/respaldo. Cambiar el estado exige reiniciar el backend hasta 6.2.
+- **H49 no está aplicado en Supabase** (demo con 40 tablas) ni desplegado en Render. No
+  aplicarlo allí sin autorización y backup previo. El rollback H49 es solo para bases
+  desechables.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
-  `Matriculado`.
-- El retiro es transaccional: pasa al alumno a `Retirado`, deja al usuario `INACTIVO` y congela
-  el expediente (`H19`). La edición de nombres/apellidos sincroniza `usuarios` (`H20`).
+  `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
+- El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y
+  anula pensiones/pre-tickets futuros (`H45`). Deja al usuario `INACTIVO` **solo si no tiene
+  otra matrícula no retirada** en otro año (`H49`). La edición de nombres/apellidos
+  sincroniza `usuarios` (`H20`).
+- Un **ESTUDIANTE sin matrícula del año activo** puede iniciar sesión con
+  `matricula_activa=false`; los endpoints académicos propios responden
+  `403 SIN_MATRICULA_ACTIVA`. La UI muestra “Sin matrícula {año}”.
 - **No hay cálculo automático de nota final** desde la UI; sin `notas_finales_area`, los
   reportes y SIAGIE salen vacíos.
-- El **cierre de acta no bloquea** la edición de notas.
-- La **bitácora solo se alimenta** automáticamente desde calificaciones; el resto no se audita.
-- Los **GET son amplios**: cualquier autenticado puede consultar alumnos, pagos, caja y
-  bitácora. La UI oculta, la API no.
+- El **cierre de acta sí bloquea** la edición de notas (H06/H48); una acta global `CERRADO`
+  bloquea todos los grados.
+- La **bitácora** registra escrituras, accesos, descargas y eventos de seguridad (H07); no
+  registra lecturas.
+- Varios **GET de catálogo** siguen abiertos a cualquier autenticado; los módulos sensibles
+  usan `verificarRol` y ownership (`checkAlumnoPropio`, `checkCursoDocente`, etc.). La UI
+  oculta, la API manda.
 - El trigger de pagos imputa a la **última apertura de caja**, aunque esté cerrada.
-- `reporteDao.getResumenAsistenciaGrado` **ignora el año**.
+- `asistencia_alumnos` **no tiene `anio_lectivo`**: el año se deriva de `fecha`
+  (`EXTRACT(YEAR FROM fecha)`). No agregar la columna en 6.1.
 - El SIAGIE solo detecta cursos con prefijos `ARITM`, `ALGEBRA`, `COMUNIC`, `FISICA`.
-- Los IDs de conceptos de tesorería y los meses Oct–Dic están hardcodeados en el frontend.
+- Algunos IDs de conceptos de tesorería y los meses Oct–Dic siguen hardcodeados en el
+  frontend.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
-- No hay tests automatizados; el testeo es manual (`docs/GUIA_TESTEO.md`).
+- Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (14) y
+  `npm run test:e2e` (27, base desechable); el resto del testeo es manual.
 
 ---
 
@@ -211,7 +237,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Visión, alcance, glosario | `documentacion/01-VISION-GENERAL-Y-ALCANCE.md` |
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
-| 40 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
+| 41 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
 | 114 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |

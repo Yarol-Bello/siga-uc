@@ -72,7 +72,7 @@ Error:
 |---|---|---|---|
 | GET | `/` | Público | Bienvenida + versión |
 | GET | `/api/health` | Público | Health check (`app`, `version`, `environment`, `timestamp`) |
-| GET | `/api/configuracion` | Público | Año lectivo activo para backend y frontend (`anio_lectivo`) |
+| GET | `/api/configuracion` | Público | Año lectivo activo (`anio_lectivo`): `anios_lectivos.estado='ACTIVO'` o, si falta, `ANIO_LECTIVO` |
 
 ---
 
@@ -81,7 +81,7 @@ Error:
 | # | Método | Ruta | Acceso | Descripción | Body / params |
 |---|---|---|---|---|---|
 | 1 | POST | `/api/auth/login` | Público | Login DNI + contraseña; emite JWT 8 h | `{ dni, password }` |
-| 2 | GET | `/api/auth/perfil` | Autenticado | Perfil + `info_adicional` + `credencial_qr`; para ESTUDIANTE `info_adicional` incluye `id_grado`, `nombre_grado` y `seccion` (H57) | — |
+| 2 | GET | `/api/auth/perfil` | Autenticado | Perfil + `info_adicional` + `credencial_qr`; para ESTUDIANTE incluye la matrícula del año activo, `anio_lectivo` y `matricula_activa` (H49/H57) | — |
 | 3 | GET | `/api/auth/verify` | Autenticado | Verifica token y devuelve payload | — |
 | 4 | POST | `/api/auth/logout` | Autenticado | Logout lógico (el cliente borra token) | — |
 | 5 | PUT | `/api/auth/cambiar-password` | Autenticado | Cambia la contraseña propia; exige la actual y limpia `requiere_cambio_password` | `{ password_actual, password_nueva, confirmar_password }` (≥6) |
@@ -114,8 +114,27 @@ Error:
 }
 ```
 
+Para un ESTUDIANTE, `info_adicional` siempre es un objeto, incluso sin matrícula en el año
+activo:
+
+```json
+{
+  "id_alumno": null,
+  "codigo_estudiante": null,
+  "id_grado": null,
+  "nombre_grado": null,
+  "seccion": null,
+  "estado_matricula": null,
+  "anio_lectivo": 2027,
+  "matricula_activa": false
+}
+```
+
 **Reglas:** DNI de 8 dígitos numéricos; contraseña ≥6; usuario `ACTIVO`; bcrypt;
-actualiza `ultimo_login`; `info_adicional` = alumno (ESTUDIANTE) o personal (DOCENTE/SECRETARIA).
+actualiza `ultimo_login`; `info_adicional` = matrícula del año activo (ESTUDIANTE) o
+personal (DOCENTE/SECRETARIA). Un estudiante **sin matrícula en el año activo puede iniciar
+sesión** (`matricula_activa=false`), pero los endpoints académicos que resuelven su propia
+matrícula responden `403` con `errors.codigo = "SIN_MATRICULA_ACTIVA"`.
 
 **Recuperación:** token aleatorio de 64 hex, expira en 2 h, un solo uso, invalida tokens
 anteriores. Respuesta genérica; si el usuario existe pero no tiene correo devuelve
@@ -162,8 +181,8 @@ personal ya no recibe IDs de grado/docente en la URL.
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
 | 16 | GET | `/api/alumnos?anio=&id_grado=&estado_matricula=&search=&limit=&solo_activos=&page=&pageSize=` | Autenticado | Lista con apoderado y grado; `page` activa paginación (default 1, máx. 100) |
-| 17 | GET | `/api/alumnos/dni/:dni` | Autenticado | Busca por DNI |
-| 18 | GET | `/api/alumnos/:id` | Autenticado | Ficha completa |
+| 17 | GET | `/api/alumnos/dni/:dni?anio=` | Autenticado | Busca la matrícula del DNI en el año (`?anio` o año activo) |
+| 18 | GET | `/api/alumnos/:id?anio=` | Autenticado | Ficha completa; con `?anio` distinto responde `404 MATRICULA_NO_ENCONTRADA_EN_ANIO` |
 | 19 | POST | `/api/alumnos` | ADMIN/SECRETARIA | Matrícula transaccional |
 | 20 | PUT | `/api/alumnos/:id` | ADMIN/SECRETARIA | Actualiza datos |
 | 21 | PUT | `/api/alumnos/:id/retirar` | ADMIN/SECRETARIA | Retiro con motivo |
@@ -194,8 +213,12 @@ personal ya no recibe IDs de grado/docente en la URL.
 **Respuesta 201:** `id_alumno`, `id_usuario`, `codigo_estudiante`, `dni`,
 `nombre_completo`, `password_temporal` (`UC<DNI>`), `correo_institucional`, `correo_personal`.
 
-**Efectos:** crea apoderado (opcional), usuario STUDENT, alumno `PendientePago`, expediente y
-credencial QR. **El alumno no queda matriculado hasta pagar matrícula.**
+**Efectos:** reutiliza al apoderado si el DNI ya existe (no sobrescribe sus datos), crea
+usuario STUDENT si el DNI no tiene cuenta, matrícula anual `PendientePago`, expediente y
+credencial QR. **El alumno no queda matriculado hasta pagar matrícula.** La identidad
+(`usuarios`) es única por DNI; la matrícula (`alumnos`) es única por `(DNI, año)`,
+`(id_usuario, año)` y `(codigo_estudiante, año)`. El `id_grado` debe pertenecer al año de la
+matrícula y el concepto `MATRICULA` debe existir para ese año; si no, responde `400`.
 
 **Retiro body:** `{ motivo_retiro, fecha_retiro, colegio_destino, resolucion_directoral }`.
 
@@ -230,7 +253,7 @@ Si no se envía contraseña: `UC2026*`. Genera QR según rol.
 | 30 | GET | `/api/carga-curricular?id_grado=&id_personal=&id_curso=&anio=` | Autenticado | Lista asignaciones |
 | 31 | GET | `/api/carga-curricular/grado/:id` | Autenticado | Cursos/docentes del grado |
 | 32 | GET | `/api/carga-curricular/grado/:id/tutor` | Autenticado | Tutor del grado |
-| 33 | GET | `/api/carga-curricular/docente/:id` | Autenticado | Cursos del docente (año 2026 por defecto) |
+| 33 | GET | `/api/carga-curricular/docente/:id` | Autenticado | Cursos del docente (año activo por defecto) |
 | 34 | GET | `/api/carga-curricular/:id` | Autenticado | Asignación por ID |
 | 35 | POST | `/api/carga-curricular` | ADMIN | Crea asignación |
 | 36 | POST | `/api/carga-curricular/tutor` | ADMIN | Asigna/reemplaza tutor |
@@ -263,7 +286,10 @@ grado/año en una transacción.
 
 **Masivo:** `{ registros: [ ... ] }` → `{ insertados, errores[] }`. Cada registro sigue la misma regla: el backend calcula `dia_semana` y no confía en el valor del frontend (H61). El estado `P|T|F` sigue siendo obligatorio; la UI bloquea una observación sin estado antes de enviarla (H60).
 
-**Año lectivo (H56):** el historial y el resumen aceptan `?anio=YYYY`. Sin el parámetro se usa `ANIO_LECTIVO`; un valor explícito tiene prioridad. La libreta y su PDF ya reciben `anio` (H56).
+**Año lectivo (H56/H49):** el historial y el resumen aceptan `?anio=YYYY`. Sin el parámetro
+se usa el año activo (`anios_lectivos` o `ANIO_LECTIVO` como respaldo); un valor explícito
+tiene prioridad. `asistencia_alumnos` no tiene columna `anio_lectivo`: el año se deriva de
+`fecha`. La libreta y su PDF reciben `anio`.
 
 **Personal:** `{ id_personal, fecha, hora_ingreso, estado: "Puntual|Tardanza|Falta", observacion? }`.
 
@@ -303,17 +329,17 @@ grado/año en una transacción.
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
 | 54 | GET | `/api/tesoreria/conceptos?anio=` | Autenticado | Conceptos del año |
-| 55 | GET | `/api/tesoreria/pre-tickets?estado=&id_alumno=` | Autenticado | Lista pre-tickets |
+| 55 | GET | `/api/tesoreria/pre-tickets?estado=&id_alumno=&anio=` | Autenticado | Lista pre-tickets del año |
 | 56 | GET | `/api/tesoreria/pre-tickets/:id` | Autenticado | Detalle |
 | 57 | POST | `/api/tesoreria/pre-tickets` | ADMIN/SECRETARIA | Crea pre-ticket `PENDIENTE` |
-| 58 | GET | `/api/tesoreria/pagos?id_alumno=&desde=&hasta=` | Autenticado | Lista pagos + boleta |
+| 58 | GET | `/api/tesoreria/pagos?id_alumno=&desde=&hasta=&anio=` | Autenticado | Lista pagos + boleta del año |
 | 59 | GET | `/api/tesoreria/pagos/:id` | Autenticado | Detalle de pago/boleta |
 | 60 | PUT | `/api/tesoreria/pagos/:id/anular` | ADMIN/SECRETARIA | Anula pago, boleta, pensión/pre-ticket y revierte caja |
 | 61 | POST | `/api/tesoreria/pagos` | ADMIN/SECRETARIA | Pago + boleta + efectos |
 | 62 | GET | `/api/tesoreria/pensiones/alumno/:id_alumno?anio=` | Autenticado | Pensiones del alumno |
 | 63 | POST | `/api/tesoreria/pensiones/generar` | ADMIN/SECRETARIA | Genera un mes para todos los alumnos |
 | 63b | POST | `/api/tesoreria/pensiones/alumno/:id_alumno/generar` | ADMIN/SECRETARIA | Genera el cronograma de un alumno (H44) |
-| 64 | GET | `/api/tesoreria/becas?activo=` | Autenticado | Lista becas |
+| 64 | GET | `/api/tesoreria/becas?activo=&anio=` | Autenticado | Lista becas del año |
 | 65 | POST | `/api/tesoreria/becas` | ADMIN | Aplica beca |
 | 66 | GET | `/api/tesoreria/estadisticas?anio=&mes=` | Autenticado | Recaudación y pendientes |
 | 67 | GET | `/api/tesoreria/boletas/:id_pago/pdf` | ADMIN/SECRETARIA | PDF de boleta de pago |
@@ -405,7 +431,15 @@ alumno no existe y `400` si no está `Matriculado`. Audita `CREAR` en `Tesorerí
 
 **Mérito:** AD=4, A=3, B=2, C=1; promedio ponderado; top 10.
 
-**Libreta:** alumno, tutor, notas por curso, conclusión y resumen de asistencia.
+**Libreta:** alumno, tutor, notas por curso, conclusión y resumen de asistencia. Con
+`?anio=` se valida que el `id_alumno` pertenezca a ese año; una matrícula de otro año
+responde `404` con `errors.codigo = "MATRICULA_NO_ENCONTRADA_EN_ANIO"`. Sin el parámetro se
+usa el año activo y se mantiene el comportamiento histórico.
+
+**Año lectivo (H49):** en todo el API, `?anio=YYYY` explícito tiene prioridad para consultas
+históricas; sin parámetro se usa el año activo de `anios_lectivos` (o `ANIO_LECTIVO` como
+respaldo). Los listados operativos (alumnos, pagos, pre-tickets, becas, asistencias,
+calificaciones, reportes y horarios) nunca mezclan años.
 
 **Libreta PDF:** `GET /api/reportes/libreta/:id_alumno/pdf` devuelve `application/pdf` con
 `Content-Disposition: attachment`. Generado con PDFKit; sin Chromium.
@@ -460,7 +494,7 @@ Mensaje: **"Acta reabierta correctamente"**.
 - `plantilla`: `.xlsx`/`.xls`, máx. 10 MB.
 - `id_grado`: entero.
 - `bimestre`: 1–4.
-- `anio_lectivo`: entero (default `ANIO_LECTIVO`).
+- `anio_lectivo`: entero (default año activo).
 
 Respuesta: archivo `SIAGIE_<grado>_BIM<n>_<año>.xlsx`.
 

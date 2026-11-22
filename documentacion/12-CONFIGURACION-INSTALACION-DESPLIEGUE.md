@@ -35,7 +35,7 @@ desactualizado** (habla de SMTP; el código usa Resend).
 | `DB_NAME` | Sí, salvo `DATABASE_URL` | PostgreSQL |
 | `JWT_SECRET` | **Sí** | Firma de tokens; en producción exige ≥32 caracteres y valor no de ejemplo |
 | `JWT_EXPIRES_IN` | No (default `8h`) | Expiración |
-| `ANIO_LECTIVO` | Recomendada (default año calendario) | Año lectivo activo |
+| `ANIO_LECTIVO` | Recomendada (default año calendario) | Bootstrap/respaldo del año activo; la fuente principal es `anios_lectivos.estado='ACTIVO'` |
 | `APP_NAME` | No (`SIGA-UC`) | Health/branding |
 | `APP_VERSION` | No (`1.0.0`) | Health |
 | `TZ` | Recomendada | Debe definirse en el entorno del proceso (Windows local y Render), no en JS |
@@ -78,6 +78,7 @@ JWT_SECRET=una_clave_larga_y_aleatoria
 JWT_EXPIRES_IN=8h
 
 ANIO_LECTIVO=2026
+# Bootstrap/respaldo: si anios_lectivos tiene un único ACTIVO, ese año manda.
 
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 EMAIL_FROM=SIGA-UC <no-reply@tudominio.com>
@@ -101,10 +102,11 @@ TZ=America/Lima
 
 #### A. Desarrollo / demostración
 
-`siga_uc_completo.sql` es un **dump completo**: esquema (40 tablas), funciones, triggers,
-índices y **datos ficticios de demostración** (21 alumnos, apoderados, pagos y pensiones de
-ejemplo). **Nunca debe usarse en producción**: contiene más de 140 pensiones marcadas
-`PAGADO` sin un pago que las respalde (144 medidas por `test:integridad` en la base local).
+`siga_uc_completo.sql` es un **dump completo**: esquema (40 tablas; **41** tras aplicar H49),
+funciones, triggers, índices y **datos ficticios de demostración** (21 alumnos, apoderados,
+pagos y pensiones de ejemplo). **Nunca debe usarse en producción**: contiene más de 140
+pensiones marcadas `PAGADO` sin un pago que las respalde (144 medidas por `test:integridad`
+en la base local).
 
 ```powershell
 createdb -U postgres siga_uc
@@ -117,6 +119,7 @@ psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
+psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -126,7 +129,7 @@ psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 createdb -U postgres siga_uc
 
 psql -U postgres -d siga_uc -f database/siga_uc.sql
-psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
+psql -U postgres -d siga_uc -v anio_lectivo=2027 -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
@@ -134,15 +137,31 @@ psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
+psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 # ...y las migraciones futuras, en orden.
 ```
 
 `seed_produccion.sql` crea solo catálogos y configuración: roles, grados, cursos,
-competencias, escala AD/A/B/C, conceptos de pago del año en curso, carga curricular,
+competencias, escala AD/A/B/C, conceptos de pago del año indicado, carga curricular,
 una caja principal y **un único usuario ADMIN** (`74829102`) con
-`requiere_cambio_password = TRUE`. La contraseña se pasa con `-v admin_password`;
-si falta o está vacía, el script aborta. No crea alumnos, apoderados, pagos, pensiones,
-calificaciones, asistencias, movimientos, bitácora ni becas.
+`requiere_cambio_password = TRUE`. La contraseña se pasa con `-v admin_password` y el año con
+`-v anio_lectivo=YYYY` (si falta, usa el año calendario local); si la contraseña está vacía,
+el script aborta. No crea alumnos, apoderados, pagos, pensiones, calificaciones, asistencias,
+movimientos, bitácora ni becas.
+
+### 3.1.1 Migración H49 (multi-año base)
+
+`database/migracion_h49_multianio_base.sql` crea `anios_lectivos`, agrega `grados.orden`,
+reemplaza los UNIQUE globales de `alumnos` por UNIQUE por año y agrega índices operativos.
+No crea promociones ni clona oferta académica.
+
+- Es **idempotente** y se puede pegar completo en el SQL Editor de Supabase: usa una tabla
+  temporal `_param_anio` y `current_setting`, no variables `psql`.
+- Marca como `ACTIVO` el año de `_param_anio` (2026 por defecto) solo si no hay otro activo.
+- Si la base no tiene H47, omite los objetos de horarios sin fallar.
+- `database/rollback_h49_multianio_base.sql` es **solo para bases desechables**: restaura
+  los UNIQUE globales y elimina `anios_lectivos`/`grados.orden`; aborta si hay varias
+  matrículas por persona o promociones con filas. **No ejecutarlo en producción.**
 
 > **No mezclar escenarios.** `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes:
 > cargar ambos duplica objetos (`ya existe una función «calcular_nota_final_area»`).
@@ -153,7 +172,8 @@ calificaciones, asistencias, movimientos, bitácora ni becas.
 psql -U postgres -d siga_uc -c "\dt"
 ```
 
-Debe listar **40 tablas** (no 26; la documentación antigua está mal).
+Debe listar **41 tablas base** (42 en local si existe `horarios_h47_backup`; no 26, la
+documentación antigua está mal).
 
 ```powershell
 psql -U postgres -d siga_uc -c "SELECT indexname FROM pg_indexes WHERE indexname = 'ux_pago_pension_activo';"
@@ -176,7 +196,7 @@ Y ejecutar la suite de invariantes:
 
 ```powershell
 cd siga-uc-backend
-npm run test:integridad   # 10 PASS, 0 FAIL
+npm run test:integridad   # 14 PASS, 0 FAIL
 ```
 
 ### 3.5 Extensiones
@@ -321,7 +341,7 @@ producción afecta a los valores **nuevos**, no a los ya guardados. El pool fija
 emite un warning).
 
 **Base de datos:** crear la instancia PostgreSQL y, en producción, ejecutar
-`database/siga_uc.sql` + `database/seed_produccion.sql` (con `-v admin_password`) +
+`database/siga_uc.sql` + `database/seed_produccion.sql` (con `-v anio_lectivo` y `-v admin_password`) +
 migraciones en orden. **No** cargar `siga_uc_completo.sql` en producción: es el dump de
 demo con alumnos y pensiones ficticias. Verificar extensiones y ejecutar
 `npm run test:integridad` antes de abrir el servicio. El admin inicial debe cambiar su
@@ -344,7 +364,7 @@ tiene otro nombre.
 ### 7.3 Checklist de despliegue
 
 - [ ] PostgreSQL creado con `siga_uc.sql` + `seed_produccion.sql` + migraciones (sin dump demo).
-- [ ] `npm run test:integridad` → 10 PASS, 0 FAIL.
+- [ ] `npm run test:integridad` → 14 PASS, 0 FAIL.
 - [ ] Confirmado: 0 alumnos, 0 pagos, 0 pensiones, 1 usuario.
 - [ ] Admin inicial cambió su contraseña temporal.
 - [ ] Variables de entorno cargadas.
@@ -415,7 +435,8 @@ psql -U postgres -d siga_uc_restore_test -c "SELECT COUNT(*) FROM information_sc
 dropdb -U postgres siga_uc_restore_test
 ```
 
-La restauración de prueba debe devolver **40 tablas** y datos en `usuarios`, `alumnos`, etc.
+La restauración de prueba debe devolver **41 tablas base** (42 si existe
+`horarios_h47_backup`) y datos en `usuarios`, `alumnos`, etc.
 
 ### 9.3 Variables para Supabase
 
@@ -536,8 +557,8 @@ Crear una tarea diaria a las 02:00:
 | `siga-uc-frontend/src/environments/environment.prod.ts` | API producción |
 | `siga-uc-frontend/angular.json` | Build, budgets, fileReplacements |
 | `database/siga_uc_completo.sql` | Demo: esquema + datos ficticios; no usar en producción |
-| `database/siga_uc.sql` | Esquema base para producción (40 tablas, sin datos) |
-| `database/seed_produccion.sql` | Catálogos + admin inicial; requiere `-v admin_password` |
+| `database/siga_uc.sql` | Esquema base para producción (40 tablas, sin datos; H49 lo lleva a 41) |
+| `database/seed_produccion.sql` | Catálogos + admin inicial; requiere `-v anio_lectivo=YYYY -v admin_password=...` |
 | `database/migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` a pensiones y regulariza deuda futura de retirados |
 | `database/migracion_h47_horarios.sql` | Crea `periodos_clase`, reemplaza `horarios` y agrega restricciones/triggers de horarios |
 | `database/migracion_h48_actas.sql` | Agrega bimestre, reapertura y unicidad de actas; backfill y validación de duplicados |

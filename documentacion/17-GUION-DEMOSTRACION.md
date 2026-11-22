@@ -72,8 +72,8 @@ verificar el checklist.
 ```powershell
 cd siga-uc-backend
 npm run smoke              # 11 PASS, 0 FAIL, 0 SKIP (exit 0)
-npm run test:integridad    # 10 invariantes; los FAIL de seed son esperados en demo
-npm run test:e2e           # 19 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
+npm run test:integridad    # 14 invariantes; los FAIL de seed son esperados en demo
+npm run test:e2e           # 27 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
 ```
 
 `npm run smoke` contra Render **no** se ejecuta sin confirmación explícita: hace login y
@@ -89,7 +89,7 @@ variable y `dotenv` carga la key real.
   ADMIN local `74829102` con `SMOKE_ADMIN_PASSWORD` de `.env`.
 - `npm run test:integridad`: **8 PASS, 2 FAIL** esperados por el seed de demo
   (pagos sin INGRESO y pensiones `PAGADO` sin pago).
-- `npm run test:e2e`: **19 PASS, 0 FAIL** (exit 0), base `siga_uc_e2e` eliminada.
+- `npm run test:e2e`: **27 PASS, 0 FAIL** (exit 0), base `siga_uc_e2e` eliminada.
 - Notificación con Resend deshabilitado: **guardada 1, correos enviados 0, fallidos 1**,
   visible en la campanita. Los residuos de la prueba se eliminaron.
 
@@ -238,10 +238,11 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 
 - [ ] Frontend y backend responden; health check en `ok`.
 - [ ] Commit desplegado identificado y documentado.
-- [ ] 40 tablas y migraciones H32, H10/H38, H07, H45 y H47 aplicadas.
+- [ ] 41 tablas base y migraciones H32, H10/H38, H07, H45, H47, H48, H61 y H49 aplicadas
+      (42 en local si existe `horarios_h47_backup`).
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
 - [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
-- [ ] `npm run test:e2e` local: **19 PASS, 0 FAIL** (exit 0).
+- [ ] `npm run test:e2e` local: **27 PASS, 0 FAIL** (exit 0).
 - [ ] `npm run test:integridad` revisado; los FAIL de seed están explicados.
 
 ### Datos de demo

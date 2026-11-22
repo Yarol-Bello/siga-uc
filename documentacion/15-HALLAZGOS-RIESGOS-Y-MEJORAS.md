@@ -80,6 +80,11 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 22/11/2026 (H72):** página 404 propia y `returnUrl` respetado en el
 > login. Ver H72 en la sección 3.
+>
+> **Actualización 22/11/2026 (H49/6.1):** separación entre identidad (`usuarios`) y
+> matrícula anual (`alumnos`), tabla `anios_lectivos`, `grados.orden`, login por año,
+> apoderados reutilizados por DNI y filtros por año en las consultas operativas. La
+> promoción y el rollover (6.2/6.3) siguen pendientes. Ver `documentacion/19`.
 
 ---
 
@@ -747,6 +752,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | El acta cerrada permite editar | Limitación conocida (H06) |
 | El dashboard tiene números como texto | PostgreSQL devuelve `numeric` como string; el frontend usa `Number()` |
 | El estudiante puede ver la libreta de otro por API | Limitación de autorización (H01) |
+| Estudiante sin matrícula puede iniciar sesión | Es intencional (H49): la cuenta existe; la UI muestra “Sin matrícula {año}” y la API responde `403 SIN_MATRICULA_ACTIVA` en datos académicos propios |
+| El mismo DNI aparece en dos años | Es la misma identidad con dos matrículas anuales; filtrar por `anio_lectivo` |
+| No aparece un alumno al buscar por DNI | Sin `?anio` se busca en el año activo; usar `?anio=YYYY` para históricos |
 | No hay botón de logout en la API | El logout es local |
 
 ---
@@ -788,6 +796,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 6. H27/H26 documentación y `.env.example`.
 7. H05 mapeo SIAGIE configurable.
 8. ~~H34 PDFs reales~~ ✅
+
+---
+
+### Fase 5 — Multi-año y promoción
+
+1. ~~6.1 Base: identidad vs. matrícula anual, `anios_lectivos`, `grados.orden`, login por
+   año, filtros por año y apoderados por DNI~~ ✅ (22/11/2026, local; migración H49).
+2. 6.2 Rollover: clonar grados, conceptos, períodos, carga y tutores.
+3. 6.3 Promoción: previsualización, confirmación, fichas del año destino, egresados,
+   repitentes, becas y pre-tickets.
+4. 6.4 Histórico: selector de año y consolidados por identidad.
 
 ---
 

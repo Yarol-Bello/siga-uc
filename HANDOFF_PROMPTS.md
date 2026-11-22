@@ -31,9 +31,11 @@
 | Supabase demo | 40 tablas, H48 aplicado, **0 actas** |
 | Horarios en Supabase | **145 PUBLICADO**, 5 docentes demo (`99000001`–`99000005`) |
 | Carga en Supabase | 55 cargas, 30/30/30/30/25 h; 0 choques |
-| Local `siga_uc` | 41 tablas (incluye `horarios_h47_backup`), 54 cargas en ADMIN, 0 horarios, 10 períodos, 14 asistencias normalizadas |
-| E2E | **19 PASS** |
-| Smoke / integridad / generador H47 | Verificados |
+| Local `siga_uc` | 42 tablas (41 base + `horarios_h47_backup`), H49 aplicado, 54 cargas en ADMIN, 0 horarios, 10 períodos, 14 asistencias normalizadas, 2026 activo |
+| E2E | **27 PASS** |
+| Integridad (base de producción desechable) | **14 PASS** |
+| Smoke / generador H47 | 11 PASS / 4 PASS |
+| Fase 6.1 (multi-año base) | Implementada y verificada **solo en local**; H49 no aplicada en Supabase ni desplegada en Render |
 
 > Recordatorio: un push que solo toca `database/` o `documentacion/` **no despliega**.
 > Las migraciones se aplican a mano en Supabase.
@@ -57,18 +59,19 @@ responden 200; QR de personal real; impresión aislada; 404 con `returnUrl`.
 
 ## 4. Pendiente inmediato
 
-La sesión de código está aplicando las **correcciones al documento 19**:
+La **Fase 6.1 (multi-año base)** quedó implementada y verificada en local:
 
-- a) `UNIQUE` parcial en `promociones` para permitir re-promover tras una anulación.
-- b) `TRASLADADO` en `resultado`/CHECK (o decisión de usar `RETIRADO`).
-- c) Inventario de consultas por DNI/usuario que deben filtrar por año activo.
-- d) Corrección: `asistencia_alumnos` **no** tiene `anio_lectivo`.
-- e) Apoderados: reutilizar por DNI para hermanos (`alumnoDao.crear` hoy inserta uno nuevo).
-- f) Menores: `politicas_promocion` (nullable) y `permite_override` por defecto.
+- `anios_lectivos`, `grados.orden`, UNIQUE de `alumnos` por año.
+- Login/perfil con matrícula del año activo, `matricula_activa=false` y
+  `403 SIN_MATRICULA_ACTIVA` en endpoints académicos propios.
+- Filtros por año en alumnos, asistencia, calificaciones, reportes, tesorería,
+  notificaciones y horarios; `?anio` para históricos.
+- Apoderados reutilizados por DNI; retiro que no desactiva si hay otra matrícula vigente.
+- Migración H49 + rollback, tests 20–27, integridad 14 invariantes.
 
-**Siguiente paso:** cuando el usuario pegue la respuesta, revisarla contra el código
-real. Si está completa, preparar el prompt de **Fase 6.1 (multi-año base)**. Si falta
-algo, pedir el ajuste antes de avanzar.
+**Siguiente paso:** revisar y commitear 6.1; luego preparar el prompt de **Fase 6.2
+(rollover)**. No aplicar H49 en Supabase ni desplegar en Render sin autorización explícita y
+backup previo.
 
 ---
 
@@ -83,8 +86,8 @@ algo, pedir el ajuste antes de avanzar.
 
 ### Fase 6 — Multi-año y promoción
 
-- **6.1 Base:** uniques por año, `grados.orden`, `anios_lectivos`, login por año,
-  inventario de consultas, apoderados.
+- **6.1 Base:** ✅ identidad vs. matrícula anual, uniques por año, `grados.orden`,
+  `anios_lectivos`, login por año, inventario de consultas y apoderados.
 - **6.2 Rollover:** clonar grados, conceptos, períodos, carga y tutores.
 - **6.3 Promoción:** previsualización, confirmación, fichas del año destino,
   egresados, repitentes, becas, pre-tickets.
@@ -144,20 +147,21 @@ git status --short
 curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 ```
 
-- Supabase: 40 tablas, 0 actas, 145 horarios, 5 docentes demo.
-- Local: `npm run test:e2e` (19 PASS), `npm run test:integridad`,
-  `npm run test:h47-generador`.
+- Supabase: 40 tablas, 0 actas, 145 horarios, 5 docentes demo. **H49 no aplicado.**
+- Local: `npm run test:e2e` (27 PASS), `npm run test:integridad` (14 PASS en base de
+  producción desechable), `npm run test:h47-generador` (4 PASS).
 - Deep links: `/login`, `/admin`, `/docente/asistencia` → 200.
 
 ---
 
 ## 10. Próximo paso exacto
 
-1. Revisar la respuesta de la sesión de código sobre las correcciones del documento 19.
-2. Si está completa, preparar el prompt de **Fase 6.1 (multi-año base)** con:
-   migración, uniques por año, `grados.orden`, `anios_lectivos`, login por año,
-   inventario de consultas, apoderados, plan de pruebas y rollback.
-3. Si falta alguna corrección, pedir el ajuste antes de avanzar.
+1. Revisar el cierre de **Fase 6.1** contra el código y las suites (27 E2E, 14 integridad).
+2. Verificar que H49 **no** se aplicó en Supabase/Render y que el rollback solo se usó en
+   bases desechables.
+3. Preparar el prompt de **Fase 6.2 (rollover)** con: clonado de grados/conceptos/períodos/
+   carga/tutores, activación auditada del año, previsualización, idempotencia y plan de
+   pruebas. Sin promoción todavía (6.3).
 
 ---
 
@@ -176,19 +180,19 @@ No implementas código, no tocas Supabase ni Render.
 
 ## Estado
 - Código desplegado: 8ee4a7b. Documentación: f352fe2.
-- Fases 1–4 desplegadas; E2E 19 PASS.
+- Fases 1–4 desplegadas; E2E 19 PASS en el despliegue.
+- **Fase 6.1 implementada y verificada solo en local** (H49): E2E 27 PASS, integridad 14 PASS.
+  No aplicada en Supabase ni Render.
 - Supabase demo: 40 tablas, 145 horarios publicados, 5 docentes demo, 0 actas.
-- Pendiente: correcciones del diseño 19 y Fase 6 (multi-año y promoción).
+- Pendiente: commitear 6.1 y preparar Fase 6.2 (rollover); 6.3 promoción después.
 
 ## Tarea de esta sesión
 1. Verifica el estado sin tocar producción: git, health, tablas y actas.
-2. Lee la respuesta de la sesión de código sobre las 5 correcciones del
-   documento 19. Revísala contra el código y el diseño.
-3. Si está correcta, prepara el prompt de Fase 6.1 (multi-año base) con:
-   migración, uniques por año, grados.orden, anios_lectivos, login por año,
-   inventario de consultas, apoderados, plan de pruebas y rollback.
-4. Si falta alguna corrección, pide el ajuste antes de avanzar.
-5. No implementes código; no toques Supabase/Render sin confirmación.
+2. Revisa el cierre de Fase 6.1 contra el código real y las suites.
+3. Si está correcto, prepara el prompt de Fase 6.2 (rollover) con:
+   clonado de grados/conceptos/períodos/carga/tutores, activación auditada,
+   idempotencia, previsualización y plan de pruebas.
+4. No implementes código; no toques Supabase/Render sin confirmación.
 
 ## Reglas
 - Prompts en español, con archivos y criterios de aceptación.

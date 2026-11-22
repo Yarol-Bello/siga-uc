@@ -72,33 +72,48 @@ Respuesta esperada:
 
 ## 3. Preparación de un año lectivo nuevo
 
-El código ya no tiene el año hardcodeado. Para operar en 2027:
+El código ya no tiene el año hardcodeado. Desde H49/6.1 la fuente principal es la tabla
+`anios_lectivos`; `ANIO_LECTIVO` solo es bootstrap/respaldo. Para operar en 2027:
 
-1. Actualizar `ANIO_LECTIVO=2027` en el `.env` local y en las variables de Render.
-2. Reiniciar/redeployar el backend. El frontend **no requiere rebuild**: obtiene el año de
-   `GET /api/configuracion` al iniciar.
-3. Crear los datos del nuevo año: `grados`, `carga_curricular`, `tutores_grado` y
-   `conceptos_pago`.
-4. Preparar los conceptos de matrícula y pensiones con el script idempotente:
+1. Insertar o activar el año en `anios_lectivos` (solo puede haber un `ACTIVO`):
+
+   ```sql
+   INSERT INTO anios_lectivos (anio, estado) VALUES (2027, 'PLANIFICADO')
+   ON CONFLICT (anio) DO NOTHING;
+
+   UPDATE anios_lectivos SET estado = 'PLANIFICADO' WHERE estado = 'ACTIVO';
+   UPDATE anios_lectivos SET estado = 'ACTIVO' WHERE anio = 2027;
+   ```
+
+   `ANIO_LECTIVO=2027` en `.env`/Render es opcional y solo respaldo si la tabla falta o no
+   tiene un único activo.
+2. Reiniciar/redeployar el backend para que `cargarAnioActivo()` lea la tabla. El frontend
+   **no requiere rebuild**: obtiene el año de `GET /api/configuracion` al iniciar.
+3. Crear los datos del nuevo año: `grados` (con `orden` secuencial por nivel/sección),
+   `carga_curricular`, `tutores_grado` y `conceptos_pago`. **6.1 no clona nada**: el
+   rollover automático es 6.2.
+4. Preparar los conceptos de matrícula y pensiones con el script parcial:
 
    ```powershell
    psql -U postgres -d siga_uc -v anio=2027 -f database/preparar_anio_lectivo.sql
    ```
 
-   El script copia los conceptos del año anterior y no modifica los datos históricos.
+   El script copia conceptos y períodos del año anterior; **no crea grados, carga ni
+   tutores**. No modifica datos históricos.
 5. Verificar `GET /api/configuracion` → `{ "anio_lectivo": 2027 }`.
 6. Los datos de 2026 conservan su `anio_lectivo`; las consultas históricas siguen aceptando
    `?anio=2026` en la API.
 
 | Lugar | Qué revisar |
 |---|---|
-| `grados` | Insertar grados del nuevo año |
-| `alumnos.anio_lectivo` | Se asigna al matricular con el año configurado |
-| `carga_curricular.anio_lectivo` | Nuevas asignaciones usan el año configurado |
+| `anios_lectivos` | Un solo `ACTIVO`; `PLANIFICADO` para el siguiente |
+| `grados` | Insertar grados del nuevo año con `orden` 1..N por nivel/sección |
+| `alumnos.anio_lectivo` | Se asigna al matricular con el año activo; UNIQUE por año |
+| `carga_curricular.anio_lectivo` | Nuevas asignaciones usan el año activo |
 | `tutores_grado.anio_lectivo` | Nuevos tutores |
 | `conceptos_pago.anio_lectivo` | Script `preparar_anio_lectivo.sql` |
-| `calificaciones` / `notas_finales_area` | Se registran con el año configurado |
-| `pensiones.anio_lectivo` | Se generan con el año configurado |
+| `calificaciones` / `notas_finales_area` | Se registran con el año de la matrícula |
+| `pensiones.anio_lectivo` | Se generan con el año de la matrícula |
 | Frontend / SIAGIE / reportes | Leen el año desde `ConfiguracionService` |
 
 **Recomendación:** no volver a introducir literales `2026` en controllers, DAOs ni componentes;
@@ -108,10 +123,10 @@ usar `getAnioLectivo()` en backend y `ConfiguracionService.anioLectivo` en front
 
 ## 4. Testeo
 
-El proyecto **no tiene CI ni tests unitarios**. Desde el 21/11/2026 cuenta con tres suites
+El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(10 invariantes de datos, solo lectura) y **E2E** (19 flujos sobre una base desechable).
-El resto de la estrategia sigue siendo manual y por rol.
+(14 invariantes de datos, solo lectura) y **E2E** (27 flujos sobre una base desechable,
+incluidos los de multi-año H49). El resto de la estrategia sigue siendo manual y por rol.
 
 ### 4.1 Preparación
 
@@ -287,9 +302,10 @@ cd siga-uc-backend
 npm run test:integridad
 ```
 
-- Verifica **10 invariantes**: 40 tablas, índices críticos, pagos/pensiones/boletas
-  coherentes, movimientos de caja, usuarios activos asociados, escala AD/A/B/C y alumnos
-  matriculados con usuario activo.
+- Verifica **14 invariantes**: 41 tablas base, índices críticos de pagos/boletas y multi-año
+  (`uq_alumno_*_anio`, `uq_anio_activo`), pagos/pensiones/boletas coherentes, movimientos de
+  caja, usuarios activos asociados, escala AD/A/B/C, alumnos matriculados con usuario activo,
+  matrículas anuales con grado del mismo año y `grados.orden` válido.
 - Fuerza `default_transaction_read_only=on`: no escribe nada.
 - Usa `DATABASE_URL` si existe; si no, `DB_*`. Puede ejecutarse contra local, una réplica
   de lectura o producción.
@@ -302,7 +318,7 @@ npm run test:integridad
 > (5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El invariante 7 solo exige ficha
 > a ESTUDIANTE/DOCENTE; ADMIN y SECRETARIA están exentos. No son fallos de la suite: deben
 > revisarse antes de cargar datos reales. Una base de producción sembrada con
-> `seed_produccion.sql` da **10 PASS**.
+> `siga_uc.sql` + `seed_produccion.sql` + migraciones (incluida H49) da **14 PASS**.
 
 #### `test:e2e` — base desechable
 
@@ -312,11 +328,13 @@ npm run test:e2e
 ```
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
-  (`h32`, `h10_h38`, `h07`, `h47`, `h48`), arranca el backend en `http://localhost:3101` y
-  ejecuta **19 flujos**: alta/retiro de alumno, matrícula, pensión, doble pago, anulación,
-  doble anulación, calificaciones, guardado masivo, PDFs, RBAC, auditoría, cierre/reapertura
-  real de actas, bloqueo global, caja con efectivo/Yape (con y sin anulación) y PDF de acta
-  ADMIN-only.
+  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`), arranca el backend en
+  `http://localhost:3101` y ejecuta **27 flujos**: alta/retiro de alumno, matrícula, pensión,
+  doble pago, anulación, doble anulación, calificaciones, guardado masivo, PDFs, RBAC,
+  auditoría, cierre/reapertura real de actas, bloqueo global, caja con efectivo/Yape (con y
+  sin anulación), PDF de acta ADMIN-only y multi-año: 41 tablas, uniques por año, apoderado
+  compartido, login sin matrícula activa, consultas por año, retiro con matrícula en otro año,
+  login con año activo 2027 y pre-tickets/pendientes sin mezclar años.
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -324,7 +342,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **19 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **27 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -452,8 +470,8 @@ WHERE m.id_movimiento IS NULL;
 | Mejora | Beneficio |
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
-| ~~Integridad de datos~~ ✅ | 10 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 19 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~Integridad de datos~~ ✅ | 14 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
+| ~~E2E de flujos críticos~~ ✅ | 27 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

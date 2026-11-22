@@ -23,7 +23,7 @@
 | Entender el negocio, alcance y glosario | `01-VISION-GENERAL-Y-ALCANCE.md` |
 | Entender capas, patrones y ciclo de una petición | `02-ARQUITECTURA-Y-PATRONES.md` |
 | Ubicar archivos, controladores, servicios y DAOs | `03-ESTRUCTURA-Y-CLASES.md` |
-| Conocer las 40 tablas, relaciones, triggers y seeds | `04-BASE-DE-DATOS.md` |
+| Conocer las 41 tablas, relaciones, triggers y seeds | `04-BASE-DE-DATOS.md` |
 | Consumir o auditar la API (114 endpoints) | `05-API-REST.md` |
 | Ver roles, usuarios semilla y matriz de permisos | `06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Reproducir el recorrido completo de cada rol | `07-FLUJOS-POR-ROL.md` |

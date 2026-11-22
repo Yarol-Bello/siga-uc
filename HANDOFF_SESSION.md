@@ -4,8 +4,16 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Próximo bloque de trabajo:** desplegar las Fases 3 y 4 y aplicar la migración H61 en
-> Supabase. H64 (`/* → /index.html`, 200) queda como configuración de Render.
+> **Actualización 22/11/2026 (Fase 6.1, solo local):** se implementó la base multi-año:
+> `anios_lectivos`, `grados.orden`, UNIQUE de `alumnos` por año, login/perfil con matrícula
+> del año activo, `matricula_activa`, `403 SIN_MATRICULA_ACTIVA`, filtros por año en las
+> consultas operativas y apoderados reutilizados por DNI. Migración
+> `database/migracion_h49_multianio_base.sql` + rollback. **No se aplicó en Supabase ni se
+> desplegó en Render.** Ver sección 1.1. `test:e2e` quedó en **27 PASS**.
+>
+> **Próximo bloque de trabajo:** revisar/commitear 6.1 y, cuando el dueño lo autorice,
+> desplegar las Fases 3 y 4 junto con 6.1 y aplicar H49 en Supabase con backup previo.
+> H64 (`/* → /index.html`, 200) sigue como configuración de Render.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
 > actas solo ADMIN) desplegados en Render con `3052f44`; **H48** (cierre/reapertura real de
@@ -131,6 +139,37 @@ En esta fase **no** se prepara el despliegue definitivo.
   con selector de bimestre 1-4 y PDF por bimestre. Verificación `test:e2e` 14/18/19 PASS y
   UI local.
 
+### 1.1 Fase 6.1 — Multi-año base (22/11/2026, solo local)
+
+- **Alcance:** identidad vs. matrícula anual, sin promociones ni rollover. `promociones`
+  queda para 6.2/6.3; `TRASLADADO` no se agregó (se usa `RETIRADO` +
+  `alumnos.condicion='Traslado'`).
+- **Migración:** `database/migracion_h49_multianio_base.sql` crea `anios_lectivos`, agrega
+  `grados.orden`, reemplaza los UNIQUE globales por `(dni, año)`, `(id_usuario, año)` y
+  `(codigo_estudiante, año)`, y agrega índices operativos. Es idempotente, usa
+  `_param_anio`/`current_setting` (sin variables `psql`) y se pega en SQL Editor.
+  `database/rollback_h49_multianio_base.sql` es solo para bases desechables.
+- **Año activo:** `config/academico.js` carga `anios_lectivos.estado='ACTIVO'` al arrancar
+  (`cargarAnioActivo`), mantiene `getAnioLectivo()` síncrona y usa `ANIO_LECTIVO` como
+  respaldo. `setAnioActivo`/`refrescarAnioActivo` quedan para 6.2.
+- **Login:** un ESTUDIANTE sin matrícula del año activo entra con `matricula_activa=false`;
+  los endpoints académicos propios responden `403 SIN_MATRICULA_ACTIVA`. La matrícula se
+  resuelve por año, no “la primera” del usuario.
+- **Consultas:** alumnos, grados, asistencia, calificaciones, reportes, tesorería,
+  notificaciones y horarios filtran por año activo; `?anio=YYYY` explícito permite
+  históricos. `reporteDao.getResumenAsistenciaGrado` ya no ignora el año.
+  `asistencia_alumnos` sigue sin columna `anio_lectivo` (se deriva de `fecha`).
+- **Matrícula:** valida que el grado y el concepto `MATRICULA` sean del año; reutiliza
+  apoderado por DNI sin sobrescribir; el retiro solo desactiva al usuario si no le queda otra
+  matrícula no retirada.
+- **Frontend:** ficha docente y pre-tickets envían `?anio`; el panel del estudiante muestra
+  “Sin matrícula {año}” y el sidebar no inventa grado.
+- **Verificación (local):** migración dos veces en `siga_uc_h49` (idempotente); rollback OK;
+  seed de producción con `-v anio_lectivo=2027` (41 tablas, 0 alumnos, admin OK);
+  `test:integridad` **14 PASS** en base de producción desechable; `test:e2e` **27 PASS**;
+  `npm run smoke` **11 PASS**; `test:h47-generador` **4 PASS**; build Angular OK;
+  `node --check` OK. La base local `siga_uc` quedó con H49 (42 tablas por el backup H47).
+
 ---
 
 ## 2. Entorno
@@ -146,7 +185,8 @@ En esta fase **no** se prepara el despliegue definitivo.
 - Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **40 tablas**,
   H47 desplegado, **H48 aplicado** (4 columnas nuevas + índice
   `uq_acta_anio_bimestre_grado`, **0 actas**), **10 períodos** y **145 horarios
-  PUBLICADO**.
+  PUBLICADO**. **H49/6.1 no está aplicado allí** y no debe aplicarse sin autorización y
+  backup previo.
 - Carga 2026 en Supabase: **55 cargas/145 h**, repartidas **30/30/30/30/25 h** entre los
   5 docentes demo (`99000001`–`99000005`), **0 choques**. Auditoría `GENERAR` y `PUBLICAR`
   registrada.
@@ -155,8 +195,9 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **No hay staging.**
 - Render gratuito puede dormir por inactividad y Supabase gratuito puede pausarse; entrar
   unos minutos antes de la demo para despertar ambos servicios.
-- La BD local `siga_uc` tiene **H47 aplicado**: **41 tablas** (40 + `horarios_h47_backup`),
-  **10 períodos**, **0 horarios** tras la limpieza y **13 filas** en el backup.
+- La BD local `siga_uc` tiene **H47 y H49 aplicados**: **42 tablas** (41 base +
+  `horarios_h47_backup`), **10 períodos**, **0 horarios** tras la limpieza y **13 filas**
+  en el backup. `anios_lectivos` tiene 2026 `ACTIVO`; `grados.orden` 1..5.
 - Datos locales tras la limpieza: **21 alumnos, 29 usuarios, 54 cargas/142 h todas en el
   ADMIN** (ficha personal nueva del ADMIN), **0 usuarios/personal/QR demo** y **0 horarios**.
   El índice `ux_pago_pension_activo` existe.
@@ -170,21 +211,22 @@ En esta fase **no** se prepara el despliegue definitivo.
   SKIP; `1` si hay FAIL; `2` si hay SKIP sin `SMOKE_ALLOW_SKIP=1`.
 - Verificación local del 21/11/2026: **11 PASS, 0 FAIL, 0 SKIP** (exit 0) con las tres
   cuentas; **3 PASS, 0 FAIL, 8 SKIP** (exit 2) sin credenciales.
-- `npm run test:integridad` (`scripts/test-integridad.js`): 10 invariantes de solo lectura
+- `npm run test:integridad` (`scripts/test-integridad.js`): 14 invariantes de solo lectura
   sobre cualquier base. Fuerza `default_transaction_read_only=on`. Exit 1 si hay FAIL.
 - `npm run test:e2e` (`scripts/test-e2e.js`): crea `siga_uc_e2e`, carga el dump y las
-  migraciones, arranca el backend en el puerto 3101, ejecuta 19 flujos y elimina la base
-  con `dropdb --force`. Verificado: **19 PASS, 0 FAIL** y exit 0 (incluye H48, H50, H51 y
-  H63).
+  migraciones (incluida H49), arranca el backend en el puerto 3101, ejecuta 27 flujos y
+  elimina la base con `dropdb --force`. Verificado: **27 PASS, 0 FAIL** y exit 0 (incluye
+  H48, H49, H50, H51 y H63).
 - Integridad local del 21/11/2026: **8 PASS, 2 FAIL** por datos de seed reales
   (invariantes 4 y 8: 5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El
   invariante 7 ya no marca al ADMIN: solo exige ficha a ESTUDIANTE (rol 4) y
   DOCENTE (rol 2).
 - `database/seed_produccion.sql` crea solo catálogos, una caja y un ADMIN inicial
   (`74829102`, `requiere_cambio_password=TRUE`) con contraseña recibida por
-  `-v admin_password`. En `siga_uc_prod_test`: **10 PASS, 0 FAIL**, **0 alumnos,
-  0 pagos, 0 pensiones, 1 usuario**. Login inicial bloqueado con
-  `CAMBIO_PASSWORD_REQUERIDO`; tras cambiarla, login y `/alumnos` funcionan.
+  `-v admin_password` y año por `-v anio_lectivo`. En `siga_uc_h49_seed` (2027):
+  **14 PASS, 0 FAIL**, **0 alumnos, 0 pagos, 0 pensiones, 1 usuario**, 41 tablas y 2027
+  activo. Login inicial bloqueado con `CAMBIO_PASSWORD_REQUERIDO`; tras cambiarla, login y
+  `/alumnos` funcionan.
 - `POST /api/notificaciones/masivo` acepta `TODOS`, `PERSONAL`, `ROL`, `GRADO` y
   `ALUMNO`. En la demo: PERSONAL = 7, ROL DOCENTE = 5, ROL ADMIN = 1. `PERSONAL` no
   envía `id`; `ROL` solo admite roles 1-3 y rechaza el 4 con
@@ -389,8 +431,9 @@ En esta fase **no** se prepara el despliegue definitivo.
   `PENDIENTE` sin tocar montos ni descuentos. El generador mensual global no cambió.
 - La migración H45 se aplicó dos veces en `siga_uc_h45` (idempotente) y la base se
   eliminó; `siga_uc` no se tocó.
-- H47: Supabase ya tiene **40 tablas** y local **41** (40 + backup). Una base creada con
-  `siga_uc_completo.sql` debe aplicar `migracion_h47_horarios.sql` a mano; ese dump no se
+- H47: Supabase ya tiene **40 tablas** y local **42** (41 base + `horarios_h47_backup`);
+  H49 está solo en local. Una base creada con `siga_uc_completo.sql` debe aplicar
+  `migracion_h47_horarios.sql` y `migracion_h49_multianio_base.sql` a mano; el dump no se
   editó.
 - H47: la migración guarda las filas antiguas en `horarios_h47_backup`, mapea los 10
   bloques CLASE a BORRADOR y convierte los 3 recreos en el período de receso. Si algo no
@@ -438,8 +481,8 @@ En esta fase **no** se prepara el despliegue definitivo.
   están aplicadas en `siga-uc-prod`.
 - **Credenciales:** el ADMIN local y el ADMIN de producción **no comparten contraseña**.
   La de producción es la real del dueño y no está en `.env`.
-- H47: `test:integridad` espera 40 tablas + `periodos_clase`; `test:e2e` aplica H47 y H48.
-  `npm run test:h47-generador` no toca BD (**4 PASS**).
+- H47: `test:integridad` espera 41 tablas base + H49; `test:e2e` aplica H45, H47, H48, H61
+  y H49. `npm run test:h47-generador` no toca BD (**4 PASS**).
 - H47: el frontend viejo llama al endpoint retirado `/horarios/grado/:id_grado`; desplegar
   backend y frontend juntos o esperar 404 en la vista del alumno.
 - H50: `/caja/actual` devuelve `total_ingresos_efectivo`, `total_ingresos_digital`,
@@ -486,19 +529,38 @@ En esta fase **no** se prepara el despliegue definitivo.
   Una ruta desconocida con sesión muestra `NotFoundComponent`, no el login.
 - H64: un deep link directo debe responder 200 desde el servidor (rewrite de Render). El
   repo genera `404.html`, pero la app no depende de él para rutas internas.
+- H49: `alumnos` ya **no** es único por DNI global. No asumir “un alumno por persona”; toda
+  consulta operativa debe filtrar `anio_lectivo` y los históricos usar `?anio=YYYY`.
+- H49: `usuarios` sigue siendo único por DNI y `credenciales_qr` una por usuario. La
+  matrícula anual es la fila de `alumnos`; el QR no se duplica.
+- H49: el año activo se lee al arrancar. Si se cambia `anios_lectivos.estado`, **reiniciar
+  el backend** hasta que 6.2 implemente la activación auditada con `refrescarAnioActivo`.
+- H49: `ANIO_LECTIVO` ya no es la fuente principal. Si la tabla no existe o no tiene un
+  único `ACTIVO`, el backend usa el env y avisa por consola.
+- H49: `asistencia_alumnos` no tiene `anio_lectivo`; no agregar la columna en 6.1. El año
+  se deriva de `fecha`.
+- H49: `preparar_anio_lectivo.sql` sigue siendo **parcial** (conceptos y períodos). No crea
+  grados, carga ni tutores; el rollover completo es 6.2.
+- H49: el retiro de una matrícula **no** desactiva al usuario si tiene otra matrícula no
+  retirada en otro año. No volver a un `UPDATE usuarios ... INACTIVO` incondicional.
+- H49: el rollback está probado solo en bases desechables; aborta si detecta varias
+  matrículas por persona o promociones con filas. **No ejecutarlo en Supabase.**
 
 ---
 
-## 7. Próximo paso exacto (despliegue de Fases 3 y 4)
+## 7. Próximo paso exacto (6.1 local → despliegue conjunto)
 
-Las Fases 3 y 4 quedaron cerradas en local. Render sigue en `9648689` y Supabase con
-H47/H48; la migración H61 es solo datos y aún no está aplicada allí.
+La Fase 6.1 está implementada y verificada **solo en local**; Supabase y Render siguen sin
+H49. No aplicar nada en Supabase/Render sin autorización explícita y backup previo.
 
-1. Desplegar backend y frontend juntos (H53–H58, H60, H61, H72).
-2. Aplicar a mano `database/migracion_h61_dia_semana.sql` en Supabase.
-3. Configurar en Render el rewrite `/* → /index.html` con estado 200 (H64).
-4. Ejecutar smoke/E2E contra el despliegue y revisar que los deep links no dependan de
-   `404.html`.
+1. Revisar y commitear 6.1 en bloques atómicos (migración, backend, frontend, tests, docs).
+2. Desplegar backend y frontend juntos (Fases 3–4 + 6.1) cuando el dueño lo autorice.
+3. **Antes** de aplicar H49 en Supabase: backup verificado y ventana sin usuarios. Pegar
+   `database/migracion_h49_multianio_base.sql` completo en SQL Editor (no usa `psql` vars).
+4. Aplicar a mano `database/migracion_h61_dia_semana.sql` si aún no está.
+5. Configurar en Render el rewrite `/* → /index.html` con estado 200 (H64).
+6. Ejecutar smoke/E2E contra el despliegue y revisar que los deep links no dependan de
+   `404.html`. El rollback H49 **no** se ejecuta en producción.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
@@ -518,8 +580,9 @@ Nada de esta lista se hace en la fase actual.
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
-| **Integridad** | `npm run test:integridad` contra la base definitiva: 10 PASS |
+| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. **H49/6.1 no está aplicada en Supabase**: requiere backup y autorización. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Integridad** | `npm run test:integridad` contra la base definitiva: 14 PASS |
+| **Multi-año** | 6.2 rollover y 6.3 promoción siguen pendientes; 6.1 no clona oferta ni promueve alumnos |
 
 ---
 
@@ -527,31 +590,33 @@ Nada de esta lista se hace en la fase actual.
 
 ```powershell
 git log -1 --oneline
-# Solo si la base aún no tiene H47/H48/H61:
+# Solo si la base aún no tiene H47/H48/H61/H49:
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
-psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
+psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT anio, estado FROM anios_lectivos ORDER BY anio; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
 # Requiere el backend corriendo en localhost:3000
 curl.exe -s http://localhost:3000/api/health
 cd siga-uc-backend; npm run smoke          # 11 PASS, exit 0
-npm run test:integridad                    # 10 invariantes; revisar FAIL reales
-npm run test:e2e                           # 19 PASS, exit 0; elimina siga_uc_e2e
+npm run test:integridad                    # 14 invariantes; revisar FAIL reales
+npm run test:e2e                           # 27 PASS, exit 0; elimina siga_uc_e2e
 npm run test:h47-generador                 # 4 PASS; no toca BD
 ```
 
-El primero confirma el commit; los tres `psql` aplican H47/H48/H61 si faltan; el conteo debe
-devolver **40** y `ux_pago_pension_activo`; el health debe devolver `success: true` y
-`database: "ok"` **con el backend en marcha**; el smoke debe terminar en **11 PASS, 0
-FAIL**; integridad puede reportar violaciones reales de seed; E2E debe terminar en
-**19 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada; el generador en **4 PASS**.
+El primero confirma el commit; los `psql` aplican H47/H48/H61/H49 si faltan; el conteo debe
+devolver **41** sin backup o **42** con `horarios_h47_backup`; `anios_lectivos` debe tener un
+solo `ACTIVO`; el health debe devolver `success: true` y `database: "ok"` **con el backend en
+marcha**; el smoke debe terminar en **11 PASS, 0 FAIL**; integridad puede reportar
+violaciones reales de seed; E2E debe terminar en **27 PASS, 0 FAIL** y dejar `siga_uc_e2e`
+eliminada; el generador en **4 PASS**.
 
 Para una base **definitiva** (solo después de la aprobación):
 
 ```powershell
 createdb -U postgres siga_uc
 psql -U postgres -d siga_uc -f database/siga_uc.sql
-psql -U postgres -d siga_uc -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
+psql -U postgres -d siga_uc -v anio_lectivo=2027 -v admin_password="TuClaveTemporal" -f database/seed_produccion.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
@@ -559,5 +624,6 @@ psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
-cd siga-uc-backend; npm run test:integridad   # 10 PASS
+psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+cd siga-uc-backend; npm run test:integridad   # 14 PASS
 ```
