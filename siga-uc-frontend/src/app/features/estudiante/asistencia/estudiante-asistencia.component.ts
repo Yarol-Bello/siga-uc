@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface Curso {
   id_curso: number;
@@ -55,8 +56,10 @@ interface Estadisticas {
 export class EstudianteAsistenciaComponent implements OnInit {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private configuracion = inject(ConfiguracionService);
 
   usuario = this.authService.usuario;
+  anioLectivo = this.configuracion.anioLectivo;
 
   // Estado
   cargando = signal(true);
@@ -90,25 +93,29 @@ export class EstudianteAsistenciaComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
 
-    this.http.get<any>(`${environment.apiUrl}/asistencias/alumno/${idAlumno}/resumen`).subscribe({
-      next: (res) => {
-        if (res.success) {
-          this.estadisticas.set(res.data.estadisticas);
-          this.resumenPorCurso.set(res.data.por_curso);
+    this.http
+      .get<any>(
+        `${environment.apiUrl}/asistencias/alumno/${idAlumno}/resumen?anio=${this.anioLectivo()}`,
+      )
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.estadisticas.set(res.data.estadisticas);
+            this.resumenPorCurso.set(res.data.por_curso);
 
-          // Seleccionar el primer curso automáticamente
-          if (res.data.por_curso.length > 0) {
-            this.seleccionarCurso(res.data.por_curso[0].id_curso);
+            // Seleccionar el primer curso automáticamente
+            if (res.data.por_curso.length > 0) {
+              this.seleccionarCurso(res.data.por_curso[0].id_curso);
+            }
           }
-        }
-        this.cargando.set(false);
-      },
-      error: (err) => {
-        console.error('❌ Error:', err);
-        this.error.set('No se pudo cargar el resumen de asistencia');
-        this.cargando.set(false);
-      },
-    });
+          this.cargando.set(false);
+        },
+        error: (err) => {
+          console.error('❌ Error:', err);
+          this.error.set('No se pudo cargar el resumen de asistencia');
+          this.cargando.set(false);
+        },
+      });
   }
 
   /**
@@ -124,7 +131,9 @@ export class EstudianteAsistenciaComponent implements OnInit {
     this.cargandoDetalle.set(true);
 
     this.http
-      .get<any>(`${environment.apiUrl}/asistencias/alumno/${idAlumno}?id_curso=${idCurso}`)
+      .get<any>(
+        `${environment.apiUrl}/asistencias/alumno/${idAlumno}?id_curso=${idCurso}&anio=${this.anioLectivo()}`,
+      )
       .subscribe({
         next: (res) => {
           if (res.success) this.asistencias.set(res.data);

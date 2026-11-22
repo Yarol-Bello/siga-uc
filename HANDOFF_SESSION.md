@@ -4,7 +4,7 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Próximo bloque de trabajo:** Fase 3 (H56, H60, H57); H61 ya cerrado.
+> **Próximo bloque de trabajo:** Fase 3 (H60, H57); H61 y H56 ya cerrados.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
 > actas solo ADMIN) desplegados en Render con `3052f44`; **H48** (cierre/reapertura real de
@@ -12,7 +12,8 @@
 > La migración H48 ya está aplicada en Supabase (4 columnas nuevas + índice
 > `uq_acta_anio_bimestre_grado`, 0 actas). `test:e2e` quedó en **19 PASS**.
 > **H61** (día de la semana) cerrado en local el 22/11/2026; su migración de datos es
-> idempotente y aún **no** se aplicó en Supabase.
+> idempotente y aún **no** se aplicó en Supabase. **H56** (asistencia por año) también
+> quedó cerrado en local el 22/11/2026.
 
 ---
 
@@ -231,6 +232,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H48 | Cierre/reapertura reales de actas, bloqueo global y migración H48 | `d9071e5` (22/11/2026), desplegado con `9648689` |
 | H51 | Selector de bimestre en libretas y PDF por bimestre | `d9071e5` (22/11/2026), desplegado con `9648689` |
 | H61 | Día de la semana derivado en backend, en español y datos históricos normalizados | 22/11/2026 (local) |
+| H56 | Asistencia por año en historial, resumen, libreta, PDF y resumen por grado; H13 incluido | 22/11/2026 (local) |
 
 ---
 
@@ -429,6 +431,12 @@ En esta fase **no** se prepara el despliegue definitivo.
 - H61: para fechas `YYYY-MM-DD` usar `parseFechaLocal`/`diaSemanaLocal` de
   `core/utils/fecha.util.ts`; `new Date('YYYY-MM-DD')` se interpreta como UTC y en Lima
   devuelve el día anterior.
+- H56: el historial (`/asistencias/alumno/:id`), el resumen (`/resumen`), la libreta, el
+  PDF y el resumen por grado filtran por `EXTRACT(YEAR FROM fecha)`. Sin `?anio=` se usa
+  `ANIO_LECTIVO`; `?anio=YYYY` explícito tiene prioridad. No volver a sumar todos los años
+  en reportes de asistencia.
+- H56: la UI de “Mi Asistencia”, la ficha del docente y la libreta envían el año desde
+  `ConfiguracionService` (`anioLectivo()`).
 
 ---
 
@@ -438,8 +446,7 @@ El despliegue quedó al día: Render en `9648689` y Supabase con H47/H48. El sig
 es la **Fase 3**, en este orden:
 
 1. ~~**H61 — Día de la semana (P2).**~~ ✅ Cerrado el 22/11/2026.
-2. **H56 — Asistencia por año (P1).** Filtrar libreta, resumen y estadísticas del alumno
-   por año lectivo y enviar `?anio=` desde la UI.
+2. ~~**H56 — Asistencia por año (P1).**~~ ✅ Cerrado el 22/11/2026 (incluye H13).
 3. **H60 — Observación sin estado (P2).** Exigir estado cuando hay observación o guardarla
    con un estado por defecto, con validación en la UI.
 4. **H57 — Panel del estudiante (P1).** Usar el grado y los cursos reales de la matrícula;

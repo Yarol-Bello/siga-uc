@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 interface AlumnoFicha {
   id_alumno: number;
@@ -52,8 +53,10 @@ interface NotaFinal {
 export class DocenteFichaComponent {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private configuracion = inject(ConfiguracionService);
 
   usuario = this.authService.usuario;
+  anioLectivo = this.configuracion.anioLectivo;
 
   // Búsqueda
   dniBusqueda = signal('');
@@ -109,18 +112,22 @@ export class DocenteFichaComponent {
   cargarAsistencias(idAlumno: number): void {
     this.cargandoDatos.set(true);
 
-    this.http.get<any>(`${environment.apiUrl}/asistencias/alumno/${idAlumno}`).subscribe({
-      next: (res) => {
-        if (res.success) {
-          this.asistencias.set(res.data);
-        }
-        this.cargandoDatos.set(false);
-      },
-      error: (err) => {
-        console.error('Error asistencias:', err);
-        this.cargandoDatos.set(false);
-      },
-    });
+    this.http
+      .get<any>(
+        `${environment.apiUrl}/asistencias/alumno/${idAlumno}?anio=${this.anioLectivo()}`,
+      )
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.asistencias.set(res.data);
+          }
+          this.cargandoDatos.set(false);
+        },
+        error: (err) => {
+          console.error('Error asistencias:', err);
+          this.cargandoDatos.set(false);
+        },
+      });
   }
 
   /**
@@ -128,7 +135,9 @@ export class DocenteFichaComponent {
    */
   cargarNotas(idAlumno: number): void {
     this.http
-      .get<any>(`${environment.apiUrl}/calificaciones/notas-finales/alumno/${idAlumno}`)
+      .get<any>(
+        `${environment.apiUrl}/calificaciones/notas-finales/alumno/${idAlumno}?anio=${this.anioLectivo()}`,
+      )
       .subscribe({
         next: (res) => {
           if (res.success) {
@@ -143,14 +152,18 @@ export class DocenteFichaComponent {
    * Cargar resumen de asistencia
    */
   cargarResumenAsistencia(idAlumno: number): void {
-    this.http.get<any>(`${environment.apiUrl}/asistencias/alumno/${idAlumno}/resumen`).subscribe({
-      next: (res) => {
-        if (res.success) {
-          this.resumenAsistencia.set(res.data.estadisticas);
-        }
-      },
-      error: (err) => console.error('Error resumen:', err),
-    });
+    this.http
+      .get<any>(
+        `${environment.apiUrl}/asistencias/alumno/${idAlumno}/resumen?anio=${this.anioLectivo()}`,
+      )
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.resumenAsistencia.set(res.data.estadisticas);
+          }
+        },
+        error: (err) => console.error('Error resumen:', err),
+      });
   }
 
   /**

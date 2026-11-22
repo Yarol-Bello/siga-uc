@@ -334,6 +334,12 @@ carga, no puede operar.
 - “T” y “F” no cuentan como presentes.
 - `justificada` no altera el porcentaje; es informativa.
 
+**Año lectivo (H56)**
+
+- El historial, el resumen por curso, las estadísticas del alumno, la libreta y el resumen por grado filtran por `EXTRACT(YEAR FROM fecha)`.
+- Sin `?anio=` se usa `ANIO_LECTIVO`; un `?anio=YYYY` explícito tiene prioridad para consultas históricas.
+- La UI de “Mi Asistencia”, la ficha del docente y la libreta envían el año desde `ConfiguracionService`.
+
 **Reglas**
 
 - Un alumno solo puede tener un registro por curso y fecha.

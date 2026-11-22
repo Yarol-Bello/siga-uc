@@ -23,6 +23,7 @@
     <label>
       <i class="fa-solid fa-filter" style="color: var(--primary-guindo);"></i>
       Seleccionar Asignatura:
+      <span class="badge-anio">Año Lectivo {{ anioLectivo() }}</span>
     </label>
     <select [ngModel]="cursoSeleccionado()" (ngModelChange)="onCursoChange($event)">
       @for (curso of resumenPorCurso(); track curso.id_curso) {

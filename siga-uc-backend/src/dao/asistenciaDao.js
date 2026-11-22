@@ -55,9 +55,13 @@ const obtenerPorCursoFecha = async (
  * Obtener historial de asistencia de un alumno
  */
 const obtenerPorAlumno = async (id_alumno, filtros = {}, idPersonal = null) => {
-  const conditions = ["asis.id_alumno = $1"];
-  const params = [id_alumno];
-  let idx = 2;
+  const anioLectivo = Number(filtros.anio);
+  const conditions = [
+    "asis.id_alumno = $1",
+    "EXTRACT(YEAR FROM asis.fecha) = $2",
+  ];
+  const params = [id_alumno, anioLectivo];
+  let idx = 3;
 
   if (idPersonal) {
     conditions.push(
@@ -66,7 +70,7 @@ const obtenerPorAlumno = async (id_alumno, filtros = {}, idPersonal = null) => {
         WHERE cc.id_personal = $${idx}
           AND cc.id_curso = asis.id_curso
           AND cc.id_grado = asis.id_grado
-          AND cc.anio_lectivo = EXTRACT(YEAR FROM asis.fecha)::int
+          AND cc.anio_lectivo = $2
       )`,
     );
     params.push(idPersonal);
@@ -120,7 +124,11 @@ const obtenerPorAlumno = async (id_alumno, filtros = {}, idPersonal = null) => {
 /**
  * Obtener resumen de asistencia de un alumno por curso
  */
-const obtenerResumenPorAlumno = async (id_alumno, idPersonal = null) => {
+const obtenerResumenPorAlumno = async (
+  id_alumno,
+  anioLectivo,
+  idPersonal = null,
+) => {
   const sql = `
     SELECT 
       c.id_curso,
@@ -137,26 +145,31 @@ const obtenerResumenPorAlumno = async (id_alumno, idPersonal = null) => {
     FROM asistencia_alumnos asis
     INNER JOIN cursos c ON c.id_curso = asis.id_curso
     WHERE asis.id_alumno = $1
+      AND EXTRACT(YEAR FROM asis.fecha) = $2
       AND (
-        $2::INT IS NULL
+        $3::INT IS NULL
         OR EXISTS (
           SELECT 1 FROM carga_curricular cc
-          WHERE cc.id_personal = $2
+          WHERE cc.id_personal = $3
             AND cc.id_curso = asis.id_curso
-            AND cc.anio_lectivo = EXTRACT(YEAR FROM asis.fecha)::int
+            AND cc.anio_lectivo = $2
         )
       )
     GROUP BY c.id_curso, c.nombre_curso, c.area_academica
     ORDER BY c.nombre_curso
   `;
-  const result = await query(sql, [id_alumno, idPersonal]);
+  const result = await query(sql, [id_alumno, anioLectivo, idPersonal]);
   return result.rows;
 };
 
 /**
  * Obtener estadísticas generales de un alumno
  */
-const obtenerEstadisticasAlumno = async (id_alumno, idPersonal = null) => {
+const obtenerEstadisticasAlumno = async (
+  id_alumno,
+  anioLectivo,
+  idPersonal = null,
+) => {
   const sql = `
     SELECT 
       COUNT(*) AS total_registros,
@@ -170,17 +183,18 @@ const obtenerEstadisticasAlumno = async (id_alumno, idPersonal = null) => {
       ) AS porcentaje_global
     FROM asistencia_alumnos asis
     WHERE asis.id_alumno = $1
+      AND EXTRACT(YEAR FROM asis.fecha) = $2
       AND (
-        $2::INT IS NULL
+        $3::INT IS NULL
         OR EXISTS (
           SELECT 1 FROM carga_curricular cc
-          WHERE cc.id_personal = $2
+          WHERE cc.id_personal = $3
             AND cc.id_curso = asis.id_curso
-            AND cc.anio_lectivo = EXTRACT(YEAR FROM asis.fecha)::int
+            AND cc.anio_lectivo = $2
         )
       )
   `;
-  const result = await query(sql, [id_alumno, idPersonal]);
+  const result = await query(sql, [id_alumno, anioLectivo, idPersonal]);
   return result.rows[0];
 };
 

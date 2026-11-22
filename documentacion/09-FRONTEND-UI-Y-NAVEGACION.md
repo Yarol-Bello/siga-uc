@@ -246,10 +246,10 @@ Cada layout contiene:
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id` |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo` |
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo`; usa `parseFechaLocal`/`diaSemanaLocal` y muestra el día en español (H61) |
-| `DocenteFichaComponent` | `GET /alumnos/dni/:dni`, `GET /asistencias/alumno/:id`, `/resumen`, `GET /calificaciones/notas-finales/alumno/:id`; el historial muestra el día en español que devuelve el backend (H61) |
+| `DocenteFichaComponent` | `GET /alumnos/dni/:dni`, `GET /asistencias/alumno/:id?anio=`, `/resumen?anio=`, `GET /calificaciones/notas-finales/alumno/:id?anio=`; el historial muestra el día en español que devuelve el backend (H61) y solo el año lectivo elegido (H56) |
 | `DocenteReportesComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `GET /notificaciones`, `PUT /notificaciones/:id/leer`, `PUT /leer-todas` |
 | `EstudianteDashboardComponent` | `GET /calificaciones/notas-finales/alumno/:id` |
-| `EstudianteAsistenciaComponent` | `GET /asistencias/alumno/:id/resumen`, `GET /asistencias/alumno/:id?id_curso=` |
+| `EstudianteAsistenciaComponent` | `GET /asistencias/alumno/:id/resumen?anio=`, `GET /asistencias/alumno/:id?id_curso=&anio=`; muestra el año lectivo activo (H56) |
 | `EstudianteHorarioComponent` | `GET /horarios/mi-horario` |
 | `AdminHorariosComponent` | `GET/POST/PUT/DELETE /horarios`, `/periodos`, `/generar`, `/publicar`, `/despublicar` |
 | `SecretariaHorariosComponent` | `GET /horarios`, `GET /horarios/periodos` |

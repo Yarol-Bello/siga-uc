@@ -98,6 +98,8 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-53 | El guardado masivo es parcial | DAO | `insertados` + `errores[]` |
 | RN-54 | `justificada` no afecta el porcentaje | Reportes | Solo informativa |
 | RN-55 | Porcentaje = presentes / total × 100 | Queries | `NULLIF` evita división por cero |
+| RN-55.1 | Historial, resumen, estadísticas, libreta y resumen por grado filtran por año | `asistenciaDao`, `reporteDao` | `EXTRACT(YEAR FROM fecha)` (H56) |
+| RN-55.2 | Sin `?anio=` se usa `ANIO_LECTIVO`; un año explícito tiene prioridad | `asistenciaService`, controllers | H56 |
 | RN-56 | No se valida fecha futura | Código actual | Brecha |
 | RN-57 | No se valida docente-curso | Código actual | Brecha |
 
@@ -157,7 +159,7 @@ top = 10
 | RN-75 | Mérito top 10 | `LIMIT 10` | — |
 | RN-76 | Riesgo = 2+ cursos distintos con C | `HAVING >= 2` | No cuenta competencias |
 | RN-77 | Libreta combina notas, conclusión y asistencia | `reporteDao` | No persiste |
-| RN-78 | Resumen de asistencia ignora el año | `getResumenAsistenciaGrado` | Bug |
+| RN-78 | Resumen de asistencia por grado filtra por año | `getResumenAsistenciaGrado` | Resuelto con H56 (`EXTRACT(YEAR FROM asis.fecha) = $2`) |
 | RN-79 | Auditoría docente compara notas finales vs alumnos | `reporteDao` | No usa estado_carga |
 
 ## 10. Tesorería

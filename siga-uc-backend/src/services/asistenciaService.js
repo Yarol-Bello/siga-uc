@@ -5,6 +5,21 @@
 
 const asistenciaDao = require("../dao/asistenciaDao");
 const alumnoDao = require("../dao/alumnoDao");
+const { getAnioLectivo } = require("../config/academico");
+
+const parseAnioLectivo = (valor) => {
+  if (valor === undefined || valor === null || valor === "") {
+    return getAnioLectivo();
+  }
+
+  const anio = Number(valor);
+  if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) {
+    const error = new Error("El año lectivo debe estar entre 2000 y 2100.");
+    error.statusCode = 400;
+    throw error;
+  }
+  return anio;
+};
 
 const obtenerPorCursoFecha = async (
   id_curso,
@@ -25,21 +40,27 @@ const obtenerPorCursoFecha = async (
   );
 };
 
-const obtenerPorAlumno = async (id_alumno, filtros, idPersonal = null) => {
+const obtenerPorAlumno = async (id_alumno, filtros = {}, idPersonal = null) => {
   const alumno = await alumnoDao.findById(id_alumno);
   if (!alumno) {
     const error = new Error("Alumno no encontrado");
     error.statusCode = 404;
     throw error;
   }
+
+  const anioLectivo = parseAnioLectivo(filtros.anio);
   return await asistenciaDao.obtenerPorAlumno(
     id_alumno,
-    filtros,
+    { ...filtros, anio: anioLectivo },
     idPersonal,
   );
 };
 
-const obtenerResumenPorAlumno = async (id_alumno, idPersonal = null) => {
+const obtenerResumenPorAlumno = async (
+  id_alumno,
+  anioLectivo,
+  idPersonal = null,
+) => {
   const alumno = await alumnoDao.findById(id_alumno);
   if (!alumno) {
     const error = new Error("Alumno no encontrado");
@@ -47,12 +68,15 @@ const obtenerResumenPorAlumno = async (id_alumno, idPersonal = null) => {
     throw error;
   }
 
+  const anio = parseAnioLectivo(anioLectivo);
   const resumen = await asistenciaDao.obtenerResumenPorAlumno(
     id_alumno,
+    anio,
     idPersonal,
   );
   const estadisticas = await asistenciaDao.obtenerEstadisticasAlumno(
     id_alumno,
+    anio,
     idPersonal,
   );
 
@@ -62,6 +86,7 @@ const obtenerResumenPorAlumno = async (id_alumno, idPersonal = null) => {
       nombre_completo: alumno.nombre_completo,
       dni: alumno.dni,
     },
+    anio_lectivo: anio,
     estadisticas,
     por_curso: resumen,
   };

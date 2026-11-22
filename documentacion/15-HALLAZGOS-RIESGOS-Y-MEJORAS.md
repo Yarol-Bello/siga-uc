@@ -55,6 +55,10 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > **Actualización 22/11/2026 (H61):** el día de la semana se deriva de la fecha en el
 > backend, se guarda en español y se corrigieron los datos históricos con una migración
 > idempotente. Ver H61 en la sección 3.
+>
+> **Actualización 22/11/2026 (H56):** la asistencia (historial, resumen, estadísticas,
+> libreta, PDF y resumen por grado) filtra por año lectivo; la UI envía `?anio=`.
+> H13 también queda resuelto. Ver H56 en la sección 3.
 
 ---
 
@@ -204,6 +208,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Mezcla asistencias de distintos años |
 | Recomendación | Filtrar por año en `asistencias` o `alumnos.anio_lectivo` |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026, H56): `getResumenAsistenciaGrado` filtra `EXTRACT(YEAR FROM asis.fecha) = $2` y recibe el año desde el controller |
 
 ### H14 — Dos algoritmos de nota final
 
@@ -617,6 +622,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Parsear la fecha como local, derivar `dia_semana` en el backend con `EXTRACT(ISODOW)` y normalizar los datos históricos |
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (22/11/2026): `fecha.util.parseFechaLocal`/`diaSemanaLocal`; `asistenciaDao` calcula y actualiza `dia_semana` en español tanto en el alta individual como en el masivo; la UI muestra el día en español. Migración idempotente `migracion_h61_dia_semana.sql`: en local corrigió **12** filas (6 días desfasados y 6 en inglés; 2 ya estaban correctas). Verificado por API: se envió `dia_semana="Domingo"` para el lunes 2026-11-23 y la BD/API devolvieron `Lunes` |
+
+### H56 — La asistencia no filtra por año lectivo
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | La libreta (`reporteDao.getLibretaAlumno`) y el historial/resumen del alumno (`asistenciaDao`) no filtraban por año; la UI no enviaba `?anio=` |
+| Impacto | En 2027 la libreta y “Mi Asistencia” sumaban registros de 2026; porcentajes e historial contaminados |
+| Recomendación | Filtrar por `EXTRACT(YEAR FROM fecha)` en todas las consultas de asistencia y enviar `?anio=` desde la UI |
+| Esfuerzo | M |
+| Estado | ✅ Resuelto (22/11/2026): historial, resumen, estadísticas, libreta, PDF y resumen por grado filtran por año; sin `?anio=` se usa `ANIO_LECTIVO` y un valor explícito tiene prioridad. La UI de “Mi Asistencia”, la ficha del docente y la libreta envían el año. Verificado en base desechable con 2026/2027: 2027 devolvió solo 2027 (1 registro) y 2026 solo 2026 (9 registros); libreta y resumen por grado coincidieron |
 
 ---
 

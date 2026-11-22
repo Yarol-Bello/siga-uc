@@ -80,6 +80,15 @@
     white-space: nowrap;
   }
 
+  .badge-anio {
+    background: rgba(128, 0, 32, 0.08);
+    color: var(--primary-guindo);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
   select {
     padding: 11px 16px;
     border: 1px solid #e2e8f0;

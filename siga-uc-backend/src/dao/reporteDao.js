@@ -146,8 +146,12 @@ const getLibretaAlumno = async (id_alumno, bimestre, anioLectivo = getAnioLectiv
       ) AS porcentaje_asistencia
     FROM asistencia_alumnos
     WHERE id_alumno = $1
+      AND EXTRACT(YEAR FROM fecha) = $2
   `;
-  const asistenciaResult = await query(asistenciaSql, [id_alumno]);
+  const asistenciaResult = await query(asistenciaSql, [
+    id_alumno,
+    anioLectivo,
+  ]);
 
   // 4. Tutor del grado
   const tutorSql = `
@@ -189,12 +193,14 @@ const getResumenAsistenciaGrado = async (id_grado, anioLectivo = getAnioLectivo(
         2
       ) AS porcentaje_asistencia
     FROM alumnos a
-    LEFT JOIN asistencia_alumnos asis ON asis.id_alumno = a.id_alumno
+    LEFT JOIN asistencia_alumnos asis
+      ON asis.id_alumno = a.id_alumno
+      AND EXTRACT(YEAR FROM asis.fecha) = $2
     WHERE a.id_grado = $1 AND a.estado_matricula = 'Matriculado'
     GROUP BY a.id_alumno, a.dni, a.nombres, a.apellidos, a.codigo_estudiante
     ORDER BY porcentaje_asistencia ASC NULLS LAST, a.apellidos
   `;
-  const result = await query(sql, [id_grado]); // ← SOLO 1 parámetro
+  const result = await query(sql, [id_grado, anioLectivo]);
   return result.rows;
 };
 

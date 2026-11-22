@@ -248,8 +248,8 @@ grado/año en una transacción.
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
 | 39 | GET | `/api/asistencias/curso/:id_curso/fecha/:fecha?id_grado=` | Autenticado | Lista de alumnos + asistencia del día |
-| 40 | GET | `/api/asistencias/alumno/:id_alumno?id_curso=&desde=&hasta=` | Autenticado | Historial del alumno |
-| 41 | GET | `/api/asistencias/alumno/:id_alumno/resumen` | Autenticado | Resumen global + por curso |
+| 40 | GET | `/api/asistencias/alumno/:id_alumno?id_curso=&desde=&hasta=&anio=` | Autenticado | Historial del alumno filtrado por año |
+| 41 | GET | `/api/asistencias/alumno/:id_alumno/resumen?anio=` | Autenticado | Resumen global + por curso filtrado por año |
 | 42 | GET | `/api/asistencias/personal/todos?fecha=` | Autenticado | Personal activo + marcación del día |
 | 43 | GET | `/api/asistencias/personal/resumen?fecha=` | Autenticado | Totales Puntual/Tardanza/Falta |
 | 44 | GET | `/api/asistencias/personal/dni/:dni` | Autenticado | Busca personal por DNI |
@@ -260,6 +260,8 @@ grado/año en una transacción.
 **POST individual:** `{ id_alumno, id_curso, id_personal, id_grado, fecha, estado: "P|T|F", observacion?, justificada?, motivo_justificacion? }`. `dia_semana` se deriva en el backend desde `fecha` con `EXTRACT(ISODOW)` y se guarda en español; si el cliente lo envía, se ignora (H61).
 
 **Masivo:** `{ registros: [ ... ] }` → `{ insertados, errores[] }`. Cada registro sigue la misma regla: el backend calcula `dia_semana` y no confía en el valor del frontend (H61).
+
+**Año lectivo (H56):** el historial y el resumen aceptan `?anio=YYYY`. Sin el parámetro se usa `ANIO_LECTIVO`; un valor explícito tiene prioridad. La libreta y su PDF ya reciben `anio` (H56).
 
 **Personal:** `{ id_personal, fecha, hora_ingreso, estado: "Puntual|Tardanza|Falta", observacion? }`.
 

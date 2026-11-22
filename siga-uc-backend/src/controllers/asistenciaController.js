@@ -35,6 +35,7 @@ const obtenerPorAlumno = async (req, res) => {
       id_curso: req.query.id_curso ? parseInt(req.query.id_curso) : null,
       desde: req.query.desde || null,
       hasta: req.query.hasta || null,
+      anio: req.query.anio,
     };
     const idPersonal =
       req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
@@ -60,6 +61,7 @@ const obtenerResumenPorAlumno = async (req, res) => {
       req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
     const data = await asistenciaService.obtenerResumenPorAlumno(
       req.params.id_alumno,
+      req.query.anio,
       idPersonal,
     );
     return response.success(res, 200, "Resumen de asistencia", data);
