@@ -15,8 +15,16 @@ const getDashboardEjecutivo = async (anioLectivo = getAnioLectivo()) => {
       (SELECT COUNT(*) FROM alumnos WHERE estado_matricula = 'Matriculado' AND anio_lectivo = $1) AS total_alumnos,
       (SELECT COUNT(*) FROM personal WHERE fecha_cese IS NULL) AS total_personal,
       (SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE EXTRACT(YEAR FROM fecha_pago) = $1 AND estado = 'PAGADO') AS recaudacion_anual,
-      (SELECT COUNT(*) FROM pre_tickets WHERE estado = 'PENDIENTE') AS pre_tickets_pendientes,
-      (SELECT COALESCE(SUM(monto), 0) FROM pre_tickets WHERE estado = 'PENDIENTE') AS monto_pendiente,
+      (SELECT COUNT(*)
+       FROM pre_tickets pt
+       INNER JOIN alumnos a ON a.id_alumno = pt.id_alumno
+       WHERE pt.estado = 'PENDIENTE'
+         AND a.anio_lectivo = $1) AS pre_tickets_pendientes,
+      (SELECT COALESCE(SUM(pt.monto), 0)
+       FROM pre_tickets pt
+       INNER JOIN alumnos a ON a.id_alumno = pt.id_alumno
+       WHERE pt.estado = 'PENDIENTE'
+         AND a.anio_lectivo = $1) AS monto_pendiente,
       (SELECT COUNT(*) FROM alumnos WHERE estado_matricula = 'Retirado' AND anio_lectivo = $1) AS total_retirados,
       (SELECT COUNT(*) FROM grados WHERE anio_lectivo = $1) AS total_grados,
       (SELECT COUNT(*) FROM cursos) AS total_cursos
@@ -47,7 +55,9 @@ const getAlumnosRiesgo = async (id_grado, bimestre, anioLectivo = getAnioLectivo
     LEFT JOIN tutores_grado tg ON tg.id_grado = a.id_grado AND tg.anio_lectivo = $3
     LEFT JOIN personal p_tutor ON p_tutor.id_personal = tg.id_personal
     LEFT JOIN usuarios u_tutor ON u_tutor.id_usuario = p_tutor.id_usuario
-    WHERE a.id_grado = $1 AND a.estado_matricula = 'Matriculado'
+    WHERE a.id_grado = $1
+      AND a.estado_matricula = 'Matriculado'
+      AND a.anio_lectivo = $3
     GROUP BY a.id_alumno, a.dni, a.nombres, a.apellidos, a.codigo_estudiante,
              g.nombre_grado, u_tutor.nombres, u_tutor.apellidos
     HAVING COUNT(DISTINCT cal.id_curso) FILTER (WHERE cal.calificacion = 'C') >= 2
@@ -83,7 +93,9 @@ const getCuadroMerito = async (id_grado, bimestre, anioLectivo = getAnioLectivo(
       FROM alumnos a
       LEFT JOIN notas_finales_area nf ON nf.id_alumno = a.id_alumno 
         AND nf.bimestre = $2 AND nf.anio_lectivo = $3
-      WHERE a.id_grado = $1 AND a.estado_matricula = 'Matriculado'
+      WHERE a.id_grado = $1
+        AND a.estado_matricula = 'Matriculado'
+        AND a.anio_lectivo = $3
       GROUP BY a.id_alumno, a.nombres, a.apellidos, a.codigo_estudiante, a.dni
     )
     SELECT 
@@ -114,8 +126,9 @@ const getLibretaAlumno = async (id_alumno, bimestre, anioLectivo = getAnioLectiv
     LEFT JOIN grados g ON g.id_grado = a.id_grado
     LEFT JOIN apoderados ap ON ap.id_apoderado = a.id_apoderado
     WHERE a.id_alumno = $1
+      AND a.anio_lectivo = $2
   `;
-  const alumnoResult = await query(alumnoSql, [id_alumno]);
+  const alumnoResult = await query(alumnoSql, [id_alumno, anioLectivo]);
   const alumno = alumnoResult.rows[0];
 
   // 2. Notas finales por curso
@@ -196,7 +209,9 @@ const getResumenAsistenciaGrado = async (id_grado, anioLectivo = getAnioLectivo(
     LEFT JOIN asistencia_alumnos asis
       ON asis.id_alumno = a.id_alumno
       AND EXTRACT(YEAR FROM asis.fecha) = $2
-    WHERE a.id_grado = $1 AND a.estado_matricula = 'Matriculado'
+    WHERE a.id_grado = $1
+      AND a.estado_matricula = 'Matriculado'
+      AND a.anio_lectivo = $2
     GROUP BY a.id_alumno, a.dni, a.nombres, a.apellidos, a.codigo_estudiante
     ORDER BY porcentaje_asistencia ASC NULLS LAST, a.apellidos
   `;

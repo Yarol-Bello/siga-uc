@@ -21,7 +21,10 @@ const listar = async (anioLectivo = getAnioLectivo()) => {
       g.anio_lectivo,
       COUNT(a.id_alumno) AS total_alumnos
     FROM grados g
-    LEFT JOIN alumnos a ON a.id_grado = g.id_grado AND a.estado_matricula = 'Matriculado'
+    LEFT JOIN alumnos a
+      ON a.id_grado = g.id_grado
+     AND a.anio_lectivo = g.anio_lectivo
+     AND a.estado_matricula = 'Matriculado'
     WHERE g.anio_lectivo = $1
     GROUP BY g.id_grado
     ORDER BY g.id_grado
@@ -45,7 +48,10 @@ const findById = async (id) => {
       g.anio_lectivo,
       COUNT(a.id_alumno) AS total_alumnos
     FROM grados g
-    LEFT JOIN alumnos a ON a.id_grado = g.id_grado AND a.estado_matricula = 'Matriculado'
+    LEFT JOIN alumnos a
+      ON a.id_grado = g.id_grado
+     AND a.anio_lectivo = g.anio_lectivo
+     AND a.estado_matricula = 'Matriculado'
     WHERE g.id_grado = $1
     GROUP BY g.id_grado
   `;

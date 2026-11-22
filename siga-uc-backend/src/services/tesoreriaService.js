@@ -230,6 +230,15 @@ const listarPensionesAlumno = async (id_alumno, anioLectivo) => {
   if (!alumno) {
     const error = new Error("Alumno no encontrado");
     error.statusCode = 404;
+    error.details = { codigo: "MATRICULA_NO_ENCONTRADA_EN_ANIO" };
+    throw error;
+  }
+  if (Number(alumno.anio_lectivo) !== Number(anioLectivo)) {
+    const error = new Error(
+      "La matrícula no pertenece al año lectivo solicitado.",
+    );
+    error.statusCode = 404;
+    error.details = { codigo: "MATRICULA_NO_ENCONTRADA_EN_ANIO" };
     throw error;
   }
   return await tesoreriaDao.listarPensionesAlumno(id_alumno, anioLectivo);

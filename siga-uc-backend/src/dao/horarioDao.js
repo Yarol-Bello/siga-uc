@@ -4,6 +4,7 @@
  */
 
 const { query } = require("../config/database");
+const { getAnioLectivo } = require("../config/academico");
 
 const SELECT_BASE = `
   SELECT
@@ -131,7 +132,11 @@ const getPeriodo = async (idPeriodo, client = null) => {
   return result.rows[0] || null;
 };
 
-const getAlumnoGrado = async (idUsuario, client = null) => {
+const getAlumnoGrado = async (
+  idUsuario,
+  anioLectivo = getAnioLectivo(),
+  client = null,
+) => {
   const result = await ejecutar(
     client,
     `SELECT
@@ -144,8 +149,9 @@ const getAlumnoGrado = async (idUsuario, client = null) => {
      FROM alumnos a
      INNER JOIN grados g ON g.id_grado = a.id_grado
      WHERE a.id_usuario = $1
+       AND a.anio_lectivo = $2
      LIMIT 1`,
-    [idUsuario],
+    [idUsuario, anioLectivo],
   );
   return result.rows[0] || null;
 };

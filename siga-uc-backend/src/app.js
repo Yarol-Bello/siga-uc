@@ -14,6 +14,9 @@ const crypto = require("crypto");
 
 const env = require("./config/env");
 const {
+  cargarAnioActivo,
+} = require("./config/academico");
+const {
   testConnection,
   checkDatabase,
   pool,
@@ -251,6 +254,12 @@ const startServer = async () => {
       console.error("\n⚠️  El servidor arrancará pero sin conexión a la BD.");
       console.error("   Verifica las credenciales en el archivo .env\n");
     }
+
+    // El año activo se carga una vez al arrancar. La tabla manda sobre .env.
+    const anioActivo = await cargarAnioActivo();
+    console.log(
+      `   📅 Año lectivo activo: ${anioActivo.anio} (fuente: ${anioActivo.fuente})`,
+    );
 
     // Arrancar el servidor PRIMERO (sin esperar al SMTP)
     server = app.listen(PORT, "0.0.0.0", () => {

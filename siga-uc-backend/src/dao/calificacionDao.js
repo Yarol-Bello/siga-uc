@@ -84,6 +84,7 @@ const obtenerPorCursoGrado = async (
       a.codigo_estudiante
     FROM alumnos a
     WHERE a.id_grado = $1 AND a.estado_matricula = 'Matriculado'
+      AND a.anio_lectivo = $4
       AND (
         $2::INT IS NULL
         OR EXISTS (
@@ -115,7 +116,11 @@ const obtenerPorCursoGrado = async (
       AND cal.bimestre = $2
       AND cal.anio_lectivo = $3
       AND cal.id_alumno IN (
-        SELECT id_alumno FROM alumnos WHERE id_grado = $4 AND estado_matricula = 'Matriculado'
+        SELECT id_alumno
+        FROM alumnos
+        WHERE id_grado = $4
+          AND estado_matricula = 'Matriculado'
+          AND anio_lectivo = $3
       )
       AND (
         $5::INT IS NULL

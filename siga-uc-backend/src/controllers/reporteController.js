@@ -62,7 +62,12 @@ const getLibreta = async (req, res) => {
     );
     return response.success(res, 200, "Libreta del alumno", data);
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 
@@ -117,6 +122,7 @@ const getLibretaPdf = async (req, res) => {
       res,
       error.statusCode || 500,
       error.statusCode ? error.message : "No se pudo generar la libreta en PDF",
+      error.details || null,
     );
   }
 };

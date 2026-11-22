@@ -75,6 +75,17 @@ const listar = async (req, res) => {
 const obtener = async (req, res) => {
   try {
     const alumno = await alumnoService.obtener(req.params.id);
+    if (
+      req.query.anio &&
+      Number(alumno.anio_lectivo) !== Number.parseInt(req.query.anio, 10)
+    ) {
+      return response.error(
+        res,
+        404,
+        "La matrícula no pertenece al año solicitado.",
+        { codigo: "MATRICULA_NO_ENCONTRADA_EN_ANIO" },
+      );
+    }
     return response.success(res, 200, "Alumno obtenido", alumno);
   } catch (error) {
     console.error("❌ Error al obtener alumno:", error);
@@ -87,11 +98,22 @@ const obtener = async (req, res) => {
  */
 const buscarPorDni = async (req, res) => {
   try {
-    const alumno = await alumnoService.buscarPorDni(req.params.dni);
+    const anioLectivo = req.query.anio
+      ? Number.parseInt(req.query.anio, 10)
+      : getAnioLectivo();
+    const alumno = await alumnoService.buscarPorDni(
+      req.params.dni,
+      anioLectivo,
+    );
     return response.success(res, 200, "Alumno encontrado", alumno);
   } catch (error) {
     console.error("❌ Error al buscar por DNI:", error);
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 

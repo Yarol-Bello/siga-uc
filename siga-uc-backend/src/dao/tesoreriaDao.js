@@ -56,6 +56,10 @@ const listarPreTickets = async (filtros = {}) => {
     conditions.push(`pt.id_alumno = $${idx++}`);
     params.push(filtros.id_alumno);
   }
+  if (filtros.anio_lectivo) {
+    conditions.push(`a.anio_lectivo = $${idx++}`);
+    params.push(filtros.anio_lectivo);
+  }
 
   const where =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -140,6 +144,10 @@ const listarPagos = async (filtros = {}) => {
   if (filtros.hasta) {
     conditions.push(`p.fecha_pago <= $${idx++}`);
     params.push(filtros.hasta);
+  }
+  if (filtros.anio_lectivo) {
+    conditions.push(`a.anio_lectivo = $${idx++}`);
+    params.push(filtros.anio_lectivo);
   }
 
   const where =
@@ -661,6 +669,10 @@ const listarBecas = async (filtros = {}) => {
     conditions.push(`b.activo = $${idx++}`);
     params.push(filtros.activo);
   }
+  if (filtros.anio_lectivo) {
+    conditions.push(`a.anio_lectivo = $${idx++}`);
+    params.push(filtros.anio_lectivo);
+  }
 
   const where =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -721,11 +733,13 @@ const getPendientesCobro = async (anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
       COUNT(*) AS total_pendientes,
-      COALESCE(SUM(monto), 0) AS monto_pendiente
-    FROM pre_tickets
-    WHERE estado = 'PENDIENTE'
+      COALESCE(SUM(pt.monto), 0) AS monto_pendiente
+    FROM pre_tickets pt
+    INNER JOIN alumnos a ON a.id_alumno = pt.id_alumno
+    WHERE pt.estado = 'PENDIENTE'
+      AND a.anio_lectivo = $1
   `;
-  const result = await query(sql);
+  const result = await query(sql, [anioLectivo]);
   return result.rows[0];
 };
 

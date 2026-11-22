@@ -5,6 +5,7 @@
 
 const authService = require("../services/authService");
 const autorizacionDao = require("../dao/autorizacionDao");
+const { getAnioLectivo } = require("../config/academico");
 const response = require("../utils/response");
 
 // Rutas permitidas mientras el usuario debe cambiar su contraseña.
@@ -41,6 +42,7 @@ const verificarAutenticacion = async (req, res, next) => {
     // Revalidar estado y obtener contexto (id_personal / id_alumno)
     const contexto = await autorizacionDao.getContextoUsuario(
       decoded.id_usuario,
+      getAnioLectivo(),
     );
 
     if (!contexto || contexto.estado !== "ACTIVO") {

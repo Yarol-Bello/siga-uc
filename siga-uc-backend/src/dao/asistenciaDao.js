@@ -35,6 +35,7 @@ const obtenerPorCursoFecha = async (
       AND asis.fecha = $2
     WHERE a.id_grado = $3 
       AND a.estado_matricula = 'Matriculado'
+      AND a.anio_lectivo = EXTRACT(YEAR FROM $2::date)::int
       AND (
         $4::INT IS NULL
         OR EXISTS (

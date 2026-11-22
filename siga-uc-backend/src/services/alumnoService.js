@@ -4,6 +4,7 @@
  */
 
 const alumnoDao = require("../dao/alumnoDao");
+const { getAnioLectivo } = require("../config/academico");
 
 /**
  * Listar alumnos con filtros
@@ -35,11 +36,14 @@ const obtener = async (id) => {
 /**
  * Buscar alumno por DNI
  */
-const buscarPorDni = async (dni) => {
-  const alumno = await alumnoDao.findByDni(dni);
+const buscarPorDni = async (dni, anioLectivo = getAnioLectivo()) => {
+  const alumno = await alumnoDao.findByDni(dni, anioLectivo);
   if (!alumno) {
-    const error = new Error("Alumno no encontrado");
+    const error = new Error(
+      `No se encontró matrícula del DNI ${dni} en el año lectivo ${anioLectivo}.`,
+    );
     error.statusCode = 404;
+    error.details = { codigo: "MATRICULA_NO_ENCONTRADA_EN_ANIO" };
     throw error;
   }
   return alumno;
@@ -64,10 +68,13 @@ const crear = async (data) => {
     throw error;
   }
 
-  // Verificar que el DNI no exista
-  const existente = await alumnoDao.findByDni(data.dni);
-  if (existente) {
-    const error = new Error("Ya existe un alumno con ese DNI");
+  // El alta es solo para primera matrícula. Si la persona ya existe en
+  // cualquier año, debe usarse el flujo de continuidad (6.3).
+  const existentes = await alumnoDao.findByDniGlobal(data.dni);
+  if (existentes.length > 0) {
+    const error = new Error(
+      "Ya existe una persona con ese DNI; para un nuevo año use el flujo de continuidad (6.3).",
+    );
     error.statusCode = 409;
     throw error;
   }

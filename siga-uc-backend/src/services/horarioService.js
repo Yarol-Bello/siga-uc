@@ -186,9 +186,18 @@ const miHorario = async (usuario) => {
   }
 
   if (usuario.rol === "ESTUDIANTE") {
-    const alumno = await horarioDao.getAlumnoGrado(usuario.id_usuario);
+    const anioActivo = getAnioLectivo();
+    const alumno = await horarioDao.getAlumnoGrado(
+      usuario.id_usuario,
+      anioActivo,
+    );
     if (!alumno || !alumno.id_grado) {
-      throw crearError("El estudiante no tiene un grado asignado.", 404);
+      const error = crearError(
+        `No tienes matrícula en el año lectivo ${anioActivo}. Contacta a Secretaría.`,
+        404,
+      );
+      error.details = { codigo: "SIN_MATRICULA_ACTIVA" };
+      throw error;
     }
 
     const anio = Number(alumno.anio_lectivo) || getAnioLectivo();

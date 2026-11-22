@@ -243,10 +243,11 @@ const listarDestinatarios = async ({ tipo, id, anioLectivo }) => {
       LEFT JOIN grados g ON g.id_grado = a.id_grado
       WHERE u.estado = 'ACTIVO'
         AND a.id_alumno = $1
+        AND a.anio_lectivo = $2
         AND a.estado_matricula <> 'Retirado'
       LIMIT 1
     `;
-    const result = await query(sql, [id]);
+    const result = await query(sql, [id, anioLectivo]);
     return result.rows;
   }
 

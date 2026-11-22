@@ -124,11 +124,12 @@ const updateUltimoLogin = async (id_usuario) => {
 };
 
 /**
- * Obtener datos del alumno asociado a un usuario (si existe)
+ * Obtener la matrícula anual del alumno asociado a un usuario.
  * @param {number} id_usuario - ID del usuario
+ * @param {number} anioLectivo - Año lectivo activo
  * @returns {Promise<object|null>}
  */
-const getAlumnoInfo = async (id_usuario) => {
+const getAlumnoInfo = async (id_usuario, anioLectivo) => {
   const sql = `
     SELECT 
       a.id_alumno,
@@ -136,13 +137,15 @@ const getAlumnoInfo = async (id_usuario) => {
       a.id_grado,
       g.nombre_grado,
       g.seccion,
-      a.estado_matricula
+      a.estado_matricula,
+      a.anio_lectivo
     FROM alumnos a
     LEFT JOIN grados g ON g.id_grado = a.id_grado
     WHERE a.id_usuario = $1
+      AND a.anio_lectivo = $2
     LIMIT 1
   `;
-  const result = await query(sql, [id_usuario]);
+  const result = await query(sql, [id_usuario, anioLectivo]);
   return result.rows[0] || null;
 };
 

@@ -52,6 +52,14 @@ const checkAlumnoPropio = async (req, res, next) => {
     );
 
     if (rol === "ESTUDIANTE") {
+      if (!req.usuario.id_alumno) {
+        return response.error(
+          res,
+          403,
+          `No tienes matrícula en el año lectivo ${obtenerAnio(req)}. Contacta a Secretaría.`,
+          { codigo: "SIN_MATRICULA_ACTIVA" },
+        );
+      }
       if (idAlumno && Number(req.usuario.id_alumno) === idAlumno) {
         return next();
       }
@@ -65,6 +73,7 @@ const checkAlumnoPropio = async (req, res, next) => {
       const permitido = await autorizacionDao.docenteTieneAlumno(
         req.usuario.id_personal,
         idAlumno,
+        obtenerAnio(req),
       );
       return permitido
         ? next()
@@ -103,6 +112,7 @@ const checkAlumnoPorDni = async (req, res, next) => {
       const permitido = await autorizacionDao.docenteTieneAlumnoPorDni(
         req.usuario.id_personal,
         dni,
+        obtenerAnio(req),
       );
       return permitido
         ? next()

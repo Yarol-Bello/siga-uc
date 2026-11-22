@@ -26,6 +26,9 @@ const listarPreTickets = async (req, res) => {
     const filtros = {
       estado: req.query.estado || null,
       id_alumno: req.query.id_alumno ? parseInt(req.query.id_alumno) : null,
+      anio_lectivo: req.query.anio
+        ? parseInt(req.query.anio, 10)
+        : getAnioLectivo(),
     };
     const data = await tesoreriaService.listarPreTickets(filtros);
     return response.success(
@@ -66,6 +69,9 @@ const listarPagos = async (req, res) => {
       id_alumno: req.query.id_alumno ? parseInt(req.query.id_alumno) : null,
       desde: req.query.desde || null,
       hasta: req.query.hasta || null,
+      anio_lectivo: req.query.anio
+        ? parseInt(req.query.anio, 10)
+        : getAnioLectivo(),
     };
     const data = await tesoreriaService.listarPagos(filtros);
     return response.success(res, 200, `${data.length} pagos encontrados`, data);
@@ -191,7 +197,12 @@ const listarPensionesAlumno = async (req, res) => {
     );
     return response.success(res, 200, "Pensiones del alumno", data);
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 
@@ -249,6 +260,9 @@ const listarBecas = async (req, res) => {
         req.query.activo !== undefined
           ? req.query.activo === "true"
           : undefined,
+      anio_lectivo: req.query.anio
+        ? parseInt(req.query.anio, 10)
+        : getAnioLectivo(),
     };
     const data = await tesoreriaService.listarBecas(filtros);
     return response.success(res, 200, `${data.length} becas encontradas`, data);

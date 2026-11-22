@@ -138,9 +138,10 @@ const findById = async (id) => {
 };
 
 /**
- * Buscar alumno por DNI
+ * Buscar la matrícula anual de un alumno por DNI.
+ * No devuelve una fila de otro año: el llamador debe indicar el año.
  */
-const findByDni = async (dni) => {
+const findByDni = async (dni, anioLectivo) => {
   const sql = `
     SELECT 
       a.*,
@@ -151,9 +152,31 @@ const findByDni = async (dni) => {
     LEFT JOIN grados g ON g.id_grado = a.id_grado
     LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
     WHERE a.dni = $1
+      AND a.anio_lectivo = $2
+  `;
+  const result = await query(sql, [dni, anioLectivo]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Buscar una persona por DNI sin filtrar año.
+ * Solo para el alta de primera matrícula y para detectar continuidad.
+ */
+const findByDniGlobal = async (dni) => {
+  const sql = `
+    SELECT
+      a.*,
+      a.nombres || ' ' || a.apellidos AS nombre_completo,
+      g.nombre_grado, g.seccion,
+      u.correo_personal
+    FROM alumnos a
+    LEFT JOIN grados g ON g.id_grado = a.id_grado
+    LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
+    WHERE a.dni = $1
+    ORDER BY a.anio_lectivo DESC
   `;
   const result = await query(sql, [dni]);
-  return result.rows[0] || null;
+  return result.rows;
 };
 
 /**
@@ -182,24 +205,117 @@ const getSiguienteCodigo = async (client = null) => {
  */
 const crear = async (data) => {
   const client = await getClient();
+  const anioLectivo = Number(data.anio_lectivo) || getAnioLectivo();
   try {
     await client.query("BEGIN");
 
-    // 1. Crear apoderado (opcional)
+    const apoderadoData = data.apoderado || null;
+    if (
+      apoderadoData &&
+      (apoderadoData.nombres ||
+        apoderadoData.apellidos ||
+        apoderadoData.dni ||
+        apoderadoData.correo) &&
+      (!String(apoderadoData.nombres || "").trim() ||
+        !String(apoderadoData.apellidos || "").trim())
+    ) {
+      const error = new Error(
+        "Si envía datos del apoderado, debe incluir nombres y apellidos.",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // 0. Validar que el grado pertenezca al año destino y que exista el
+    // concepto de matrícula de ese año.
+    const gradoResult = await client.query(
+      `SELECT 1 FROM grados WHERE id_grado = $1 AND anio_lectivo = $2 LIMIT 1`,
+      [data.id_grado, anioLectivo],
+    );
+    if (gradoResult.rows.length === 0) {
+      const error = new Error(
+        "El grado seleccionado no pertenece al año lectivo de la matrícula.",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const conceptoResult = await client.query(
+      `SELECT id_concepto, monto_base
+       FROM conceptos_pago
+       WHERE tipo = 'MATRICULA' AND anio_lectivo = $1
+       ORDER BY id_concepto
+       LIMIT 1`,
+      [anioLectivo],
+    );
+    if (conceptoResult.rows.length === 0) {
+      const error = new Error(
+        `No hay concepto de matrícula para el año ${anioLectivo}; ejecute el rollover.`,
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+    const conceptoMatricula = conceptoResult.rows[0];
+
+    // 1. Crear o reutilizar apoderado por DNI.
     let id_apoderado = null;
-    if (data.apoderado && data.apoderado.nombres) {
-      const apoderadoSql = `
-        INSERT INTO apoderados (nombres, apellidos, dni, telefono, correo)
-        VALUES ($1, $2, $3, $4, $5) RETURNING id_apoderado
-      `;
-      const apoderadoResult = await client.query(apoderadoSql, [
-        data.apoderado.nombres,
-        data.apoderado.apellidos,
-        data.apoderado.dni || null,
-        data.apoderado.telefono || null,
-        data.apoderado.correo || null,
-      ]);
-      id_apoderado = apoderadoResult.rows[0].id_apoderado;
+    if (apoderadoData && String(apoderadoData.nombres || "").trim()) {
+      if (apoderadoData.dni) {
+        const insertResult = await client.query(
+          `INSERT INTO apoderados (nombres, apellidos, dni, telefono, correo)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (dni) DO NOTHING
+           RETURNING id_apoderado`,
+          [
+            apoderadoData.nombres,
+            apoderadoData.apellidos,
+            apoderadoData.dni,
+            apoderadoData.telefono || null,
+            apoderadoData.correo || null,
+          ],
+        );
+
+        if (insertResult.rows.length > 0) {
+          id_apoderado = insertResult.rows[0].id_apoderado;
+        } else {
+          const existenteResult = await client.query(
+            `SELECT id_apoderado, nombres, apellidos
+             FROM apoderados
+             WHERE dni = $1
+             LIMIT 1`,
+            [apoderadoData.dni],
+          );
+          if (existenteResult.rows.length === 0) {
+            const error = new Error(
+              "No se pudo reutilizar el apoderado existente por DNI.",
+            );
+            error.statusCode = 409;
+            throw error;
+          }
+          id_apoderado = existenteResult.rows[0].id_apoderado;
+          const existente = existenteResult.rows[0];
+          if (
+            existente.nombres !== apoderadoData.nombres ||
+            existente.apellidos !== apoderadoData.apellidos
+          ) {
+            console.warn(
+              "⚠️ Apoderado con DNI existente y nombres distintos; se reutiliza la ficha existente sin sobrescribirla.",
+            );
+          }
+        }
+      } else {
+        const apoderadoResult = await client.query(
+          `INSERT INTO apoderados (nombres, apellidos, dni, telefono, correo)
+           VALUES ($1, $2, NULL, $3, $4) RETURNING id_apoderado`,
+          [
+            apoderadoData.nombres,
+            apoderadoData.apellidos,
+            apoderadoData.telefono || null,
+            apoderadoData.correo || null,
+          ],
+        );
+        id_apoderado = apoderadoResult.rows[0].id_apoderado;
+      }
     }
 
     // 2. Generar correo institucional
@@ -209,7 +325,7 @@ const crear = async (data) => {
 
     // 3. Determinar correo personal (prioridad: alumno, si no, apoderado)
     const correoPersonal =
-      data.correo_personal || (data.apoderado && data.apoderado.correo) || null;
+      data.correo_personal || (apoderadoData && apoderadoData.correo) || null;
 
     // 4. Crear usuario
     const usuarioSql = `
@@ -256,7 +372,7 @@ const crear = async (data) => {
       data.colegio_procedencia || null,
       "PendientePago",
       codigo,
-      data.anio_lectivo || getAnioLectivo(),
+      anioLectivo,
     ]);
     const id_alumno = alumnoResult.rows[0].id_alumno;
 
@@ -273,31 +389,21 @@ const crear = async (data) => {
       [id_usuario, data.dni],
     );
 
-    // 9. Crear pre-ticket de matrícula pendiente
-    const conceptoResult = await client.query(
-      `SELECT id_concepto, monto_base
-       FROM conceptos_pago
-       WHERE tipo = 'MATRICULA' AND anio_lectivo = $1
-       ORDER BY id_concepto
-       LIMIT 1`,
-      [data.anio_lectivo || getAnioLectivo()],
-    );
+    // 9. Crear pre-ticket de matrícula pendiente (el concepto ya se validó
+    // al inicio de la transacción).
     let idPreticket = null;
-    if (conceptoResult.rows.length > 0) {
-      const concepto = conceptoResult.rows[0];
-      const preticketResult = await client.query(
-        `INSERT INTO pre_tickets (id_alumno, id_concepto, monto, estado, id_usuario_emite)
-         VALUES ($1, $2, $3, 'PENDIENTE', $4)
-         RETURNING id_preticket`,
-        [
-          id_alumno,
-          concepto.id_concepto,
-          concepto.monto_base,
-          data.id_usuario_emite || null,
-        ],
-      );
-      idPreticket = preticketResult.rows[0].id_preticket;
-    }
+    const preticketResult = await client.query(
+      `INSERT INTO pre_tickets (id_alumno, id_concepto, monto, estado, id_usuario_emite)
+       VALUES ($1, $2, $3, 'PENDIENTE', $4)
+       RETURNING id_preticket`,
+      [
+        id_alumno,
+        conceptoMatricula.id_concepto,
+        conceptoMatricula.monto_base,
+        data.id_usuario_emite || null,
+      ],
+    );
+    idPreticket = preticketResult.rows[0].id_preticket;
 
     await client.query("COMMIT");
 
@@ -327,6 +433,30 @@ const actualizar = async (id, data) => {
   const client = await getClient();
   try {
     await client.query("BEGIN");
+
+    const actualResult = await client.query(
+      `SELECT anio_lectivo FROM alumnos WHERE id_alumno = $1 FOR UPDATE`,
+      [id],
+    );
+    const actual = actualResult.rows[0];
+    if (!actual) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    if (data.id_grado !== undefined && data.id_grado !== null) {
+      const gradoResult = await client.query(
+        `SELECT 1 FROM grados WHERE id_grado = $1 AND anio_lectivo = $2 LIMIT 1`,
+        [data.id_grado, actual.anio_lectivo],
+      );
+      if (gradoResult.rows.length === 0) {
+        const error = new Error(
+          "El grado seleccionado no pertenece al año lectivo de la matrícula.",
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+    }
 
     const sql = `
       UPDATE alumnos SET
@@ -415,10 +545,21 @@ const retirar = async (id, data) => {
       return null;
     }
 
-    // El usuario deja de poder autenticarse (login y JWT en curso).
+    // El usuario solo se desactiva si no queda otra matrícula viva del mismo
+    // alumno en otro año. Si tiene una matrícula futura vigente, conserva el
+    // acceso y el contexto se resolverá por el año activo.
     await client.query(
-      `UPDATE usuarios SET estado = 'INACTIVO' WHERE id_usuario = $1`,
-      [alumno.id_usuario],
+      `UPDATE usuarios u
+       SET estado = 'INACTIVO'
+       WHERE u.id_usuario = $1
+         AND NOT EXISTS (
+           SELECT 1
+           FROM alumnos a
+           WHERE a.id_usuario = $1
+             AND a.id_alumno <> $2
+             AND a.estado_matricula <> 'Retirado'
+         )`,
+      [alumno.id_usuario, id],
     );
 
     // Congelar el expediente para que no siga recibiendo cambios.
@@ -472,6 +613,7 @@ module.exports = {
   contar,
   findById,
   findByDni,
+  findByDniGlobal,
   crear,
   actualizar,
   retirar,

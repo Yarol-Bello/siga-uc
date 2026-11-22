@@ -7,6 +7,23 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const usuarioDao = require("../dao/usuarioDao");
 const env = require("../config/env");
+const { getAnioLectivo } = require("../config/academico");
+
+/**
+ * La info adicional del estudiante siempre es un objeto, aunque no tenga
+ * matrícula en el año activo. Así el frontend puede mostrar el mensaje sin
+ * confundirlo con un error de login.
+ */
+const construirInfoAlumno = (info, anioLectivo) => ({
+  id_alumno: info?.id_alumno ?? null,
+  codigo_estudiante: info?.codigo_estudiante ?? null,
+  id_grado: info?.id_grado ?? null,
+  nombre_grado: info?.nombre_grado ?? null,
+  seccion: info?.seccion ?? null,
+  estado_matricula: info?.estado_matricula ?? null,
+  anio_lectivo: info?.anio_lectivo ?? anioLectivo,
+  matricula_activa: Boolean(info?.id_alumno),
+});
 
 /**
  * Autenticar un usuario con DNI y contraseña
@@ -47,7 +64,12 @@ const login = async (dni, password) => {
   let infoAdicional = null;
 
   if (usuario.nombre_rol === "ESTUDIANTE") {
-    infoAdicional = await usuarioDao.getAlumnoInfo(usuario.id_usuario);
+    const anioLectivo = getAnioLectivo();
+    const alumno = await usuarioDao.getAlumnoInfo(
+      usuario.id_usuario,
+      anioLectivo,
+    );
+    infoAdicional = construirInfoAlumno(alumno, anioLectivo);
   } else if (
     usuario.nombre_rol === "DOCENTE" ||
     usuario.nombre_rol === "SECRETARIA"
@@ -133,7 +155,9 @@ const getPerfil = async (id_usuario) => {
   let infoAdicional = null;
 
   if (usuario.nombre_rol === "ESTUDIANTE") {
-    infoAdicional = await usuarioDao.getAlumnoInfo(id_usuario);
+    const anioLectivo = getAnioLectivo();
+    const alumno = await usuarioDao.getAlumnoInfo(id_usuario, anioLectivo);
+    infoAdicional = construirInfoAlumno(alumno, anioLectivo);
   } else if (
     usuario.nombre_rol === "DOCENTE" ||
     usuario.nombre_rol === "SECRETARIA"

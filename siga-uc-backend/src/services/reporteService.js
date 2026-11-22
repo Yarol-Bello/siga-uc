@@ -33,7 +33,20 @@ const getLibreta = async (id_alumno, bimestre, anioLectivo) => {
     error.statusCode = 400;
     throw error;
   }
-  return await reporteDao.getLibretaAlumno(id_alumno, bimestre, anioLectivo);
+  const data = await reporteDao.getLibretaAlumno(
+    id_alumno,
+    bimestre,
+    anioLectivo,
+  );
+  if (!data?.alumno) {
+    const error = new Error(
+      "La matrícula no pertenece al año lectivo solicitado.",
+    );
+    error.statusCode = 404;
+    error.details = { codigo: "MATRICULA_NO_ENCONTRADA_EN_ANIO" };
+    throw error;
+  }
+  return data;
 };
 
 const getResumenAsistencia = async (id_grado, anioLectivo) => {
