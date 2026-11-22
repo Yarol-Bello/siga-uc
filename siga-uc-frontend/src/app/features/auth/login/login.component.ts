@@ -6,7 +6,7 @@ import {
   FormsModule,
   Validators,
 } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
@@ -28,6 +28,7 @@ export class LoginComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
 
   // Formulario reactivo
@@ -70,24 +71,15 @@ export class LoginComponent {
           return;
         }
 
-        // Redirigir según el rol
-        const rol = response.data.usuario.rol;
-        switch (rol) {
-          case 'ADMIN':
-            this.router.navigate(['/admin']);
-            break;
-          case 'DOCENTE':
-            this.router.navigate(['/docente']);
-            break;
-          case 'ESTUDIANTE':
-            this.router.navigate(['/estudiante']);
-            break;
-          case 'SECRETARIA':
-            this.router.navigate(['/secretaria']);
-            break;
-          default:
-            this.router.navigate(['/']);
+        // Volver a la ruta protegida original, solo si es una ruta interna.
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        if (this.esReturnUrlValido(returnUrl)) {
+          this.router.navigateByUrl(returnUrl!);
+          return;
         }
+
+        // Sin returnUrl válido, redirigir según el rol.
+        this.router.navigateByUrl(this.authService.getDashboardUrl());
       },
       error: (error) => {
         this.cargando.set(false);
@@ -98,6 +90,19 @@ export class LoginComponent {
         this.cargando.set(false);
       },
     });
+  }
+
+  /**
+   * Solo acepta rutas internas absolutas. Rechaza `//dominio`, URLs externas
+   * y el propio login para evitar bucles (H72).
+   */
+  private esReturnUrlValido(returnUrl: string | null): boolean {
+    return (
+      !!returnUrl &&
+      returnUrl.startsWith('/') &&
+      !returnUrl.startsWith('//') &&
+      !returnUrl.startsWith('/login')
+    );
   }
 
   /**

@@ -77,6 +77,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 22/11/2026 (H58):** la impresión de reportes y carnés queda aislada;
 > los documentos con PDF de backend siguen descargando el archivo. Ver H58 en la sección 3.
+>
+> **Actualización 22/11/2026 (H72):** página 404 propia y `returnUrl` respetado en el
+> login. Ver H72 en la sección 3.
 
 ---
 
@@ -706,6 +709,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Mantener PDF de backend donde existe (libreta, boleta, acta); para reportes sin PDF, imprimir solo el documento con `@media print` y renombrar a “Imprimir” |
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (22/11/2026): libreta/boleta/acta siguen descargando PDF de backend; mérito, riesgo, consolidado docente, reporte de cierre y carnés usan `documento-visible` + estilos `@media print` que ocultan sidebar, header, filtros y botones. Botones renombrados a “Imprimir” cuando corresponde |
+
+### H72 — 404 y `returnUrl` ignorado
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Baja |
+| Evidencia | La ruta `**` redirigía al login; `authGuard` guardaba `returnUrl` pero `LoginComponent` siempre navegaba por rol |
+| Impacto | Una URL mal escrita con sesión terminaba en el login y el usuario perdía la ruta original |
+| Recomendación | Página 404 propia y navegar al `returnUrl` interno válido tras el login |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): `NotFoundComponent` para `**`; el login acepta solo `returnUrl` que empieza con `/`, no `//` y no `/login`; si no es válido, va al dashboard del rol |
 
 ### H57 — Panel del estudiante engañoso
 

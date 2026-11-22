@@ -1,0 +1,94 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.not-found-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.not-found-card {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+  padding: 42px 32px;
+  text-align: center;
+}
+
+.not-found-code {
+  font-size: 4.5rem;
+  line-height: 1;
+  font-weight: 900;
+  color: #800020;
+  letter-spacing: -2px;
+}
+
+.not-found-icon {
+  display: block;
+  margin: 12px auto 18px;
+  font-size: 2rem;
+  color: #94a3b8;
+}
+
+h1 {
+  margin: 0 0 12px;
+  color: #1e293b;
+  font-size: 1.55rem;
+  font-weight: 800;
+}
+
+p {
+  margin: 0 auto 26px;
+  max-width: 390px;
+  color: #64748b;
+  line-height: 1.6;
+
+  span {
+    display: block;
+    margin-top: 6px;
+  }
+}
+
+.not-found-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  button {
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-primary {
+    background: #800020;
+    color: #ffffff;
+
+    &:hover {
+      background: #600018;
+    }
+  }
+
+  .btn-secondary {
+    background: #f1f5f9;
+    color: #334155;
+
+    &:hover {
+      background: #e2e8f0;
+    }
+  }
+}

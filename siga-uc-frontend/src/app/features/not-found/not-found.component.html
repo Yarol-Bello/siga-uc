@@ -1,0 +1,24 @@
+<div class="not-found-wrapper">
+  <div class="not-found-card">
+    <div class="not-found-code">404</div>
+    <i class="fa-solid fa-compass not-found-icon"></i>
+    <h1>Página no encontrada</h1>
+    <p>
+      La dirección que ingresaste no existe o fue movida.
+      @if (usuario()?.nombre_completo) {
+      <span>Hola, <strong>{{ usuario()?.nombre_completo }}</strong>.</span>
+      }
+    </p>
+
+    <div class="not-found-actions">
+      <button class="btn-primary" (click)="irAlPanel()">
+        <i class="fa-solid fa-house"></i>
+        Ir a mi panel
+      </button>
+      <button class="btn-secondary" (click)="cerrarSesion()">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+</div>

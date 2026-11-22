@@ -56,9 +56,10 @@ index.html
 | `secretaria/asistencia-qr` | `SecretariaAsistenciaQrComponent` (wrapper) | hereda | Secretaría |
 | `secretaria/horarios` | `SecretariaHorariosComponent` | hereda | Secretaría |
 | `en-construccion` | `EnConstruccionComponent` | `authGuard` | Simple |
-| `**` | redirect `/login` | — | — |
+| `**` | `NotFoundComponent` (404) | `authGuard` | Simple |
 
-Todas las rutas usan `loadComponent` (lazy loading).
+Todas las rutas usan `loadComponent` (lazy loading). El login respeta `returnUrl` si es
+una ruta interna válida; si no, navega al dashboard del rol (H72).
 
 ## 3. Guards e interceptor
 
