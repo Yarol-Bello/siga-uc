@@ -660,3 +660,23 @@ tr:hover td {
   color: #64748b;
   font-weight: 700;
 }
+
+/* H58 — imprimir solo la credencial */
+@media print {
+  :host > .personal-container {
+    display: none !important;
+  }
+
+  .carne-digital {
+    width: 90mm !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    border: 2px solid #000 !important;
+    background: #fff !important;
+  }
+
+  .carne-qr-img {
+    width: 55mm !important;
+    height: 55mm !important;
+  }
+}

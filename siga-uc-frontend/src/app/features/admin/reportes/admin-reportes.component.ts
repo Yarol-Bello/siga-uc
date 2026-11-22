@@ -240,6 +240,14 @@ export class AdminReportesComponent implements OnInit {
   }
 
   /**
+   * Imprimir el reporte activo (mérito o riesgo). La vista de impresión
+   * queda aislada por la clase global `documento-visible` (H58).
+   */
+  imprimirReporte(): void {
+    window.print();
+  }
+
+  /**
    * Abrir modal de libreta de un alumno
    */
   verLibreta(alumno: Alumno): void {

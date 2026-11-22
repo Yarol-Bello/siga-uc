@@ -1,1 +1,74 @@
 /* You can add global styles to this file, and also import other style files */
+
+/*
+ * H58 — Impresión aislada.
+ * Cada documento imprimible lleva la clase `documento-visible`; al imprimir se
+ * oculta el resto de la interfaz (sidebar, header, filtros, botones y modales
+ * auxiliares) y solo queda el documento.
+ */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .documento-visible,
+  .documento-visible * {
+    visibility: visible !important;
+  }
+
+  .documento-visible {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  app-sidebar,
+  app-sidebar-docente,
+  app-sidebar-secretaria {
+    display: none !important;
+  }
+
+  app-header > .main-header {
+    display: none !important;
+  }
+
+  .admin-layout,
+  .main-content,
+  .content-area {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+  }
+
+  .modal-overlay,
+  .modal-container,
+  .modal-body {
+    position: static !important;
+    overflow: visible !important;
+    max-height: none !important;
+    background: #ffffff !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

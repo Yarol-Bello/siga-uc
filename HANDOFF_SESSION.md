@@ -249,6 +249,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H53 | Botones Asistencia/Notas del docente navegan con curso/grado preseleccionado | 22/11/2026 (local) |
 | H54 | “Cobrar” navega a tesorería con pre-ticket/alumno y reutiliza el modal de cobro | 22/11/2026 (local) |
 | H55 | Carné del personal con QR real generado desde `codigo_qr` | 22/11/2026 (local) |
+| H58 | Impresión aislada de reportes/carnés; PDF de backend intacto para libreta/boleta/acta | 22/11/2026 (local) |
 
 ---
 
@@ -472,8 +473,7 @@ es la **Fase 3**, en este orden:
 1. ~~**H53 — Botones del docente (P1).**~~ ✅ Cerrado el 22/11/2026.
 2. ~~**H54 — Cobrar pre-ticket desde Secretaría (P1).**~~ ✅ Cerrado el 22/11/2026.
 3. ~~**H55 — Carné QR real del personal (P1).**~~ ✅ Cerrado el 22/11/2026.
-4. **H58 — Impresión y PDF (P2).** Descargar PDF de backend cuando exista y aislar la
-   impresión del documento.
+4. ~~**H58 — Impresión y PDF (P2).**~~ ✅ Cerrado el 22/11/2026.
 5. **H72 — 404 y returnUrl (P2).** Página 404 propia y volver a la ruta original.
 6. **H64:** configuración de Render (`/* → /index.html`, 200), no se toca en el repo.
 7. Al cerrar, desplegar backend/frontend juntos, aplicar

@@ -252,6 +252,14 @@ export class DocenteReportesComponent implements OnInit {
   }
 
   /**
+   * Imprimir el consolidado. No existe PDF de backend para este reporte,
+   * así que se usa la vista de impresión aislada (H58).
+   */
+  imprimirReporte(): void {
+    window.print();
+  }
+
+  /**
    * Obtener clase CSS para nota
    */
   getNotaClass(nota: string | undefined): string {

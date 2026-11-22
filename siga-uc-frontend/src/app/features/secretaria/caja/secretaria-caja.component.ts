@@ -496,6 +496,13 @@ export class SecretariaCajaComponent implements OnInit {
   }
 
   /**
+   * Imprimir solo el reporte de cierre (H58).
+   */
+  imprimirReporteCierre(): void {
+    window.print();
+  }
+
+  /**
    * Confirmar después de ver el reporte
    */
   confirmarCierreFinal(): void {

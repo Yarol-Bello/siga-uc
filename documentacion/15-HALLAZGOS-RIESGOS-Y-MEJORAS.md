@@ -74,6 +74,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 22/11/2026 (H55):** el carné del personal genera un QR real desde
 > `codigo_qr`. Ver H55 en la sección 3.
+>
+> **Actualización 22/11/2026 (H58):** la impresión de reportes y carnés queda aislada;
+> los documentos con PDF de backend siguen descargando el archivo. Ver H58 en la sección 3.
 
 ---
 
@@ -692,6 +695,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Obtener `codigo_qr` del backend y generar un `<img>` con `QRCode.toDataURL` |
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (22/11/2026): `GET /personal` y `GET /personal/:id` incluyen `codigo_qr`; el modal genera el QR real con la librería del header y lo muestra como `<img>`. Verificado contra el `codigo_qr` de la BD |
+
+### H58 — Impresión y PDF imprimían toda la interfaz
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Media |
+| Evidencia | Varios botones usaban `window.print()` y no aislaban el documento; “Descargar PDF” en reportes docentes no descargaba un archivo |
+| Impacto | La impresión incluía sidebar, header, filtros y botones; el usuario esperaba un PDF y recibía el diálogo de impresión |
+| Recomendación | Mantener PDF de backend donde existe (libreta, boleta, acta); para reportes sin PDF, imprimir solo el documento con `@media print` y renombrar a “Imprimir” |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): libreta/boleta/acta siguen descargando PDF de backend; mérito, riesgo, consolidado docente, reporte de cierre y carnés usan `documento-visible` + estilos `@media print` que ocultan sidebar, header, filtros y botones. Botones renombrados a “Imprimir” cuando corresponde |
 
 ### H57 — Panel del estudiante engañoso
 

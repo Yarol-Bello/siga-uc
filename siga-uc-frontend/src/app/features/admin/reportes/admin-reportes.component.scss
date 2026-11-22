@@ -457,3 +457,36 @@ tr.top-3 td {
     margin: 0;
   }
 }
+
+/* H58 — impresión aislada del reporte */
+@media print {
+  .reportes-container {
+    padding: 0 !important;
+  }
+
+  .tab-nav,
+  .filter-toolbar,
+  .toolbar-actions,
+  .btn-ver {
+    display: none !important;
+  }
+
+  .card-container {
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  table {
+    width: 100% !important;
+    font-size: 10pt;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+}

@@ -440,7 +440,7 @@
       <button class="modal-close" (click)="cerrarModalCarne()">&times;</button>
     </div>
     <div class="modal-body" style="text-align: center;">
-      <div class="carne-digital">
+      <div class="carne-digital documento-visible">
         <div class="carne-school-header">I.E.P. Unión Científica — SIGA-UC</div>
         <div class="carne-avatar-large">{{ getIniciales(personalCarne()!) }}</div>
         <div class="carne-name">{{ personalCarne()!.nombre_completo }}</div>
@@ -462,7 +462,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="cerrarModalCarne()">Cerrar</button>
-      <button class="btn-primary" onclick="window.print()">
+      <button class="btn-primary" (click)="imprimirCarne()">
         <i class="fa-solid fa-print"></i> Imprimir Credencial
       </button>
     </div>

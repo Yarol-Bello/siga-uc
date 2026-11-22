@@ -498,3 +498,34 @@ tr:hover td {
   color: #1e293b;
   line-height: 1.6;
 }
+
+/* H58 — impresión aislada del consolidado */
+@media print {
+  .reportes-container {
+    padding: 0 !important;
+  }
+
+  .filtro-toolbar,
+  .notification-bell {
+    display: none !important;
+  }
+
+  .card-container {
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  table {
+    width: 100% !important;
+    font-size: 10pt;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+}

@@ -589,3 +589,17 @@
     font-size: 0.9rem;
   }
 }
+
+/* H58 — imprimir solo el carné del header */
+@media print {
+  .main-header {
+    display: none !important;
+  }
+
+  .carne-digital-compact {
+    width: 85mm !important;
+    margin: 0 auto !important;
+    border: 2px solid #000 !important;
+    background: #fff !important;
+  }
+}

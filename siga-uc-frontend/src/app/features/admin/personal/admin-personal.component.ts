@@ -438,6 +438,13 @@ export class AdminPersonalComponent implements OnInit {
     this.qrCarne.set('');
   }
 
+  /**
+   * Imprimir solo la credencial, sin sidebar/header/filtros (H58).
+   */
+  imprimirCarne(): void {
+    window.print();
+  }
+
   // ============================================================
   // HELPERS
   // ============================================================
