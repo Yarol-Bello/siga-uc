@@ -11,7 +11,7 @@
  * Conexión: usa DATABASE_URL si existe; si no, DB_HOST/DB_PORT/DB_USER/
  * DB_PASSWORD/DB_NAME. Las credenciales nunca se imprimen.
  *
- * Códigos de salida: 0 si las 16 invariantes pasan; 1 si hay algún FAIL.
+ * Códigos de salida: 0 si las 20 invariantes pasan; 1 si hay algún FAIL.
  */
 
 "use strict";
@@ -99,7 +99,9 @@ const TABLAS_ESPERADAS = [
   "pensiones",
   "periodos_clase",
   "personal",
+  "politicas_promocion",
   "pre_tickets",
+  "promociones",
   "recuperacion_password",
   "resumen_asistencia_curso",
   "roles",
@@ -194,10 +196,10 @@ async function main() {
     return;
   }
 
-  // 1. Las 41 tablas base del esquema existen.
+  // 1. Las 43 tablas base del esquema existen.
   await verificarInvariante(
     1,
-    "Las 41 tablas esperadas existen",
+    "Las 43 tablas esperadas existen",
     `
       SELECT q.*, COUNT(*) OVER() AS _total
       FROM (
@@ -218,7 +220,7 @@ async function main() {
   // 2. Los índices críticos existen.
   await verificarInvariante(
     2,
-    "Índices críticos de pagos, boletas y multi-año",
+    "Índices críticos de pagos, boletas, multi-año y promociones",
     `
       SELECT q.*, COUNT(*) OVER() AS _total
       FROM (
@@ -230,7 +232,11 @@ async function main() {
           ('uq_alumno_usuario_anio'),
           ('uq_alumno_codigo_anio'),
           ('uq_grado_anio_nivel_seccion_orden'),
-          ('uq_anio_activo')
+          ('uq_anio_activo'),
+          ('uq_promocion_origen_confirmada'),
+          ('uq_promocion_destino_confirmada'),
+          ('uq_politica_con_destino'),
+          ('uq_politica_sin_destino')
         ) AS t(nombre)
         LEFT JOIN pg_indexes pi
           ON pi.schemaname = 'public'
@@ -521,6 +527,88 @@ async function main() {
         WHERE g.anio_lectivo IS DISTINCT FROM tg.anio_lectivo
       ) q
       ORDER BY q.id_tutor
+      LIMIT 5
+    `,
+  );
+
+  // 17. Una sola promoción CONFIRMADA por matrícula de origen.
+  await verificarInvariante(
+    17,
+    "Más de una promoción confirmada para la misma matrícula origen",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT p.id_alumno_origen, COUNT(*)::int AS total_confirmadas
+        FROM promociones p
+        WHERE p.estado = 'CONFIRMADA'
+        GROUP BY p.id_alumno_origen
+        HAVING COUNT(*) > 1
+      ) q
+      ORDER BY q.id_alumno_origen
+      LIMIT 5
+    `,
+  );
+
+  // 18. La matrícula destino debe ser del año y grado de la promoción.
+  await verificarInvariante(
+    18,
+    "Promoción con matrícula destino de otro año o grado",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT p.id_promocion, p.anio_destino,
+               ad.anio_lectivo AS alumno_anio,
+               p.id_grado_destino,
+               ad.id_grado AS alumno_grado,
+               g.anio_lectivo AS grado_anio
+        FROM promociones p
+        INNER JOIN alumnos ad ON ad.id_alumno = p.id_alumno_destino
+        INNER JOIN grados g ON g.id_grado = p.id_grado_destino
+        WHERE p.estado = 'CONFIRMADA'
+          AND p.resultado IN ('PROMOVIDO', 'REPITENTE')
+          AND (
+            ad.anio_lectivo IS DISTINCT FROM p.anio_destino
+            OR g.anio_lectivo IS DISTINCT FROM p.anio_destino
+            OR ad.id_grado IS DISTINCT FROM p.id_grado_destino
+          )
+      ) q
+      ORDER BY q.id_promocion
+      LIMIT 5
+    `,
+  );
+
+  // 19. Egresados y retirados no deben tener matrícula destino.
+  await verificarInvariante(
+    19,
+    "Egresado o retirado con matrícula destino",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT p.id_promocion, p.resultado, p.id_alumno_destino
+        FROM promociones p
+        WHERE p.estado = 'CONFIRMADA'
+          AND p.resultado IN ('EGRESADO', 'RETIRADO')
+          AND p.id_alumno_destino IS NOT NULL
+      ) q
+      ORDER BY q.id_promocion
+      LIMIT 5
+    `,
+  );
+
+  // 20. Política única por origen, destino y nombre.
+  await verificarInvariante(
+    20,
+    "Política de promoción duplicada por origen/destino/nombre",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT p.anio_origen, p.anio_destino, p.nombre,
+               COUNT(*)::int AS total
+        FROM politicas_promocion p
+        GROUP BY p.anio_origen, p.anio_destino, p.nombre
+        HAVING COUNT(*) > 1
+      ) q
+      ORDER BY q.anio_origen, q.nombre
       LIMIT 5
     `,
   );

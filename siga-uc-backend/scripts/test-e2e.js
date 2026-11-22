@@ -6,7 +6,7 @@
  *  - Solo opera sobre una base cuyo nombre contenga "_e2e" (por defecto
  *    siga_uc_e2e). Nunca toca siga_uc ni una base de Supabase.
  *  - Crea la base, carga el dump y las migraciones, arranca el backend en el
- *    puerto 3101, ejecuta 38 flujos y al final detiene el backend y elimina la
+ *    puerto 3101, ejecuta 54 flujos y al final detiene el backend y elimina la
  *    base con dropdb --force.
  *  - Si la limpieza falla, imprime los comandos manuales.
  *
@@ -45,6 +45,7 @@ const MIGRACIONES = [
   path.join(RAIZ_REPO, "database", "migracion_h48_actas.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h61_dia_semana.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h49_multianio_base.sql"),
+  path.join(RAIZ_REPO, "database", "migracion_h73_promociones.sql"),
 ];
 
 const PUERTO = 3101;
@@ -1781,7 +1782,7 @@ async function ejecutarPruebas() {
   });
 
   // 20. Configuración table-backed y catálogo de años.
-  await prueba(20, "Año activo desde anios_lectivos y 41 tablas base", async () => {
+  await prueba(20, "Año activo desde anios_lectivos y 43 tablas base", async () => {
     const tablas = await sql(
       `SELECT COUNT(*)::int AS total
        FROM information_schema.tables
@@ -1795,7 +1796,7 @@ async function ejecutarPruebas() {
     const respuesta = await api("/configuracion");
     const { datos } = await leerJson(respuesta);
 
-    assert.equal(tablas[0].total, 41, "Se esperaban 41 tablas base");
+    assert.equal(tablas[0].total, 43, "Se esperaban 43 tablas base");
     assert.equal(activos.length, 1, "Debe haber exactamente un año ACTIVO");
     assert.equal(Number(activos[0].anio), ANIO, "El año ACTIVO inicial no es el esperado");
     assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
@@ -1807,9 +1808,9 @@ async function ejecutarPruebas() {
 
     registrar(
       20,
-      "Año activo desde anios_lectivos y 41 tablas base",
+      "Año activo desde anios_lectivos y 43 tablas base",
       "PASS",
-      `tablas=41, activo=${ANIO}`,
+      `tablas=43, activo=${ANIO}`,
     );
   });
 
@@ -3164,6 +3165,1366 @@ async function ejecutarPruebas() {
         "Rollover: fallo forzado en tutores no deja filas parciales",
         "PASS",
         "5xx y 0 filas parciales",
+      );
+    },
+  );
+
+  // ============================================================
+  // FASE 6.3 — PROMOCIÓN DE ALUMNOS (H73)
+  // ============================================================
+  const ANIO_PROMO_NORMAL = ANIO + 9; // 2035
+  const ANIO_PROMO_EGRESADO = ANIO + 10; // 2036
+  const ANIO_PROMO_REPITENTE = ANIO + 11; // 2037
+  const ANIO_PROMO_RETIRADO = ANIO + 12; // 2038
+  const ANIO_PROMO_BLOQUEO = ANIO + 13; // 2039
+  const ANIO_PROMO_ASISTENCIA = ANIO + 14; // 2040
+  const ANIO_PROMO_ANULAR = ANIO + 15; // 2041
+  const ANIO_PROMO_ACTIVIDAD = ANIO + 16; // 2042
+  const ANIO_PROMO_ROLLBACK = ANIO + 17; // 2043
+
+  const crearOfertaPromocion = async (anio) => {
+    await sql(
+      `INSERT INTO anios_lectivos (anio, estado)
+       VALUES ($1, 'PLANIFICADO')
+       ON CONFLICT (anio) DO NOTHING`,
+      [anio],
+    );
+
+    const nombres = [
+      "1ro de Secundaria",
+      "2do de Secundaria",
+      "3ro de Secundaria",
+      "4to de Secundaria",
+      "5to de Secundaria",
+    ];
+    for (let i = 0; i < nombres.length; i += 1) {
+      await sql(
+        `INSERT INTO grados (nombre_grado, nivel, seccion, anio_lectivo, orden)
+         VALUES ($1, 'SECUNDARIA', 'Única', $2, $3)
+         ON CONFLICT (nombre_grado, seccion, anio_lectivo) DO NOTHING`,
+        [nombres[i], anio, i + 1],
+      );
+    }
+
+    await sql(
+      `INSERT INTO conceptos_pago (nombre, monto_base, tipo, mes, anio_lectivo)
+       SELECT $1, 250.00, 'MATRICULA', NULL, $2
+       WHERE NOT EXISTS (
+         SELECT 1 FROM conceptos_pago
+         WHERE anio_lectivo = $2 AND tipo = 'MATRICULA'
+       )`,
+      [`Matrícula Escolar ${anio}`, anio],
+    );
+
+    return await sql(
+      `SELECT id_grado, nombre_grado, seccion, orden
+       FROM grados
+       WHERE anio_lectivo = $1
+       ORDER BY orden`,
+      [anio],
+    );
+  };
+
+  const crearPoliticaE2E = async (anioDestino, overrides = {}, anioOrigen = ANIO) => {
+    const body = {
+      anio_origen: anioOrigen,
+      anio_destino: anioDestino,
+      nombre: `E2E ${anioOrigen} ${anioDestino}`,
+      activo: true,
+      requiere_actas_cerradas: false,
+      requiere_notas_finales: false,
+      umbral_asistencia: null,
+      permite_override: false,
+      criterio_academico: {
+        modo: "manual",
+        modo_repitencia: "DESACTIVADA",
+        notas_bimestre: 1,
+        bimestres_requeridos: [1, 2, 3, 4],
+        transiciones: [],
+        observacion: "Política E2E",
+      },
+      ...overrides,
+    };
+
+    const respuesta = await api("/promociones/politicas", {
+      method: "POST",
+      token: ctx.adminToken,
+      body,
+    });
+    const { datos } = await leerJson(respuesta);
+    assert.equal(
+      respuesta.status,
+      201,
+      `No se pudo crear la política ${anioDestino} (${detalleHttp(
+        respuesta,
+        datos,
+      )})`,
+    );
+    return datos.data;
+  };
+
+  const crearAlumnoPromocionAux = async ({
+    dni,
+    nombres,
+    apellidos,
+    idGrado,
+    anio,
+    estado = "Matriculado",
+    condicion = "Regular",
+  }) => {
+    const usuario = await sql(
+      `INSERT INTO usuarios (
+         dni, nombres, apellidos, correo_institucional, password_hash,
+         id_rol, estado, requiere_cambio_password
+       )
+       VALUES ($1::text, $2, $3, $4, crypt($1::text, gen_salt('bf', 10)),
+               4, 'ACTIVO', FALSE)
+       RETURNING id_usuario`,
+      [dni, nombres, apellidos, `aux.${dni}@e2e.local`],
+    );
+    const alumno = await sql(
+      `INSERT INTO alumnos (
+         id_usuario, dni, nombres, apellidos, fecha_nacimiento,
+         id_apoderado, id_grado, condicion, estado_matricula,
+         codigo_estudiante, anio_lectivo
+       )
+       VALUES ($1, $2, $3, $4, '2012-05-10', NULL, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [
+        usuario[0].id_usuario,
+        dni,
+        nombres,
+        apellidos,
+        idGrado,
+        condicion,
+        estado,
+        `AUX-${dni.slice(-4)}`,
+        anio,
+      ],
+    );
+    return {
+      ...alumno[0],
+      id_usuario: Number(usuario[0].id_usuario),
+    };
+  };
+
+  const previsualizarPromocion = async (body) => {
+    const respuesta = await api("/promociones/preview", {
+      method: "POST",
+      token: ctx.adminToken,
+      body,
+    });
+    const { datos } = await leerJson(respuesta);
+    return { respuesta, datos, preview: datos?.data };
+  };
+
+  const confirmarPromocion = async (preview, extra = {}) => {
+    const respuesta = await api("/promociones/confirmar", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: {
+        anio_origen: preview.anio_origen,
+        anio_destino: preview.anio_destino,
+        id_politica: preview.id_politica,
+        id_grado: preview.id_grado,
+        incluir_retirados: preview.incluir_retirados,
+        decisiones: extra.decisiones || [],
+        copiar_becas: Boolean(extra.copiar_becas),
+        preview_hash: extra.preview_hash || preview.preview_hash,
+        confirmar: true,
+      },
+    });
+    const { datos } = await leerJson(respuesta);
+    return { respuesta, datos, resultado: datos?.data };
+  };
+
+  const contarDestinoPromocion = async (anio) => {
+    const filas = await sql(
+      `SELECT
+         (SELECT COUNT(*)::int FROM alumnos WHERE anio_lectivo = $1) AS alumnos,
+         (SELECT COUNT(*)::int FROM promociones WHERE anio_destino = $1) AS promociones,
+         (SELECT COUNT(*)::int FROM promociones
+           WHERE anio_destino = $1 AND estado = 'CONFIRMADA') AS confirmadas,
+         (SELECT COUNT(*)::int FROM pre_tickets pt
+           INNER JOIN alumnos a ON a.id_alumno = pt.id_alumno
+           WHERE a.anio_lectivo = $1) AS pretickets`,
+      [anio],
+    );
+    return filas[0];
+  };
+
+  const gradoOrden = async (anio, orden) => {
+    const filas = await sql(
+      `SELECT id_grado, nombre_grado, seccion, orden
+       FROM grados
+       WHERE anio_lectivo = $1 AND orden = $2
+       LIMIT 1`,
+      [anio, orden],
+    );
+    return filas[0] || null;
+  };
+
+  // 39. Política: permite_override por defecto y validación.
+  await prueba(
+    39,
+    "Promoción: política permite_override=false por defecto y valida años",
+    async () => {
+      await crearOfertaPromocion(ANIO_PROMO_NORMAL);
+      const politica = await crearPoliticaE2E(ANIO_PROMO_NORMAL);
+
+      assert.equal(
+        politica.permite_override,
+        false,
+        "permite_override debía ser false por defecto",
+      );
+      assert.equal(Number(politica.anio_origen), ANIO);
+      assert.equal(Number(politica.anio_destino), ANIO_PROMO_NORMAL);
+
+      const invalida = await api("/promociones/politicas", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          anio_origen: ANIO,
+          anio_destino: ANIO,
+          nombre: "E2E inválida",
+          criterio_academico: {},
+        },
+      });
+      const datosInvalida = await leerJson(invalida);
+      assert.equal(
+        invalida.status,
+        400,
+        `La política con destino igual al origen debía fallar (${detalleHttp(
+          invalida,
+          datosInvalida,
+        )})`,
+      );
+
+      ctx.politicaPromoNormal = politica;
+
+      registrar(
+        39,
+        "Promoción: política permite_override=false por defecto y valida años",
+        "PASS",
+        `política=${politica.id_politica}, override=false, 400`,
+      );
+    },
+  );
+
+  // 40. Preview normal sin escrituras.
+  await prueba(
+    40,
+    "Promoción: preview normal no escribe y devuelve hash",
+    async () => {
+      const antes = await contarDestinoPromocion(ANIO_PROMO_NORMAL);
+      const { respuesta, datos, preview } = await previsualizarPromocion({
+        anio_origen: ANIO,
+        anio_destino: ANIO_PROMO_NORMAL,
+        id_politica: ctx.politicaPromoNormal.id_politica,
+        id_grado: 1,
+        incluir_retirados: false,
+      });
+      const despues = await contarDestinoPromocion(ANIO_PROMO_NORMAL);
+
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      assert.ok(preview, "El preview no devolvió data");
+      assert.match(preview.preview_hash, /^[a-f0-9]{64}$/);
+      assert.ok(preview.resumen.total > 0, "El preview no incluyó alumnos");
+      assert.equal(preview.resumen.bloqueados, 0, "El preview no debía bloquear");
+      assert.equal(preview.resumen.ya_confirmadas, 0);
+      assert.deepEqual(despues, antes, "El preview escribió en el destino");
+
+      ctx.previewPromoNormal = preview;
+
+      registrar(
+        40,
+        "Promoción: preview normal no escribe y devuelve hash",
+        "PASS",
+        `alumnos=${preview.resumen.total}, hash=${preview.preview_hash.slice(0, 10)}…`,
+      );
+    },
+  );
+
+  // 41. Confirmación normal.
+  await prueba(
+    41,
+    "Promoción: confirm crea matrícula, expediente y pre-ticket sin copiar actividad",
+    async () => {
+      const preview = ctx.previewPromoNormal;
+      const { respuesta, datos, resultado } = await confirmarPromocion(preview);
+
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      assert.ok(resultado.creados > 0, "El confirm no creó promociones");
+      assert.equal(resultado.ya_confirmada, false);
+
+      const gradoDestino = await gradoOrden(ANIO_PROMO_NORMAL, 2);
+      assert.ok(gradoDestino, "No existe 2do grado en el destino");
+
+      const destino = await sql(
+        `SELECT a.id_alumno, a.id_usuario, a.dni, a.codigo_estudiante,
+                a.estado_matricula, a.id_grado, g.orden,
+                a2.codigo_estudiante AS codigo_origen
+         FROM alumnos a
+         INNER JOIN grados g ON g.id_grado = a.id_grado
+         INNER JOIN alumnos a2
+           ON a2.id_usuario = a.id_usuario AND a2.anio_lectivo = $2
+         WHERE a.anio_lectivo = $1 AND g.orden = 2`,
+        [ANIO_PROMO_NORMAL, ANIO],
+      );
+
+      assert.equal(
+        destino.length,
+        preview.resumen.total,
+        "El número de matrículas destino no coincide con el preview",
+      );
+      for (const alumno of destino) {
+        assert.equal(alumno.estado_matricula, "PendientePago");
+        assert.equal(Number(alumno.id_grado), Number(gradoDestino.id_grado));
+        assert.equal(
+          alumno.codigo_estudiante,
+          alumno.codigo_origen,
+          "El código de estudiante no se conservó",
+        );
+      }
+
+      const actividad = await sql(
+        `SELECT
+           (SELECT COUNT(*)::int FROM expediente_alumno e
+             INNER JOIN alumnos a ON a.id_alumno = e.id_alumno
+             WHERE a.anio_lectivo = $1) AS expedientes,
+           (SELECT COUNT(*)::int FROM pre_tickets pt
+             INNER JOIN alumnos a ON a.id_alumno = pt.id_alumno
+             WHERE a.anio_lectivo = $1 AND pt.estado = 'PENDIENTE') AS pretickets,
+           (SELECT COUNT(*)::int FROM pensiones pe
+             INNER JOIN alumnos a ON a.id_alumno = pe.id_alumno
+             WHERE a.anio_lectivo = $1) AS pensiones,
+           (SELECT COUNT(*)::int FROM pagos p
+             INNER JOIN alumnos a ON a.id_alumno = p.id_alumno
+             WHERE a.anio_lectivo = $1) AS pagos,
+           (SELECT COUNT(*)::int FROM notas_finales_area nf
+             INNER JOIN alumnos a ON a.id_alumno = nf.id_alumno
+             WHERE a.anio_lectivo = $1) AS notas,
+           (SELECT COUNT(*)::int FROM calificaciones c
+             INNER JOIN alumnos a ON a.id_alumno = c.id_alumno
+             WHERE a.anio_lectivo = $1) AS calificaciones`,
+        [ANIO_PROMO_NORMAL],
+      );
+
+      assert.equal(actividad[0].expedientes, destino.length);
+      assert.equal(actividad[0].pretickets, destino.length);
+      assert.equal(actividad[0].pensiones, 0, "Se copiaron pensiones");
+      assert.equal(actividad[0].pagos, 0, "Se copiaron pagos");
+      assert.equal(actividad[0].notas, 0, "Se copiaron notas");
+      assert.equal(actividad[0].calificaciones, 0, "Se copiaron calificaciones");
+
+      ctx.promociones2035 = resultado.promociones;
+      ctx.destino2035 = destino;
+
+      registrar(
+        41,
+        "Promoción: confirm crea matrícula, expediente y pre-ticket sin copiar actividad",
+        "PASS",
+        `creados=${resultado.creados}, PendientePago, 0 actividad copiada`,
+      );
+    },
+  );
+
+  // 42. Egresado de 5to.
+  await prueba(
+    42,
+    "Promoción: 5to de secundaria queda EGRESADO sin matrícula destino",
+    async () => {
+      await crearOfertaPromocion(ANIO_PROMO_EGRESADO);
+      const politica = await crearPoliticaE2E(ANIO_PROMO_EGRESADO);
+      const { respuesta, datos, preview } = await previsualizarPromocion({
+        anio_origen: ANIO,
+        anio_destino: ANIO_PROMO_EGRESADO,
+        id_politica: politica.id_politica,
+        id_grado: 5,
+        incluir_retirados: false,
+      });
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      assert.ok(preview.resumen.total > 0, "No hay alumnos de 5to");
+      assert.ok(
+        preview.alumnos.every(
+          (alumno) => alumno.resultado_sugerido === "EGRESADO",
+        ),
+        "El preview no marcó a todos como EGRESADO",
+      );
+
+      const { respuesta: rConfirm, datos: dConfirm, resultado } =
+        await confirmarPromocion(preview);
+      assert.equal(rConfirm.status, 200, detalleHttp(rConfirm, dConfirm));
+      assert.ok(resultado.creados > 0);
+
+      const filas = await sql(
+        `SELECT p.resultado, p.id_alumno_destino
+         FROM promociones p
+         WHERE p.anio_destino = $1 AND p.estado = 'CONFIRMADA'`,
+        [ANIO_PROMO_EGRESADO],
+      );
+      assert.ok(filas.length > 0);
+      assert.ok(
+        filas.every(
+          (fila) =>
+            fila.resultado === "EGRESADO" && fila.id_alumno_destino === null,
+        ),
+        "Hay egresados con matrícula destino",
+      );
+
+      const conteos = await contarDestinoPromocion(ANIO_PROMO_EGRESADO);
+      assert.equal(conteos.alumnos, 0, "Se creó matrícula para egresados");
+
+      registrar(
+        42,
+        "Promoción: 5to de secundaria queda EGRESADO sin matrícula destino",
+        "PASS",
+        `egresados=${filas.length}, 0 matrículas`,
+      );
+    },
+  );
+
+  // 43. Repitente por política de umbral.
+  await prueba(
+    43,
+    "Promoción: repitente por política queda en el mismo grado",
+    async () => {
+      await crearOfertaPromocion(ANIO_PROMO_REPITENTE);
+      const gradoOrigen = await gradoOrden(ANIO, 2);
+      assert.ok(gradoOrigen, "No existe 2do grado en el origen");
+
+      const candidato = await sql(
+        `SELECT a.id_alumno, cc.id_curso
+         FROM alumnos a
+         CROSS JOIN (
+           SELECT cc.id_curso
+           FROM carga_curricular cc
+           WHERE cc.anio_lectivo = $1 AND cc.id_grado = $2
+           ORDER BY cc.id_curso
+           LIMIT 1
+         ) cc
+         WHERE a.anio_lectivo = $1
+           AND a.id_grado = $2
+           AND a.estado_matricula = 'Matriculado'
+         ORDER BY a.id_alumno
+         LIMIT 1`,
+        [ANIO, gradoOrigen.id_grado],
+      );
+      assert.ok(candidato[0], "No hay alumno de 2do para la prueba");
+
+      await sql(
+        `INSERT INTO notas_finales_area
+           (id_alumno, id_curso, bimestre, anio_lectivo, nota_final, calculo_automatico)
+         VALUES ($1, $2, 1, $3, 'C', false)
+         ON CONFLICT (id_alumno, id_curso, bimestre, anio_lectivo)
+         DO UPDATE SET nota_final = 'C'`,
+        [candidato[0].id_alumno, candidato[0].id_curso, ANIO],
+      );
+
+      const politica = await crearPoliticaE2E(ANIO_PROMO_REPITENTE, {
+        permite_override: true,
+        criterio_academico: {
+          modo: "manual",
+          modo_repitencia: "UMBRAL",
+          notas_bimestre: 1,
+          bimestres_requeridos: [1, 2, 3, 4],
+          min_cursos_desaprobados: 1,
+          notas_desaprobadas: ["C"],
+          transiciones: [],
+          observacion: "Repitencia E2E",
+        },
+      });
+
+      const { respuesta, datos, preview } = await previsualizarPromocion({
+        anio_origen: ANIO,
+        anio_destino: ANIO_PROMO_REPITENTE,
+        id_politica: politica.id_politica,
+        id_grado: gradoOrigen.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+
+      const fila = preview.alumnos.find(
+        (alumno) =>
+          Number(alumno.id_alumno_origen) === Number(candidato[0].id_alumno),
+      );
+      assert.ok(fila, "El alumno con nota C no apareció en el preview");
+      assert.equal(fila.resultado_sugerido, "REPITENTE");
+
+      const gradoRepitente = await gradoOrden(ANIO_PROMO_REPITENTE, 2);
+      assert.equal(
+        Number(fila.id_grado_destino),
+        Number(gradoRepitente.id_grado),
+      );
+
+      const { respuesta: rConfirm, datos: dConfirm } =
+        await confirmarPromocion(preview);
+      assert.equal(rConfirm.status, 200, detalleHttp(rConfirm, dConfirm));
+
+      const promocion = await sql(
+        `SELECT resultado, id_grado_destino
+         FROM promociones
+         WHERE anio_destino = $1
+           AND id_alumno_origen = $2
+           AND estado = 'CONFIRMADA'
+         LIMIT 1`,
+        [ANIO_PROMO_REPITENTE, candidato[0].id_alumno],
+      );
+      assert.equal(promocion[0]?.resultado, "REPITENTE");
+      assert.equal(
+        Number(promocion[0]?.id_grado_destino),
+        Number(gradoRepitente.id_grado),
+      );
+
+      registrar(
+        43,
+        "Promoción: repitente por política queda en el mismo grado",
+        "PASS",
+        `alumno=${candidato[0].id_alumno}, grado=${gradoRepitente.orden}`,
+      );
+    },
+  );
+
+  // 44. Retirado / traslado (origen auxiliar 2025 → 2026).
+  await prueba(
+    44,
+    "Promoción: retirado/traslado queda RETIRADO sin matrícula destino",
+    async () => {
+      const anioAux = ANIO - 1; // 2025
+      await crearOfertaPromocion(anioAux);
+      const gradoAux = await gradoOrden(anioAux, 1);
+      assert.ok(gradoAux, "No existe 1ro en el año auxiliar");
+
+      const alumnoAux = await crearAlumnoPromocionAux({
+        dni: "99999101",
+        nombres: "Retirado",
+        apellidos: "Traslado E2E",
+        idGrado: gradoAux.id_grado,
+        anio: anioAux,
+        estado: "Retirado",
+        condicion: "Traslado",
+      });
+
+      const politica = await crearPoliticaE2E(
+        ANIO,
+        { nombre: "E2E 2025 retiro" },
+        anioAux,
+      );
+
+      const { respuesta, datos, preview } = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: true,
+      });
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+
+      const fila = preview.alumnos.find(
+        (alumno) => String(alumno.dni) === "99999101",
+      );
+      assert.ok(fila, "El alumno trasladado no apareció en el preview");
+      assert.equal(fila.resultado_sugerido, "RETIRADO");
+      assert.equal(fila.id_grado_destino, null);
+      assert.equal(fila.bloqueado, false);
+
+      const { respuesta: rConfirm, datos: dConfirm } =
+        await confirmarPromocion(preview);
+      assert.equal(rConfirm.status, 200, detalleHttp(rConfirm, dConfirm));
+
+      const promocion = await sql(
+        `SELECT resultado, id_alumno_destino, metadata
+         FROM promociones
+         WHERE anio_destino = $1
+           AND id_alumno_origen = $2
+           AND estado = 'CONFIRMADA'
+         LIMIT 1`,
+        [ANIO, alumnoAux.id_alumno],
+      );
+      assert.equal(promocion[0]?.resultado, "RETIRADO");
+      assert.equal(promocion[0]?.id_alumno_destino, null);
+      assert.equal(
+        promocion[0]?.metadata?.retiro?.motivo,
+        "TRASLADO",
+        "La metadata no registró el traslado",
+      );
+
+      const destino = await sql(
+        `SELECT COUNT(*)::int AS total
+         FROM alumnos
+         WHERE anio_lectivo = $1 AND dni = '99999101'`,
+        [ANIO],
+      );
+      assert.equal(destino[0].total, 0);
+
+      registrar(
+        44,
+        "Promoción: retirado/traslado queda RETIRADO sin matrícula destino",
+        "PASS",
+        `origen=${alumnoAux.id_alumno}, metadata=TRASLADO`,
+      );
+    },
+  );
+
+  // 45. Bloqueo por actas/notas y override auditado.
+  await prueba(
+    45,
+    "Promoción: bloqueo por actas/notas y override con motivo",
+    async () => {
+      await crearOfertaPromocion(ANIO_PROMO_BLOQUEO);
+      const gradoOrigen = await gradoOrden(ANIO, 3);
+      assert.ok(gradoOrigen, "No existe 3ro en el origen");
+
+      await sql(
+        `DELETE FROM notas_finales_area
+         WHERE anio_lectivo = $1
+           AND id_alumno IN (
+             SELECT id_alumno FROM alumnos
+             WHERE anio_lectivo = $1 AND id_grado = $2
+           )`,
+        [ANIO, gradoOrigen.id_grado],
+      );
+      await sql(
+        `DELETE FROM actas_bimestrales
+         WHERE anio_lectivo = $1 AND id_grado = $2`,
+        [ANIO, gradoOrigen.id_grado],
+      );
+
+      const politica = await crearPoliticaE2E(ANIO_PROMO_BLOQUEO, {
+        requiere_actas_cerradas: true,
+        requiere_notas_finales: true,
+        permite_override: true,
+        criterio_academico: {
+          modo: "manual",
+          modo_repitencia: "DESACTIVADA",
+          notas_bimestre: 4,
+          bimestres_requeridos: [1],
+          transiciones: [],
+          observacion: "Bloqueo E2E",
+        },
+      });
+
+      const { respuesta, datos, preview } = await previsualizarPromocion({
+        anio_origen: ANIO,
+        anio_destino: ANIO_PROMO_BLOQUEO,
+        id_politica: politica.id_politica,
+        id_grado: gradoOrigen.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      assert.ok(preview.resumen.bloqueados > 0, "No se bloquearon alumnos");
+      assert.ok(
+        preview.alumnos.some((alumno) =>
+          alumno.bloqueos.some(
+            (bloqueo) =>
+              bloqueo.codigo === "ACTAS_PENDIENTES" ||
+              bloqueo.codigo === "NOTAS_PENDIENTES",
+          ),
+        ),
+        "No apareció el bloqueo de actas/notas",
+      );
+
+      const sinOverride = await confirmarPromocion(preview);
+      assert.equal(
+        sinOverride.respuesta.status,
+        422,
+        detalleHttp(sinOverride.respuesta, sinOverride.datos),
+      );
+      assert.equal(
+        sinOverride.datos?.errors?.codigo,
+        "PROMOCION_BLOQUEADA",
+      );
+
+      const decisiones = preview.alumnos.map((alumno) => ({
+        id_alumno_origen: alumno.id_alumno_origen,
+        resultado: "PROMOVIDO",
+        motivo: "Override autorizado E2E por dirección",
+        es_override: true,
+      }));
+
+      const segundo = await previsualizarPromocion({
+        anio_origen: ANIO,
+        anio_destino: ANIO_PROMO_BLOQUEO,
+        id_politica: politica.id_politica,
+        id_grado: gradoOrigen.id_grado,
+        incluir_retirados: false,
+        decisiones,
+      });
+      assert.equal(segundo.respuesta.status, 200, detalleHttp(segundo.respuesta, segundo.datos));
+      assert.equal(segundo.preview.resumen.bloqueados, 0);
+      assert.ok(segundo.preview.resumen.overrides > 0);
+
+      const conOverride = await confirmarPromocion(segundo.preview, {
+        decisiones,
+      });
+      assert.equal(
+        conOverride.respuesta.status,
+        200,
+        detalleHttp(conOverride.respuesta, conOverride.datos),
+      );
+
+      const promociones = await sql(
+        `SELECT es_override, motivo, metadata
+         FROM promociones
+         WHERE anio_destino = $1 AND estado = 'CONFIRMADA'`,
+        [ANIO_PROMO_BLOQUEO],
+      );
+      assert.ok(promociones.some((fila) => fila.es_override === true));
+      assert.ok(
+        promociones
+          .filter((fila) => fila.es_override)
+          .every((fila) => String(fila.motivo || "").length >= 5),
+      );
+      assert.ok(
+        promociones.some(
+          (fila) =>
+            fila.metadata?.actas && fila.metadata?.notas,
+        ),
+        "La metadata no guardó la evidencia de actas/notas",
+      );
+
+      registrar(
+        45,
+        "Promoción: bloqueo por actas/notas y override con motivo",
+        "PASS",
+        `bloqueados=${preview.resumen.bloqueados}, overrides=${segundo.preview.resumen.overrides}`,
+      );
+    },
+  );
+
+  // 46. Asistencia bajo umbral: advertencia, no exclusión.
+  await prueba(
+    46,
+    "Promoción: asistencia bajo umbral advierte y no excluye",
+    async () => {
+      await crearOfertaPromocion(ANIO_PROMO_ASISTENCIA);
+      const gradoOrigen = await gradoOrden(ANIO, 4);
+      assert.ok(gradoOrigen, "No existe 4to en el origen");
+
+      const candidato = await sql(
+        `SELECT a.id_alumno, cc.id_curso
+         FROM alumnos a
+         CROSS JOIN (
+           SELECT cc.id_curso
+           FROM carga_curricular cc
+           WHERE cc.anio_lectivo = $1 AND cc.id_grado = $2
+           ORDER BY cc.id_curso
+           LIMIT 1
+         ) cc
+         WHERE a.anio_lectivo = $1
+           AND a.id_grado = $2
+           AND a.estado_matricula = 'Matriculado'
+         ORDER BY a.id_alumno
+         LIMIT 1`,
+        [ANIO, gradoOrigen.id_grado],
+      );
+      assert.ok(candidato[0], "No hay alumno de 4to para la prueba");
+
+      await sql(
+        `INSERT INTO asistencia_alumnos
+           (id_alumno, id_curso, id_personal, id_grado, fecha, dia_semana,
+            estado, observacion, justificada)
+         VALUES ($1, $2, NULL, $3, '2026-10-01', 'Jueves', 'F', 'E2E', false)`,
+        [candidato[0].id_alumno, candidato[0].id_curso, gradoOrigen.id_grado],
+      );
+
+      const politica = await crearPoliticaE2E(ANIO_PROMO_ASISTENCIA, {
+        umbral_asistencia: 100,
+      });
+      const { respuesta, datos, preview } = await previsualizarPromocion({
+        anio_origen: ANIO,
+        anio_destino: ANIO_PROMO_ASISTENCIA,
+        id_politica: politica.id_politica,
+        id_grado: gradoOrigen.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+
+      const fila = preview.alumnos.find(
+        (alumno) =>
+          Number(alumno.id_alumno_origen) === Number(candidato[0].id_alumno),
+      );
+      assert.ok(fila, "El alumno de asistencia no apareció");
+      assert.ok(
+        fila.advertencias.some(
+          (advertencia) => advertencia.codigo === "ASISTENCIA_BAJA",
+        ),
+        "No se emitió la advertencia de asistencia",
+      );
+      assert.equal(fila.bloqueado, false);
+      assert.equal(fila.resultado_sugerido, "PROMOVIDO");
+
+      const { respuesta: rConfirm, datos: dConfirm } =
+        await confirmarPromocion(preview);
+      assert.equal(rConfirm.status, 200, detalleHttp(rConfirm, dConfirm));
+
+      registrar(
+        46,
+        "Promoción: asistencia bajo umbral advierte y no excluye",
+        "PASS",
+        `asistencia=${fila.asistencia.porcentaje}%, PROMOVIDO`,
+      );
+    },
+  );
+
+  // 47. Doble promoción: idempotencia.
+  await prueba(
+    47,
+    "Promoción: doble confirmación es idempotente y no duplica",
+    async () => {
+      const antes = await contarDestinoPromocion(ANIO_PROMO_NORMAL);
+      const { respuesta, datos, preview } = await previsualizarPromocion({
+        anio_origen: ANIO,
+        anio_destino: ANIO_PROMO_NORMAL,
+        id_politica: ctx.politicaPromoNormal.id_politica,
+        id_grado: 1,
+        incluir_retirados: false,
+      });
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      assert.equal(
+        preview.preview_hash,
+        ctx.previewPromoNormal.preview_hash,
+        "El hash cambió después de confirmar",
+      );
+      assert.equal(preview.resumen.ya_confirmadas, preview.resumen.total);
+
+      const segundo = await confirmarPromocion(preview, {
+        preview_hash: ctx.previewPromoNormal.preview_hash,
+      });
+      assert.equal(
+        segundo.respuesta.status,
+        200,
+        detalleHttp(segundo.respuesta, segundo.datos),
+      );
+      assert.equal(segundo.resultado.ya_confirmada, true);
+      assert.equal(segundo.resultado.creados, 0);
+
+      const despues = await contarDestinoPromocion(ANIO_PROMO_NORMAL);
+      assert.deepEqual(despues, antes, "La doble confirmación duplicó filas");
+
+      registrar(
+        47,
+        "Promoción: doble confirmación es idempotente y no duplica",
+        "PASS",
+        `ya_confirmada=true, creados=0, existentes=${antes.alumnos}`,
+      );
+    },
+  );
+
+  // 48. Anulación sin actividad y reintento con reversa (origen 2025 → 2026).
+  await prueba(
+    48,
+    "Promoción: anular sin actividad borra destino y permite reintento",
+    async () => {
+      const anioAux = ANIO - 1;
+      await crearOfertaPromocion(anioAux);
+      const gradoAux = await gradoOrden(anioAux, 2);
+      assert.ok(gradoAux, "No existe 2do en el año auxiliar");
+
+      const alumnosAux = [];
+      for (let i = 0; i < 2; i += 1) {
+        alumnosAux.push(
+          await crearAlumnoPromocionAux({
+            dni: `9999910${2 + i}`,
+            nombres: `Anulable ${i + 1}`,
+            apellidos: "E2E",
+            idGrado: gradoAux.id_grado,
+            anio: anioAux,
+          }),
+        );
+      }
+
+      const politica = await crearPoliticaE2E(
+        ANIO,
+        { nombre: "E2E 2025 anular" },
+        anioAux,
+      );
+      const primera = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(primera.respuesta.status, 200, detalleHttp(primera.respuesta, primera.datos));
+
+      const confirmada = await confirmarPromocion(primera.preview);
+      assert.equal(confirmada.respuesta.status, 200, detalleHttp(confirmada.respuesta, confirmada.datos));
+      assert.equal(confirmada.resultado.creados, alumnosAux.length);
+
+      const idsAnulados = [];
+      for (const promocion of confirmada.resultado.promociones) {
+        const anulada = await api(`/promociones/${promocion.id_promocion}/anular`, {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: { motivo: "Anulación E2E sin actividad" },
+        });
+        const datosAnulada = await leerJson(anulada);
+        assert.equal(
+          anulada.status,
+          200,
+          detalleHttp(anulada, datosAnulada),
+        );
+        assert.equal(
+          Number(datosAnulada.datos?.data?.eliminados?.alumnos || 0),
+          1,
+          "No se eliminó la matrícula destino",
+        );
+        idsAnulados.push(Number(promocion.id_promocion));
+      }
+      assert.equal(idsAnulados.length, alumnosAux.length);
+
+      const estado = await sql(
+        `SELECT
+           (SELECT COUNT(*)::int FROM alumnos
+             WHERE anio_lectivo = $1 AND dni::text = ANY($2::text[])) AS alumnos,
+           (SELECT COUNT(*)::int FROM promociones
+             WHERE anio_destino = $1
+               AND id_alumno_origen = ANY($3::int[])
+               AND estado = 'ANULADA') AS anuladas`,
+        [ANIO, alumnosAux.map((alumno) => String(alumno.dni)), alumnosAux.map((alumno) => Number(alumno.id_alumno))],
+      );
+      assert.equal(estado[0].alumnos, 0, "No se borró la matrícula destino");
+      assert.equal(estado[0].anuladas, alumnosAux.length);
+
+      const segunda = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(segunda.respuesta.status, 200, detalleHttp(segunda.respuesta, segunda.datos));
+      assert.equal(segunda.preview.resumen.ya_confirmadas, 0);
+
+      const reintento = await confirmarPromocion(segunda.preview);
+      assert.equal(reintento.respuesta.status, 200, detalleHttp(reintento.respuesta, reintento.datos));
+      assert.equal(reintento.resultado.creados, alumnosAux.length);
+
+      const reversas = await sql(
+        `SELECT id_promocion, id_promocion_reversa
+         FROM promociones
+         WHERE anio_destino = $1
+           AND id_alumno_origen = ANY($2::int[])
+           AND estado = 'CONFIRMADA'`,
+        [ANIO, alumnosAux.map((alumno) => Number(alumno.id_alumno))],
+      );
+      assert.ok(
+        reversas.some(
+          (fila) =>
+            fila.id_promocion_reversa !== null &&
+            idsAnulados.includes(Number(fila.id_promocion_reversa)),
+        ),
+        "El reintento no enlazó la promoción anulada",
+      );
+
+      registrar(
+        48,
+        "Promoción: anular sin actividad borra destino y permite reintento",
+        "PASS",
+        `anuladas=${idsAnulados.length}, reintento=${reintento.resultado.creados}`,
+      );
+    },
+  );
+
+  // 49. Anulación con actividad: 409 (origen 2025 → 2026).
+  await prueba(
+    49,
+    "Promoción: anular con actividad responde 409 y no borra",
+    async () => {
+      const anioAux = ANIO - 1;
+      await crearOfertaPromocion(anioAux);
+      const gradoAux = await gradoOrden(anioAux, 3);
+      assert.ok(gradoAux, "No existe 3ro en el año auxiliar");
+
+      const alumnoAux = await crearAlumnoPromocionAux({
+        dni: "99999104",
+        nombres: "Actividad",
+        apellidos: "E2E",
+        idGrado: gradoAux.id_grado,
+        anio: anioAux,
+      });
+
+      const politica = await crearPoliticaE2E(
+        ANIO,
+        { nombre: "E2E 2025 actividad" },
+        anioAux,
+      );
+      const preview = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(preview.respuesta.status, 200, detalleHttp(preview.respuesta, preview.datos));
+
+      const confirmada = await confirmarPromocion(preview.preview);
+      assert.equal(confirmada.respuesta.status, 200, detalleHttp(confirmada.respuesta, confirmada.datos));
+
+      const promocion = confirmada.resultado.promociones.find(
+        (item) =>
+          (item.resultado === "PROMOVIDO" || item.resultado === "REPITENTE") &&
+          item.id_alumno_destino,
+      );
+      assert.ok(promocion, "No hay promoción con matrícula destino");
+
+      const curso = await sql(
+        `SELECT id_curso FROM cursos ORDER BY id_curso LIMIT 1`,
+      );
+      assert.ok(curso[0], "No hay cursos en el catálogo");
+
+      await sql(
+        `INSERT INTO notas_finales_area
+           (id_alumno, id_curso, bimestre, anio_lectivo, nota_final, calculo_automatico)
+         VALUES ($1, $2, 1, $3, 'A', false)
+         ON CONFLICT (id_alumno, id_curso, bimestre, anio_lectivo)
+         DO UPDATE SET nota_final = 'A'`,
+        [promocion.id_alumno_destino, curso[0].id_curso, ANIO],
+      );
+
+      const anulada = await api(`/promociones/${promocion.id_promocion}/anular`, {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: { motivo: "Anulación E2E con actividad" },
+      });
+      const datosAnulada = await leerJson(anulada);
+      assert.equal(
+        anulada.status,
+        409,
+        detalleHttp(anulada, datosAnulada),
+      );
+      assert.equal(
+        datosAnulada.datos?.errors?.codigo,
+        "PROMOCION_CON_ACTIVIDAD",
+      );
+
+      const estado = await sql(
+        `SELECT estado FROM promociones WHERE id_promocion = $1`,
+        [promocion.id_promocion],
+      );
+      assert.equal(estado[0].estado, "CONFIRMADA");
+
+      registrar(
+        49,
+        "Promoción: anular con actividad responde 409 y no borra",
+        "PASS",
+        `promoción=${promocion.id_promocion}, 409`,
+      );
+    },
+  );
+
+  // 50. Fallo forzado: rollback total (origen 2025 → 2026).
+  await prueba(
+    50,
+    "Promoción: fallo forzado no deja matrículas ni promociones parciales",
+    async () => {
+      const anioAux = ANIO - 1;
+      await crearOfertaPromocion(anioAux);
+      const gradoAux = await gradoOrden(anioAux, 4);
+      assert.ok(gradoAux, "No existe 4to en el año auxiliar");
+
+      await crearAlumnoPromocionAux({
+        dni: "99999105",
+        nombres: "Rollback",
+        apellidos: "E2E",
+        idGrado: gradoAux.id_grado,
+        anio: anioAux,
+      });
+
+      const politica = await crearPoliticaE2E(
+        ANIO,
+        { nombre: "E2E 2025 rollback" },
+        anioAux,
+      );
+      const preview = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(preview.respuesta.status, 200, detalleHttp(preview.respuesta, preview.datos));
+
+      await sql(`
+        CREATE OR REPLACE FUNCTION e2e_fallo_promocion()
+        RETURNS trigger AS $$
+        BEGIN
+          IF NEW.anio_destino = ${Number(ANIO)} THEN
+            RAISE EXCEPTION 'Fallo forzado E2E en promociones';
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+      `);
+      await sql(`DROP TRIGGER IF EXISTS e2e_fallo_promocion ON promociones`);
+      await sql(`
+        CREATE TRIGGER e2e_fallo_promocion
+        BEFORE INSERT ON promociones
+        FOR EACH ROW EXECUTE FUNCTION e2e_fallo_promocion()
+      `);
+
+      try {
+        const confirmada = await confirmarPromocion(preview.preview);
+        assert.ok(
+          confirmada.respuesta.status >= 500,
+          `El fallo forzado debía responder 5xx (HTTP ${confirmada.respuesta.status})`,
+        );
+
+        const conteos = await sql(
+          `SELECT
+             (SELECT COUNT(*)::int FROM alumnos
+               WHERE anio_lectivo = $1 AND dni = '99999105') AS alumnos,
+             (SELECT COUNT(*)::int FROM promociones p
+               INNER JOIN alumnos a ON a.id_alumno = p.id_alumno_origen
+               WHERE a.anio_lectivo = $2 AND a.dni = '99999105'
+                 AND p.anio_destino = $1) AS promociones,
+             (SELECT COUNT(*)::int FROM pre_tickets pt
+               INNER JOIN alumnos a ON a.id_alumno = pt.id_alumno
+               WHERE a.anio_lectivo = $1 AND a.dni = '99999105') AS pretickets`,
+          [ANIO, anioAux],
+        );
+        assert.equal(conteos[0].alumnos, 0, "Quedaron matrículas parciales");
+        assert.equal(conteos[0].promociones, 0, "Quedaron promociones parciales");
+        assert.equal(conteos[0].pretickets, 0, "Quedaron pre-tickets parciales");
+      } finally {
+        await sql(`DROP TRIGGER IF EXISTS e2e_fallo_promocion ON promociones`);
+        await sql(`DROP FUNCTION IF EXISTS e2e_fallo_promocion()`);
+      }
+
+      registrar(
+        50,
+        "Promoción: fallo forzado no deja matrículas ni promociones parciales",
+        "PASS",
+        "5xx y 0 filas parciales",
+      );
+    },
+  );
+
+  // 51. QR, código, pre-ticket y pensiones.
+  await prueba(
+    51,
+    "Promoción: conserva QR/código, crea pre-ticket y no hereda pensiones",
+    async () => {
+      const destino = ctx.destino2035?.[0];
+      assert.ok(destino, "No hay matrícula destino de la prueba normal");
+
+      const datos = await sql(
+        `SELECT
+           ad.id_usuario,
+           ad.codigo_estudiante,
+           ad.estado_matricula,
+           (SELECT COUNT(*)::int FROM credenciales_qr qr
+             WHERE qr.id_usuario = ad.id_usuario) AS qr,
+           (SELECT codigo_qr FROM credenciales_qr qr
+             WHERE qr.id_usuario = ad.id_usuario LIMIT 1) AS codigo_qr,
+           (SELECT codigo_qr FROM credenciales_qr qr
+             WHERE qr.id_usuario = ad.id_usuario LIMIT 1) AS codigo_qr_actual,
+           (SELECT COUNT(*)::int FROM pre_tickets pt
+             WHERE pt.id_alumno = ad.id_alumno AND pt.estado = 'PENDIENTE') AS pretickets,
+           (SELECT COUNT(*)::int FROM pensiones pe
+             WHERE pe.id_alumno = ad.id_alumno) AS pensiones,
+           (SELECT COUNT(*)::int FROM expediente_alumno e
+             WHERE e.id_alumno = ad.id_alumno) AS expedientes
+         FROM alumnos ad
+         WHERE ad.id_alumno = $1`,
+        [destino.id_alumno],
+      );
+      const fila = datos[0];
+      assert.equal(fila.qr, 1, "Se duplicó o perdió el QR");
+      assert.equal(fila.pretickets, 1, "No se creó el pre-ticket de matrícula");
+      assert.equal(fila.pensiones, 0, "Se heredaron pensiones");
+      assert.equal(fila.expedientes, 1, "No se creó el expediente");
+      assert.equal(fila.estado_matricula, "PendientePago");
+
+      const origen = await sql(
+        `SELECT codigo_estudiante FROM alumnos
+         WHERE anio_lectivo = $1 AND id_usuario = $2 LIMIT 1`,
+        [ANIO, fila.id_usuario],
+      );
+      assert.equal(
+        fila.codigo_estudiante,
+        origen[0].codigo_estudiante,
+        "El código de estudiante cambió",
+      );
+
+      registrar(
+        51,
+        "Promoción: conserva QR/código, crea pre-ticket y no hereda pensiones",
+        "PASS",
+        `qr=1, preticket=1, pensiones=0, código estable`,
+      );
+    },
+  );
+
+  // 52. RBAC.
+  await prueba(
+    52,
+    "Promoción: RBAC ADMIN/SECRETARIA lectura, DOCENTE/ESTUDIANTE 403",
+    async () => {
+      const admin = await api("/promociones", { token: ctx.adminToken });
+      assert.equal(admin.status, 200);
+
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+      const respuestaDocente = await api("/promociones", {
+        token: docente.token,
+      });
+      assert.equal(respuestaDocente.status, 403);
+
+      const estudiante = await iniciarSesion(
+        "ESTUDIANTE",
+        credenciales.ESTUDIANTE[0],
+        credenciales.ESTUDIANTE[1],
+      );
+      const respuestaEstudiante = await api("/promociones", {
+        token: estudiante.token,
+      });
+      assert.equal(respuestaEstudiante.status, 403);
+
+      const secre = await sql(
+        `INSERT INTO usuarios (
+           dni, nombres, apellidos, correo_institucional, password_hash,
+           id_rol, estado, requiere_cambio_password
+         )
+         VALUES (
+           '99999096', 'Secretaria', 'Promociones E2E',
+           'secretaria.promociones@example.com',
+           crypt('99999096', gen_salt('bf', 10)), 3, 'ACTIVO', FALSE
+         )
+         RETURNING id_usuario`,
+      );
+
+      try {
+        const sesion = await iniciarSesion(
+          "SECRETARIA",
+          "99999096",
+          "99999096",
+        );
+        const lectura = await api("/promociones", { token: sesion.token });
+        assert.equal(lectura.status, 200);
+
+        const politicas = await api("/promociones/politicas", {
+          token: sesion.token,
+        });
+        assert.equal(politicas.status, 200);
+
+        const preview = await api("/promociones/preview", {
+          method: "POST",
+          token: sesion.token,
+          body: {
+            anio_origen: ANIO,
+            anio_destino: ANIO_PROMO_NORMAL,
+            id_politica: ctx.politicaPromoNormal.id_politica,
+            id_grado: 1,
+          },
+        });
+        assert.equal(preview.status, 200);
+
+        const confirmar = await api("/promociones/confirmar", {
+          method: "POST",
+          token: sesion.token,
+          body: {},
+        });
+        assert.equal(confirmar.status, 403);
+      } finally {
+        await sql(`DELETE FROM usuarios WHERE id_usuario = $1`, [
+          secre[0].id_usuario,
+        ]);
+      }
+
+      registrar(
+        52,
+        "Promoción: RBAC ADMIN/SECRETARIA lectura, DOCENTE/ESTUDIANTE 403",
+        "PASS",
+        "ADMIN 200, SECRETARIA 200/403, DOCENTE/ESTUDIANTE 403",
+      );
+    },
+  );
+
+  // 53. Auditoría.
+  await prueba(
+    53,
+    "Promoción: auditoría PREVISUALIZAR/CONFIRMAR/ANULAR",
+    async () => {
+      const acciones = await sql(
+        `SELECT accion, COUNT(*)::int AS total
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = 'Promociones'
+           AND accion IN ('PREVISUALIZAR', 'CONFIRMAR', 'ANULAR')
+         GROUP BY accion`,
+      );
+      const porAccion = Object.fromEntries(
+        acciones.map((fila) => [fila.accion, fila.total]),
+      );
+      assert.ok(porAccion.PREVISUALIZAR > 0, "No se auditó PREVISUALIZAR");
+      assert.ok(porAccion.CONFIRMAR > 0, "No se auditó CONFIRMAR");
+      assert.ok(porAccion.ANULAR > 0, "No se auditó ANULAR");
+
+      registrar(
+        53,
+        "Promoción: auditoría PREVISUALIZAR/CONFIRMAR/ANULAR",
+        "PASS",
+        `PREVISUALIZAR=${porAccion.PREVISUALIZAR}, CONFIRMAR=${porAccion.CONFIRMAR}, ANULAR=${porAccion.ANULAR}`,
+      );
+    },
+  );
+
+  // 54. Histórico consultable.
+  await prueba(
+    54,
+    "Promoción: histórico 2026 sigue consultable y el año activo no cambia",
+    async () => {
+      const destino = ctx.destino2035?.[0];
+      assert.ok(destino, "No hay matrícula destino de la prueba normal");
+
+      const origen = await api(
+        `/alumnos?anio=${ANIO}&search=${encodeURIComponent(destino.dni)}`,
+        { token: ctx.adminToken },
+      );
+      const datosOrigen = await leerJson(origen);
+      assert.equal(origen.status, 200, detalleHttp(origen, datosOrigen));
+      assert.ok(
+        (datosOrigen.datos?.data || []).some(
+          (alumno) =>
+            Number(alumno.anio_lectivo) === Number(ANIO) &&
+            String(alumno.dni) === String(destino.dni),
+        ),
+        "La matrícula 2026 no siguió consultable",
+      );
+
+      const nuevo = await api(
+        `/alumnos?anio=${ANIO_PROMO_NORMAL}&search=${encodeURIComponent(destino.dni)}`,
+        { token: ctx.adminToken },
+      );
+      const datosNuevo = await leerJson(nuevo);
+      assert.equal(nuevo.status, 200, detalleHttp(nuevo, datosNuevo));
+      assert.ok(
+        (datosNuevo.datos?.data || []).some(
+          (alumno) =>
+            Number(alumno.anio_lectivo) === Number(ANIO_PROMO_NORMAL) &&
+            String(alumno.dni) === String(destino.dni),
+        ),
+        "La matrícula destino no se consulta",
+      );
+
+      const config = await api("/configuracion");
+      const datosConfig = await leerJson(config);
+      assert.equal(config.status, 200, detalleHttp(config, datosConfig));
+      assert.equal(
+        Number(datosConfig.datos?.data?.anio_lectivo),
+        ANIO + 2,
+        "La promoción no debe activar el año destino",
+      );
+
+      registrar(
+        54,
+        "Promoción: histórico 2026 sigue consultable y el año activo no cambia",
+        "PASS",
+        `2026 y ${ANIO_PROMO_NORMAL} consultables, activo=${ANIO + 2}`,
       );
     },
   );
