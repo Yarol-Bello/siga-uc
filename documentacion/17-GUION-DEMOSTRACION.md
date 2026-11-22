@@ -73,7 +73,7 @@ verificar el checklist.
 cd siga-uc-backend
 npm run smoke              # 11 PASS, 0 FAIL, 0 SKIP (exit 0)
 npm run test:integridad    # 20 invariantes; los FAIL de seed son esperados en demo
-npm run test:e2e           # 54 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
+npm run test:e2e           # 58 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
 ```
 
 `npm run smoke` contra Render **no** se ejecuta sin confirmación explícita: hace login y
@@ -89,7 +89,7 @@ variable y `dotenv` carga la key real.
   ADMIN local `74829102` con `SMOKE_ADMIN_PASSWORD` de `.env`.
 - `npm run test:integridad`: **8 PASS, 2 FAIL** esperados por el seed de demo
   (pagos sin INGRESO y pensiones `PAGADO` sin pago).
-- `npm run test:e2e`: **54 PASS, 0 FAIL** (exit 0), base `siga_uc_e2e` eliminada.
+- `npm run test:e2e`: **58 PASS, 0 FAIL** (exit 0), base `siga_uc_e2e` eliminada.
 - Notificación con Resend deshabilitado: **guardada 1, correos enviados 0, fallidos 1**,
   visible en la campanita. Los residuos de la prueba se eliminaron.
 
@@ -277,7 +277,7 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
       aplicadas (44 en local si existe `horarios_h47_backup`).
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
 - [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
-- [ ] `npm run test:e2e` local: **54 PASS, 0 FAIL** (exit 0).
+- [ ] `npm run test:e2e` local: **58 PASS, 0 FAIL** (exit 0).
 - [ ] `npm run test:integridad` revisado; **20 PASS** en base nueva y los FAIL de seed
       local explicados.
 

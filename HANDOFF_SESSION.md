@@ -9,8 +9,8 @@
 > egresados/repitentes/retirados/traslados y anulación con reversa. Migración H73
 > (`promociones`, `politicas_promocion`; 43 tablas base), API `/api/promociones` y pantalla
 > ADMIN `/admin/promociones`. **H73 está aplicada en `siga_uc` local, no en Supabase.**
-> `test:e2e` **54 PASS** e integridad **20 PASS** en base nueva. 6.3 **no desplegada** en
-> Render ni aplicada en Supabase; 2026 sigue activo allí. Ver sección 1.3.
+> `test:e2e` **58 PASS** e integridad **20 PASS** en base nueva. 6.3 **no desplegada** en
+> Render ni aplicada en Supabase; 2026 sigue activo allí. Ver secciones 1.3 y 1.4.
 >
 > **Próximo bloque de trabajo:** H49 y H73 en Supabase con backup y autorización; desplegar
 > 6.3 con autorización y, después, Fase 6.4 (histórico). No activar 2027 en producción/demo
@@ -275,6 +275,26 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Estado:** implementado y verificado solo en local; **no desplegado en Render ni aplicado
   en Supabase**. Allí siguen 40 tablas, H48 aplicado, 2026 activo y 2027 sin activar.
 
+### 1.4 Fase 6.3.1 — cierre de reglas de promoción (22/11/2026, solo local)
+
+- **Actas/notas:** se validan para PROMOVIDO, REPITENTE y EGRESADO; RETIRADO queda exento.
+  Si faltan, el resultado es PENDIENTE con bloqueo; el override permitido + motivo las exime
+  y deja evidencia en `metadata`.
+- **Notas multibimestre:** `criterio_academico.notas_bimestres` (arreglo 1–4, default `[4]`).
+  Se acepta el legado `notas_bimestre` y se normaliza a `[n]`. Un curso falta si no tiene
+  nota en cualquiera de los bimestres requeridos; la repitencia usa el último bimestre.
+  La UI tiene checkboxes de bimestres y la migración siembra `[4]` para nuevas políticas.
+- **Becas en el hash:** `copiar_becas` entra en `preview_hash`; cambiarlo sin re-preview
+  responde `409 PREVIEW_DESACTUALIZADA`. La UI invalida el preview al cambiar el checkbox.
+- **PENDIENTE:** el confirm responde `422 PROMOCION_PENDIENTE` y no crea filas CONFIRMADA si
+  algún alumno del lote queda PENDIENTE (no `ya_confirmada`). La UI deshabilita el confirm y
+  muestra los pendientes. Un intento posterior sin decisiones sigue permitido.
+- **Menores:** 23505/23503 de promociones tienen mensajes de promoción; el catálogo de años
+  tolera que `periodos_clase` no exista (H47 no aplicado).
+- **Verificación:** `test:e2e` **58 PASS** (54 previas + 4 nuevas), integridad **20 PASS** en
+  base nueva, smoke 11, H47 4, build Angular y `node --check` OK. Sin Supabase/Render.
+- **Commits:** `f1c5f71` (fix backend/UI/H73), `f9d8d1a` (tests) y este commit de docs.
+
 ---
 
 ## 2. Entorno
@@ -320,10 +340,10 @@ En esta fase **no** se prepara el despliegue definitivo.
 - `npm run test:integridad` (`scripts/test-integridad.js`): 20 invariantes de solo lectura
   sobre cualquier base. Fuerza `default_transaction_read_only=on`. Exit 1 si hay FAIL.
 - `npm run test:e2e` (`scripts/test-e2e.js`): crea `siga_uc_e2e`, carga el dump y las
-  migraciones (incluidas H49 y H73), arranca el backend en el puerto 3101, ejecuta 54 flujos
-  y elimina la base con `dropdb --force`. Verificado: **54 PASS, 0 FAIL** y exit 0 (incluye
-  H48, H49, H50, H51, H63, rollover 6.2 y promociones 6.3).
-- Integridad local del 22/11/2026: **14 PASS, 2 FAIL** por datos de seed reales
+  migraciones (incluidas H49 y H73), arranca el backend en el puerto 3101, ejecuta 58 flujos
+  y elimina la base con `dropdb --force`. Verificado: **58 PASS, 0 FAIL** y exit 0 (incluye
+  H48, H49, H50, H51, H63, rollover 6.2 y promociones 6.3/6.3.1).
+- Integridad local del 22/11/2026: **18 PASS, 2 FAIL** por datos de seed reales
   (invariantes 4 y 8: 5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El
   invariante 7 ya no marca al ADMIN: solo exige ficha a ESTUDIANTE (rol 4) y
   DOCENTE (rol 2). Los invariantes 15 y 16 (carga/tutores del mismo año) pasan.
@@ -685,7 +705,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **6.3:** `SECRETARIA` puede listar políticas, previsualizar y consultar promociones por
   API; confirmar y anular son solo ADMIN. DOCENTE/ESTUDIANTE reciben 403.
 - **Estado 6.3:** implementado y verificado solo en local; H73 aplicada en `siga_uc`, **no**
-  en Supabase. 54 E2E, 20 integridad en base nueva y 18/2 en local. 6.3 no desplegada en
+  en Supabase. 58 E2E, 20 integridad en base nueva y 18/2 en local. 6.3 no desplegada en
   Render; 2026 sigue activo en Supabase y 2027 no se activa.
 - H49: el rollback está probado solo en bases desechables; aborta si detecta varias
   matrículas por persona o promociones con filas. **No ejecutarlo en Supabase.**
@@ -756,7 +776,7 @@ psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables W
 curl.exe -s http://localhost:3000/api/health
 cd siga-uc-backend; npm run smoke          # 11 PASS, exit 0
 npm run test:integridad                    # 20 invariantes; revisar FAIL reales
-npm run test:e2e                           # 54 PASS, exit 0; elimina siga_uc_e2e
+npm run test:e2e                           # 58 PASS, exit 0; elimina siga_uc_e2e
 npm run test:h47-generador                 # 4 PASS; no toca BD
 ```
 
@@ -764,7 +784,7 @@ El primero confirma el commit; los `psql` aplican H47/H48/H61/H49/H73 si faltan;
 debe devolver **43** sin backup o **44** con `horarios_h47_backup`; `anios_lectivos` debe
 tener un solo `ACTIVO`; el health debe devolver `success: true` y `database: "ok"` **con el
 backend en marcha**; el smoke debe terminar en **11 PASS, 0 FAIL**; integridad puede reportar
-violaciones reales de seed; E2E debe terminar en **54 PASS, 0 FAIL** y dejar `siga_uc_e2e`
+violaciones reales de seed; E2E debe terminar en **58 PASS, 0 FAIL** y dejar `siga_uc_e2e`
 eliminada; el generador en **4 PASS**. La base nueva de producción debe dar **20 PASS**.
 
 Para una base **definitiva** (solo después de la aprobación):

@@ -1,7 +1,7 @@
 # 19 — Diseño multi-año y promoción de alumnos
 
-> **Estado:** diseño. **Fases 6.1 (multi-año base), 6.2 (rollover anual) y 6.3 (promoción)
-> implementadas, probadas y documentadas.** El histórico (6.4) sigue pendiente.
+> **Estado:** diseño. **Fases 6.1 (multi-año base), 6.2 (rollover anual) y 6.3/6.3.1
+> (promoción) implementadas, probadas y documentadas.** El histórico (6.4) sigue pendiente.
 > Este documento conserva el diseño original; lo implementado se contrasta con el código real
 > (`siga-uc-backend`, `siga-uc-frontend`) y con `documentacion/05`, `12` y `13`.
 >
@@ -627,6 +627,11 @@ conjunto de datos revisado.
 > preview por alumno con hash, confirmación transaccional e idempotente, egresados,
 > repitentes, retirados/traslados y anulación con reversa. **No** se codifica la norma
 > nacional ni se activa el año destino.
+>
+> **Cerrado en 6.3.1:** actas/notas obligatorias también para PROMOVIDO, REPITENTE y
+> EGRESADO (RETIRADO exento), notas en `notas_bimestres` (1–4, default `[4]`, legado
+> `notas_bimestre`), `copiar_becas` dentro del `preview_hash` y rechazo del lote con
+> PENDIENTE (`422 PROMOCION_PENDIENTE`).
 
 La promoción es el paso **después** del rollover y antes de la matrícula del año nuevo.
 
@@ -638,7 +643,8 @@ Para cada matrícula del año origen, mostrar:
 - Estado de matrícula (`Matriculado`, `PendientePago`, `Retirado`).
 - Grado destino sugerido (por `orden`), o `EGRESADO` si no hay siguiente.
 - Estado de las actas del grado: cerradas, abiertas o faltantes.
-- Notas finales: cursos con nota, cursos faltantes y bimestres incompletos.
+- Notas finales: cursos con nota, cursos faltantes y bimestres incompletos (según
+  `notas_bimestres`).
 - Asistencia: porcentaje y umbral de la política.
 - Deuda/pensiones/pre-tickets pendientes, solo como advertencia.
 - Becas activas que podrían continuar.
@@ -938,7 +944,7 @@ Cada pregunta incluye una recomendación, pero **ninguna se implementa sin confi
 4. **Rollover** con preview/confirmación y activación de año. ✅ 6.2.
 5. **Promoción** con preview, confirmación transaccional y auditoría. ✅ 6.3 en local.
 6. **Histórico** en reportes/libretas y ajustes de UI. ⏳ 6.4.
-7. **Pruebas de regresión** y despliegue controlado. ✅ 54 E2E / 20 integridad; 6.3 aún no
+7. **Pruebas de regresión** y despliegue controlado. ✅ 58 E2E / 20 integridad; 6.3 aún no
    desplegada ni aplicada en Supabase.
 
 ---

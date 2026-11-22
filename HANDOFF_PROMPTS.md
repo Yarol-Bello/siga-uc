@@ -34,8 +34,8 @@
 | Local `siga_uc` | 44 tablas (43 base + `horarios_h47_backup`), H49 y H73 aplicados, 54 cargas en ADMIN, 0 horarios, 10 períodos, 2026 activo |
 | Fase 6.1 (multi-año base) | Implementada, verificada y **desplegada en Render** (`3007dbe`); H49 **no aplicada en Supabase** |
 | Fase 6.2 (rollover) | Implementada, verificada y **desplegada en Render** (`f05ecc5`); H49 no aplicada en Supabase, la pantalla de años muestra 503 |
-| Fase 6.3 (promoción) | Implementada y verificada **solo en local**; H73 aplicada en `siga_uc`, no en Supabase; no desplegada |
-| E2E | **54 PASS** |
+| Fase 6.3 + 6.3.1 (promoción) | Implementadas y verificadas **solo en local**; H73 aplicada en `siga_uc`, no en Supabase; no desplegadas |
+| E2E | **58 PASS** |
 | Integridad (base de producción desechable) | **20 PASS**; local 18 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 11 PASS / 4 PASS |
 
@@ -91,12 +91,26 @@ La **Fase 6.3 (promoción)** quedó implementada y verificada **solo en local**:
   SECRETARIA puede leer/previsualizar; ADMIN confirma y anula.
 - Pantalla ADMIN `/admin/promociones` con políticas, filtros, preview por alumno, override
   con motivo, confirmación con responsabilidad, historial y anulación.
-- Tests 39–54: **54 E2E** y **20 invariantes**; smoke 11; H47 4; build OK.
+- Tests 39–54: **54 E2E** al cierre de 6.3 y **20 invariantes**; smoke 11; H47 4; build OK.
 - No crea usuarios/QR; no copia notas, asistencia, pagos, pensiones ni pre-tickets; no
   activa el año. Traslado = `RETIRADO` + condición `Traslado`.
 - Commits: `c893e02` (DB), `cf8efb3` (backend), `8b15041` (UI), `7226003` (tests) y
   `5f73049` (docs).
 - **No desplegada en Render ni aplicada en Supabase.**
+
+La **Fase 6.3.1 (cierre de reglas de promoción)** quedó implementada y verificada en local:
+
+- Actas/notas obligatorias para PROMOVIDO, REPITENTE y EGRESADO; RETIRADO exento. Si faltan,
+  PENDIENTE con bloqueo; el override permitido + motivo las exime con evidencia.
+- `notas_bimestres` (1–4, default `[4]`) reemplaza a `notas_bimestre`, que se acepta como
+  legado. Un curso falta si no tiene nota en cualquiera de los bimestres; la repitencia usa
+  el último. Checkboxes de bimestres en la UI.
+- `copiar_becas` entra en el `preview_hash`; cambiarlo sin re-preview da
+  `409 PREVIEW_DESACTUALIZADA`.
+- PENDIENTE no se confirma: `422 PROMOCION_PENDIENTE`; no se crean filas CONFIRMADA. La UI
+  deshabilita el confirm y lista los pendientes.
+- Tests 55–58: **58 E2E** (54 previas + 4 nuevas), integridad 20, smoke 11, H47 4, build y
+  `node --check` OK. Commits `f1c5f71` (fix) y `f9d8d1a` (tests); docs en este cierre.
 
 **Siguiente paso:** aplicar H49 y H73 en Supabase con autorización y backup previo (2026
 activo, no 2027). Después, desplegar 6.3 y probar en Supabase **solo previews**. **No
@@ -123,7 +137,9 @@ confirmar promociones, no activar 2027 y no anular** en Supabase hasta la aproba
 - **6.3 Promoción:** ✅ implementado y verificado en local; migración H73, API, UI y tests.
   Recomendación + confirmación humana, políticas configurables, egresados/repitentes,
   retirados/traslados, override auditado y anulación con reversa. **No activa el año.**
-  Pendiente de aplicar H73 en Supabase y desplegar.
+  **6.3.1** cerró actas/notas para PROMOVIDO/REPITENTE/EGRESADO, `notas_bimestres`,
+  `copiar_becas` en el hash y el rechazo de PENDIENTE. Pendiente de aplicar H73 en Supabase
+  y desplegar.
 - **6.4 Histórico:** selector de año y consolidados por `id_usuario`/DNI.
 - Documento: `documentacion/19-DISENO-MULTIANIO-Y-PROMOCION.md`.
 
@@ -181,14 +197,16 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 ```
 
 - Supabase: 40 tablas, 0 actas, 145 horarios, 5 docentes demo. **H49/H73 no aplicados; 2026 activo.**
-- Local: `npm run test:e2e` (54 PASS), `npm run test:integridad` (20 PASS en base de
+- Local: `npm run test:e2e` (58 PASS), `npm run test:integridad` (20 PASS en base de
   producción desechable; 18/2 de seed en local), `npm run test:h47-generador` (4 PASS) y
   `npm run smoke` (11 PASS).
 - Deep links: `/login`, `/admin`, `/docente/asistencia` → 200.
 - UI 6.2: `/admin/anios-lectivos` probada con ADMIN (preview, confirm, activación y modal de
   reversión).
 - UI 6.3: `/admin/promociones` probada con ADMIN (preview, confirm, historial y override con
-  re-previsualización); H73 aplicada en `siga_uc` local.
+  re-previsualización); H73 aplicada en `siga_uc` local. 6.3.1 verificó además checkboxes de
+  bimestres, invalidación del preview al cambiar `copiar_becas` y bloqueo de confirm con
+  pendientes.
 
 ---
 
@@ -221,8 +239,8 @@ No implementas código, no tocas Supabase ni Render.
 ## Estado
 - Código desplegado: f05ecc5 (Fases 6.1 + 6.2). Documentación: ce80313 + cierre 6.3.
 - Fases 1–4, 6.1 y 6.2 desplegadas; E2E 38 PASS en el despliegue.
-- **Fase 6.3 implementada y verificada solo en local**: E2E 54 PASS, integridad 20 PASS.
-  H73 aplicada en `siga_uc`, no en Supabase; 6.3 no desplegada.
+- **Fase 6.3/6.3.1 implementada y verificada solo en local**: E2E 58 PASS, integridad 20 PASS.
+  H73 aplicada en `siga_uc`, no en Supabase; 6.3/6.3.1 no desplegadas.
 - Supabase demo: 40 tablas, 145 horarios publicados, 5 docentes demo, 0 actas, 2026 activo.
 - Pendiente: H49 + H73 en Supabase con backup, desplegar 6.3 y preparar 6.4 (histórico).
 

@@ -202,8 +202,12 @@ creada por el rollover.
 > Política: `permite_override` es `false` por defecto. La repitencia se activa con
 > `criterio_academico.modo_repitencia='UMBRAL'`, `min_cursos_desaprobados` y
 > `notas_desaprobadas`. Las actas/notas se exigen según `requiere_actas_cerradas`,
-> `requiere_notas_finales`, `bimestres_requeridos` y `notas_bimestre`. La asistencia bajo
-> umbral es una advertencia, no una exclusión automática.
+> `requiere_notas_finales`, `bimestres_requeridos` y `notas_bimestres` (arreglo 1–4; default
+> `[4]`; se acepta el legado `notas_bimestre`). Se validan para **PROMOVIDO, REPITENTE y
+> EGRESADO**; RETIRADO está exento. Si faltan, el resultado queda PENDIENTE y el lote no se
+> confirma (`422 PROMOCION_PENDIENTE`), salvo override con motivo. La asistencia bajo umbral
+> es una advertencia, no una exclusión automática. `copiar_becas` forma parte del
+> `preview_hash`: cambiarlo obliga a re-previsualizar.
 
 ---
 
@@ -211,7 +215,7 @@ creada por el rollover.
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(20 invariantes de datos, solo lectura) y **E2E** (54 flujos sobre una base desechable,
+(20 invariantes de datos, solo lectura) y **E2E** (58 flujos sobre una base desechable,
 incluidos los de multi-año H49, rollover 6.2 y promociones 6.3). El resto de la estrategia
 sigue siendo manual y por rol.
 
@@ -420,7 +424,7 @@ npm run test:e2e
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
   (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`), arranca el backend en
-  `http://localhost:3101` y ejecuta **54 flujos**: alta/retiro de alumno, matrícula, pensión,
+  `http://localhost:3101` y ejecuta **58 flujos**: alta/retiro de alumno, matrícula, pensión,
   doble pago, anulación, doble anulación, calificaciones, guardado masivo, PDFs, RBAC,
   auditoría, cierre/reapertura real de actas, bloqueo global, caja con efectivo/Yape (con y
   sin anulación), PDF de acta ADMIN-only, multi-año (43 tablas, uniques por año, apoderado
@@ -428,11 +432,12 @@ npm run test:e2e
   login con año activo 2027 y pre-tickets/pendientes sin mezclar años), rollover 6.2
   (preview sin escrituras, confirm idempotente, oferta distinta, docente inactivo/sobrecarga,
   hash desactualizado, activación con caché y auditoría, activación sin oferta, reversión con
-  y sin actividad, RBAC del módulo y rollback forzado sin filas parciales) y promociones 6.3
-  (política por defecto, preview, confirm normal, egresado, repitente, retirado/traslado,
-  bloqueo por actas/notas y override, asistencia bajo umbral, doble confirmación, anulación
-  sin/con actividad, reintento con reversa, rollback forzado, QR/código/pre-ticket, RBAC,
-  auditoría e histórico).
+  y sin actividad, RBAC del módulo y rollback forzado sin filas parciales) y promociones
+  6.3/6.3.1 (política por defecto, preview, confirm normal, egresado, repitente,
+  retirado/traslado, bloqueo por actas/notas y override, asistencia bajo umbral, doble
+  confirmación, anulación sin/con actividad, reintento con reversa, rollback forzado,
+  QR/código/pre-ticket, RBAC, auditoría, histórico, notas multibimestre, egresado/repitente
+  estrictos, `copiar_becas` en el hash y rechazo de PENDIENTE).
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -440,7 +445,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **54 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **58 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -569,7 +574,7 @@ WHERE m.id_movimiento IS NULL;
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
 | ~~Integridad de datos~~ ✅ | 20 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 54 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~E2E de flujos críticos~~ ✅ | 58 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

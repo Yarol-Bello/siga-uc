@@ -120,7 +120,7 @@ Si faltan las tablas H73, responden **503 `PROMOCIONES_NO_APLICADAS`**; si falta
 | GET | `/api/promociones/politicas` | ADMIN/SECRETARIA | Lista políticas; filtros `anio_origen`, `anio_destino`, `activo` |
 | POST | `/api/promociones/politicas` | ADMIN | Crea política configurable; `permite_override` es `false` por defecto |
 | PUT | `/api/promociones/politicas/:id` | ADMIN | Actualiza una política |
-| POST | `/api/promociones/preview` | ADMIN/SECRETARIA | **Solo lectura.** `{ anio_origen, anio_destino, id_politica, id_grado?, incluir_retirados?, decisiones? }`; devuelve alumnos, sugerencias, bloqueos, advertencias y `preview_hash` |
+| POST | `/api/promociones/preview` | ADMIN/SECRETARIA | **Solo lectura.** `{ anio_origen, anio_destino, id_politica, id_grado?, incluir_retirados?, decisiones?, copiar_becas? }`; devuelve alumnos, sugerencias, bloqueos, advertencias y `preview_hash` |
 | POST | `/api/promociones/confirmar` | ADMIN | Mismos datos + `preview_hash`, `confirmar:true`, `decisiones[]` y `copiar_becas?`; transacción única |
 | GET | `/api/promociones` | ADMIN/SECRETARIA | Lista promociones por años, estado, resultado o grado |
 | GET | `/api/promociones/:id` | ADMIN/SECRETARIA | Detalle de una promoción |
@@ -134,13 +134,21 @@ Reglas verificadas:
   (política de umbral), `PENDIENTE` (actas/notas faltantes o transición no configurada) y
   `PROMOVIDO` (resto).
 - Actas: se reutiliza la regla H48 (bimestres configurados y acta global `CERRADO`).
-  Notas: `notas_finales_area` del bimestre configurado. Asistencia y deuda son
+  Notas: `notas_finales_area` en **todos** los `notas_bimestres` configurados (arreglo 1–4,
+  default `[4]`; se acepta el legado `notas_bimestre` y se normaliza a `[n]`). Un curso falta
+  si no tiene nota en cualquiera de los bimestres requeridos. Asistencia y deuda son
   **advertencias**, no exclusiones automáticas.
+- Actas/notas se exigen para **PROMOVIDO, REPITENTE y EGRESADO**; RETIRADO está exento. Si
+  faltan, el resultado es `PENDIENTE` con bloqueo.
 - Override: solo si la política lo permite, con motivo obligatorio y `es_override=true`.
-  Sin override permitido, el confirm responde **422 `PROMOCION_BLOQUEADA`**.
+  Exime las actas/notas faltantes y deja evidencia en `metadata`. Sin permiso o sin motivo,
+  el confirm responde **422 `PROMOCION_PENDIENTE`/`PROMOCION_BLOQUEADA`**.
 - Confirmación: advisory lock `promocion:origen:destino`, hash recalculado dentro de la
-  transacción; hash viejo → **409 `PREVIEW_DESACTUALIZADA`**. Crea matrícula, expediente y
+  transacción; hash viejo → **409 `PREVIEW_DESACTUALIZADA`**. El hash incluye
+  `copiar_becas`; cambiarlo sin re-preview invalida el confirm. Crea matrícula, expediente y
   pre-ticket de matrícula; no copia notas, asistencia, pagos, pensiones ni pre-tickets.
+- **PENDIENTE no se confirma**: si el lote contiene un alumno PENDIENTE (no `ya_confirmada`),
+  responde **422 `PROMOCION_PENDIENTE`** y no crea filas `CONFIRMADA` con ese resultado.
   Conserva `id_usuario`, DNI, código y QR; no crea usuarios ni QR.
 - Idempotencia: repetir el confirm con el mismo hash devuelve `ya_confirmada=true` o `409`;
   el índice parcial impide dos promociones confirmadas por matrícula origen.

@@ -234,8 +234,16 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   `permite_override` (default `FALSE`).
 - El preview de promoción es **solo lectura** y devuelve `preview_hash`. El confirm recalcula
   el hash dentro de la transacción; si cambió, `409 PREVIEW_DESACTUALIZADA`. El hash incluye
-  años, política, decisiones, conteos y bloqueos de origen; **no** incluye las matrículas
-  creadas en el destino, para permitir el confirm idempotente.
+  años, política, decisiones, `copiar_becas`, conteos y bloqueos de origen; **no** incluye las
+  matrículas creadas en el destino, para permitir el confirm idempotente.
+- Las actas/notas exigidas por la política se validan para **PROMOVIDO, REPITENTE y
+  EGRESADO**; RETIRADO está exento. Si faltan, el resultado es PENDIENTE con bloqueo; el
+  override permitido + motivo las exime y deja evidencia en `metadata`.
+- `criterio_academico.notas_bimestres` es un arreglo 1–4 (default `[4]`). Se acepta el
+  legado `notas_bimestre` y se normaliza a `[n]`. Un curso falta si no tiene nota en
+  **cualquiera** de los bimestres requeridos; la repitencia usa el último bimestre.
+- **PENDIENTE no se confirma**: el confirm responde `422 PROMOCION_PENDIENTE` si algún
+  alumno del lote queda en PENDIENTE; no se crean filas CONFIRMADA con ese resultado.
 - El confirm crea **matrícula destino, expediente y pre-ticket MATRICULA**; no crea usuario,
   QR, notas, asistencia, pagos, pensiones ni pre-tickets heredados. `PendientePago` si hay
   MATRICULA; si no, `Matriculado` con advertencia.
@@ -247,8 +255,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   la fila anterior con `id_promocion_reversa`. La promoción **no activa** el año.
 - La pantalla ADMIN es `/admin/promociones`; SECRETARIA puede listar/previsualizar por API,
   pero no confirmar ni anular. DOCENTE/ESTUDIANTE reciben 403.
-- Estado 6.3: implementado y verificado solo en local; H73 aplicada en `siga_uc`, **no** en
-  Supabase. 2026 sigue activo allí y 2027 no se activa.
+- Estado 6.3/6.3.1: implementado y verificado solo en local; H73 aplicada en `siga_uc`,
+  **no** en Supabase. 2026 sigue activo allí y 2027 no se activa.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y
@@ -276,7 +284,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
 - Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (20) y
-  `npm run test:e2e` (54, base desechable); el resto del testeo es manual.
+  `npm run test:e2e` (58, base desechable); el resto del testeo es manual.
 
 ---
 
