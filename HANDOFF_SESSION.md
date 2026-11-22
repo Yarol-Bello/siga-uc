@@ -4,10 +4,13 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
+> **Próximo bloque de trabajo:** Fase 3 (H56, H61, H60, H57).
+>
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
-> actas solo ADMIN) corregidos en `2449cf3`; **H48** (cierre/reapertura real de actas y
-> bloqueo global) y **H51** (libretas por bimestre) en `d9071e5`. `test:e2e` subió a
-> **19 PASS**. El código nuevo aún no está desplegado en Render.
+> actas solo ADMIN) desplegados en Render con `3052f44`; **H48** (cierre/reapertura real de
+> actas y bloqueo global) y **H51** (libretas por bimestre) desplegados con `9648689`.
+> La migración H48 ya está aplicada en Supabase (4 columnas nuevas + índice
+> `uq_acta_anio_bimestre_grado`, 0 actas). `test:e2e` quedó en **19 PASS**.
 
 ---
 
@@ -58,18 +61,18 @@ En esta fase **no** se prepara el despliegue definitivo.
 
 ## 1. Cierre de sesión
 
-- **Fecha:** 21/11/2026
+- **Fecha:** 21/11/2026 (actualizado 22/11/2026)
 - **Commit base de esta sesión:** `22e06f6 fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)`
-- **Código desplegado en Render (backend y frontend Live):** `64a90dc`.
-- **Último commit de código/datos:** `a9acf24` (script de demo; solo toca `database/`,
-  no redepliega).
-- **Commits de cierre:** `b9c92a8` (handoff) y el commit de limpieza (hash en `git log -1`).
+- **Código desplegado en Render (backend y frontend Live):** `9648689` (22/11/2026).
+  Incluye **H50/H63** (`2449cf3`, desplegados con `3052f44`) y **H48/H51** (`d9071e5`).
+- **Último commit de datos demo:** `a9acf24` (solo `database/`; no redepliega).
+- **Commits de cierre:** `9648689` (docs) y `d9071e5` (código H48/H51).
 - **Commits de esta sesión:** aviso de correo en modo prueba, documentación de la fase de
   demostración, **H47** (esquema+CRUD `cf3c988`, generador `e65f60f`, UI `65e73a3`),
-  **datos demo H47** (`a9acf24`) y **H50/H63** (`2449cf3`, 22/11/2026).
-- **Estado:** fase de demostración con H47 desplegado y datos demo cargados en Supabase;
-  producción/demo sin cambios desde `64a90dc`. La base local quedó limpia y el script demo
-  probado.
+  **datos demo H47** (`a9acf24`), **H50/H63** (`2449cf3`, desplegados con `3052f44`) y
+  **H48/H51** (`d9071e5`, desplegados con `9648689`).
+- **Estado:** demo desplegada y actualizada; Supabase tiene H47 y H48 aplicados y los datos
+  demo cargados. La base local quedó limpia y el script demo probado.
 - **Datos demo H47:** `database/demo_h47_docentes.sql` crea solo los docentes que faltan
   según las cargas existentes. En local, con la distribución original de 4 docentes, crea
   únicamente a **Docente Demo 1** (`99000001`, contraseña `99000001`). En Supabase creó
@@ -107,12 +110,14 @@ En esta fase **no** se prepara el despliegue definitivo.
   - Backend: `http://localhost:3000`
   - Frontend: `http://localhost:4200`
   - PostgreSQL 18 local, base `siga_uc`.
-- **Demo desplegada (21/11/2026):**
+- **Demo desplegada (21/11/2026, actualizada 22/11/2026):**
   - Frontend: <https://siga-uc-web.onrender.com>
   - Backend: <https://siga-uc-api-prod.onrender.com/api>
-  - Ambos **Live** en el commit `64a90dc`, con servicios **gratuitos**.
+  - Ambos **Live** en el commit `9648689`, con servicios **gratuitos**.
 - Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **40 tablas**,
-  H47 desplegado, **10 períodos** y **145 horarios PUBLICADO**.
+  H47 desplegado, **H48 aplicado** (4 columnas nuevas + índice
+  `uq_acta_anio_bimestre_grado`, **0 actas**), **10 períodos** y **145 horarios
+  PUBLICADO**.
 - Carga 2026 en Supabase: **55 cargas/145 h**, repartidas **30/30/30/30/25 h** entre los
   5 docentes demo (`99000001`–`99000005`), **0 choques**. Auditoría `GENERAR` y `PUBLICAR`
   registrada.
@@ -193,7 +198,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H02 | Revalidar estado en cada request | `b6f4a21` |
 | H03 | Rate limit en login, recuperación y validar-token | `b6f4a21`, `408c451` |
 | H04 | Nota final automática al guardar | `f02f88a` |
-| H06 | Acta cerrada bloquea notas (🟡 parcial: H48 detectó que no se pueden crear actas y que las globales no bloquean; ver `18-AUDITORIA-PRODUCCION-2026-11-22.md`) | `f02f88a` |
+| H06 | Acta cerrada bloquea notas (completo en H48: acta global y por grado) | `f02f88a`, `d9071e5` |
 | H07 (A+B) | Auditoría de seguridad, dinero, alumnos, personal, académico, SIAGIE, notificaciones y descargas | `d8800e4`, `76573ac` |
 | H08 | Pago solo a caja abierta | `81aa521` |
 | H09 | Monto, pensión, alumno y caja coherentes | `408c451` |
@@ -219,10 +224,10 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H46 | Especialidad solo para DOCENTE y roles de Personal 1-3 | `fix(personal): especialidad solo para docentes y roles de personal (H46)` |
 | H45 | Anulación de pensiones/pre-tickets futuros al retirar | `fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)` |
 | H47 | Horarios por bloques, `mi-horario`, CRUD, publicación, generador y UI | `cf3c988`, `e65f60f`, `65e73a3`, `a9acf24` |
-| H50 | Caja separa efectivo y digital; el cierre no descuenta Yape/transferencia del cajón | `2449cf3` (22/11/2026) |
-| H63 | PDF de actas restringido a ADMIN; DOCENTE recibe 403 | `2449cf3` (22/11/2026) |
-| H48 | Cierre/reapertura reales de actas, bloqueo global y migración H48 | `d9071e5` (22/11/2026) |
-| H51 | Selector de bimestre en libretas y PDF por bimestre | `d9071e5` (22/11/2026) |
+| H50 | Caja separa efectivo y digital; el cierre no descuenta Yape/transferencia del cajón | `2449cf3` (22/11/2026), desplegado con `3052f44` |
+| H63 | PDF de actas restringido a ADMIN; DOCENTE recibe 403 | `2449cf3` (22/11/2026), desplegado con `3052f44` |
+| H48 | Cierre/reapertura reales de actas, bloqueo global y migración H48 | `d9071e5` (22/11/2026), desplegado con `9648689` |
+| H51 | Selector de bimestre en libretas y PDF por bimestre | `d9071e5` (22/11/2026), desplegado con `9648689` |
 
 ---
 
@@ -389,12 +394,13 @@ En esta fase **no** se prepara el despliegue definitivo.
   cargas y, si hay horarios generados/publicados, aborta. Si se re-ejecuta en una base con
   borradores, revisar la grilla antes de generar/publicar.
 - **Despliegue:** un `git push` que solo toca `database/` o `documentacion/` **no
-  redepliega** Render. El código desplegado es `64a90dc`; `a9acf24` es solo datos demo.
-  **H50/H63 (`2449cf3`) aún no están desplegados en Render.**
-- **Migraciones:** se aplican **a mano** en Supabase. Un push no las ejecuta.
+  redepliega** Render. El código desplegado es `9648689` (backend y frontend), que incluye
+  H50/H63 y H48/H51. `a9acf24` fue solo datos demo.
+- **Migraciones:** se aplican **a mano** en Supabase. Un push no las ejecuta. H47 y H48 ya
+  están aplicadas en `siga-uc-prod`.
 - **Credenciales:** el ADMIN local y el ADMIN de producción **no comparten contraseña**.
   La de producción es la real del dueño y no está en `.env`.
-- H47: `test:integridad` espera 40 tablas + `periodos_clase`; `test:e2e` aplica H47.
+- H47: `test:integridad` espera 40 tablas + `periodos_clase`; `test:e2e` aplica H47 y H48.
   `npm run test:h47-generador` no toca BD (**4 PASS**).
 - H47: el frontend viejo llama al endpoint retirado `/horarios/grado/:id_grado`; desplegar
   backend y frontend juntos o esperar 404 en la vista del alumno.
@@ -408,26 +414,33 @@ En esta fase **no** se prepara el despliegue definitivo.
   periodo se deriva del bimestre. Un acta global `CERRADO` bloquea **todos** los grados.
   Cerrar dos veces da 409; reabrir exige motivo de 10-250 y solo aplica a `CERRADO`.
 - H48: la migración agrega `bimestre`, reapertura y el índice único `NULLS NOT DISTINCT`.
-  Hay que aplicarla antes de desplegar el backend; el dump demo tiene actas globales 1 y 2.
+  Ya está aplicada en Supabase (4 columnas nuevas + `uq_acta_anio_bimestre_grado`,
+  0 actas); en local se ejecutó 3 veces sin errores.
 - H51: el selector de bimestre de libretas quedó visible; el PDF usa el bimestre elegido.
   El valor por defecto sigue siendo 2.
 
 ---
 
-## 7. Próximo paso exacto (fase demo)
+## 7. Próximo paso exacto (Fase 3)
 
-0. **Desplegar `2449cf3`** (H50/H63) en Render y verificar `/api/health`; el código actual
-   de Render (`64a90dc`) todavía tiene el arqueo digital y el PDF de actas abierto a
-   DOCENTE.
-1. **Ensayar el guion** de `documentacion/17-GUION-DEMOSTRACION.md` de punta a punta:
-   login, horarios publicados, generación, alumno/docente y auditoría.
-2. Configurar `SMOKE_ADMIN_PASSWORD` con la clave real de producción **solo en la sesión**
-   y ejecutar `npm run smoke` contra Render con confirmación del dueño.
-3. Después de la demo, limpiar los datos de prueba (script/restauración; nunca si hubiera
-   datos reales).
-4. **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
-   publicados: el guard aborta, pero primero hay que despublicar/limpiar.
-5. Resend real y planes pagos quedan para después de la aprobación.
+El despliegue quedó al día: Render en `9648689` y Supabase con H47/H48. El siguiente bloque
+es la **Fase 3**, en este orden:
+
+1. **H56 — Asistencia por año (P1).** Filtrar libreta, resumen y estadísticas del alumno
+   por año lectivo y enviar `?anio=` desde la UI.
+2. **H61 — Día de la semana (P2).** Parsear la fecha como local o derivar `dia_semana` en
+   backend; mostrar los días en español.
+3. **H60 — Observación sin estado (P2).** Exigir estado cuando hay observación o guardarla
+   con un estado por defecto, con validación en la UI.
+4. **H57 — Panel del estudiante (P1).** Usar el grado y los cursos reales de la matrícula;
+   no felicitar si no hay notas.
+5. Al cerrar cada hallazgo, ejecutar `npm run test:e2e` (**19 PASS**) y actualizar
+   `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`.
+6. Mantener el guion de `documentacion/17-GUION-DEMOSTRACION.md` para las demos.
+
+> **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
+> publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
+> planes pagos quedan para después de la aprobación.
 
 ---
 
@@ -437,13 +450,13 @@ Nada de esta lista se hace en la fase actual.
 
 | Tema | Qué queda pendiente |
 |---|---|
-| **Guion de demo** | Usar `documentacion/17-GUION-DEMOSTRACION.md`; es el paso inmediato |
+| **Guion de demo** | Usar `documentacion/17-GUION-DEMOSTRACION.md` en cada demo |
 | **Resend real** | Comprar/autorizar un dominio, verificar SPF/DKIM, cambiar `EMAIL_FROM` y probar un envío a un tercero. Hoy es `onboarding@resend.dev` y solo llega a la cuenta dueña de Resend |
 | **Planes pagos** | Render Starter para evitar el sleep y Supabase pago para evitar la pausa; decidir backups/retensión |
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | Aplicarlas **a mano** en Supabase, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Migraciones** | H47 y H48 ya aplicadas en Supabase. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
 | **Integridad** | `npm run test:integridad` contra la base definitiva: 10 PASS |
 
 ---
