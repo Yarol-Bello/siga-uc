@@ -130,6 +130,10 @@ sequenceDiagram
 - Restricciones `CHECK`, `UNIQUE`, `FOREIGN KEY` en BD.
 - Transacciones en operaciones multi-tabla.
 - Triggers garantizan efectos críticos (pago → caja, nota → auditoría).
+- Caja separa efectivo y digital (H50): `/caja/actual` devuelve
+  `total_ingresos_efectivo`, `total_ingresos_digital`, `total_egresos_efectivo` y
+  `total_egresos_digital`; el cierre calcula `efectivo_esperado` solo con efectivo y
+  reporta `total_digital` aparte.
 
 ### 4.2 Riesgos
 
@@ -226,6 +230,9 @@ no lanza).
 - No se encadena con las notas ni con el contenido del acta.
 - No hay verificación posterior del hash.
 - El cierre **no impide** modificar notas.
+- **Permisos del PDF (H63, 22/11/2026):** `GET /api/auditoria/actas/:id_acta/pdf` es
+  ADMIN-only. Una eventual descarga para DOCENTE debe validar `acta.id_grado` con
+  `checkGradoDocente`; las actas globales (`id_grado NULL`) quedan ADMIN-only.
 
 **Recomendación:** usar SHA-256, incluir un snapshot de notas/hash por alumno, almacenar el
 algoritmo y permitir verificación; bloquear escrituras si el acta está cerrada.

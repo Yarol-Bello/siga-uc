@@ -416,7 +416,7 @@ alumno no existe y `400` si no está `Matriculado`. Audita `CREAR` en `Tesorerí
 | 85 | GET | `/api/auditoria/modulos` | Autenticado | Módulos distintos |
 | 86 | GET | `/api/auditoria/estadisticas` | Autenticado | Totales por acción |
 | 87 | GET | `/api/auditoria/actas` | Autenticado | Actas bimestrales |
-| 88 | GET | `/api/auditoria/actas/:id_acta/pdf` | ADMIN/DOCENTE | PDF de acta con matriz real de notas |
+| 88 | GET | `/api/auditoria/actas/:id_acta/pdf` | ADMIN | PDF de acta con matriz real de notas (H63) |
 | 89 | GET | `/api/auditoria/:id` | Autenticado | Detalle de registro |
 | 90 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra acta con hash |
 

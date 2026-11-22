@@ -17,6 +17,11 @@
 > resultado incorrecto con impacto operativo/financiero; P1 = la UI promete una acción que
 > no existe o muestra información engañosa; P2 = cosmético, texto de relleno, deuda técnica
 > menor o higiene operativa.
+>
+> **Actualización 22/11/2026:** **H50** (caja efectivo/digital) y **H63** (PDF de actas
+> ADMIN-only) fueron corregidos en `2449cf3` después de este informe. `test:e2e` pasó a
+> **17 PASS**; ver `HANDOFF_SESSION.md` y `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`. El resto de
+> hallazgos de este documento sigue vigente.
 
 ---
 

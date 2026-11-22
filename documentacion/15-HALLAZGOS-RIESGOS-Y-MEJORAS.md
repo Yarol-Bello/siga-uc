@@ -44,6 +44,10 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 21/11/2026 (H11):** los guardados masivos informan filas fallidas y la UI
 > muestra el detalle; H11 queda resuelto.
+>
+> **Actualización 22/11/2026 (H50/H63):** la caja separa efectivo y digital (H50) y el PDF
+> de actas queda restringido a ADMIN (H63). Ver la sección 3 y
+> `18-AUDITORIA-PRODUCCION-2026-11-22.md`.
 
 ---
 
@@ -417,6 +421,30 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Modelo por bloques, `mi-horario` derivado del token, CRUD ADMIN, publicación estricta y generador en BORRADOR |
 | Estado | ✅ Resuelto (21/11/2026): `periodos_clase` por año, `horarios` con `id_carga`/período/estado/aula, UNIQUE de grado/docente/aula, `mi-horario`, publicación con `permitir_parcial`, generador con preflight y auditoría `CREAR/MODIFICAR/ELIMINAR/PUBLICAR/DESPUBLICAR/GENERAR` |
 | Verificación | Base desechable: 142 bloques completos en carga coherente; 20 h sin ubicar con docente sobrecargado; 4 PASS del generador; build Angular y E2E |
+
+### H50 — Caja sin separación efectivo/digital (resuelto)
+
+| Campo | Detalle |
+|---|---|
+| Severidad | **Crítica** (riesgo financiero) |
+| Evidencia | `cajaDao.obtenerCajaAbierta` sumaba todos los `INGRESO`/`EGRESO` sin mirar `medio_pago`; la UI usaba ese total para "Efectivo Físico en Cajón"; `cajaDao.cerrar` separaba ingresos pero sumaba todos los `EGRESO` como efectivo; una anulación Yape reducía el efectivo esperado |
+| Impacto | Con Yape/transferencia el arqueo podía declarar faltante/sobrante falso; riesgo de descuadre y pérdida |
+| Recomendación | Devolver totales separados por medio; calcular `efectivo_esperado` solo con efectivo; reportar `total_digital` aparte |
+| Esfuerzo | S/M |
+| Estado | ✅ Resuelto (22/11/2026): `/caja/actual` devuelve `total_ingresos_efectivo`, `total_ingresos_digital`, `total_egresos_efectivo` y `total_egresos_digital`; `cerrar` devuelve `egresos_efectivo`, `egresos_digital` y `total_digital`; la UI muestra efectivo y digital por separado |
+| Verificación | `test:e2e` 15: efectivo 150, digital 0 (Yape 80 anulado), cierre CUADRADO; 16: efectivo 150, digital 80, cierre CUADRADO |
+
+### H63 — IDOR en el PDF de actas (resuelto)
+
+| Campo | Detalle |
+|---|---|
+| Severidad | **Alta** (exposición de datos de menores) |
+| Evidencia | `GET /api/auditoria/actas/:id_acta/pdf` permitía ADMIN y DOCENTE antes del guard global; el controller no validaba grado ni pertenencia; un docente podía descargar el acta de cualquier grado/año enumerando IDs |
+| Impacto | Fuga de nombres, notas y PDF de actas de otros grados; las actas globales incluían todos los grados |
+| Recomendación | Restringir a ADMIN; si más adelante DOCENTE debe descargar, aplicar `checkGradoDocente` con `acta.id_grado`; las globales quedan ADMIN-only |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): la ruta quedó detrás del `checkRole(["ADMIN"])` global |
+| Verificación | `test:e2e` 17: ADMIN 200 (PDF), DOCENTE 403, sin token 401 |
 
 ### H34 — Sin PDFs reales (resuelto)
 

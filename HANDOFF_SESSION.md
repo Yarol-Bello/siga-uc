@@ -3,6 +3,10 @@
 > **Fase actual: demostración y aprobación.** SIGA-UC se muestra a la dirección del
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
+>
+> **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
+> actas solo ADMIN) corregidos en `2449cf3`. `test:e2e` subió a **17 PASS**. El código nuevo
+> aún no está desplegado en Render.
 
 ---
 
@@ -60,8 +64,8 @@ En esta fase **no** se prepara el despliegue definitivo.
   no redepliega).
 - **Commits de cierre:** `b9c92a8` (handoff) y el commit de limpieza (hash en `git log -1`).
 - **Commits de esta sesión:** aviso de correo en modo prueba, documentación de la fase de
-  demostración, **H47** (esquema+CRUD `cf3c988`, generador `e65f60f`, UI `65e73a3`) y
-  **datos demo H47** (`a9acf24`).
+  demostración, **H47** (esquema+CRUD `cf3c988`, generador `e65f60f`, UI `65e73a3`),
+  **datos demo H47** (`a9acf24`) y **H50/H63** (`2449cf3`, 22/11/2026).
 - **Estado:** fase de demostración con H47 desplegado y datos demo cargados en Supabase;
   producción/demo sin cambios desde `64a90dc`. La base local quedó limpia y el script demo
   probado.
@@ -72,19 +76,22 @@ En esta fase **no** se prepara el despliegue definitivo.
   todas las cargas quedaron en ADMIN; una nueva ejecución en local detectará 0 docentes con
   carga y creará los 5.
 - **Verificación H47:** base desechable con 142 bloques completos en carga coherente; 20 h
-  sin ubicar con docente sobrecargado; `test:h47-generador` **4 PASS**; E2E **14 PASS**;
-  build Angular OK. La UI se probó en navegador con ADMIN, SECRETARIA, DOCENTE y
-  ESTUDIANTE.
+  sin ubicar con docente sobrecargado; `test:h47-generador` **4 PASS**; E2E **17 PASS**
+  (incluye H50 y H63); build Angular OK. La UI se probó en navegador con ADMIN, SECRETARIA,
+  DOCENTE y ESTUDIANTE.
 - **Verificación datos demo H47 (21/11/2026):** script ejecutado dos veces sin duplicados;
   local **54 cargas/142 h**, docentes 30/30/30/27/25; generación **142/142**, 0 sin ubicar;
   2do y 3ro publicados; Demo 1 vio 12 bloques en dos grados; alumno de 2do vio solo su grado
   y solo PUBLICADO; limpieza dejó **54 cargas en ADMIN, 0 usuarios/personal/QR demo,
   0 horarios y backup de 13 filas intacto**.
 - **Verificación local previa:** `npm run smoke` **11 PASS** (exit 0), `npm run test:e2e`
-  **14 PASS** (exit 0) e integridad **8 PASS / 2 FAIL** esperados del seed. Notificación
+  **17 PASS** (exit 0) e integridad **8 PASS / 2 FAIL** esperados del seed. Notificación
   sin correo: guardada y visible en la campanita. La contraseña del ADMIN local se alineó
   con `SMOKE_ADMIN_PASSWORD` de `.env` (no se documentó). **La contraseña del ADMIN de
   producción es la real del dueño y NO está en `.env`.**
+- **H50/H63 (22/11/2026):** `/caja/actual` devuelve totales de efectivo y digital por
+  separado; el cierre usa solo efectivo para `efectivo_esperado` y reporta `total_digital`.
+  El PDF de actas quedó restringido a ADMIN. Verificación `test:e2e` 15/16/17 PASS.
 
 ---
 
@@ -126,8 +133,8 @@ En esta fase **no** se prepara el despliegue definitivo.
 - `npm run test:integridad` (`scripts/test-integridad.js`): 10 invariantes de solo lectura
   sobre cualquier base. Fuerza `default_transaction_read_only=on`. Exit 1 si hay FAIL.
 - `npm run test:e2e` (`scripts/test-e2e.js`): crea `siga_uc_e2e`, carga el dump y las
-  migraciones, arranca el backend en el puerto 3101, ejecuta 14 flujos y elimina la base
-  con `dropdb --force`. Verificado dos veces seguidas: **14 PASS, 0 FAIL** y exit 0.
+  migraciones, arranca el backend en el puerto 3101, ejecuta 17 flujos y elimina la base
+  con `dropdb --force`. Verificado: **17 PASS, 0 FAIL** y exit 0 (incluye H50 y H63).
 - Integridad local del 21/11/2026: **8 PASS, 2 FAIL** por datos de seed reales
   (invariantes 4 y 8: 5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El
   invariante 7 ya no marca al ADMIN: solo exige ficha a ESTUDIANTE (rol 4) y
@@ -179,7 +186,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H02 | Revalidar estado en cada request | `b6f4a21` |
 | H03 | Rate limit en login, recuperación y validar-token | `b6f4a21`, `408c451` |
 | H04 | Nota final automática al guardar | `f02f88a` |
-| H06 | Acta cerrada bloquea notas | `f02f88a` |
+| H06 | Acta cerrada bloquea notas (🟡 parcial: H48 detectó que no se pueden crear actas y que las globales no bloquean; ver `18-AUDITORIA-PRODUCCION-2026-11-22.md`) | `f02f88a` |
 | H07 (A+B) | Auditoría de seguridad, dinero, alumnos, personal, académico, SIAGIE, notificaciones y descargas | `d8800e4`, `76573ac` |
 | H08 | Pago solo a caja abierta | `81aa521` |
 | H09 | Monto, pensión, alumno y caja coherentes | `408c451` |
@@ -205,6 +212,8 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H46 | Especialidad solo para DOCENTE y roles de Personal 1-3 | `fix(personal): especialidad solo para docentes y roles de personal (H46)` |
 | H45 | Anulación de pensiones/pre-tickets futuros al retirar | `fix(alumnos): anular pensiones y pretickets futuros al retirar (H45)` |
 | H47 | Horarios por bloques, `mi-horario`, CRUD, publicación, generador y UI | `cf3c988`, `e65f60f`, `65e73a3`, `a9acf24` |
+| H50 | Caja separa efectivo y digital; el cierre no descuenta Yape/transferencia del cajón | `2449cf3` (22/11/2026) |
+| H63 | PDF de actas restringido a ADMIN; DOCENTE recibe 403 | `2449cf3` (22/11/2026) |
 
 ---
 
@@ -372,6 +381,7 @@ En esta fase **no** se prepara el despliegue definitivo.
   borradores, revisar la grilla antes de generar/publicar.
 - **Despliegue:** un `git push` que solo toca `database/` o `documentacion/` **no
   redepliega** Render. El código desplegado es `64a90dc`; `a9acf24` es solo datos demo.
+  **H50/H63 (`2449cf3`) aún no están desplegados en Render.**
 - **Migraciones:** se aplican **a mano** en Supabase. Un push no las ejecuta.
 - **Credenciales:** el ADMIN local y el ADMIN de producción **no comparten contraseña**.
   La de producción es la real del dueño y no está en `.env`.
@@ -379,11 +389,20 @@ En esta fase **no** se prepara el despliegue definitivo.
   `npm run test:h47-generador` no toca BD (**4 PASS**).
 - H47: el frontend viejo llama al endpoint retirado `/horarios/grado/:id_grado`; desplegar
   backend y frontend juntos o esperar 404 en la vista del alumno.
+- H50: `/caja/actual` devuelve `total_ingresos_efectivo`, `total_ingresos_digital`,
+  `total_egresos_efectivo` y `total_egresos_digital`; el "efectivo en cajón" usa solo
+  efectivo. `cerrar` devuelve `egresos_efectivo`, `egresos_digital` y `total_digital`.
+  No volver a usar `total_ingresos` para el arqueo.
+- H63: `GET /api/auditoria/actas/:id_acta/pdf` es ADMIN-only; DOCENTE recibe 403. Si se
+  habilita DOCENTE, validar `acta.id_grado` y no exponer actas globales.
 
 ---
 
 ## 7. Próximo paso exacto (fase demo)
 
+0. **Desplegar `2449cf3`** (H50/H63) en Render y verificar `/api/health`; el código actual
+   de Render (`64a90dc`) todavía tiene el arqueo digital y el PDF de actas abierto a
+   DOCENTE.
 1. **Ensayar el guion** de `documentacion/17-GUION-DEMOSTRACION.md` de punta a punta:
    login, horarios publicados, generación, alumno/docente y auditoría.
 2. Configurar `SMOKE_ADMIN_PASSWORD` con la clave real de producción **solo en la sesión**
@@ -424,7 +443,7 @@ psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables W
 curl.exe -s http://localhost:3000/api/health
 cd siga-uc-backend; npm run smoke          # 11 PASS, exit 0
 npm run test:integridad                    # 10 invariantes; revisar FAIL reales
-npm run test:e2e                           # 14 PASS, exit 0; elimina siga_uc_e2e
+npm run test:e2e                           # 17 PASS, exit 0; elimina siga_uc_e2e
 npm run test:h47-generador                 # 4 PASS; no toca BD
 ```
 
@@ -432,7 +451,7 @@ El primero confirma el commit; el segundo aplica H47 si falta; el tercero debe d
 **40** y `ux_pago_pension_activo`; el cuarto debe devolver `success: true` y
 `database: "ok"` **con el backend en marcha**; el quinto debe terminar en
 **11 PASS, 0 FAIL**; el sexto puede reportar violaciones reales de seed; el séptimo
-debe terminar en **14 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada; el octavo en
+debe terminar en **17 PASS, 0 FAIL** y dejar `siga_uc_e2e` eliminada; el octavo en
 **4 PASS**.
 
 Para una base **definitiva** (solo después de la aprobación):
