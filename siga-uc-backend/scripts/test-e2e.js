@@ -40,9 +40,11 @@ const MIGRACIONES = [
   path.join(RAIZ_REPO, "database", "migracion_h32_anulacion_pagos.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h10_h38_concurrencia_pagos.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h07_auditoria.sql"),
+  path.join(RAIZ_REPO, "database", "migracion_h45_pensiones_anuladas.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h47_horarios.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h48_actas.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h61_dia_semana.sql"),
+  path.join(RAIZ_REPO, "database", "migracion_h49_multianio_base.sql"),
 ];
 
 const PUERTO = 3101;
@@ -54,6 +56,7 @@ const DB_USER = (process.env.DB_USER || "postgres").trim();
 const DB_PASSWORD = process.env.DB_PASSWORD || "";
 const DB_APP = (process.env.DB_NAME || "siga_uc").trim();
 const ANIO = Number(process.env.ANIO_LECTIVO) || 2026;
+const ANIO_DESTINO = ANIO + 1;
 const DNI_ALUMNO_1 = "99999001";
 const DNI_ALUMNO_2 = "99999002";
 const DNI_APODERADO = "99999011";
@@ -72,6 +75,8 @@ const ctx = {
   adminId: null,
   alumno1Id: null,
   alumno2Id: null,
+  alumno2IdDestino: null,
+  idGradoDestino: null,
   pagoMatriculaId: null,
   pagoPensionId: null,
   idPension: null,
@@ -1774,6 +1779,459 @@ async function ejecutarPruebas() {
       "409, 400, DOCENTE/SECRETARIA 403, sin token 401",
     );
   });
+
+  // 20. Configuración table-backed y catálogo de años.
+  await prueba(20, "Año activo desde anios_lectivos y 41 tablas base", async () => {
+    const tablas = await sql(
+      `SELECT COUNT(*)::int AS total
+       FROM information_schema.tables
+       WHERE table_schema = 'public'
+         AND table_type = 'BASE TABLE'
+         AND table_name <> 'horarios_h47_backup'`,
+    );
+    const activos = await sql(
+      `SELECT anio FROM anios_lectivos WHERE estado = 'ACTIVO'`,
+    );
+    const respuesta = await api("/configuracion");
+    const { datos } = await leerJson(respuesta);
+
+    assert.equal(tablas[0].total, 41, "Se esperaban 41 tablas base");
+    assert.equal(activos.length, 1, "Debe haber exactamente un año ACTIVO");
+    assert.equal(Number(activos[0].anio), ANIO, "El año ACTIVO inicial no es el esperado");
+    assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+    assert.equal(
+      Number(datos?.data?.anio_lectivo),
+      ANIO,
+      "GET /configuracion no devuelve el año de la tabla",
+    );
+
+    registrar(
+      20,
+      "Año activo desde anios_lectivos y 41 tablas base",
+      "PASS",
+      `tablas=41, activo=${ANIO}`,
+    );
+  });
+
+  // 21. Uniques por año y mismo alumno en dos años.
+  await prueba(21, "Uniques por año: mismo alumno en dos años y duplicado rechazado", async () => {
+    const grados = await sql(
+      `INSERT INTO grados (nombre_grado, nivel, seccion, anio_lectivo, orden)
+       VALUES ('1ro de Secundaria', 'SECUNDARIA', 'Única', $1, 1)
+       ON CONFLICT (nombre_grado, seccion, anio_lectivo)
+       DO UPDATE SET nivel = EXCLUDED.nivel, orden = EXCLUDED.orden
+       RETURNING id_grado`,
+      [ANIO_DESTINO],
+    );
+    ctx.idGradoDestino = grados[0].id_grado;
+
+    const destino = await sql(
+      `INSERT INTO alumnos (
+         id_usuario, dni, nombres, apellidos, fecha_nacimiento,
+         id_apoderado, id_grado, condicion, colegio_procedencia,
+         estado_matricula, codigo_estudiante, anio_lectivo
+       )
+       SELECT id_usuario, dni, nombres, apellidos, fecha_nacimiento,
+              id_apoderado, $1, condicion, colegio_procedencia,
+              'Matriculado', codigo_estudiante, $2
+       FROM alumnos
+       WHERE id_alumno = $3
+       RETURNING id_alumno`,
+      [ctx.idGradoDestino, ANIO_DESTINO, ctx.alumno2Id],
+    );
+    ctx.alumno2IdDestino = destino[0].id_alumno;
+
+    const original = await sql(
+      `SELECT id_usuario, dni, codigo_estudiante FROM alumnos WHERE id_alumno = $1`,
+      [ctx.alumno2IdDestino],
+    );
+    assert.equal(Number(original[0].dni), Number(DNI_ALUMNO_2));
+    assert.ok(original[0].codigo_estudiante, "La matrícula destino no copió el código");
+
+    await assert.rejects(
+      () =>
+        sql(
+          `INSERT INTO alumnos (
+             id_usuario, dni, nombres, apellidos, fecha_nacimiento,
+             id_apoderado, id_grado, condicion, colegio_procedencia,
+             estado_matricula, codigo_estudiante, anio_lectivo
+           )
+           SELECT id_usuario, dni, nombres, apellidos, fecha_nacimiento,
+                  id_apoderado, $1, condicion, colegio_procedencia,
+                  'Matriculado', codigo_estudiante, $2
+           FROM alumnos
+           WHERE id_alumno = $3`,
+          [ctx.idGradoDestino, ANIO_DESTINO, ctx.alumno2IdDestino],
+        ),
+      (error) => error.code === "23505",
+      "Un duplicado del mismo año debía violar un UNIQUE",
+    );
+
+    await sql(
+      `UPDATE usuarios SET requiere_cambio_password = FALSE WHERE dni = $1`,
+      [DNI_ALUMNO_2],
+    );
+
+    registrar(
+      21,
+      "Uniques por año: mismo alumno en dos años y duplicado rechazado",
+      "PASS",
+      `2027 id=${ctx.alumno2IdDestino}, duplicado 23505`,
+    );
+  });
+
+  // 22. Apoderado compartido por DNI.
+  await prueba(22, "Apoderado compartido por DNI entre hermanos", async () => {
+    const dniApoderado = "99999012";
+    const alumnoA = await crearAlumno("99999003", "Hermano", "Uno", {
+      apoderado: {
+        nombres: "Apoderado Compartido",
+        apellidos: "E2E",
+        dni: dniApoderado,
+        telefono: "988888888",
+        correo: "apoderado.compartido@example.com",
+      },
+    });
+    const alumnoB = await crearAlumno("99999004", "Hermano", "Dos", {
+      apoderado: {
+        nombres: "Apoderado Compartido",
+        apellidos: "E2E",
+        dni: dniApoderado,
+        telefono: "988888888",
+        correo: "apoderado.compartido@example.com",
+      },
+    });
+
+    const filas = await sql(
+      `SELECT id_apoderado FROM apoderados WHERE dni = $1`,
+      [dniApoderado],
+    );
+    const alumnos = await sql(
+      `SELECT id_alumno, id_apoderado FROM alumnos WHERE id_alumno = ANY($1::int[]) ORDER BY id_alumno`,
+      [[alumnoA.id_alumno, alumnoB.id_alumno]],
+    );
+
+    assert.equal(filas.length, 1, "Debe existir una sola fila de apoderado");
+    assert.equal(
+      new Set(alumnos.map((a) => Number(a.id_apoderado))).size,
+      1,
+      "Los hermanos no comparten el mismo id_apoderado",
+    );
+
+    registrar(
+      22,
+      "Apoderado compartido por DNI entre hermanos",
+      "PASS",
+      `apoderado=${filas[0].id_apoderado}, alumnos=2`,
+    );
+  });
+
+  // 23. Login sin matrícula activa.
+  await prueba(23, "Login sin matrícula activa y endpoint académico 403", async () => {
+    const dni = "99999099";
+    await sql(
+      `INSERT INTO usuarios (
+         dni, nombres, apellidos, correo_institucional, correo_personal,
+         password_hash, telefono, id_rol, estado, requiere_cambio_password
+       ) VALUES (
+         $1, 'Sin', 'Matricula', 'sin.matricula@e2e.local', NULL,
+         crypt($2, gen_salt('bf', 10)), NULL, 4, 'ACTIVO', FALSE
+       )
+       ON CONFLICT (dni) DO NOTHING`,
+      [dni, dni],
+    );
+
+    const sesion = await iniciarSesion("ESTUDIANTE", dni, dni);
+    assert.equal(
+      sesion.usuario?.info_adicional?.matricula_activa,
+      false,
+      "El login debía indicar matricula_activa=false",
+    );
+    assert.equal(
+      sesion.usuario?.info_adicional?.id_alumno,
+      null,
+      "Sin matrícula, id_alumno debe ser null",
+    );
+
+    const respuesta = await api("/asistencias/alumno/1", {
+      token: sesion.token,
+    });
+    const { datos } = await leerJson(respuesta);
+    assert.equal(respuesta.status, 403, detalleHttp(respuesta, datos));
+    assert.equal(datos?.errors?.codigo, "SIN_MATRICULA_ACTIVA");
+    assert.ok(
+      String(datos?.message || "").includes("No tienes matrícula"),
+      "El mensaje no explica la falta de matrícula",
+    );
+
+    registrar(
+      23,
+      "Login sin matrícula activa y endpoint académico 403",
+      "PASS",
+      "login 200, matricula_activa=false, 403 SIN_MATRICULA_ACTIVA",
+    );
+  });
+
+  // 24. Consultas por año y libreta que no mezcla años.
+  await prueba(24, "Consultas por año y libreta no mezclan matrículas", async () => {
+    const alumnos2026 = await api("/alumnos?anio=2026", {
+      token: ctx.adminToken,
+    });
+    const datos2026 = await leerJson(alumnos2026);
+    const alumnos2027 = await api("/alumnos?anio=2027", {
+      token: ctx.adminToken,
+    });
+    const datos2027 = await leerJson(alumnos2027);
+    assert.equal(alumnos2026.status, 200, detalleHttp(alumnos2026, datos2026));
+    assert.equal(alumnos2027.status, 200, detalleHttp(alumnos2027, datos2027));
+
+    const ids2026 = (datos2026.datos?.data || []).map((a) => Number(a.id_alumno));
+    const ids2027 = (datos2027.datos?.data || []).map((a) => Number(a.id_alumno));
+    assert.ok(!ids2026.includes(ctx.alumno2IdDestino), "2026 incluyó la matrícula 2027");
+    assert.ok(ids2027.includes(ctx.alumno2IdDestino), "2027 no incluyó su matrícula");
+    assert.ok(!ids2027.includes(ctx.alumno2Id), "2027 incluyó la matrícula 2026");
+
+    const porDni2027 = await api(
+      `/alumnos/dni/${DNI_ALUMNO_2}?anio=2027`,
+      { token: ctx.adminToken },
+    );
+    const datosDni2027 = await leerJson(porDni2027);
+    assert.equal(porDni2027.status, 200, detalleHttp(porDni2027, datosDni2027));
+    assert.equal(
+      Number(datosDni2027.datos?.data?.id_alumno),
+      ctx.alumno2IdDestino,
+      "La búsqueda por DNI no devolvió la matrícula 2027",
+    );
+
+    const libreta2027 = await api(
+      `/reportes/libreta/${ctx.alumno2IdDestino}?bimestre=3&anio=2027`,
+      { token: ctx.adminToken },
+    );
+    const datosLibreta2027 = await leerJson(libreta2027);
+    assert.equal(libreta2027.status, 200, detalleHttp(libreta2027, datosLibreta2027));
+    assert.equal(Number(datosLibreta2027.datos?.data?.anio_lectivo), ANIO_DESTINO);
+
+    const libretaCruzada = await api(
+      `/reportes/libreta/${ctx.alumno2Id}?bimestre=3&anio=2027`,
+      { token: ctx.adminToken },
+    );
+    const datosCruzada = await leerJson(libretaCruzada);
+    assert.equal(
+      libretaCruzada.status,
+      404,
+      `La libreta cruzada debía 404 (${detalleHttp(libretaCruzada, datosCruzada)})`,
+    );
+
+    const alumnoCruzado = await api(`/alumnos/${ctx.alumno2Id}?anio=2027`, {
+      token: ctx.adminToken,
+    });
+    const datosAlumnoCruzado = await leerJson(alumnoCruzado);
+    assert.equal(
+      alumnoCruzado.status,
+      404,
+      `El alumno cruzado debía 404 (${detalleHttp(alumnoCruzado, datosAlumnoCruzado)})`,
+    );
+
+    registrar(
+      24,
+      "Consultas por año y libreta no mezclan matrículas",
+      "PASS",
+      `2026 id=${ctx.alumno2Id}, 2027 id=${ctx.alumno2IdDestino}, cruzada 404`,
+    );
+  });
+
+  // 25. Retirar una matrícula no desactiva si queda otra viva.
+  await prueba(25, "Retirar 2026 no desactiva al alumno con matrícula 2027", async () => {
+    const respuesta = await api(`/alumnos/${ctx.alumno2Id}/retirar`, {
+      method: "PUT",
+      token: ctx.adminToken,
+      body: { motivo_retiro: "Retiro de prueba E2E multi-año" },
+    });
+    const { datos } = await leerJson(respuesta);
+    assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+
+    const filas = await sql(
+      `SELECT a.estado_matricula, u.estado AS estado_usuario
+       FROM alumnos a
+       INNER JOIN usuarios u ON u.id_usuario = a.id_usuario
+       WHERE a.id_alumno = $1`,
+      [ctx.alumno2Id],
+    );
+    const destino = await sql(
+      `SELECT estado_matricula FROM alumnos WHERE id_alumno = $1`,
+      [ctx.alumno2IdDestino],
+    );
+    assert.equal(filas[0].estado_matricula, "Retirado");
+    assert.equal(filas[0].estado_usuario, "ACTIVO");
+    assert.equal(destino[0].estado_matricula, "Matriculado");
+
+    registrar(
+      25,
+      "Retirar 2026 no desactiva al alumno con matrícula 2027",
+      "PASS",
+      "2026 Retirado, usuario ACTIVO, 2027 Matriculado",
+    );
+  });
+
+  // 26. Login con el nuevo año activo (reinicio del backend).
+  await prueba(26, "Login resuelve la matrícula del año activo (2027)", async () => {
+    const sesionAntes = await iniciarSesion(
+      "ESTUDIANTE",
+      DNI_ALUMNO_2,
+      DNI_ALUMNO_2,
+    );
+    assert.equal(
+      Number(sesionAntes.usuario?.info_adicional?.anio_lectivo),
+      ANIO,
+      "El login previo debía resolver 2026",
+    );
+
+    await sql(
+      `INSERT INTO anios_lectivos (anio) VALUES ($1)
+       ON CONFLICT (anio) DO NOTHING`,
+      [ANIO_DESTINO],
+    );
+    await sql(
+      `UPDATE anios_lectivos SET estado = 'PLANIFICADO' WHERE anio = $1`,
+      [ANIO],
+    );
+    await sql(
+      `UPDATE anios_lectivos SET estado = 'ACTIVO' WHERE anio = $1`,
+      [ANIO_DESTINO],
+    );
+
+    await detenerBackend();
+    await iniciarBackend();
+    await esperarHealth();
+
+    const config = await api("/configuracion");
+    const datosConfig = await leerJson(config);
+    assert.equal(config.status, 200, detalleHttp(config, datosConfig));
+    assert.equal(Number(datosConfig.datos?.data?.anio_lectivo), ANIO_DESTINO);
+
+    const sesion = await iniciarSesion(
+      "ESTUDIANTE",
+      DNI_ALUMNO_2,
+      DNI_ALUMNO_2,
+    );
+    assert.equal(
+      Number(sesion.usuario?.info_adicional?.anio_lectivo),
+      ANIO_DESTINO,
+      "El perfil no resolvió el año activo",
+    );
+    assert.equal(
+      Number(sesion.usuario?.info_adicional?.id_alumno),
+      ctx.alumno2IdDestino,
+      "El login no resolvió la matrícula 2027",
+    );
+    assert.equal(
+      sesion.usuario?.info_adicional?.matricula_activa,
+      true,
+      "La matrícula 2027 debería estar activa",
+    );
+
+    const perfilConTokenViejo = await api("/auth/perfil", {
+      token: sesionAntes.token,
+    });
+    const datosPerfilViejo = await leerJson(perfilConTokenViejo);
+    assert.equal(
+      perfilConTokenViejo.status,
+      200,
+      detalleHttp(perfilConTokenViejo, datosPerfilViejo),
+    );
+    assert.equal(
+      Number(datosPerfilViejo.datos?.data?.info_adicional?.anio_lectivo),
+      ANIO_DESTINO,
+      "Un token anterior al cambio de año no se resolvió con el año activo",
+    );
+
+    registrar(
+      26,
+      "Login resuelve la matrícula del año activo (2027)",
+      "PASS",
+      `config=${ANIO_DESTINO}, id_alumno=${ctx.alumno2IdDestino}, token previo OK`,
+    );
+  });
+
+  // 27. Pre-tickets y pendientes de cobro filtrados por año.
+  await prueba(27, "Pre-tickets y pendientes de cobro no mezclan años", async () => {
+    const antes = await api("/tesoreria/estadisticas?anio=2026&mes=11", {
+      token: ctx.adminToken,
+    });
+    const datosAntes = await leerJson(antes);
+    assert.equal(antes.status, 200, detalleHttp(antes, datosAntes));
+    const monto2026Antes = Number(
+      datosAntes.datos?.data?.pendiente?.monto_pendiente || 0,
+    );
+
+    const concepto = await sql(
+      `INSERT INTO conceptos_pago (nombre, monto_base, tipo, mes, anio_lectivo)
+       VALUES ('Pre-ticket E2E 2027', 777, 'OTROS', NULL, $1)
+       RETURNING id_concepto`,
+      [ANIO_DESTINO],
+    );
+    const preticket = await sql(
+      `INSERT INTO pre_tickets (id_alumno, id_concepto, monto, estado)
+       VALUES ($1, $2, 777, 'PENDIENTE')
+       RETURNING id_preticket`,
+      [ctx.alumno2IdDestino, concepto[0].id_concepto],
+    );
+    assert.ok(preticket[0].id_preticket);
+
+    const pre2027 = await api(
+      `/tesoreria/pre-tickets?estado=PENDIENTE&anio=2027`,
+      { token: ctx.adminToken },
+    );
+    const datosPre2027 = await leerJson(pre2027);
+    assert.equal(pre2027.status, 200, detalleHttp(pre2027, datosPre2027));
+    assert.ok(
+      (datosPre2027.datos?.data || []).some(
+        (pt) => Number(pt.id_preticket) === Number(preticket[0].id_preticket),
+      ),
+      "El pre-ticket 2027 no apareció en su año",
+    );
+
+    const pre2026 = await api(
+      `/tesoreria/pre-tickets?estado=PENDIENTE&anio=2026`,
+      { token: ctx.adminToken },
+    );
+    const datosPre2026 = await leerJson(pre2026);
+    assert.equal(pre2026.status, 200, detalleHttp(pre2026, datosPre2026));
+    assert.ok(
+      !(datosPre2026.datos?.data || []).some(
+        (pt) => Number(pt.id_preticket) === Number(preticket[0].id_preticket),
+      ),
+      "El pre-ticket 2027 se mezcló con 2026",
+    );
+
+    const despues = await api("/tesoreria/estadisticas?anio=2026&mes=11", {
+      token: ctx.adminToken,
+    });
+    const datosDespues = await leerJson(despues);
+    assert.equal(despues.status, 200, detalleHttp(despues, datosDespues));
+    assert.equal(
+      Number(datosDespues.datos?.data?.pendiente?.monto_pendiente || 0),
+      monto2026Antes,
+      "El pendiente 2026 cambió al crear un pre-ticket 2027",
+    );
+
+    const stats2027 = await api("/tesoreria/estadisticas?anio=2027&mes=11", {
+      token: ctx.adminToken,
+    });
+    const datosStats2027 = await leerJson(stats2027);
+    assert.equal(stats2027.status, 200, detalleHttp(stats2027, datosStats2027));
+    assert.ok(
+      Number(datosStats2027.datos?.data?.pendiente?.monto_pendiente || 0) >= 777,
+      "El pendiente 2027 no incluyó su pre-ticket",
+    );
+
+    registrar(
+      27,
+      "Pre-tickets y pendientes de cobro no mezclan años",
+      "PASS",
+      `pre-ticket 2027=${preticket[0].id_preticket}, 2026 sin cambios`,
+    );
+  });
 }
 
 async function main() {
@@ -1812,6 +2270,10 @@ async function main() {
     const limpiezaOk = await limpiar();
     const pass = resultados.filter((r) => r.estado === "PASS").length;
     const fail = resultados.filter((r) => r.estado === "FAIL").length;
+
+    if (fail > 0) {
+      imprimirLogsBackend();
+    }
 
     console.log("");
     console.log(`${pass} PASS, ${fail} FAIL, 0 SKIP`);

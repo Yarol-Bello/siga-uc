@@ -11,7 +11,7 @@
  * Conexión: usa DATABASE_URL si existe; si no, DB_HOST/DB_PORT/DB_USER/
  * DB_PASSWORD/DB_NAME. Las credenciales nunca se imprimen.
  *
- * Códigos de salida: 0 si las 10 invariantes pasan; 1 si hay algún FAIL.
+ * Códigos de salida: 0 si las 14 invariantes pasan; 1 si hay algún FAIL.
  */
 
 "use strict";
@@ -66,6 +66,7 @@ const ANCHO_ESTADO = 9;
 const TABLAS_ESPERADAS = [
   "actas_bimestrales",
   "alumnos",
+  "anios_lectivos",
   "alumnos_riesgo",
   "aperturas_caja",
   "apoderados",
@@ -193,10 +194,10 @@ async function main() {
     return;
   }
 
-  // 1. Las 40 tablas del esquema existen.
+  // 1. Las 41 tablas base del esquema existen.
   await verificarInvariante(
     1,
-    "Las 40 tablas esperadas existen",
+    "Las 41 tablas esperadas existen",
     `
       SELECT q.*, COUNT(*) OVER() AS _total
       FROM (
@@ -217,14 +218,19 @@ async function main() {
   // 2. Los índices críticos existen.
   await verificarInvariante(
     2,
-    "Índices ux_pago_pension_activo y boletas_serie_numero_key",
+    "Índices críticos de pagos, boletas y multi-año",
     `
       SELECT q.*, COUNT(*) OVER() AS _total
       FROM (
         SELECT t.nombre AS indice_faltante
         FROM (VALUES
           ('ux_pago_pension_activo'),
-          ('boletas_serie_numero_key')
+          ('boletas_serie_numero_key'),
+          ('uq_alumno_dni_anio'),
+          ('uq_alumno_usuario_anio'),
+          ('uq_alumno_codigo_anio'),
+          ('uq_grado_anio_nivel_seccion_orden'),
+          ('uq_anio_activo')
         ) AS t(nombre)
         LEFT JOIN pg_indexes pi
           ON pi.schemaname = 'public'
@@ -382,10 +388,10 @@ async function main() {
     `,
   );
 
-  // 10. Todo alumno Matriculado tiene un usuario ACTIVO.
+  // 10. Todo alumno Matriculado del año activo tiene un usuario ACTIVO.
   await verificarInvariante(
     10,
-    "Alumno Matriculado sin usuario ACTIVO",
+    "Alumno Matriculado del año activo sin usuario ACTIVO",
     `
       SELECT q.*, COUNT(*) OVER() AS _total
       FROM (
@@ -393,9 +399,92 @@ async function main() {
         FROM alumnos a
         LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario
         WHERE a.estado_matricula = 'Matriculado'
+          AND a.anio_lectivo = (
+            SELECT anio FROM anios_lectivos WHERE estado = 'ACTIVO' LIMIT 1
+          )
           AND (u.id_usuario IS NULL OR u.estado IS DISTINCT FROM 'ACTIVO')
       ) q
       ORDER BY q.id_alumno
+      LIMIT 5
+    `,
+  );
+
+  // 11. Debe existir exactamente un año ACTIVO.
+  await verificarInvariante(
+    11,
+    "Exactamente un año lectivo ACTIVO",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT COUNT(*) AS anios_activos
+        FROM anios_lectivos
+        WHERE estado = 'ACTIVO'
+        HAVING COUNT(*) <> 1
+      ) q
+    `,
+  );
+
+  // 12. Todo alumnos.anio_lectivo debe existir en anios_lectivos.
+  await verificarInvariante(
+    12,
+    "Matrícula con año ausente en anios_lectivos",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT a.id_alumno, a.dni, a.anio_lectivo
+        FROM alumnos a
+        LEFT JOIN anios_lectivos al ON al.anio = a.anio_lectivo
+        WHERE al.anio IS NULL
+      ) q
+      ORDER BY q.id_alumno
+      LIMIT 5
+    `,
+  );
+
+  // 13. Todo alumno con grado debe tener un grado del mismo año.
+  await verificarInvariante(
+    13,
+    "Alumno con grado de otro año",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT a.id_alumno, a.dni, a.anio_lectivo,
+               a.id_grado, g.anio_lectivo AS grado_anio
+        FROM alumnos a
+        INNER JOIN grados g ON g.id_grado = a.id_grado
+        WHERE a.id_grado IS NOT NULL
+          AND g.anio_lectivo IS DISTINCT FROM a.anio_lectivo
+      ) q
+      ORDER BY q.id_alumno
+      LIMIT 5
+    `,
+  );
+
+  // 14. Pensión/pre-ticket debe coincidir con el año de su matrícula.
+  await verificarInvariante(
+    14,
+    "Pensión o pre-ticket con año distinto al de su matrícula",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT 'PENSION' AS tipo, pe.id_pension AS id_registro,
+               pe.id_alumno, pe.anio_lectivo AS anio_registro,
+               a.anio_lectivo AS anio_matricula
+        FROM pensiones pe
+        INNER JOIN alumnos a ON a.id_alumno = pe.id_alumno
+        WHERE pe.anio_lectivo IS DISTINCT FROM a.anio_lectivo
+
+        UNION ALL
+
+        SELECT 'PRETICKET' AS tipo, pt.id_preticket AS id_registro,
+               pt.id_alumno, c.anio_lectivo AS anio_registro,
+               a.anio_lectivo AS anio_matricula
+        FROM pre_tickets pt
+        INNER JOIN alumnos a ON a.id_alumno = pt.id_alumno
+        INNER JOIN conceptos_pago c ON c.id_concepto = pt.id_concepto
+        WHERE c.anio_lectivo IS DISTINCT FROM a.anio_lectivo
+      ) q
+      ORDER BY q.tipo, q.id_registro
       LIMIT 5
     `,
   );
