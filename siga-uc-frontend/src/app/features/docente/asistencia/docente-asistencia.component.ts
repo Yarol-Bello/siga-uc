@@ -51,6 +51,7 @@ export class DocenteAsistenciaComponent implements OnInit {
   cargandoLista = signal(false);
   guardando = signal(false);
   error = signal<string | null>(null);
+  errorValidacion = signal<string | null>(null);
   mensajeExito = signal<string | null>(null);
   mensajeAdvertencia = signal<string | null>(null);
   erroresGuardado = signal<
@@ -108,12 +109,14 @@ export class DocenteAsistenciaComponent implements OnInit {
   seleccionarCurso(curso: CursoAsignado): void {
     this.cursoSeleccionado.set(curso);
     this.cambios = {};
+    this.errorValidacion.set(null);
     this.mensajeExito.set(null);
     this.cargarAsistencia();
   }
 
   cambiarFecha(): void {
     this.cambios = {};
+    this.errorValidacion.set(null);
     this.mensajeExito.set(null);
     this.cargarAsistencia();
   }
@@ -150,6 +153,7 @@ export class DocenteAsistenciaComponent implements OnInit {
       this.cambios[idAlumno] = { estado: '', observacion: '' };
     }
     this.cambios[idAlumno].estado = estado;
+    this.errorValidacion.set(null);
     this.mensajeExito.set(null);
   }
 
@@ -161,6 +165,24 @@ export class DocenteAsistenciaComponent implements OnInit {
       this.cambios[idAlumno] = { estado: this.getEstado(idAlumno), observacion: '' };
     }
     this.cambios[idAlumno].observacion = observacion;
+    this.errorValidacion.set(null);
+  }
+
+  /**
+   * Una observación solo se puede guardar si el alumno tiene un estado P/T/F,
+   * ya sea marcado en esta sesión o previamente guardado. El backend rechaza
+   * estados vacíos; validar aquí evita perder la observación en silencio (H60).
+   */
+  tieneObservacionSinEstado(idAlumno: number): boolean {
+    const cambio = this.cambios[idAlumno];
+    if (!cambio?.observacion?.trim()) return false;
+    return !this.getEstado(idAlumno);
+  }
+
+  private alumnosConObservacionSinEstado(): AlumnoAsistencia[] {
+    return this.alumnos().filter((alumno) =>
+      this.tieneObservacionSinEstado(alumno.id_alumno),
+    );
   }
 
   /**
@@ -226,7 +248,21 @@ export class DocenteAsistenciaComponent implements OnInit {
       return;
     }
 
-    if (!confirm(`¿Guardar la asistencia de ${this.totalCambios} estudiante(s)?`)) return;
+    const sinEstado = this.alumnosConObservacionSinEstado();
+    if (sinEstado.length > 0) {
+      const nombres = sinEstado
+        .slice(0, 3)
+        .map((alumno) => alumno.nombre_completo)
+        .join(', ');
+      const restantes =
+        sinEstado.length > 3 ? ` y ${sinEstado.length - 3} más` : '';
+      this.errorValidacion.set(
+        `No se puede guardar: hay observación sin estado de asistencia en ${nombres}${restantes}. Marca Presente, Tardanza o Falta antes de guardar.`,
+      );
+      return;
+    }
+
+    this.errorValidacion.set(null);
 
     const usuarioActual = this.usuario();
     const id_personal = usuarioActual?.info_adicional?.id_personal;
@@ -235,18 +271,28 @@ export class DocenteAsistenciaComponent implements OnInit {
     Object.keys(this.cambios).forEach((key) => {
       const idAlumno = Number(key);
       const cambio = this.cambios[idAlumno];
-      if (cambio.estado) {
+      const estado = cambio.estado || this.getEstado(idAlumno);
+      if (estado) {
         registros.push({
           id_alumno: idAlumno,
           id_curso: curso.id_curso,
           id_personal,
           id_grado: curso.id_grado,
           fecha: this.fecha(),
-          estado: cambio.estado,
-          observacion: cambio.observacion || null,
+          estado,
+          observacion: cambio.observacion?.trim() || null,
         });
       }
     });
+
+    if (registros.length === 0) {
+      this.errorValidacion.set(
+        'Marca Presente, Tardanza o Falta en al menos un alumno antes de guardar.',
+      );
+      return;
+    }
+
+    if (!confirm(`¿Guardar la asistencia de ${registros.length} estudiante(s)?`)) return;
 
     this.guardando.set(true);
     this.mensajeExito.set(null);
@@ -259,6 +305,7 @@ export class DocenteAsistenciaComponent implements OnInit {
       next: (res) => {
         this.guardando.set(false);
         if (res.success) {
+          this.errorValidacion.set(null);
           const data = res.data || {};
           const guardados = Number(data.guardados ?? data.insertados) || 0;
           const totalErrores = Number(data.total_errores) || 0;

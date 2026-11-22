@@ -73,6 +73,13 @@
   </div>
   }
 
+  @if (errorValidacion()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ errorValidacion() }}
+  </div>
+  }
+
   <!-- RESUMEN DE ASISTENCIA -->
   @if (!cargandoLista() && cursoSeleccionado()) {
   <div class="resumen-grid">
@@ -140,7 +147,10 @@
         </thead>
         <tbody>
           @for (alumno of alumnos(); track alumno.id_alumno; let i = $index) {
-          <tr [ngClass]="{ 'row-modificada': cambios[alumno.id_alumno] }">
+          <tr [ngClass]="{
+            'row-modificada': cambios[alumno.id_alumno],
+            'row-error': tieneObservacionSinEstado(alumno.id_alumno)
+          }">
             <td style="text-align: center;">{{ (i + 1).toString().padStart(2, '0') }}</td>
             <td>{{ alumno.dni }}</td>
             <td><strong>{{ alumno.nombre_completo }}</strong></td>
@@ -161,9 +171,17 @@
               </div>
             </td>
             <td>
-              <input type="text" class="input-observacion" placeholder="Ej. Justificado por dirección"
+              <input type="text" class="input-observacion"
+                [class.input-error]="tieneObservacionSinEstado(alumno.id_alumno)"
+                placeholder="Ej. Justificado por dirección"
                 [ngModel]="getObservacion(alumno.id_alumno)"
                 (ngModelChange)="cambiarObservacion(alumno.id_alumno, $event)" />
+              @if (tieneObservacionSinEstado(alumno.id_alumno)) {
+              <small class="error-inline">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Marca Presente, Tardanza o Falta para guardar esta observación.
+              </small>
+              }
             </td>
           </tr>
           }

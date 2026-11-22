@@ -4,7 +4,7 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Próximo bloque de trabajo:** Fase 3 (H60, H57); H61 y H56 ya cerrados.
+> **Próximo bloque de trabajo:** Fase 3 (H57); H61, H56 y H60 ya cerrados.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
 > actas solo ADMIN) desplegados en Render con `3052f44`; **H48** (cierre/reapertura real de
@@ -12,8 +12,8 @@
 > La migración H48 ya está aplicada en Supabase (4 columnas nuevas + índice
 > `uq_acta_anio_bimestre_grado`, 0 actas). `test:e2e` quedó en **19 PASS**.
 > **H61** (día de la semana) cerrado en local el 22/11/2026; su migración de datos es
-> idempotente y aún **no** se aplicó en Supabase. **H56** (asistencia por año) también
-> quedó cerrado en local el 22/11/2026.
+> idempotente y aún **no** se aplicó en Supabase. **H56** (asistencia por año) y **H60**
+> (observación sin estado) también quedaron cerrados en local el 22/11/2026.
 
 ---
 
@@ -233,6 +233,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H51 | Selector de bimestre en libretas y PDF por bimestre | `d9071e5` (22/11/2026), desplegado con `9648689` |
 | H61 | Día de la semana derivado en backend, en español y datos históricos normalizados | 22/11/2026 (local) |
 | H56 | Asistencia por año en historial, resumen, libreta, PDF y resumen por grado; H13 incluido | 22/11/2026 (local) |
+| H60 | Observación sin estado bloqueada con validación inline; con estado se guarda y persiste | 22/11/2026 (local) |
 
 ---
 
@@ -437,6 +438,10 @@ En esta fase **no** se prepara el despliegue definitivo.
   en reportes de asistencia.
 - H56: la UI de “Mi Asistencia”, la ficha del docente y la libreta envían el año desde
   `ConfiguracionService` (`anioLectivo()`).
+- H60: una observación sin P/T/F se marca en rojo y bloquea el guardado con mensaje
+  inline; no se envía al backend hasta marcar estado. El backend sigue exigiendo P/T/F.
+  Verificado en navegador: sin estado no hubo confirmación ni POST; con “Presente” se
+  guardó y la observación persistió tras recargar.
 
 ---
 
@@ -447,8 +452,7 @@ es la **Fase 3**, en este orden:
 
 1. ~~**H61 — Día de la semana (P2).**~~ ✅ Cerrado el 22/11/2026.
 2. ~~**H56 — Asistencia por año (P1).**~~ ✅ Cerrado el 22/11/2026 (incluye H13).
-3. **H60 — Observación sin estado (P2).** Exigir estado cuando hay observación o guardarla
-   con un estado por defecto, con validación en la UI.
+3. ~~**H60 — Observación sin estado (P2).**~~ ✅ Cerrado el 22/11/2026.
 4. **H57 — Panel del estudiante (P1).** Usar el grado y los cursos reales de la matrícula;
    no felicitar si no hay notas.
 5. Al cerrar cada hallazgo, ejecutar `npm run test:e2e` (**19 PASS**) y actualizar

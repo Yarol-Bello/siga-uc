@@ -256,6 +256,10 @@ tr.row-modificada td {
   background: #fffbeb !important;
 }
 
+tr.row-error td {
+  background: #fef2f2 !important;
+}
+
 /* SELECTOR DE ASISTENCIA */
 .attendance-selector {
   display: flex;
@@ -325,6 +329,25 @@ tr.row-modificada td {
     border-color: #800020;
     background: white;
   }
+
+  &.input-error {
+    border-color: #ef4444;
+    background: #fff7f7;
+
+    &:focus {
+      border-color: #dc2626;
+    }
+  }
+}
+
+.error-inline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  color: #b91c1c;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .loading-state {

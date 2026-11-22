@@ -59,6 +59,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > **Actualización 22/11/2026 (H56):** la asistencia (historial, resumen, estadísticas,
 > libreta, PDF y resumen por grado) filtra por año lectivo; la UI envía `?anio=`.
 > H13 también queda resuelto. Ver H56 en la sección 3.
+>
+> **Actualización 22/11/2026 (H60):** una observación sin estado P/T/F ya no se pierde:
+> la UI la bloquea con validación inline. Ver H60 en la sección 3.
 
 ---
 
@@ -633,6 +636,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Filtrar por `EXTRACT(YEAR FROM fecha)` en todas las consultas de asistencia y enviar `?anio=` desde la UI |
 | Esfuerzo | M |
 | Estado | ✅ Resuelto (22/11/2026): historial, resumen, estadísticas, libreta, PDF y resumen por grado filtran por año; sin `?anio=` se usa `ANIO_LECTIVO` y un valor explícito tiene prioridad. La UI de “Mi Asistencia”, la ficha del docente y la libreta envían el año. Verificado en base desechable con 2026/2027: 2027 devolvió solo 2027 (1 registro) y 2026 solo 2026 (9 registros); libreta y resumen por grado coincidieron |
+
+### H60 — Observación sin estado de asistencia se pierde
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Media |
+| Evidencia | La UI creaba el cambio con `estado: ''` y al guardar solo enviaba registros con estado; la observación se descartaba |
+| Impacto | El docente escribía una justificación sin marcar P/T/F y, al recargar, la observación desaparecía |
+| Recomendación | Exigir estado cuando hay observación y mostrar validación inline; el backend mantiene la validación P/T/F |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): si hay observación sin estado, la fila se marca en rojo y el guardado se bloquea con un mensaje inline; si hay estado, la observación se envía y persiste. El backend no se relajó: sigue rechazando estados distintos de P/T/F |
 
 ---
 

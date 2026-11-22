@@ -319,14 +319,15 @@ carga, no puede operar.
 
 1. Docente marca P/T/F por alumno.
 2. Frontend envía solo los cambios y calcula la fecha con el helper local (nunca `new Date('YYYY-MM-DD')`).
-3. Backend valida `estado ∈ {P,T,F}` y deriva `dia_semana` desde `fecha` con `EXTRACT(ISODOW)`; no usa el día enviado por el cliente (H61).
-4. Upsert:
+3. Si hay observación sin estado, la UI la marca en rojo y bloquea el guardado con un mensaje inline; no se pierde en silencio (H60).
+4. Backend valida `estado ∈ {P,T,F}` y deriva `dia_semana` desde `fecha` con `EXTRACT(ISODOW)`; no usa el día enviado por el cliente (H61).
+5. Upsert:
    ```sql
    INSERT ... ON CONFLICT (id_alumno, id_curso, fecha)
    DO UPDATE SET dia_semana, estado, observacion, justificada, motivo_justificacion
    ```
-5. Transacción por lote; errores por fila se acumulan en `errores[]` y no revierten el resto.
-6. El historial devuelve `dia_semana` en español calculado desde la fecha, también para registros antiguos (H61).
+6. Transacción por lote; errores por fila se acumulan en `errores[]` y no revierten el resto.
+7. El historial devuelve `dia_semana` en español calculado desde la fecha, también para registros antiguos (H61).
 
 **Cálculos**
 

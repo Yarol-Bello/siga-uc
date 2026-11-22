@@ -93,6 +93,7 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-50 | Estados válidos: P, T, F | Service + BD `CHECK` | 400 |
 | RN-50.1 | `dia_semana` se deriva de `fecha` en el backend (ISODOW), en español; el valor del frontend se ignora | `asistenciaDao.registrar`/`registrarMasivo` | H61 |
 | RN-50.2 | Las fechas `YYYY-MM-DD` se interpretan como locales; nunca con `new Date('YYYY-MM-DD')` | `fecha.util.ts` | H61 |
+| RN-50.3 | Una observación exige estado P/T/F; la UI bloquea y el backend también rechaza el estado vacío | `docente-asistencia` + `asistenciaService` | H60 |
 | RN-51 | Un registro por alumno, curso y fecha | BD `UNIQUE` | Upsert |
 | RN-52 | Solo aparecen alumnos `Matriculado` | Query de listado | — |
 | RN-53 | El guardado masivo es parcial | DAO | `insertados` + `errores[]` |
