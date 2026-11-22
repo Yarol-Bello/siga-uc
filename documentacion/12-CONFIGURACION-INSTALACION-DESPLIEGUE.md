@@ -116,6 +116,7 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -132,6 +133,7 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -539,6 +541,7 @@ Crear una tarea diaria a las 02:00:
 | `database/migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` a pensiones y regulariza deuda futura de retirados |
 | `database/migracion_h47_horarios.sql` | Crea `periodos_clase`, reemplaza `horarios` y agrega restricciones/triggers de horarios |
 | `database/migracion_h48_actas.sql` | Agrega bimestre, reapertura y unicidad de actas; backfill y validación de duplicados |
+| `database/migracion_h61_dia_semana.sql` | Normaliza `dia_semana` de asistencias a español y lo alinea con la fecha; solo datos e idempotente |
 | `database/migracion_*.sql` | Parches idempotentes para bases existentes |
 | `database/siga_uc_backup.sql` | Backup local (ignorado) |
 

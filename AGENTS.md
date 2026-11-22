@@ -86,6 +86,7 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
@@ -97,6 +98,7 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 ```
 
 > `siga_uc_completo.sql` es el **dump de demo** (esquema + 21 alumnos ficticios +

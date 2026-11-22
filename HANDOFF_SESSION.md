@@ -300,8 +300,8 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Producción:** `siga_uc.sql` → `seed_produccion.sql` (con `-v admin_password`) →
   `migracion_h32_anulacion_pagos.sql` → `migracion_h10_h38_concurrencia_pagos.sql` →
   `migracion_h07_auditoria.sql` → `migracion_h45_pensiones_anuladas.sql` →
-  `migracion_h47_horarios.sql` → `migracion_h48_actas.sql` → migraciones futuras, en ese
-  orden.
+  `migracion_h47_horarios.sql` → `migracion_h48_actas.sql` →
+  `migracion_h61_dia_semana.sql` → migraciones futuras, en ese orden.
 - No mezclar ambos escenarios: `siga_uc.sql` y `siga_uc_completo.sql` son excluyentes.
 - `seed_produccion.sql` crea una ficha `personal` mínima del admin porque
   `carga_curricular.id_personal` es NOT NULL; la carga inicial queda asignada al admin
@@ -493,7 +493,7 @@ Nada de esta lista se hace en la fase actual.
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | H47 y H48 ya aplicadas en Supabase. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
 | **Integridad** | `npm run test:integridad` contra la base definitiva: 10 PASS |
 
 ---
@@ -502,9 +502,10 @@ Nada de esta lista se hace en la fase actual.
 
 ```powershell
 git log -1 --oneline
-# Solo si la base aún no tiene H47/H48:
+# Solo si la base aún no tiene H47/H48/H61:
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
 # Requiere el backend corriendo en localhost:3000
 curl.exe -s http://localhost:3000/api/health
@@ -514,7 +515,7 @@ npm run test:e2e                           # 19 PASS, exit 0; elimina siga_uc_e2
 npm run test:h47-generador                 # 4 PASS; no toca BD
 ```
 
-El primero confirma el commit; los dos `psql` aplican H47/H48 si faltan; el conteo debe
+El primero confirma el commit; los tres `psql` aplican H47/H48/H61 si faltan; el conteo debe
 devolver **40** y `ux_pago_pension_activo`; el health debe devolver `success: true` y
 `database: "ok"` **con el backend en marcha**; el smoke debe terminar en **11 PASS, 0
 FAIL**; integridad puede reportar violaciones reales de seed; E2E debe terminar en
@@ -532,5 +533,6 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 cd siga-uc-backend; npm run test:integridad   # 10 PASS
 ```

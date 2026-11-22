@@ -20,6 +20,7 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -37,6 +38,7 @@ psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
 psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 ```
 
 `seed_produccion.sql` crea únicamente catálogos y configuración: 4 roles, 5 grados, 11 cursos,
@@ -72,6 +74,7 @@ caja, bitácora ni becas.
 | `migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` al CHECK de `pensiones` y regulariza deuda futura de alumnos ya retirados. |
 | `migracion_h47_horarios.sql` | Crea `periodos_clase`, reemplaza `horarios` por el modelo con `id_carga`/período/estado, migra las filas antiguas a `horarios_h47_backup` y agrega restricciones y triggers. |
 | `migracion_h48_actas.sql` | Agrega `bimestre`, reapertura y unicidad por año/bimestre/grado a `actas_bimestrales`; backfill de bimestre y aborto ante vacíos/duplicados. Idempotente. |
+| `migracion_h61_dia_semana.sql` | Solo datos: normaliza `asistencia_alumnos.dia_semana` a español y lo alinea con `fecha`. Idempotente; no cambia el esquema. |
 | `preparar_anio_lectivo.sql` | Utilidad idempotente para copiar conceptos `MATRICULA`/`PENSION` a un año nuevo (`-v anio=2027`). |
 | `siga_uc_backup.sql` | Backup local con datos. Ignorado por Git; no se usa para instalar. |
 
