@@ -4,8 +4,8 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Próximo bloque de trabajo:** Fase 4 (H53, H54, H55, H58 y H72); H64 es configuración
-> de Render. La Fase 3 quedó cerrada en local y falta desplegarla.
+> **Próximo bloque de trabajo:** desplegar las Fases 3 y 4 y aplicar la migración H61 en
+> Supabase. H64 (`/* → /index.html`, 200) queda como configuración de Render.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
 > actas solo ADMIN) desplegados en Render con `3052f44`; **H48** (cierre/reapertura real de
@@ -16,6 +16,10 @@
 > idempotente y aún **no** se aplicó en Supabase. **H56** (asistencia por año), **H60**
 > (observación sin estado) y **H57** (panel del estudiante) también quedaron cerrados en
 > local el 22/11/2026. La Fase 3 está completa en local; falta desplegar.
+>
+> **Fase 4 (credibilidad de la UI):** H53, H54, H55, H58 y H72 cerrados en local el
+> 22/11/2026. H64 es solo configuración de Render. Ver sección 3 y la verificación de la
+> Fase 4.
 
 ---
 
@@ -78,6 +82,8 @@ En esta fase **no** se prepara el despliegue definitivo.
   **H48/H51** (`d9071e5`, desplegados con `9648689`).
 - **Commits Fase 3 (local, 22/11/2026):** H61 `269e1ae`, H56 `15aab48`, H60 `410b35d`,
   H57 `2cf8477`. No modifican el esquema; solo H61 trae una migración de datos idempotente.
+- **Commits Fase 4 (local, 22/11/2026):** H53 `6c7c5ff`, H54 `e030432`, H55 `24ddbc3`,
+  H58 `eed93b6` + ajuste de impresión `8bea060`, H72 `e58feca`. Sin cambios de esquema.
 - **Estado:** demo desplegada y actualizada; Supabase tiene H47 y H48 aplicados y los datos
   demo cargados. La base local quedó limpia y el script demo probado.
 - **Datos demo H47:** `database/demo_h47_docentes.sql` crea solo los docentes que faltan
@@ -97,6 +103,15 @@ En esta fase **no** se prepara el despliegue definitivo.
   pedido en historial, resumen, libreta y resumen por grado. H60: navegador real, sin
   estado no hubo POST y con “Presente” la observación persistió. H57: alumno `74829103`
   (2do) mostró sidebar “2do de Secundaria”, KPI 11, mensaje neutral y horario coherente.
+- **Verificación Fase 4 (22/11/2026, local):** `test:e2e` **19 PASS**, build Angular OK y
+  `node --check` OK. Prueba real con los 4 roles: DOCENTE navegó a Asistencia/Notas con
+  `id_curso=5&id_grado=1` y curso preseleccionado; SECRETARÍA abrió Tesorería con
+  `id_preticket=1&id_alumno=1` y el modal del alumno correcto; ADMIN vio el QR real
+  (`QR-50182736-...`, idéntico a BD) en `<img>` y descargó la libreta PDF (`%PDF`, 3570
+  bytes); ESTUDIANTE mantuvo su panel de 2do y recibió 404 en ruta inexistente. La vista
+  de impresión quedó sin sidebar/header/filtros en reporte, carné y cierre de caja. Login
+  con `returnUrl` volvió a `/docente/asistencia?id_curso=1&id_grado=1`. Deep link directo
+  en local respondió **200**; no depende de `404.html` (H64 queda para Render).
 - **Verificación datos demo H47 (21/11/2026):** script ejecutado dos veces sin duplicados;
   local **54 cargas/142 h**, docentes 30/30/30/27/25; generación **142/142**, 0 sin ubicar;
   2do y 3ro publicados; Demo 1 vio 12 bloques en dos grados; alumno de 2do vio solo su grado
@@ -246,11 +261,11 @@ En esta fase **no** se prepara el despliegue definitivo.
 | H56 | Asistencia por año en historial, resumen, libreta, PDF y resumen por grado; H13 incluido | `15aab48` (22/11/2026, local) |
 | H60 | Observación sin estado bloqueada con validación inline; con estado se guarda y persiste | `410b35d` (22/11/2026, local) |
 | H57 | Grado real en sidebar, cursos desde carga curricular y mensaje neutral sin notas | `2cf8477` (22/11/2026, local) |
-| H53 | Botones Asistencia/Notas del docente navegan con curso/grado preseleccionado | 22/11/2026 (local) |
-| H54 | “Cobrar” navega a tesorería con pre-ticket/alumno y reutiliza el modal de cobro | 22/11/2026 (local) |
-| H55 | Carné del personal con QR real generado desde `codigo_qr` | 22/11/2026 (local) |
-| H58 | Impresión aislada de reportes/carné; PDF de backend intacto para libreta/boleta/acta | 22/11/2026 (local) |
-| H72 | Página 404 propia y `returnUrl` interno respetado tras el login | 22/11/2026 (local) |
+| H53 | Botones Asistencia/Notas del docente navegan con curso/grado preseleccionado | `6c7c5ff` (22/11/2026, local) |
+| H54 | “Cobrar” navega a tesorería con pre-ticket/alumno y reutiliza el modal de cobro | `e030432` (22/11/2026, local) |
+| H55 | Carné del personal con QR real generado desde `codigo_qr` | `24ddbc3` (22/11/2026, local) |
+| H58 | Impresión aislada de reportes/carné; PDF de backend intacto para libreta/boleta/acta | `eed93b6`, `8bea060` (22/11/2026, local) |
+| H72 | Página 404 propia y `returnUrl` interno respetado tras el login | `e58feca` (22/11/2026, local) |
 
 ---
 
@@ -463,22 +478,27 @@ En esta fase **no** se prepara el despliegue definitivo.
   sale de `GET /carga-curricular?id_grado=&anio=`, no de las notas. La felicitación solo
   se muestra si `tieneNotas()`. Verificado con `74829103` (2do): sidebar “2do de
   Secundaria”, KPI 11, mensaje neutral y horario “2do de Secundaria Única”.
+- H58: los documentos imprimibles llevan `documento-visible`; los que están dentro de un
+  modal añaden `documento-modal` para no salir del flujo (si se posicionan absolutos, el
+  modal colapsa y recorta el QR/reporte). Libreta, boleta y acta siguen descargando PDF de
+  backend; no cambiar esos botones a `window.print()`.
+- H72: el login solo acepta `returnUrl` que empiece con `/`, no con `//` y no sea `/login`.
+  Una ruta desconocida con sesión muestra `NotFoundComponent`, no el login.
+- H64: un deep link directo debe responder 200 desde el servidor (rewrite de Render). El
+  repo genera `404.html`, pero la app no depende de él para rutas internas.
 
 ---
 
-## 7. Próximo paso exacto (Fase 3)
+## 7. Próximo paso exacto (despliegue de Fases 3 y 4)
 
-El despliegue quedó al día: Render en `9648689` y Supabase con H47/H48. El siguiente bloque
-es la **Fase 3**, en este orden:
+Las Fases 3 y 4 quedaron cerradas en local. Render sigue en `9648689` y Supabase con
+H47/H48; la migración H61 es solo datos y aún no está aplicada allí.
 
-1. ~~**H53 — Botones del docente (P1).**~~ ✅ Cerrado el 22/11/2026.
-2. ~~**H54 — Cobrar pre-ticket desde Secretaría (P1).**~~ ✅ Cerrado el 22/11/2026.
-3. ~~**H55 — Carné QR real del personal (P1).**~~ ✅ Cerrado el 22/11/2026.
-4. ~~**H58 — Impresión y PDF (P2).**~~ ✅ Cerrado el 22/11/2026.
-5. ~~**H72 — 404 y returnUrl (P2).**~~ ✅ Cerrado el 22/11/2026.
-6. **H64:** configuración de Render (`/* → /index.html`, 200), no se toca en el repo.
-7. Al cerrar, desplegar backend/frontend juntos, aplicar
-   `migracion_h61_dia_semana.sql` a mano en Supabase y ejecutar smoke/E2E.
+1. Desplegar backend y frontend juntos (H53–H58, H60, H61, H72).
+2. Aplicar a mano `database/migracion_h61_dia_semana.sql` en Supabase.
+3. Configurar en Render el rewrite `/* → /index.html` con estado 200 (H64).
+4. Ejecutar smoke/E2E contra el despliegue y revisar que los deep links no dependan de
+   `404.html`.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
