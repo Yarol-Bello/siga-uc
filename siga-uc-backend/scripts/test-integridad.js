@@ -11,7 +11,7 @@
  * Conexión: usa DATABASE_URL si existe; si no, DB_HOST/DB_PORT/DB_USER/
  * DB_PASSWORD/DB_NAME. Las credenciales nunca se imprimen.
  *
- * Códigos de salida: 0 si las 14 invariantes pasan; 1 si hay algún FAIL.
+ * Códigos de salida: 0 si las 16 invariantes pasan; 1 si hay algún FAIL.
  */
 
 "use strict";
@@ -485,6 +485,42 @@ async function main() {
         WHERE c.anio_lectivo IS DISTINCT FROM a.anio_lectivo
       ) q
       ORDER BY q.tipo, q.id_registro
+      LIMIT 5
+    `,
+  );
+
+  // 15. Todo carga_curricular.id_grado pertenece al mismo año de la carga.
+  await verificarInvariante(
+    15,
+    "Carga curricular con grado de otro año",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT cc.id_carga, cc.anio_lectivo,
+               cc.id_grado, g.anio_lectivo AS grado_anio
+        FROM carga_curricular cc
+        INNER JOIN grados g ON g.id_grado = cc.id_grado
+        WHERE g.anio_lectivo IS DISTINCT FROM cc.anio_lectivo
+      ) q
+      ORDER BY q.id_carga
+      LIMIT 5
+    `,
+  );
+
+  // 16. Todo tutores_grado.id_grado pertenece al mismo año del tutor.
+  await verificarInvariante(
+    16,
+    "Tutor de grado con grado de otro año",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT tg.id_tutor, tg.anio_lectivo,
+               tg.id_grado, g.anio_lectivo AS grado_anio
+        FROM tutores_grado tg
+        INNER JOIN grados g ON g.id_grado = tg.id_grado
+        WHERE g.anio_lectivo IS DISTINCT FROM tg.anio_lectivo
+      ) q
+      ORDER BY q.id_tutor
       LIMIT 5
     `,
   );

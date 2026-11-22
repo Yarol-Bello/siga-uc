@@ -6,7 +6,7 @@
  *  - Solo opera sobre una base cuyo nombre contenga "_e2e" (por defecto
  *    siga_uc_e2e). Nunca toca siga_uc ni una base de Supabase.
  *  - Crea la base, carga el dump y las migraciones, arranca el backend en el
- *    puerto 3101, ejecuta 19 flujos y al final detiene el backend y elimina la
+ *    puerto 3101, ejecuta 38 flujos y al final detiene el backend y elimina la
  *    base con dropdb --force.
  *  - Si la limpieza falla, imprime los comandos manuales.
  *
@@ -16,7 +16,7 @@
  * Requiere las credenciales del seed en SMOKE_* (el .env local ya las tiene).
  * Nunca imprime tokens, contraseñas ni claves temporales de alumnos.
  *
- * Códigos de salida: 0 si las 14 pruebas pasan y la limpieza es correcta;
+ * Códigos de salida: 0 si todas las pruebas pasan y la limpieza es correcta;
  * 1 si hay algún FAIL, falla la preparación o falla la limpieza.
  */
 
@@ -2232,6 +2232,941 @@ async function ejecutarPruebas() {
       `pre-ticket 2027=${preticket[0].id_preticket}, 2026 sin cambios`,
     );
   });
+
+  // ============================================================
+  // FASE 6.2 — ROLLOVER, ACTIVACIÓN Y REVERSIÓN (H49)
+  // Destinos limpios: 2028 en adelante para no chocar con el 2027
+  // que dejan las pruebas 20–27.
+  // ============================================================
+  // El dump de demo asigna 60 h a un docente (capacidad 40). En esta base
+  // desechable se equilibra la carga del año origen para probar el rollover
+  // sin sobrecapacidad. No se toca ninguna base real.
+  const equilibrarCargaOrigen = async () => {
+    const periodos = await sql(
+      `SELECT COUNT(*)::int AS total
+       FROM periodos_clase
+       WHERE anio_lectivo = $1 AND tipo = 'CLASE' AND activo`,
+      [ANIO],
+    );
+    const capacidad = Number(periodos[0].total) * 5;
+    const cargas = await sql(
+      `SELECT cc.id_carga, cc.id_personal,
+              COALESCE(cc.horas_asignadas, 0)::int AS horas
+       FROM carga_curricular cc
+       WHERE cc.anio_lectivo = $1
+       ORDER BY cc.id_grado, cc.id_curso`,
+      [ANIO],
+    );
+    assert.ok(cargas.length > 0, "No hay carga del año origen para equilibrar");
+
+    const docentes = [...new Set(cargas.map((c) => Number(c.id_personal)))];
+    const totales = new Map(docentes.map((id) => [id, 0]));
+    for (const carga of cargas) {
+      const id = Number(carga.id_personal);
+      totales.set(id, totales.get(id) + Number(carga.horas));
+    }
+
+    const ordenadas = [...cargas].sort(
+      (a, b) => Number(b.horas) - Number(a.horas) || a.id_carga - b.id_carga,
+    );
+    for (const carga of ordenadas) {
+      const actual = Number(carga.id_personal);
+      if (totales.get(actual) <= capacidad) continue;
+
+      const destino = docentes.find(
+        (id) =>
+          id !== actual &&
+          totales.get(id) + Number(carga.horas) <= capacidad,
+      );
+      if (!destino) continue;
+
+      await sql(
+        `UPDATE carga_curricular SET id_personal = $1 WHERE id_carga = $2`,
+        [destino, carga.id_carga],
+      );
+      totales.set(actual, totales.get(actual) - Number(carga.horas));
+      totales.set(destino, totales.get(destino) + Number(carga.horas));
+    }
+
+    const excedidos = [...totales.entries()].filter(
+      ([, horas]) => horas > capacidad,
+    );
+    assert.equal(
+      excedidos.length,
+      0,
+      `No se pudo equilibrar la carga (capacidad ${capacidad} h): ${JSON.stringify(
+        excedidos,
+      )}`,
+    );
+  };
+
+  await equilibrarCargaOrigen();
+
+  const ANIO_ROLLOVER = ANIO + 2; // 2028
+  const ANIO_OFERTA_DISTINTA = ANIO + 3; // 2029
+  const ANIO_DOCENTE = ANIO + 4; // 2030
+  const ANIO_HASH = ANIO + 5; // 2031
+  const ANIO_SIN_OFERTA = ANIO + 6; // 2032
+  const ANIO_REVERSION = ANIO + 7; // 2033
+  const ANIO_ROLLBACK = ANIO + 8; // 2034
+
+  const contarAnio = async (anio) => {
+    const filas = await sql(
+      `SELECT
+         (SELECT COUNT(*)::int FROM anios_lectivos WHERE anio = $1) AS anio,
+         (SELECT COUNT(*)::int FROM grados WHERE anio_lectivo = $1) AS grados,
+         (SELECT COUNT(*)::int FROM conceptos_pago WHERE anio_lectivo = $1) AS conceptos,
+         (SELECT COUNT(*)::int FROM periodos_clase WHERE anio_lectivo = $1) AS periodos,
+         (SELECT COUNT(*)::int FROM carga_curricular WHERE anio_lectivo = $1) AS carga,
+         (SELECT COUNT(*)::int FROM tutores_grado WHERE anio_lectivo = $1) AS tutores,
+         (SELECT COUNT(*)::int FROM alumnos WHERE anio_lectivo = $1) AS alumnos,
+         (SELECT COUNT(*)::int FROM actas_bimestrales WHERE anio_lectivo = $1) AS actas,
+         (SELECT COUNT(*)::int FROM horarios WHERE anio_lectivo = $1) AS horarios,
+         (SELECT COUNT(*)::int FROM pagos p
+            INNER JOIN alumnos a ON a.id_alumno = p.id_alumno
+            WHERE a.anio_lectivo = $1) AS pagos`,
+      [anio],
+    );
+    return filas[0];
+  };
+
+  const limpiarAnioRollover = async (anio) => {
+    await sql(`DELETE FROM tutores_grado WHERE anio_lectivo = $1`, [anio]);
+    await sql(`DELETE FROM carga_curricular WHERE anio_lectivo = $1`, [anio]);
+    await sql(`DELETE FROM periodos_clase WHERE anio_lectivo = $1`, [anio]);
+    await sql(`DELETE FROM conceptos_pago WHERE anio_lectivo = $1`, [anio]);
+    await sql(`DELETE FROM grados WHERE anio_lectivo = $1`, [anio]);
+    await sql(`DELETE FROM anios_lectivos WHERE anio = $1`, [anio]);
+  };
+
+  // 28. Preview sin escrituras.
+  await prueba(
+    28,
+    "Rollover: preview 2026→2028 sin escrituras y con hash",
+    async () => {
+      const antes = await contarAnio(ANIO_ROLLOVER);
+      const respuesta = await api("/anios-lectivos/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: { anio_origen: ANIO, anio_destino: ANIO_ROLLOVER },
+      });
+      const { datos } = await leerJson(respuesta);
+      const despues = await contarAnio(ANIO_ROLLOVER);
+
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      const preview = datos?.data;
+      assert.ok(preview?.preview_hash, "El preview no devolvió preview_hash");
+      assert.match(
+        preview.preview_hash,
+        /^[a-f0-9]{64}$/,
+        "El preview_hash no es SHA-256 hexadecimal",
+      );
+      assert.equal(
+        preview.bloqueos?.length,
+        0,
+        `El preview no debía tener bloqueos: ${JSON.stringify(preview.bloqueos)}`,
+      );
+      assert.ok(
+        Number(preview.resumen?.grados?.total) >= 1,
+        "El preview no contó grados",
+      );
+      assert.ok(
+        Number(preview.resumen?.conceptos?.matricula) >= 1,
+        "El preview no contó el concepto MATRICULA",
+      );
+      assert.ok(
+        Number(preview.resumen?.carga?.total) >= 1,
+        "El preview no contó carga curricular",
+      );
+      assert.deepEqual(despues, antes, "El preview escribió en el año destino");
+
+      ctx.rolloverHash = preview.preview_hash;
+      ctx.rolloverResumen = preview.resumen;
+      ctx.rolloverCreables =
+        Number(preview.resumen.grados.total) +
+        Number(preview.resumen.conceptos.total) +
+        Number(preview.resumen.periodos.total) +
+        Number(preview.resumen.carga.total) +
+        Number(preview.resumen.tutores.total);
+
+      registrar(
+        28,
+        "Rollover: preview 2026→2028 sin escrituras y con hash",
+        "PASS",
+        `hash=${preview.preview_hash.slice(0, 12)}…, bloqueos=0`,
+      );
+    },
+  );
+
+  // 29. Confirmación: solo oferta, sin actividad.
+  await prueba(
+    29,
+    "Rollover: confirm clona solo oferta (0 alumnos/actas/horarios/pagos)",
+    async () => {
+      const respuesta = await api("/anios-lectivos/rollover", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          anio_origen: ANIO,
+          anio_destino: ANIO_ROLLOVER,
+          preview_hash: ctx.rolloverHash,
+          confirmar: true,
+        },
+      });
+      const { datos } = await leerJson(respuesta);
+
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      assert.ok(
+        Number(datos?.data?.creados) > 0,
+        "El confirm no creó ninguna fila de oferta",
+      );
+
+      const conteos = await contarAnio(ANIO_ROLLOVER);
+      assert.ok(Number(conteos.grados) > 0, "No se clonaron grados");
+      assert.ok(Number(conteos.conceptos) > 0, "No se clonaron conceptos");
+      assert.ok(Number(conteos.periodos) > 0, "No se clonaron períodos");
+      assert.ok(Number(conteos.carga) > 0, "No se clonó carga curricular");
+      assert.equal(conteos.alumnos, 0, "El rollover creó alumnos");
+      assert.equal(conteos.actas, 0, "El rollover creó actas");
+      assert.equal(conteos.horarios, 0, "El rollover creó horarios");
+      assert.equal(conteos.pagos, 0, "El rollover creó pagos");
+
+      const anio = await sql(
+        `SELECT estado, observacion FROM anios_lectivos WHERE anio = $1`,
+        [ANIO_ROLLOVER],
+      );
+      assert.equal(anio[0]?.estado, "PLANIFICADO", "El destino no quedó PLANIFICADO");
+      assert.match(
+        String(anio[0]?.observacion || ""),
+        /Rollover desde \d{4}/,
+        "El destino no guardó la marca del rollover",
+      );
+
+      ctx.rolloverConteos = conteos;
+      ctx.rolloverCreados = Number(datos.data.creados);
+
+      registrar(
+        29,
+        "Rollover: confirm clona solo oferta (0 alumnos/actas/horarios/pagos)",
+        "PASS",
+        `creados=${datos.data.creados}, grados=${conteos.grados}, carga=${conteos.carga}`,
+      );
+    },
+  );
+
+  // 30. Confirmación repetida: idempotente.
+  await prueba(
+    30,
+    "Rollover: repetir confirm es idempotente y no duplica",
+    async () => {
+      const antes = await contarAnio(ANIO_ROLLOVER);
+      const respuesta = await api("/anios-lectivos/rollover", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          anio_origen: ANIO,
+          anio_destino: ANIO_ROLLOVER,
+          preview_hash: ctx.rolloverHash,
+          confirmar: true,
+        },
+      });
+      const { datos } = await leerJson(respuesta);
+      const despues = await contarAnio(ANIO_ROLLOVER);
+
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      assert.equal(Number(datos?.data?.creados), 0, "El segundo confirm creó filas");
+      assert.ok(
+        Number(datos?.data?.existentes) > 0,
+        "El segundo confirm no reportó existentes",
+      );
+      assert.deepEqual(despues, antes, "El segundo confirm duplicó filas");
+
+      registrar(
+        30,
+        "Rollover: repetir confirm es idempotente y no duplica",
+        "PASS",
+        `creados=0, existentes=${datos.data.existentes}`,
+      );
+    },
+  );
+
+  // 31. Destino con oferta distinta.
+  await prueba(
+    31,
+    "Rollover: destino con oferta distinta responde 409 con detalle",
+    async () => {
+      await sql(
+        `INSERT INTO grados (nombre_grado, nivel, seccion, anio_lectivo, orden)
+         VALUES ('1ro de Secundaria', 'SECUNDARIA', 'Única', $1, 2)`,
+        [ANIO_OFERTA_DISTINTA],
+      );
+
+      const preview = await api("/anios-lectivos/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          anio_origen: ANIO,
+          anio_destino: ANIO_OFERTA_DISTINTA,
+        },
+      });
+      const datosPreview = await leerJson(preview);
+      assert.equal(preview.status, 200, detalleHttp(preview, datosPreview));
+      assert.ok(
+        (datosPreview.datos?.data?.bloqueos || []).some(
+          (item) => item.codigo === "OFERTA_DESTINO_DISTINTA",
+        ),
+        "El preview no detectó la oferta distinta",
+      );
+
+      const confirm = await api("/anios-lectivos/rollover", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          anio_origen: ANIO,
+          anio_destino: ANIO_OFERTA_DISTINTA,
+          preview_hash: datosPreview.datos.data.preview_hash,
+          confirmar: true,
+        },
+      });
+      const datosConfirm = await leerJson(confirm);
+      assert.equal(
+        confirm.status,
+        409,
+        `El confirm debía responder 409 (${detalleHttp(confirm, datosConfirm)})`,
+      );
+      assert.ok(
+        (datosConfirm.datos?.errors?.bloqueos || []).some(
+          (item) =>
+            item.codigo === "OFERTA_DESTINO_DISTINTA" &&
+            Array.isArray(item.detalle) &&
+            item.detalle.length > 0,
+        ),
+        "El 409 no incluyó el detalle de la oferta distinta",
+      );
+
+      await sql(`DELETE FROM grados WHERE anio_lectivo = $1`, [
+        ANIO_OFERTA_DISTINTA,
+      ]);
+      await sql(`DELETE FROM anios_lectivos WHERE anio = $1`, [
+        ANIO_OFERTA_DISTINTA,
+      ]);
+
+      registrar(
+        31,
+        "Rollover: destino con oferta distinta responde 409 con detalle",
+        "PASS",
+        "preview bloqueado y confirm 409",
+      );
+    },
+  );
+
+  // 32. Docente inactivo y sobrecapacidad.
+  await prueba(
+    32,
+    "Rollover: docente inactivo/sobrecapacidad bloquea y no escribe",
+    async () => {
+      const origen = await sql(
+        `SELECT cc.id_carga, cc.id_personal, cc.horas_asignadas, p.id_usuario
+         FROM carga_curricular cc
+         INNER JOIN personal p ON p.id_personal = cc.id_personal
+         WHERE cc.anio_lectivo = $1
+         ORDER BY cc.id_carga
+         LIMIT 1`,
+        [ANIO],
+      );
+      assert.ok(origen[0], "No hay carga del año origen para la prueba");
+
+      const idCarga = origen[0].id_carga;
+      const idUsuario = origen[0].id_usuario;
+      const horasOriginales = origen[0].horas_asignadas;
+
+      try {
+        await sql(`UPDATE usuarios SET estado = 'INACTIVO' WHERE id_usuario = $1`, [
+          idUsuario,
+        ]);
+
+        const previewInactivo = await api("/anios-lectivos/preview", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: { anio_origen: ANIO, anio_destino: ANIO_DOCENTE },
+        });
+        const datosInactivo = await leerJson(previewInactivo);
+        assert.equal(
+          previewInactivo.status,
+          200,
+          detalleHttp(previewInactivo, datosInactivo),
+        );
+        assert.ok(
+          (datosInactivo.datos?.data?.bloqueos || []).some(
+            (item) => item.codigo === "DOCENTE_INACTIVO",
+          ),
+          "El preview no bloqueó al docente inactivo",
+        );
+
+        const confirmInactivo = await api("/anios-lectivos/rollover", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: {
+            anio_origen: ANIO,
+            anio_destino: ANIO_DOCENTE,
+            preview_hash: datosInactivo.datos.data.preview_hash,
+            confirmar: true,
+          },
+        });
+        assert.equal(
+          confirmInactivo.status,
+          422,
+          `El confirm con docente inactivo debía fallar (${confirmInactivo.status})`,
+        );
+
+        await sql(`UPDATE usuarios SET estado = 'ACTIVO' WHERE id_usuario = $1`, [
+          idUsuario,
+        ]);
+        await sql(
+          `UPDATE carga_curricular SET horas_asignadas = 999 WHERE id_carga = $1`,
+          [idCarga],
+        );
+
+        const previewSobrecarga = await api("/anios-lectivos/preview", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: { anio_origen: ANIO, anio_destino: ANIO_DOCENTE },
+        });
+        const datosSobrecarga = await leerJson(previewSobrecarga);
+        assert.equal(
+          previewSobrecarga.status,
+          200,
+          detalleHttp(previewSobrecarga, datosSobrecarga),
+        );
+        assert.ok(
+          (datosSobrecarga.datos?.data?.bloqueos || []).some(
+            (item) => item.codigo === "DOCENTE_SOBRECAPACIDAD",
+          ),
+          "El preview no bloqueó la sobrecapacidad",
+        );
+
+        const confirmSobrecarga = await api("/anios-lectivos/rollover", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: {
+            anio_origen: ANIO,
+            anio_destino: ANIO_DOCENTE,
+            preview_hash: datosSobrecarga.datos.data.preview_hash,
+            confirmar: true,
+          },
+        });
+        assert.equal(
+          confirmSobrecarga.status,
+          422,
+          `El confirm con sobrecapacidad debía fallar (${confirmSobrecarga.status})`,
+        );
+
+        const conteos = await contarAnio(ANIO_DOCENTE);
+        assert.equal(conteos.anio, 0, "Se creó el año destino tras un bloqueo");
+        assert.equal(conteos.grados, 0, "Se crearon grados tras un bloqueo");
+      } finally {
+        await sql(`UPDATE usuarios SET estado = 'ACTIVO' WHERE id_usuario = $1`, [
+          idUsuario,
+        ]);
+        await sql(
+          `UPDATE carga_curricular SET horas_asignadas = $1 WHERE id_carga = $2`,
+          [horasOriginales, idCarga],
+        );
+        await limpiarAnioRollover(ANIO_DOCENTE);
+      }
+
+      registrar(
+        32,
+        "Rollover: docente inactivo/sobrecapacidad bloquea y no escribe",
+        "PASS",
+        "2 bloqueos, confirm 422",
+      );
+    },
+  );
+
+  // 33. Hash viejo.
+  await prueba(
+    33,
+    "Rollover: hash viejo responde 409 PREVIEW_DESACTUALIZADA",
+    async () => {
+      const preview = await api("/anios-lectivos/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: { anio_origen: ANIO, anio_destino: ANIO_HASH },
+      });
+      const datosPreview = await leerJson(preview);
+      assert.equal(preview.status, 200, detalleHttp(preview, datosPreview));
+      const hashViejo = datosPreview.datos.data.preview_hash;
+
+      try {
+        await sql(
+          `UPDATE conceptos_pago
+           SET monto_base = monto_base + 1
+           WHERE anio_lectivo = $1 AND tipo = 'MATRICULA'`,
+          [ANIO],
+        );
+
+        const confirm = await api("/anios-lectivos/rollover", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: {
+            anio_origen: ANIO,
+            anio_destino: ANIO_HASH,
+            preview_hash: hashViejo,
+            confirmar: true,
+          },
+        });
+        const datosConfirm = await leerJson(confirm);
+        assert.equal(
+          confirm.status,
+          409,
+          `El hash viejo debía responder 409 (${detalleHttp(confirm, datosConfirm)})`,
+        );
+        assert.equal(
+          datosConfirm.datos?.errors?.codigo,
+          "PREVIEW_DESACTUALIZADA",
+          "El 409 no indicó PREVIEW_DESACTUALIZADA",
+        );
+      } finally {
+        await sql(
+          `UPDATE conceptos_pago
+           SET monto_base = monto_base - 1
+           WHERE anio_lectivo = $1 AND tipo = 'MATRICULA'`,
+          [ANIO],
+        );
+        await limpiarAnioRollover(ANIO_HASH);
+      }
+
+      registrar(
+        33,
+        "Rollover: hash viejo responde 409 PREVIEW_DESACTUALIZADA",
+        "PASS",
+        "409 PREVIEW_DESACTUALIZADA",
+      );
+    },
+  );
+
+  // 34. Activación auditada y caché.
+  await prueba(
+    34,
+    "Activación: un solo ACTIVO, cierra el anterior y actualiza caché",
+    async () => {
+      const respuesta = await api(
+        `/anios-lectivos/${ANIO_ROLLOVER}/activar`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: { confirmar: true },
+        },
+      );
+      const { datos } = await leerJson(respuesta);
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      assert.equal(Number(datos?.data?.anio), ANIO_ROLLOVER);
+      assert.equal(
+        Number(datos?.data?.anterior),
+        ANIO_DESTINO,
+        "No se reportó el año anterior",
+      );
+
+      const estados = await sql(
+        `SELECT anio, estado, cerrado_por, fecha_cierre
+         FROM anios_lectivos
+         WHERE anio IN ($1, $2)
+         ORDER BY anio`,
+        [ANIO_DESTINO, ANIO_ROLLOVER],
+      );
+      const activos = estados.filter((fila) => fila.estado === "ACTIVO");
+      const anterior = estados.find(
+        (fila) => Number(fila.anio) === ANIO_DESTINO,
+      );
+      const nuevo = estados.find(
+        (fila) => Number(fila.anio) === ANIO_ROLLOVER,
+      );
+
+      assert.equal(activos.length, 1, "Debe quedar exactamente un año ACTIVO");
+      assert.equal(Number(activos[0].anio), ANIO_ROLLOVER);
+      assert.equal(anterior?.estado, "CERRADO", "El año anterior no se cerró");
+      assert.ok(anterior?.cerrado_por, "No se registró cerrado_por");
+      assert.ok(anterior?.fecha_cierre, "No se registró fecha_cierre");
+      assert.equal(nuevo?.estado, "ACTIVO", "El año nuevo no quedó ACTIVO");
+
+      const config = await api("/configuracion");
+      const datosConfig = await leerJson(config);
+      assert.equal(config.status, 200, detalleHttp(config, datosConfig));
+      assert.equal(
+        Number(datosConfig.datos?.data?.anio_lectivo),
+        ANIO_ROLLOVER,
+        "La caché del año activo no se actualizó",
+      );
+
+      const auditoria = await sql(
+        `SELECT id_bitacora, valor_anterior, valor_nuevo
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = 'Años Lectivos'
+           AND accion = 'ACTIVAR'
+           AND valor_nuevo->>'anio' = $1
+         ORDER BY id_bitacora DESC
+         LIMIT 1`,
+        [String(ANIO_ROLLOVER)],
+      );
+      assert.ok(auditoria[0], "No se auditó la activación");
+
+      registrar(
+        34,
+        "Activación: un solo ACTIVO, cierra el anterior y actualiza caché",
+        "PASS",
+        `${ANIO_DESTINO} CERRADO, ${ANIO_ROLLOVER} ACTIVO, auditoría OK`,
+      );
+    },
+  );
+
+  // 35. Activación sin oferta mínima.
+  await prueba(
+    35,
+    "Activación: sin grados o sin MATRICULA se bloquea",
+    async () => {
+      await sql(
+        `INSERT INTO anios_lectivos (anio, estado) VALUES ($1, 'PLANIFICADO')`,
+        [ANIO_SIN_OFERTA],
+      );
+
+      const sinGrados = await api(
+        `/anios-lectivos/${ANIO_SIN_OFERTA}/activar`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: { confirmar: true },
+        },
+      );
+      const datosSinGrados = await leerJson(sinGrados);
+      assert.equal(
+        sinGrados.status,
+        422,
+        detalleHttp(sinGrados, datosSinGrados),
+      );
+      assert.equal(
+        datosSinGrados.datos?.errors?.codigo,
+        "ANIO_SIN_GRADOS",
+        "El bloqueo no indicó ANIO_SIN_GRADOS",
+      );
+
+      await sql(
+        `INSERT INTO grados (nombre_grado, nivel, seccion, anio_lectivo, orden)
+         VALUES ('1ro de Secundaria', 'SECUNDARIA', 'Única', $1, 1)`,
+        [ANIO_SIN_OFERTA],
+      );
+
+      const sinMatricula = await api(
+        `/anios-lectivos/${ANIO_SIN_OFERTA}/activar`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: { confirmar: true },
+        },
+      );
+      const datosSinMatricula = await leerJson(sinMatricula);
+      assert.equal(
+        sinMatricula.status,
+        422,
+        detalleHttp(sinMatricula, datosSinMatricula),
+      );
+      assert.equal(
+        datosSinMatricula.datos?.errors?.codigo,
+        "ANIO_SIN_MATRICULA",
+        "El bloqueo no indicó ANIO_SIN_MATRICULA",
+      );
+
+      const activos = await sql(
+        `SELECT COUNT(*)::int AS total FROM anios_lectivos WHERE estado = 'ACTIVO'`,
+      );
+      assert.equal(activos[0].total, 1, "La activación fallida cambió el año activo");
+
+      await limpiarAnioRollover(ANIO_SIN_OFERTA);
+
+      registrar(
+        35,
+        "Activación: sin grados o sin MATRICULA se bloquea",
+        "PASS",
+        "422 ANIO_SIN_GRADOS y ANIO_SIN_MATRICULA",
+      );
+    },
+  );
+
+  // 36. Reversión.
+  await prueba(
+    36,
+    "Reversión: borra oferta vacía y rechaza un año con actividad",
+    async () => {
+      const preview = await api("/anios-lectivos/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: { anio_origen: ANIO, anio_destino: ANIO_REVERSION },
+      });
+      const datosPreview = await leerJson(preview);
+      assert.equal(preview.status, 200, detalleHttp(preview, datosPreview));
+      assert.equal(
+        datosPreview.datos?.data?.bloqueos?.length,
+        0,
+        `El preview de reversión no debía bloquear: ${JSON.stringify(
+          datosPreview.datos?.data?.bloqueos,
+        )}`,
+      );
+
+      const confirm = await api("/anios-lectivos/rollover", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          anio_origen: ANIO,
+          anio_destino: ANIO_REVERSION,
+          preview_hash: datosPreview.datos.data.preview_hash,
+          confirmar: true,
+        },
+      });
+      const datosConfirm = await leerJson(confirm);
+      assert.equal(confirm.status, 200, detalleHttp(confirm, datosConfirm));
+
+      const alumno = await sql(
+        `INSERT INTO alumnos (
+           id_usuario, dni, nombres, apellidos, fecha_nacimiento,
+           id_apoderado, id_grado, condicion, estado_matricula,
+           codigo_estudiante, anio_lectivo
+         )
+         SELECT a.id_usuario, a.dni, a.nombres, a.apellidos, a.fecha_nacimiento,
+                a.id_apoderado, g.id_grado, a.condicion, 'Matriculado',
+                a.codigo_estudiante, $1
+         FROM alumnos a
+         CROSS JOIN (
+           SELECT id_grado
+           FROM grados
+           WHERE anio_lectivo = $1
+           ORDER BY orden
+           LIMIT 1
+         ) g
+         WHERE a.anio_lectivo = $2
+         ORDER BY a.id_alumno
+         LIMIT 1
+         RETURNING id_alumno`,
+        [ANIO_REVERSION, ANIO],
+      );
+      assert.ok(alumno[0]?.id_alumno, "No se pudo crear la actividad de prueba");
+
+      const conActividad = await api(
+        `/anios-lectivos/${ANIO_REVERSION}/rollover`,
+        {
+          method: "DELETE",
+          token: ctx.adminToken,
+          body: {
+            motivo: "Reversión de prueba E2E con actividad",
+            confirmar: true,
+          },
+        },
+      );
+      const datosConActividad = await leerJson(conActividad);
+      assert.equal(
+        conActividad.status,
+        409,
+        `La reversión con actividad debía fallar (${detalleHttp(
+          conActividad,
+          datosConActividad,
+        )})`,
+      );
+      assert.equal(
+        datosConActividad.datos?.errors?.codigo,
+        "ANIO_CON_ACTIVIDAD",
+        "El 409 no indicó ANIO_CON_ACTIVIDAD",
+      );
+
+      await sql(`DELETE FROM alumnos WHERE id_alumno = $1`, [
+        alumno[0].id_alumno,
+      ]);
+
+      const revertir = await api(
+        `/anios-lectivos/${ANIO_REVERSION}/rollover`,
+        {
+          method: "DELETE",
+          token: ctx.adminToken,
+          body: {
+            motivo: "Reversión de prueba E2E sin actividad",
+            confirmar: true,
+          },
+        },
+      );
+      const datosRevertir = await leerJson(revertir);
+      assert.equal(
+        revertir.status,
+        200,
+        detalleHttp(revertir, datosRevertir),
+      );
+      assert.equal(
+        datosRevertir.datos?.data?.anio_eliminado,
+        true,
+        "No se eliminó el año creado por el rollover",
+      );
+
+      const conteos = await contarAnio(ANIO_REVERSION);
+      assert.equal(conteos.anio, 0, "El año revertido sigue en el catálogo");
+      assert.equal(conteos.grados, 0, "Quedaron grados tras la reversión");
+      assert.equal(conteos.conceptos, 0, "Quedaron conceptos tras la reversión");
+      assert.equal(conteos.periodos, 0, "Quedaron períodos tras la reversión");
+      assert.equal(conteos.carga, 0, "Quedó carga tras la reversión");
+      assert.equal(conteos.tutores, 0, "Quedaron tutores tras la reversión");
+
+      const auditoria = await sql(
+        `SELECT id_bitacora
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = 'Años Lectivos'
+           AND accion = 'REVERTIR_ROLLOVER'
+           AND valor_anterior->>'anio' = $1
+         ORDER BY id_bitacora DESC
+         LIMIT 1`,
+        [String(ANIO_REVERSION)],
+      );
+      assert.ok(auditoria[0], "No se auditó la reversión");
+
+      registrar(
+        36,
+        "Reversión: borra oferta vacía y rechaza un año con actividad",
+        "PASS",
+        "409 con actividad, reversión y auditoría OK",
+      );
+    },
+  );
+
+  // 37. RBAC del módulo.
+  await prueba(
+    37,
+    "RBAC: DOCENTE/SECRETARIA 403 y ADMIN 200 en años lectivos",
+    async () => {
+      const admin = await api("/anios-lectivos", { token: ctx.adminToken });
+      const datosAdmin = await leerJson(admin);
+      assert.equal(admin.status, 200, detalleHttp(admin, datosAdmin));
+      assert.ok(
+        Array.isArray(datosAdmin.datos?.data),
+        "El catálogo no devolvió una lista",
+      );
+
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+      const respuestaDocente = await api("/anios-lectivos", {
+        token: docente.token,
+      });
+      assert.equal(respuestaDocente.status, 403);
+
+      const secre = await sql(
+        `INSERT INTO usuarios (
+           dni, nombres, apellidos, correo_institucional, password_hash,
+           id_rol, estado, requiere_cambio_password
+         )
+         VALUES (
+           '99999097', 'Secretaria', 'E2E', 'secretaria.e2e@example.com',
+           crypt('99999097', gen_salt('bf', 10)), 3, 'ACTIVO', FALSE
+         )
+         RETURNING id_usuario`,
+      );
+
+      try {
+        const sesion = await iniciarSesion(
+          "SECRETARIA",
+          "99999097",
+          "99999097",
+        );
+        const respuestaSecre = await api("/anios-lectivos", {
+          token: sesion.token,
+        });
+        assert.equal(respuestaSecre.status, 403);
+      } finally {
+        await sql(`DELETE FROM usuarios WHERE id_usuario = $1`, [
+          secre[0].id_usuario,
+        ]);
+      }
+
+      const sinToken = await api("/anios-lectivos");
+      assert.equal(sinToken.status, 401);
+
+      registrar(
+        37,
+        "RBAC: DOCENTE/SECRETARIA 403 y ADMIN 200 en años lectivos",
+        "PASS",
+        "ADMIN 200, DOCENTE 403, SECRETARIA 403, sin token 401",
+      );
+    },
+  );
+
+  // 38. Rollback completo ante un fallo en la última etapa.
+  await prueba(
+    38,
+    "Rollover: fallo forzado en tutores no deja filas parciales",
+    async () => {
+      await sql(`
+        CREATE OR REPLACE FUNCTION e2e_fallo_tutor()
+        RETURNS trigger AS $$
+        BEGIN
+          IF NEW.anio_lectivo = ${Number(ANIO_ROLLBACK)} THEN
+            RAISE EXCEPTION 'Fallo forzado E2E en tutores_grado';
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+      `);
+      await sql(`DROP TRIGGER IF EXISTS e2e_fallo_tutor ON tutores_grado`);
+      await sql(`
+        CREATE TRIGGER e2e_fallo_tutor
+        BEFORE INSERT ON tutores_grado
+        FOR EACH ROW EXECUTE FUNCTION e2e_fallo_tutor()
+      `);
+
+      try {
+        const preview = await api("/anios-lectivos/preview", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: { anio_origen: ANIO, anio_destino: ANIO_ROLLBACK },
+        });
+        const datosPreview = await leerJson(preview);
+        assert.equal(preview.status, 200, detalleHttp(preview, datosPreview));
+        assert.equal(
+          datosPreview.datos?.data?.bloqueos?.length,
+          0,
+          "El preview de rollback no debía bloquear",
+        );
+
+        const confirm = await api("/anios-lectivos/rollover", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: {
+            anio_origen: ANIO,
+            anio_destino: ANIO_ROLLBACK,
+            preview_hash: datosPreview.datos.data.preview_hash,
+            confirmar: true,
+          },
+        });
+        assert.ok(
+          confirm.status >= 500,
+          `El fallo forzado debía responder 5xx (HTTP ${confirm.status})`,
+        );
+
+        const conteos = await contarAnio(ANIO_ROLLBACK);
+        assert.equal(conteos.anio, 0, "Quedó el año destino tras el rollback");
+        assert.equal(conteos.grados, 0, "Quedaron grados tras el rollback");
+        assert.equal(conteos.conceptos, 0, "Quedaron conceptos tras el rollback");
+        assert.equal(conteos.periodos, 0, "Quedaron períodos tras el rollback");
+        assert.equal(conteos.carga, 0, "Quedó carga tras el rollback");
+      } finally {
+        await sql(`DROP TRIGGER IF EXISTS e2e_fallo_tutor ON tutores_grado`);
+        await sql(`DROP FUNCTION IF EXISTS e2e_fallo_tutor()`);
+        await limpiarAnioRollover(ANIO_ROLLBACK);
+      }
+
+      registrar(
+        38,
+        "Rollover: fallo forzado en tutores no deja filas parciales",
+        "PASS",
+        "5xx y 0 filas parciales",
+      );
+    },
+  );
 }
 
 async function main() {
