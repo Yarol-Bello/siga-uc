@@ -80,7 +80,7 @@ La **Fase 6.2 (rollover)** quedó implementada y verificada **solo en local**:
 - Pantalla ADMIN `/admin/anios-lectivos` con preview por secciones, checkbox `incluir OTROS`,
   confirmación con responsabilidad y modales de activación/reversión.
 - Tests 28–38: **38 E2E** y **16 invariantes**; smoke 11; H47 4; build OK.
-- Commits: `a670c06` (backend), `44bf200` (UI), `9b3ea6f` (tests).
+- Commits: `a670c06` (backend), `44bf200` (UI), `9b3ea6f` (tests) y `05aa805` (docs).
 
 **Siguiente paso:** aplicar H49 en Supabase con autorización y backup previo (2026 activo,
 no 2027). Después, desplegar 6.2 a Render con autorización y probar en Supabase solo el

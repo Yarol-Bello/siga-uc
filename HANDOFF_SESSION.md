@@ -205,7 +205,7 @@ En esta fase **no** se prepara el despliegue definitivo.
   reversión), ruta `admin/anios-lectivos` e ítem de sidebar solo ADMIN. Tras activar llama
   `await configuracion.cargar()` y recarga el catálogo; los demás usuarios deben recargar.
 - **Commits locales de 6.2:** `a670c06` (backend), `44bf200` (UI) y `9b3ea6f` (tests).
-  Documentación en el commit de cierre. Sin push ni despliegue.
+  Documentación en `05aa805`. Sin push ni despliegue.
 - **Verificación (local):** `test:e2e` **38 PASS** (27 previas + 11 de rollover);
   `test:integridad` **16 PASS** en base de producción desechable (14 previas + carga/tutores
   del mismo año); `npm run smoke` **11 PASS**; `test:h47-generador` **4 PASS**; build Angular
