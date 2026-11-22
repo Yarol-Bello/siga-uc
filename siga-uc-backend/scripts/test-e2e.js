@@ -6,7 +6,7 @@
  *  - Solo opera sobre una base cuyo nombre contenga "_e2e" (por defecto
  *    siga_uc_e2e). Nunca toca siga_uc ni una base de Supabase.
  *  - Crea la base, carga el dump y las migraciones, arranca el backend en el
- *    puerto 3101, ejecuta 54 flujos y al final detiene el backend y elimina la
+ *    puerto 3101, ejecuta 58 flujos y al final detiene el backend y elimina la
  *    base con dropdb --force.
  *  - Si la limpieza falla, imprime los comandos manuales.
  *
@@ -3238,7 +3238,7 @@ async function ejecutarPruebas() {
       criterio_academico: {
         modo: "manual",
         modo_repitencia: "DESACTIVADA",
-        notas_bimestre: 1,
+        notas_bimestres: [1],
         bimestres_requeridos: [1, 2, 3, 4],
         transiciones: [],
         observacion: "Política E2E",
@@ -3626,7 +3626,7 @@ async function ejecutarPruebas() {
         criterio_academico: {
           modo: "manual",
           modo_repitencia: "UMBRAL",
-          notas_bimestre: 1,
+          notas_bimestres: [1],
           bimestres_requeridos: [1, 2, 3, 4],
           min_cursos_desaprobados: 1,
           notas_desaprobadas: ["C"],
@@ -3797,7 +3797,7 @@ async function ejecutarPruebas() {
         criterio_academico: {
           modo: "manual",
           modo_repitencia: "DESACTIVADA",
-          notas_bimestre: 4,
+          notas_bimestres: [4],
           bimestres_requeridos: [1],
           transiciones: [],
           observacion: "Bloqueo E2E",
@@ -3832,7 +3832,7 @@ async function ejecutarPruebas() {
       );
       assert.equal(
         sinOverride.datos?.errors?.codigo,
-        "PROMOCION_BLOQUEADA",
+        "PROMOCION_PENDIENTE",
       );
 
       const decisiones = preview.alumnos.map((alumno) => ({
@@ -4525,6 +4525,547 @@ async function ejecutarPruebas() {
         "Promoción: histórico 2026 sigue consultable y el año activo no cambia",
         "PASS",
         `2026 y ${ANIO_PROMO_NORMAL} consultables, activo=${ANIO + 2}`,
+      );
+    },
+  );
+
+  // 55. EGRESADO exige actas/notas y override con evidencia.
+  await prueba(
+    55,
+    "Promoción: egresado exige actas/notas y override con evidencia",
+    async () => {
+      const anioAux = ANIO - 1; // 2025
+      await crearOfertaPromocion(anioAux);
+      const gradoAux = await gradoOrden(anioAux, 5);
+      assert.ok(gradoAux, "No existe 5to en el año auxiliar");
+
+      const alumnoAux = await crearAlumnoPromocionAux({
+        dni: "99999106",
+        nombres: "Egreso",
+        apellidos: "Estricto E2E",
+        idGrado: gradoAux.id_grado,
+        anio: anioAux,
+      });
+
+      const curso = await sql(
+        `SELECT id_curso FROM cursos ORDER BY id_curso LIMIT 1`,
+      );
+      const personal = await sql(
+        `SELECT id_personal FROM personal ORDER BY id_personal LIMIT 1`,
+      );
+      assert.ok(curso[0] && personal[0], "Faltan curso o personal para la carga");
+      await sql(
+        `INSERT INTO carga_curricular
+           (id_grado, id_curso, id_personal, anio_lectivo, horas_asignadas)
+         VALUES ($1, $2, $3, $4, 2)`,
+        [
+          gradoAux.id_grado,
+          curso[0].id_curso,
+          personal[0].id_personal,
+          anioAux,
+        ],
+      );
+      await sql(
+        `INSERT INTO notas_finales_area
+           (id_alumno, id_curso, bimestre, anio_lectivo, nota_final, calculo_automatico)
+         VALUES ($1, $2, 1, $3, 'A', false)
+         ON CONFLICT (id_alumno, id_curso, bimestre, anio_lectivo)
+         DO UPDATE SET nota_final = 'A'`,
+        [alumnoAux.id_alumno, curso[0].id_curso, anioAux],
+      );
+
+      const politica = await crearPoliticaE2E(
+        ANIO,
+        {
+          nombre: "E2E 2025 egreso estricto",
+          requiere_actas_cerradas: true,
+          requiere_notas_finales: true,
+          permite_override: true,
+          criterio_academico: {
+            modo: "manual",
+            modo_repitencia: "DESACTIVADA",
+            notas_bimestres: [1, 2],
+            bimestres_requeridos: [1],
+            transiciones: [],
+            observacion: "Egreso estricto E2E",
+          },
+        },
+        anioAux,
+      );
+
+      const previewSinActa = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(
+        previewSinActa.respuesta.status,
+        200,
+        detalleHttp(previewSinActa.respuesta, previewSinActa.datos),
+      );
+      const filaSinActa = previewSinActa.preview.alumnos.find(
+        (alumno) => Number(alumno.id_alumno_origen) === Number(alumnoAux.id_alumno),
+      );
+      assert.ok(filaSinActa, "El alumno de 5to no apareció");
+      assert.equal(filaSinActa.resultado_sugerido, "PENDIENTE");
+      assert.deepEqual(filaSinActa.notas.bimestres, [1, 2]);
+      assert.equal(filaSinActa.notas.combinaciones_requeridas, 2);
+      assert.equal(filaSinActa.notas.combinaciones_registradas, 1);
+      assert.equal(filaSinActa.notas.registradas, 0);
+      assert.ok(
+        filaSinActa.bloqueos.some(
+          (bloqueo) => bloqueo.codigo === "ACTAS_PENDIENTES",
+        ),
+        "No apareció el bloqueo de actas para EGRESADO",
+      );
+
+      await sql(
+        `INSERT INTO actas_bimestrales
+           (periodo, anio_lectivo, bimestre, id_grado, estado, fecha_cierre, cerrado_por)
+         VALUES ('1er Bimestre', $1, 1, $2, 'CERRADO', now(), $3)`,
+        [anioAux, gradoAux.id_grado, ctx.adminId],
+      );
+
+      const preview = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(preview.respuesta.status, 200, detalleHttp(preview.respuesta, preview.datos));
+      const fila = preview.preview.alumnos.find(
+        (alumno) => Number(alumno.id_alumno_origen) === Number(alumnoAux.id_alumno),
+      );
+      assert.ok(fila, "El alumno de 5to no apareció");
+      assert.equal(fila.resultado_sugerido, "PENDIENTE");
+      assert.ok(
+        fila.bloqueos.some((bloqueo) => bloqueo.codigo === "NOTAS_PENDIENTES"),
+        "No apareció el bloqueo de notas para EGRESADO",
+      );
+
+      const sinOverride = await confirmarPromocion(preview.preview);
+      assert.equal(
+        sinOverride.respuesta.status,
+        422,
+        detalleHttp(sinOverride.respuesta, sinOverride.datos),
+      );
+      assert.equal(
+        sinOverride.datos?.errors?.codigo,
+        "PROMOCION_PENDIENTE",
+      );
+
+      const decisiones = [
+        {
+          id_alumno_origen: fila.id_alumno_origen,
+          resultado: "EGRESADO",
+          motivo: "Egreso autorizado E2E por dirección",
+          es_override: true,
+        },
+      ];
+      const conOverride = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+        decisiones,
+      });
+      assert.equal(
+        conOverride.respuesta.status,
+        200,
+        detalleHttp(conOverride.respuesta, conOverride.datos),
+      );
+      assert.equal(conOverride.preview.resumen.bloqueados, 0);
+      const filaOverride = conOverride.preview.alumnos.find(
+        (alumno) => Number(alumno.id_alumno_origen) === Number(alumnoAux.id_alumno),
+      );
+      assert.equal(filaOverride.resultado_final, "EGRESADO");
+
+      const confirmada = await confirmarPromocion(conOverride.preview, {
+        decisiones,
+      });
+      assert.equal(
+        confirmada.respuesta.status,
+        200,
+        detalleHttp(confirmada.respuesta, confirmada.datos),
+      );
+
+      const promocion = await sql(
+        `SELECT resultado, es_override, metadata, id_alumno_destino
+         FROM promociones
+         WHERE anio_destino = $1 AND id_alumno_origen = $2
+           AND estado = 'CONFIRMADA'
+         LIMIT 1`,
+        [ANIO, alumnoAux.id_alumno],
+      );
+      assert.equal(promocion[0]?.resultado, "EGRESADO");
+      assert.equal(promocion[0]?.es_override, true);
+      assert.equal(promocion[0]?.id_alumno_destino, null);
+      assert.ok(promocion[0]?.metadata?.actas);
+      assert.ok(promocion[0]?.metadata?.notas);
+
+      registrar(
+        55,
+        "Promoción: egresado exige actas/notas y override con evidencia",
+        "PASS",
+        `egresado=${alumnoAux.id_alumno}, override con metadata`,
+      );
+    },
+  );
+
+  // 56. REPITENTE exige actas y override con evidencia.
+  await prueba(
+    56,
+    "Promoción: repitente exige actas y override con evidencia",
+    async () => {
+      const anioAux = ANIO - 3; // 2023
+      await crearOfertaPromocion(anioAux);
+      const gradoAux = await gradoOrden(anioAux, 2);
+      assert.ok(gradoAux, "No existe 2do en el año auxiliar");
+
+      const alumnoAux = await crearAlumnoPromocionAux({
+        dni: "99999107",
+        nombres: "Repitente",
+        apellidos: "Estricto E2E",
+        idGrado: gradoAux.id_grado,
+        anio: anioAux,
+      });
+
+      const curso = await sql(
+        `SELECT id_curso FROM cursos ORDER BY id_curso LIMIT 1`,
+      );
+      const personal = await sql(
+        `SELECT id_personal FROM personal ORDER BY id_personal LIMIT 1`,
+      );
+      assert.ok(curso[0] && personal[0], "Faltan curso o personal para la carga");
+      await sql(
+        `INSERT INTO carga_curricular
+           (id_grado, id_curso, id_personal, anio_lectivo, horas_asignadas)
+         VALUES ($1, $2, $3, $4, 2)`,
+        [
+          gradoAux.id_grado,
+          curso[0].id_curso,
+          personal[0].id_personal,
+          anioAux,
+        ],
+      );
+      await sql(
+        `INSERT INTO notas_finales_area
+           (id_alumno, id_curso, bimestre, anio_lectivo, nota_final, calculo_automatico)
+         VALUES ($1, $2, 1, $3, 'C', false)
+         ON CONFLICT (id_alumno, id_curso, bimestre, anio_lectivo)
+         DO UPDATE SET nota_final = 'C'`,
+        [alumnoAux.id_alumno, curso[0].id_curso, anioAux],
+      );
+
+      const politica = await crearPoliticaE2E(
+        ANIO,
+        {
+          nombre: "E2E 2023 repitente estricto",
+          requiere_actas_cerradas: true,
+          requiere_notas_finales: true,
+          permite_override: true,
+          criterio_academico: {
+            modo: "manual",
+            modo_repitencia: "UMBRAL",
+            notas_bimestres: [1],
+            bimestres_requeridos: [1],
+            min_cursos_desaprobados: 1,
+            notas_desaprobadas: ["C"],
+            transiciones: [],
+            observacion: "Repitente estricto E2E",
+          },
+        },
+        anioAux,
+      );
+
+      const preview = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(preview.respuesta.status, 200, detalleHttp(preview.respuesta, preview.datos));
+      const fila = preview.preview.alumnos.find(
+        (alumno) => Number(alumno.id_alumno_origen) === Number(alumnoAux.id_alumno),
+      );
+      assert.ok(fila, "El alumno repitente no apareció");
+      assert.equal(fila.resultado_sugerido, "PENDIENTE");
+      assert.ok(
+        fila.bloqueos.some((bloqueo) => bloqueo.codigo === "ACTAS_PENDIENTES"),
+        "No apareció el bloqueo de actas para REPITENTE",
+      );
+
+      const sinOverride = await confirmarPromocion(preview.preview);
+      assert.equal(sinOverride.respuesta.status, 422);
+      assert.equal(sinOverride.datos?.errors?.codigo, "PROMOCION_PENDIENTE");
+
+      const decisiones = [
+        {
+          id_alumno_origen: fila.id_alumno_origen,
+          resultado: "REPITENTE",
+          motivo: "Repitencia autorizada E2E por dirección",
+          es_override: true,
+        },
+      ];
+      const conOverride = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+        decisiones,
+      });
+      assert.equal(conOverride.respuesta.status, 200, detalleHttp(conOverride.respuesta, conOverride.datos));
+      assert.equal(conOverride.preview.resumen.bloqueados, 0);
+      const filaOverride = conOverride.preview.alumnos.find(
+        (alumno) => Number(alumno.id_alumno_origen) === Number(alumnoAux.id_alumno),
+      );
+      assert.equal(filaOverride.resultado_final, "REPITENTE");
+
+      const confirmada = await confirmarPromocion(conOverride.preview, {
+        decisiones,
+      });
+      assert.equal(confirmada.respuesta.status, 200, detalleHttp(confirmada.respuesta, confirmada.datos));
+
+      const gradoDestino = await gradoOrden(ANIO, 2);
+      const promocion = await sql(
+        `SELECT resultado, id_grado_destino, metadata
+         FROM promociones
+         WHERE anio_destino = $1 AND id_alumno_origen = $2
+           AND estado = 'CONFIRMADA'
+         LIMIT 1`,
+        [ANIO, alumnoAux.id_alumno],
+      );
+      assert.equal(promocion[0]?.resultado, "REPITENTE");
+      assert.equal(
+        Number(promocion[0]?.id_grado_destino),
+        Number(gradoDestino.id_grado),
+      );
+      assert.ok(promocion[0]?.metadata?.actas);
+
+      registrar(
+        56,
+        "Promoción: repitente exige actas y override con evidencia",
+        "PASS",
+        `repitente=${alumnoAux.id_alumno}, grado=${gradoDestino.orden}`,
+      );
+    },
+  );
+
+  // 57. copiar_becas forma parte del hash.
+  await prueba(
+    57,
+    "Promoción: copiar_becas invalida el hash y copia solo si se confirma",
+    async () => {
+      const anioAux = ANIO - 1; // 2025
+      await crearOfertaPromocion(anioAux);
+      const gradoAux = await gradoOrden(anioAux, 1);
+      assert.ok(gradoAux, "No existe 1ro en el año auxiliar");
+
+      const alumnoAux = await crearAlumnoPromocionAux({
+        dni: "99999108",
+        nombres: "Beca",
+        apellidos: "E2E",
+        idGrado: gradoAux.id_grado,
+        anio: anioAux,
+      });
+      await sql(
+        `INSERT INTO becas (
+           id_alumno, tipo, porcentaje_descuento, monto_descuento,
+           fecha_inicio, fecha_fin, activo
+         ) VALUES ($1, 'SOCIOECONOMICA', 50, NULL, '2025-01-01', NULL, true)`,
+        [alumnoAux.id_alumno],
+      );
+
+      const politica = await crearPoliticaE2E(
+        ANIO,
+        { nombre: "E2E 2025 becas" },
+        anioAux,
+      );
+
+      const previewFalse = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+        copiar_becas: false,
+      });
+      assert.equal(previewFalse.respuesta.status, 200, detalleHttp(previewFalse.respuesta, previewFalse.datos));
+      assert.equal(previewFalse.preview.copiar_becas, false);
+
+      const conHashViejo = await confirmarPromocion(previewFalse.preview, {
+        copiar_becas: true,
+      });
+      assert.equal(
+        conHashViejo.respuesta.status,
+        409,
+        detalleHttp(conHashViejo.respuesta, conHashViejo.datos),
+      );
+      assert.equal(
+        conHashViejo.datos?.errors?.codigo,
+        "PREVIEW_DESACTUALIZADA",
+      );
+
+      const sinBeca = await confirmarPromocion(previewFalse.preview, {
+        copiar_becas: false,
+      });
+      assert.equal(sinBeca.respuesta.status, 200, detalleHttp(sinBeca.respuesta, sinBeca.datos));
+      const idPromocion = sinBeca.resultado.promociones[0].id_promocion;
+
+      const destSinBeca = await sql(
+        `SELECT COUNT(*)::int AS total
+         FROM becas b
+         INNER JOIN alumnos a ON a.id_alumno = b.id_alumno
+         WHERE a.anio_lectivo = $1 AND a.dni = '99999108'`,
+        [ANIO],
+      );
+      assert.equal(destSinBeca[0].total, 0, "Se copió la beca sin confirmarlo");
+
+      const anulada = await api(`/promociones/${idPromocion}/anular`, {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: { motivo: "Anulación E2E para reintentar beca" },
+      });
+      const datosAnulada = await leerJson(anulada);
+      assert.equal(anulada.status, 200, detalleHttp(anulada, datosAnulada));
+
+      const previewTrue = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+        copiar_becas: true,
+      });
+      assert.equal(previewTrue.respuesta.status, 200, detalleHttp(previewTrue.respuesta, previewTrue.datos));
+      assert.equal(previewTrue.preview.copiar_becas, true);
+
+      const conBeca = await confirmarPromocion(previewTrue.preview, {
+        copiar_becas: true,
+      });
+      assert.equal(conBeca.respuesta.status, 200, detalleHttp(conBeca.respuesta, conBeca.datos));
+      assert.ok(conBeca.resultado.conteos.becas_copiadas >= 1);
+
+      const destConBeca = await sql(
+        `SELECT b.tipo, b.porcentaje_descuento
+         FROM becas b
+         INNER JOIN alumnos a ON a.id_alumno = b.id_alumno
+         WHERE a.anio_lectivo = $1 AND a.dni = '99999108'
+         ORDER BY b.id_beca
+         LIMIT 1`,
+        [ANIO],
+      );
+      assert.equal(destConBeca[0]?.tipo, "SOCIOECONOMICA");
+      assert.equal(Number(destConBeca[0]?.porcentaje_descuento), 50);
+
+      registrar(
+        57,
+        "Promoción: copiar_becas invalida el hash y copia solo si se confirma",
+        "PASS",
+        `hash viejo 409, copiadas=${conBeca.resultado.conteos.becas_copiadas}`,
+      );
+    },
+  );
+
+  // 58. PENDIENTE no se confirma y no crea fila.
+  await prueba(
+    58,
+    "Promoción: PENDIENTE no se confirma ni crea fila CONFIRMADA",
+    async () => {
+      const anioAux = ANIO - 2; // 2024
+      await crearOfertaPromocion(anioAux);
+      const gradoAux = await gradoOrden(anioAux, 1);
+      assert.ok(gradoAux, "No existe 1ro en el año auxiliar");
+
+      const alumnoAux = await crearAlumnoPromocionAux({
+        dni: "99999110",
+        nombres: "Pendiente",
+        apellidos: "E2E",
+        idGrado: gradoAux.id_grado,
+        anio: anioAux,
+      });
+
+      const politica = await crearPoliticaE2E(
+        ANIO,
+        {
+          nombre: "E2E 2024 pendiente",
+          permite_override: true,
+        },
+        anioAux,
+      );
+
+      const decisiones = [
+        {
+          id_alumno_origen: alumnoAux.id_alumno,
+          resultado: "PENDIENTE",
+          motivo: "Pendiente E2E para revisión de dirección",
+          es_override: true,
+        },
+      ];
+      const preview = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+        decisiones,
+      });
+      assert.equal(preview.respuesta.status, 200, detalleHttp(preview.respuesta, preview.datos));
+      assert.equal(preview.preview.resumen.por_resultado.PENDIENTE, 1);
+      assert.equal(preview.preview.resumen.bloqueados, 0);
+
+      const rechazada = await confirmarPromocion(preview.preview, {
+        decisiones,
+      });
+      assert.equal(
+        rechazada.respuesta.status,
+        422,
+        detalleHttp(rechazada.respuesta, rechazada.datos),
+      );
+      assert.equal(
+        rechazada.datos?.errors?.codigo,
+        "PROMOCION_PENDIENTE",
+      );
+
+      const filas = await sql(
+        `SELECT COUNT(*)::int AS total
+         FROM promociones
+         WHERE anio_destino = $1 AND id_alumno_origen = $2`,
+        [ANIO, alumnoAux.id_alumno],
+      );
+      assert.equal(filas[0].total, 0, "Se creó una fila PENDIENTE confirmada");
+
+      const reintentoPreview = await previsualizarPromocion({
+        anio_origen: anioAux,
+        anio_destino: ANIO,
+        id_politica: politica.id_politica,
+        id_grado: gradoAux.id_grado,
+        incluir_retirados: false,
+      });
+      assert.equal(reintentoPreview.respuesta.status, 200, detalleHttp(reintentoPreview.respuesta, reintentoPreview.datos));
+      const reintento = await confirmarPromocion(reintentoPreview.preview);
+      assert.equal(reintento.respuesta.status, 200, detalleHttp(reintento.respuesta, reintento.datos));
+
+      const confirmada = await sql(
+        `SELECT resultado FROM promociones
+         WHERE anio_destino = $1 AND id_alumno_origen = $2
+           AND estado = 'CONFIRMADA'
+         LIMIT 1`,
+        [ANIO, alumnoAux.id_alumno],
+      );
+      assert.equal(confirmada[0]?.resultado, "PROMOVIDO");
+
+      registrar(
+        58,
+        "Promoción: PENDIENTE no se confirma ni crea fila CONFIRMADA",
+        "PASS",
+        `PENDIENTE 422, reintento PROMOVIDO`,
       );
     },
   );
