@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import * as QRCode from 'qrcode';
 import { environment } from '../../../../environments/environment';
 import { fechaLocalISO } from '../../../core/utils/fecha.util';
 
@@ -23,6 +24,8 @@ interface Personal {
   fecha_ingreso: string;
   fecha_cese: string;
   motivo_cese: string;
+  codigo_qr?: string | null;
+  tipo_credencial?: string | null;
 }
 
 interface Rol {
@@ -105,6 +108,8 @@ export class AdminPersonalComponent implements OnInit {
   // Modal: Carné QR
   modalCarne = signal(false);
   personalCarne = signal<Personal | null>(null);
+  qrCarne = signal<string>('');
+  cargandoQr = signal(false);
 
   ngOnInit(): void {
     this.cargarPersonal();
@@ -401,14 +406,36 @@ export class AdminPersonalComponent implements OnInit {
   // ============================================================
   // MODAL CARNÉ QR
   // ============================================================
-  abrirModalCarne(p: Personal): void {
+  async abrirModalCarne(p: Personal): Promise<void> {
     this.personalCarne.set(p);
+    this.qrCarne.set('');
     this.modalCarne.set(true);
+
+    if (!p.codigo_qr) {
+      return;
+    }
+
+    this.cargandoQr.set(true);
+    try {
+      const dataUrl = await QRCode.toDataURL(p.codigo_qr, {
+        width: 300,
+        margin: 1,
+        color: { dark: '#1E293B', light: '#FFFFFF' },
+      });
+      if (this.personalCarne()?.id_personal === p.id_personal) {
+        this.qrCarne.set(dataUrl);
+      }
+    } catch (err) {
+      console.error('Error al generar el QR del personal:', err);
+    } finally {
+      this.cargandoQr.set(false);
+    }
   }
 
   cerrarModalCarne(): void {
     this.modalCarne.set(false);
     this.personalCarne.set(null);
+    this.qrCarne.set('');
   }
 
   // ============================================================

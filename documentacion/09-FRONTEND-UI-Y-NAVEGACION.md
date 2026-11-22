@@ -240,7 +240,7 @@ Cada layout contiene:
 | `HeaderComponent` | `GET /notificaciones/no-leidas`, `GET /notificaciones`, `PUT /:id/leer`, `PUT /leer-todas`, `GET /auth/perfil` |
 | `DashboardComponent` | `GET /reportes/dashboard`, `GET /grados`, `GET /personal/roles`, `GET /alumnos?search=&limit=10&solo_activos=1`, `POST /notificaciones/masivo` |
 | `AdminAlumnosComponent` | `GET /alumnos?page=&pageSize=`, `GET /grados`, `POST /alumnos`, `PUT /alumnos/:id`, `PUT /alumnos/:id/retirar`, `PUT /auth/reset-password` |
-| `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar`, `PUT /:id/reactivar`, `PUT /:id/reset-password` |
+| `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar`, `PUT /:id/reactivar`, `PUT /:id/reset-password`; el carné genera un QR real con `codigo_qr` (H55) |
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
 | `AdminSiagieComponent` | `GET /grados`, `GET /reportes/auditoria-docentes/:id`, `POST /siagie/generar-excel`, `GET /personal/:id`, `POST /notificaciones` |

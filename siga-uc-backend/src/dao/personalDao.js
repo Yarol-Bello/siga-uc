@@ -56,10 +56,16 @@ const listar = async (filtros = {}) => {
       u.ultimo_login,
       r.id_rol,
       r.nombre_rol,
-      r.descripcion AS rol_descripcion
+      r.descripcion AS rol_descripcion,
+      cq.id_credencial,
+      cq.codigo_qr,
+      cq.tipo AS tipo_credencial
     FROM personal p
     INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
     INNER JOIN roles r ON r.id_rol = u.id_rol
+    LEFT JOIN credenciales_qr cq
+      ON cq.id_usuario = u.id_usuario
+      AND cq.activo = TRUE
     ${where}
     ORDER BY u.apellidos, u.nombres
   `;
@@ -78,10 +84,14 @@ const findById = async (id) => {
       u.id_usuario, u.dni, u.nombres, u.apellidos,
       u.correo_institucional, u.correo_personal,
       u.telefono, u.estado, u.requiere_cambio_password,
-      r.id_rol, r.nombre_rol, r.descripcion AS rol_descripcion
+      r.id_rol, r.nombre_rol, r.descripcion AS rol_descripcion,
+      cq.id_credencial, cq.codigo_qr, cq.tipo AS tipo_credencial
     FROM personal p
     INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
     INNER JOIN roles r ON r.id_rol = u.id_rol
+    LEFT JOIN credenciales_qr cq
+      ON cq.id_usuario = u.id_usuario
+      AND cq.activo = TRUE
     WHERE p.id_personal = $1
   `;
   const result = await query(sql, [id]);

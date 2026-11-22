@@ -218,6 +218,8 @@ credencial QR. **El alumno no queda matriculado hasta pagar matrícula.**
 Si no se envía contraseña: `UC2026*`. Genera QR según rol.
 
 > Orden de rutas: `/roles` está antes de `/:id`, evitando colisión.
+> `GET /personal` y `GET /personal/:id` incluyen `codigo_qr` y `tipo_credencial` desde
+> `credenciales_qr` (H55); no cambia el esquema.
 
 ---
 

@@ -447,7 +447,16 @@
         <div class="carne-role">
           {{ personalCarne()!.cargo || personalCarne()!.nombre_rol }}
         </div>
-        <div class="carne-qr-box"><i class="fa-solid fa-qrcode"></i></div>
+        <div class="carne-qr-box">
+          @if (qrCarne()) {
+          <img [src]="qrCarne()" [alt]="'Código QR de ' + personalCarne()!.nombre_completo"
+            [attr.data-codigo-qr]="personalCarne()!.codigo_qr" class="carne-qr-img" />
+          } @else if (cargandoQr()) {
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          } @else {
+          <span class="carne-qr-sin-datos">Sin QR registrado</span>
+          }
+        </div>
         <div class="carne-dni">DNI: {{ personalCarne()!.dni }} | {{ personalCarne()!.nombre_rol }}</div>
       </div>
     </div>

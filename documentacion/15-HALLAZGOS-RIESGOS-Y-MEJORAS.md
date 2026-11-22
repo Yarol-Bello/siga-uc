@@ -71,6 +71,9 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 >
 > **Actualización 22/11/2026 (H54):** “Cobrar” en el panel de Secretaría navega a
 > Tesorería con el pre-ticket y alumno preseleccionados. Ver H54 en la sección 3.
+>
+> **Actualización 22/11/2026 (H55):** el carné del personal genera un QR real desde
+> `codigo_qr`. Ver H55 en la sección 3.
 
 ---
 
@@ -678,6 +681,17 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Recomendación | Navegar a `/secretaria/tesoreria` con `id_alumno` e `id_preticket` y reutilizar el flujo de cobro existente |
 | Esfuerzo | S |
 | Estado | ✅ Resuelto (22/11/2026): el dashboard navega con ambos IDs; Tesorería espera la carga de alumnos/pre-tickets, busca el pre-ticket y abre el modal de cobro existente. No se duplicó la lógica de pago |
+
+### H55 — El carné QR del personal mostraba un icono, no un QR
+
+| Campo | Detalle |
+|---|---|
+| Severidad | Alta |
+| Evidencia | `admin-personal.component.html` mostraba `<i class="fa-solid fa-qrcode">`; el componente no importaba `qrcode` ni leía `credencial_qr` |
+| Impacto | La credencial impresa no se podía escanear; parecía un carné real sin serlo |
+| Recomendación | Obtener `codigo_qr` del backend y generar un `<img>` con `QRCode.toDataURL` |
+| Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026): `GET /personal` y `GET /personal/:id` incluyen `codigo_qr`; el modal genera el QR real con la librería del header y lo muestra como `<img>`. Verificado contra el `codigo_qr` de la BD |
 
 ### H57 — Panel del estudiante engañoso
 

@@ -640,6 +640,21 @@ tr:hover td {
   }
 }
 
+.carne-qr-img {
+  display: block;
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+}
+
+.carne-qr-sin-datos {
+  display: inline-block;
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 40px 12px;
+}
+
 .carne-dni {
   font-size: 0.82rem;
   color: #64748b;
