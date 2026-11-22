@@ -152,6 +152,32 @@ router.get(
 );
 
 // ------------------------------------------------------------
+// Generación automática
+// ------------------------------------------------------------
+router.post(
+  "/generar",
+  verificarRol("ADMIN"),
+  [
+    body("anio")
+      .isInt({ min: 2000, max: 2100 })
+      .withMessage("Año lectivo inválido"),
+    body("id_grado")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Grado inválido"),
+    body("seed")
+      .optional({ nullable: true })
+      .isInt({ min: 1 })
+      .withMessage("La semilla debe ser un entero mayor que cero"),
+    body("forzar")
+      .optional()
+      .isBoolean()
+      .withMessage("forzar debe ser booleano"),
+  ],
+  horarioController.generar,
+);
+
+// ------------------------------------------------------------
 // Publicación
 // ------------------------------------------------------------
 router.post(

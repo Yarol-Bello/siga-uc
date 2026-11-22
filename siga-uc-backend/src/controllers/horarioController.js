@@ -228,6 +228,34 @@ const despublicar = async (req, res) => {
   }
 };
 
+const generar = async (req, res) => {
+  const invalido = validar(req, res);
+  if (invalido) return invalido;
+
+  try {
+    const data = await horarioService.generar(req.body, req.usuario);
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Horarios",
+      accion: "GENERAR",
+      descripcion: `Generación de horario ${data.anio}${data.id_grado ? ` (grado ${data.id_grado})` : ""}: ${data.generados} bloque(s), ${data.reemplazados} reemplazado(s)${data.parcial ? ", parcial" : ""}`,
+      nuevo: {
+        anio: data.anio,
+        id_grado: data.id_grado,
+        seed: data.seed,
+        intentos: data.intentos,
+        generados: data.generados,
+        reemplazados: data.reemplazados,
+        parcial: data.parcial,
+        sin_ubicar: data.sin_ubicar.length,
+        advertencias: data.advertencias,
+      },
+    });
+    return response.success(res, 200, "Horario generado en borrador", data);
+  } catch (error) {
+    return responderError(res, error, "generar horario");
+  }
+};
+
 module.exports = {
   listarPeriodos,
   crearPeriodo,
@@ -240,4 +268,5 @@ module.exports = {
   eliminar,
   publicar,
   despublicar,
+  generar,
 };

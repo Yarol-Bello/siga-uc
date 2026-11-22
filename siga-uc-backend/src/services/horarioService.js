@@ -7,6 +7,7 @@ const { getClient } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
 const horarioDao = require("../dao/horarioDao");
 const periodoClaseDao = require("../dao/periodoClaseDao");
+const { generarHorario } = require("./horarioGenerator");
 const {
   DIAS_SEMANA,
   ESTADOS_HORARIO,
@@ -579,6 +580,264 @@ const despublicar = async (data, usuario) => {
   });
 };
 
+const generar = async (data, usuario) => {
+  const anio = validarAnio(data.anio);
+  if (anio !== getAnioLectivo()) {
+    throw crearError("Solo se puede generar el año lectivo activo.");
+  }
+
+  const idGrado = parseFiltro(data.id_grado, "id_grado");
+  const forzar = normalizarBooleano(data.forzar);
+
+  let seed = null;
+  if (data.seed !== undefined && data.seed !== null && data.seed !== "") {
+    seed = parseEntero(data.seed);
+    if (!seed) {
+      throw crearError("La semilla debe ser un entero mayor que cero.");
+    }
+  }
+  const semilla = seed || Math.floor(Math.random() * 2147483646) + 1;
+
+  return await conTransaccion(async (client) => {
+    await bloquearAnio(client, anio);
+
+    const cargas = await horarioDao.listarCargasGeneracion(client, {
+      anio,
+      idGrado,
+      horasDefault: HORAS_DEFAULT_CARGA,
+    });
+
+    if (cargas.length === 0) {
+      throw crearError(
+        "No hay carga curricular para el año y grado seleccionados.",
+        422,
+        { codigo: "SIN_CARGA" },
+      );
+    }
+
+    const idsGrados = [...new Set(cargas.map((c) => Number(c.id_grado)))];
+    const publicados = await horarioDao.contarPublicadosPorGrados(client, {
+      anio,
+      idsGrados,
+    });
+    if (publicados > 0) {
+      throw crearError(
+        "Despublique el horario antes de generar uno nuevo.",
+        409,
+        {
+          codigo: "HORARIO_PUBLICADO",
+          publicados,
+          ids_grados: idsGrados,
+        },
+      );
+    }
+
+    const periodos = await horarioDao.listarPeriodosActivos(client, anio);
+    if (periodos.length === 0) {
+      throw crearError(
+        "No hay períodos de clase activos para el año lectivo.",
+        422,
+        { codigo: "SIN_PERIODOS" },
+      );
+    }
+
+    const bloquesExternos = await horarioDao.listarBloquesExternos(client, {
+      anio,
+      idsGrados,
+    });
+
+    const capacidad = periodos.length * DIAS_SEMANA.length;
+    const externosPorDocente = new Map();
+    for (const bloque of bloquesExternos) {
+      externosPorDocente.set(
+        bloque.id_personal,
+        (externosPorDocente.get(bloque.id_personal) || 0) + 1,
+      );
+    }
+
+    const porDocente = new Map();
+    const porGrado = new Map();
+    for (const carga of cargas) {
+      const horas = Number(carga.horas) || 0;
+      if (!porDocente.has(carga.id_personal)) {
+        porDocente.set(carga.id_personal, {
+          id_personal: carga.id_personal,
+          docente_nombre: carga.docente_nombre,
+          horas: 0,
+          cargas: 0,
+        });
+      }
+      const docente = porDocente.get(carga.id_personal);
+      docente.horas += horas;
+      docente.cargas += 1;
+
+      if (!porGrado.has(carga.id_grado)) {
+        porGrado.set(carga.id_grado, {
+          id_grado: carga.id_grado,
+          nombre_grado: carga.nombre_grado,
+          seccion: carga.seccion,
+          horas: 0,
+        });
+      }
+      porGrado.get(carga.id_grado).horas += horas;
+    }
+
+    const docentes = [...porDocente.values()].map((docente) => {
+      const externos = externosPorDocente.get(docente.id_personal) || 0;
+      const disponible = Math.max(0, capacidad - externos);
+      return {
+        ...docente,
+        bloques_externos: externos,
+        capacidad: disponible,
+        faltan: Math.max(0, docente.horas - disponible),
+        sobrecargado: docente.horas > disponible,
+      };
+    });
+
+    const grados = [...porGrado.values()].map((grado) => ({
+      ...grado,
+      capacidad,
+      faltan: Math.max(0, grado.horas - capacidad),
+      sobrecargado: grado.horas > capacidad,
+    }));
+
+    const docentesSobrecargados = docentes.filter((d) => d.sobrecargado);
+    const gradosSobrecargados = grados.filter((g) => g.sobrecargado);
+    const advertencias = [];
+
+    if (docentesSobrecargados.length > 0) {
+      advertencias.push(
+        ...docentesSobrecargados.map(
+          (d) =>
+            `${d.docente_nombre}: ${d.horas} h asignadas; ${d.capacidad} h disponibles.`,
+        ),
+      );
+    }
+    if (gradosSobrecargados.length > 0) {
+      advertencias.push(
+        ...gradosSobrecargados.map(
+          (g) =>
+            `${g.nombre_grado} ${g.seccion}: ${g.horas} h asignadas; ${g.capacidad} h disponibles.`,
+        ),
+      );
+    }
+
+    const haySobrecarga =
+      docentesSobrecargados.length > 0 || gradosSobrecargados.length > 0;
+
+    if (haySobrecarga && !forzar) {
+      let mensaje = "No es posible generar el horario completo.";
+      if (docentes.length === 1 && docentesSobrecargados.length === 1) {
+        const docente = docentesSobrecargados[0];
+        mensaje = `No es posible generar: ${cargas.length} cargas con el mismo docente (${docente.horas} h; capacidad ${docente.capacidad} h).`;
+      } else if (docentesSobrecargados.length > 0) {
+        const docente = docentesSobrecargados[0];
+        mensaje = `No es posible generar completo: ${docente.docente_nombre} tiene ${docente.horas} h y solo ${docente.capacidad} h disponibles.`;
+      } else {
+        const grado = gradosSobrecargados[0];
+        mensaje = `No es posible generar completo: ${grado.nombre_grado} ${grado.seccion} tiene ${grado.horas} h y solo ${grado.capacidad} h disponibles.`;
+      }
+
+      throw crearError(mensaje, 422, {
+        codigo: "SOBRECARGA_HORARIO",
+        puede_generar: false,
+        forzar_disponible: true,
+        capacidad,
+        total_horas: cargas.reduce((total, c) => total + Number(c.horas), 0),
+        docentes,
+        grados,
+      });
+    }
+
+    if (haySobrecarga) {
+      advertencias.unshift(
+        "Generación forzada: la carga supera la capacidad; se devolverán las horas sin ubicar.",
+      );
+    }
+
+    const resultado = generarHorario({
+      cargas,
+      periodos,
+      dias: DIAS_SEMANA,
+      bloquesExternos,
+      maxPorCursoDia: MAX_BLOQUES_CURSO_DIA,
+      seed: semilla,
+    });
+
+    if (resultado.colocadas.length === 0) {
+      throw crearError(
+        "No se pudo ubicar ningún bloque con la carga y los períodos actuales.",
+        422,
+        {
+          codigo: "SIN_UBICAR",
+          sin_ubicar: resultado.sin_ubicar,
+          advertencias,
+        },
+      );
+    }
+
+    const reemplazados = await horarioDao.eliminarBorradoresPorGrados(client, {
+      anio,
+      idsGrados,
+    });
+
+    const generados = await horarioDao.insertarLote(client, {
+      bloques: resultado.colocadas,
+      idUsuario: usuario.id_usuario,
+    });
+
+    const motivoPorCarga = new Map();
+    for (const docente of docentes) {
+      if (docente.sobrecargado) {
+        motivoPorCarga.set(
+          docente.id_personal,
+          `Docente sin capacidad: ${docente.horas} h para ${docente.capacidad} h disponibles.`,
+        );
+      }
+    }
+    for (const grado of grados) {
+      if (grado.sobrecargado && !motivoPorCarga.has(`grado:${grado.id_grado}`)) {
+        motivoPorCarga.set(
+          `grado:${grado.id_grado}`,
+          `Grado sin capacidad: ${grado.horas} h para ${grado.capacidad} h disponibles.`,
+        );
+      }
+    }
+
+    const sinUbicar = resultado.sin_ubicar.map((item) => ({
+      ...item,
+      motivo:
+        motivoPorCarga.get(item.id_personal) ||
+        motivoPorCarga.get(`grado:${item.id_grado}`) ||
+        "Sin bloque compatible por choques de docente/grado o máximo por día.",
+    }));
+
+    const horasSinUbicar = sinUbicar.reduce(
+      (total, item) => total + item.faltan,
+      0,
+    );
+    if (horasSinUbicar > 0) {
+      advertencias.push(
+        `Quedaron ${horasSinUbicar} hora(s) sin ubicar. Revise la lista antes de publicar.`,
+      );
+    }
+
+    return {
+      anio,
+      id_grado: idGrado,
+      seed: resultado.seed,
+      intentos: resultado.intentos_ejecutados,
+      generados,
+      reemplazados,
+      parcial: sinUbicar.length > 0,
+      por_grado: resultado.por_grado,
+      sin_ubicar: sinUbicar,
+      advertencias,
+      publicado: false,
+    };
+  });
+};
+
 module.exports = {
   listar,
   obtener,
@@ -588,4 +847,5 @@ module.exports = {
   eliminar,
   publicar,
   despublicar,
+  generar,
 };

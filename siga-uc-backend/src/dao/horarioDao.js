@@ -447,6 +447,138 @@ const eliminarPorCarga = async (client, idCarga) => {
   return result.rowCount;
 };
 
+const listarCargasGeneracion = async (
+  client,
+  { anio, idGrado = null, horasDefault },
+) => {
+  const result = await client.query(
+    `SELECT
+       cc.id_carga,
+       cc.anio_lectivo,
+       cc.id_grado,
+       g.nombre_grado,
+       g.seccion,
+       cc.id_curso,
+       c.nombre_curso,
+       cc.id_personal,
+       u.nombres || ' ' || u.apellidos AS docente_nombre,
+       COALESCE(cc.horas_asignadas, $3)::int AS horas
+     FROM carga_curricular cc
+     INNER JOIN grados g ON g.id_grado = cc.id_grado
+     INNER JOIN cursos c ON c.id_curso = cc.id_curso
+     INNER JOIN personal per ON per.id_personal = cc.id_personal
+     INNER JOIN usuarios u ON u.id_usuario = per.id_usuario
+     WHERE cc.anio_lectivo = $1
+       AND ($2::int IS NULL OR cc.id_grado = $2)
+     ORDER BY cc.id_personal, cc.id_grado, c.nombre_curso`,
+    [anio, idGrado, horasDefault],
+  );
+  return result.rows;
+};
+
+const listarPeriodosActivos = async (client, anio) => {
+  const result = await client.query(
+    `SELECT id_periodo, anio_lectivo, nombre, orden, hora_inicio, hora_fin, tipo, activo
+     FROM periodos_clase
+     WHERE anio_lectivo = $1
+       AND tipo = 'CLASE'
+       AND activo = true
+     ORDER BY orden`,
+    [anio],
+  );
+  return result.rows;
+};
+
+const listarBloquesExternos = async (client, { anio, idsGrados }) => {
+  const result = await client.query(
+    `SELECT id_personal, dia_semana, id_periodo
+     FROM horarios
+     WHERE anio_lectivo = $1
+       AND NOT (id_grado = ANY($2::int[]))`,
+    [anio, idsGrados],
+  );
+  return result.rows;
+};
+
+const contarPublicadosPorGrados = async (client, { anio, idsGrados }) => {
+  const result = await client.query(
+    `SELECT COUNT(*)::int AS total
+     FROM horarios
+     WHERE anio_lectivo = $1
+       AND id_grado = ANY($2::int[])
+       AND estado = 'PUBLICADO'`,
+    [anio, idsGrados],
+  );
+  return result.rows[0]?.total || 0;
+};
+
+const eliminarBorradoresPorGrados = async (client, { anio, idsGrados }) => {
+  const result = await client.query(
+    `DELETE FROM horarios
+     WHERE anio_lectivo = $1
+       AND id_grado = ANY($2::int[])
+       AND estado = 'BORRADOR'
+     RETURNING id_horario`,
+    [anio, idsGrados],
+  );
+  return result.rowCount;
+};
+
+const insertarLote = async (client, { bloques, idUsuario }) => {
+  if (!bloques || bloques.length === 0) return 0;
+
+  const arrays = {
+    id_carga: [],
+    id_grado: [],
+    id_curso: [],
+    id_personal: [],
+    anio_lectivo: [],
+    dia_semana: [],
+    id_periodo: [],
+    aula: [],
+  };
+
+  for (const bloque of bloques) {
+    arrays.id_carga.push(bloque.id_carga);
+    arrays.id_grado.push(bloque.id_grado);
+    arrays.id_curso.push(bloque.id_curso);
+    arrays.id_personal.push(bloque.id_personal);
+    arrays.anio_lectivo.push(bloque.anio_lectivo);
+    arrays.dia_semana.push(bloque.dia_semana);
+    arrays.id_periodo.push(bloque.id_periodo);
+    arrays.aula.push(bloque.aula ?? null);
+  }
+
+  const result = await client.query(
+    `INSERT INTO horarios (
+       id_carga, id_grado, id_curso, id_personal, anio_lectivo,
+       dia_semana, id_periodo, aula, estado, creado_por, actualizado_por
+     )
+     SELECT
+       t.id_carga, t.id_grado, t.id_curso, t.id_personal, t.anio_lectivo,
+       t.dia_semana, t.id_periodo, t.aula, 'BORRADOR', $9, $9
+     FROM unnest(
+       $1::int[], $2::int[], $3::int[], $4::int[],
+       $5::int[], $6::text[], $7::int[], $8::text[]
+     ) AS t(
+       id_carga, id_grado, id_curso, id_personal,
+       anio_lectivo, dia_semana, id_periodo, aula
+     )`,
+    [
+      arrays.id_carga,
+      arrays.id_grado,
+      arrays.id_curso,
+      arrays.id_personal,
+      arrays.anio_lectivo,
+      arrays.dia_semana,
+      arrays.id_periodo,
+      arrays.aula,
+      idUsuario || null,
+    ],
+  );
+  return result.rowCount;
+};
+
 module.exports = {
   listar,
   findById,
@@ -467,4 +599,10 @@ module.exports = {
   findConflictoReasignacion,
   actualizarDocentePorCarga,
   eliminarPorCarga,
+  listarCargasGeneracion,
+  listarPeriodosActivos,
+  listarBloquesExternos,
+  contarPublicadosPorGrados,
+  eliminarBorradoresPorGrados,
+  insertarLote,
 };
