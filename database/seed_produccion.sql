@@ -15,10 +15,14 @@
 --       database/migracion_h32_anulacion_pagos.sql
 --       database/migracion_h10_h38_concurrencia_pagos.sql
 --       database/migracion_h07_auditoria.sql
+--       database/migracion_h49_multianio_base.sql
 --
 -- Uso:
---   psql -v admin_password="TuClaveTemporal" \
+--   psql -v anio_lectivo=2027 -v admin_password="TuClaveTemporal" \
 --        -f database/seed_produccion.sql
+--
+-- El seed debe ejecutarse ANTES de la migración H49/6.1: la migración deja
+-- grados.orden como NOT NULL y el seed no lo informa.
 --
 -- La contraseña se recibe como variable de psql y NUNCA se guarda
 -- en el repositorio. Si falta o está vacía, el script aborta.
@@ -48,6 +52,23 @@ SELECT length(btrim(:'admin_password')) > 0 AS admin_password_ok \gset
   END $$;
 \endif
 
+\if :{?anio_lectivo}
+\else
+  \echo 'ERROR: falta -v anio_lectivo=2027'
+  DO $$ BEGIN
+    RAISE EXCEPTION 'Falta -v anio_lectivo para crear el año lectivo';
+  END $$;
+\endif
+
+SELECT (:'anio_lectivo')::int BETWEEN 2000 AND 2100 AS anio_lectivo_ok \gset
+\if :anio_lectivo_ok
+\else
+  \echo 'ERROR: anio_lectivo debe estar entre 2000 y 2100'
+  DO $$ BEGIN
+    RAISE EXCEPTION 'anio_lectivo inválido';
+  END $$;
+\endif
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 BEGIN;
@@ -69,7 +90,7 @@ SELECT setval(
 );
 
 -- ============================================================
--- 2. Grados del año lectivo en curso
+-- 2. Grados del año lectivo indicado por -v anio_lectivo
 -- ============================================================
 INSERT INTO grados (nombre_grado, nivel, seccion, anio_lectivo)
 SELECT v.nombre, 'SECUNDARIA', 'Única', a.anio
@@ -80,7 +101,7 @@ FROM (VALUES
   ('4to de Secundaria'),
   ('5to de Secundaria')
 ) AS v(nombre)
-CROSS JOIN (SELECT EXTRACT(YEAR FROM CURRENT_DATE)::int AS anio) a
+CROSS JOIN (SELECT (:'anio_lectivo')::int AS anio) a
 ON CONFLICT (nombre_grado, seccion, anio_lectivo) DO NOTHING;
 
 -- ============================================================
@@ -154,7 +175,7 @@ INSERT INTO escala_calificacion (codigo, descripcion, orden) VALUES
 ON CONFLICT (codigo) DO NOTHING;
 
 -- ============================================================
--- 6. Conceptos de pago del año lectivo en curso
+-- 6. Conceptos de pago del año lectivo indicado
 --    (matrícula + pensiones marzo-diciembre)
 -- ============================================================
 INSERT INTO conceptos_pago (nombre, monto_base, tipo, mes, anio_lectivo)
@@ -172,7 +193,7 @@ FROM (VALUES
   ('Pensión Noviembre',  250.00, 'PENSION', 11),
   ('Pensión Diciembre',  250.00, 'PENSION', 12)
 ) AS v(nombre, monto, tipo, mes)
-CROSS JOIN (SELECT EXTRACT(YEAR FROM CURRENT_DATE)::int AS anio) a
+CROSS JOIN (SELECT (:'anio_lectivo')::int AS anio) a
 WHERE NOT EXISTS (
   SELECT 1 FROM conceptos_pago cp
   WHERE cp.anio_lectivo = a.anio
@@ -218,7 +239,7 @@ WHERE u.dni = '74829102'
   );
 
 -- ============================================================
--- 9. Carga curricular base del año en curso
+-- 9. Carga curricular base del año indicado
 --    Se asigna al administrador solo como valor inicial. No crea
 --    usuarios docentes ni datos de alumnos.
 -- ============================================================
@@ -236,11 +257,11 @@ SELECT
     ORDER BY p.id_personal
     LIMIT 1
   ),
-  EXTRACT(YEAR FROM CURRENT_DATE)::int,
+  (:'anio_lectivo')::int,
   c.horas_semanales
 FROM grados g
 CROSS JOIN cursos c
-WHERE g.anio_lectivo = EXTRACT(YEAR FROM CURRENT_DATE)::int
+WHERE g.anio_lectivo = (:'anio_lectivo')::int
   AND EXISTS (
     SELECT 1
     FROM personal p
@@ -251,11 +272,13 @@ ON CONFLICT (id_grado, id_curso, anio_lectivo) DO NOTHING;
 
 -- ============================================================
 -- 10. Malla de períodos de clase (H47)
---     Solo se inserta si el año en curso no tiene malla.
+--     Solo se inserta si el año indicado no tiene malla.
 -- ============================================================
+SET siga.anio_lectivo = :'anio_lectivo';
+
 DO $$
 DECLARE
-  v_anio integer := EXTRACT(YEAR FROM CURRENT_DATE)::int;
+  v_anio integer := current_setting('siga.anio_lectivo')::int;
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM periodos_clase WHERE anio_lectivo = v_anio
