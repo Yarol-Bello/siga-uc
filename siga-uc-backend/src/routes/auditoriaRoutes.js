@@ -15,15 +15,12 @@ const router = express.Router();
 // Todas las rutas requieren autenticación
 router.use(verificarAutenticacion);
 
-// PDF de acta: ADMIN/DOCENTE. Debe ir antes del guard global de ADMIN.
-router.get(
-  "/actas/:id_acta/pdf",
-  checkRole(["ADMIN", "DOCENTE"]),
-  auditoriaController.getActaPdf,
-);
-
 // El resto de auditoría queda restringido a ADMIN
 router.use(checkRole(["ADMIN"]));
+
+// PDF de acta: solo ADMIN (H63). Una eventual descarga para DOCENTE debe
+// validar el grado del acta; las actas globales (id_grado NULL) son ADMIN-only.
+router.get("/actas/:id_acta/pdf", auditoriaController.getActaPdf);
 
 // ============================================================
 // CONSULTAS

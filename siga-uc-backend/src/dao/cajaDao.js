@@ -18,6 +18,22 @@ const obtenerCajaAbierta = async () => {
       c.id_caja,
       c.nombre_caja,
       u.nombres || ' ' || u.apellidos AS responsable,
+      (SELECT COALESCE(SUM(monto) FILTER (
+         WHERE tipo = 'INGRESO' AND COALESCE(medio_pago, 'Efectivo') = 'Efectivo'
+       ), 0) FROM movimientos_caja
+       WHERE id_apertura = ap.id_apertura) AS total_ingresos_efectivo,
+      (SELECT COALESCE(SUM(monto) FILTER (
+         WHERE tipo = 'INGRESO' AND COALESCE(medio_pago, 'Efectivo') <> 'Efectivo'
+       ), 0) FROM movimientos_caja
+       WHERE id_apertura = ap.id_apertura) AS total_ingresos_digital,
+      (SELECT COALESCE(SUM(monto) FILTER (
+         WHERE tipo = 'EGRESO' AND COALESCE(medio_pago, 'Efectivo') = 'Efectivo'
+       ), 0) FROM movimientos_caja
+       WHERE id_apertura = ap.id_apertura) AS total_egresos_efectivo,
+      (SELECT COALESCE(SUM(monto) FILTER (
+         WHERE tipo = 'EGRESO' AND COALESCE(medio_pago, 'Efectivo') <> 'Efectivo'
+       ), 0) FROM movimientos_caja
+       WHERE id_apertura = ap.id_apertura) AS total_egresos_digital,
       (SELECT COALESCE(SUM(monto), 0) FROM movimientos_caja 
        WHERE id_apertura = ap.id_apertura AND tipo = 'INGRESO') AS total_ingresos,
       (SELECT COALESCE(SUM(monto), 0) FROM movimientos_caja 
@@ -270,9 +286,18 @@ const cerrar = async (data) => {
     // Calcular totales
     const totalesSql = `
       SELECT 
-        COALESCE(SUM(monto) FILTER (WHERE tipo = 'INGRESO' AND medio_pago = 'Efectivo'), 0) AS ingresos_efectivo,
-        COALESCE(SUM(monto) FILTER (WHERE tipo = 'INGRESO' AND medio_pago != 'Efectivo'), 0) AS ingresos_digital,
-        COALESCE(SUM(monto) FILTER (WHERE tipo = 'EGRESO'), 0) AS egresos
+        COALESCE(SUM(monto) FILTER (
+          WHERE tipo = 'INGRESO' AND COALESCE(medio_pago, 'Efectivo') = 'Efectivo'
+        ), 0) AS ingresos_efectivo,
+        COALESCE(SUM(monto) FILTER (
+          WHERE tipo = 'INGRESO' AND COALESCE(medio_pago, 'Efectivo') <> 'Efectivo'
+        ), 0) AS ingresos_digital,
+        COALESCE(SUM(monto) FILTER (
+          WHERE tipo = 'EGRESO' AND COALESCE(medio_pago, 'Efectivo') = 'Efectivo'
+        ), 0) AS egresos_efectivo,
+        COALESCE(SUM(monto) FILTER (
+          WHERE tipo = 'EGRESO' AND COALESCE(medio_pago, 'Efectivo') <> 'Efectivo'
+        ), 0) AS egresos_digital
       FROM movimientos_caja
       WHERE id_apertura = $1
     `;
@@ -284,11 +309,14 @@ const cerrar = async (data) => {
     const montoApertura = parseFloat(cajaAbierta.monto_inicial);
     const ingresosEfectivo = parseFloat(t.ingresos_efectivo);
     const ingresosDigital = parseFloat(t.ingresos_digital);
-    const egresos = parseFloat(t.egresos);
-    const efectivoEsperado = montoApertura + ingresosEfectivo - egresos;
+    const egresosEfectivo = parseFloat(t.egresos_efectivo);
+    const egresosDigital = parseFloat(t.egresos_digital);
+    const egresos = egresosEfectivo + egresosDigital;
+    const totalDigital = ingresosDigital - egresosDigital;
+    const efectivoEsperado = montoApertura + ingresosEfectivo - egresosEfectivo;
     const efectivoFisico = parseFloat(data.efectivo_fisico);
     const diferencia = efectivoFisico - efectivoEsperado;
-    const totalGeneral = efectivoFisico + ingresosDigital;
+    const totalGeneral = efectivoFisico + totalDigital;
 
     // Estado del cierre
     let estado = "CUADRADO";
@@ -329,7 +357,13 @@ const cerrar = async (data) => {
     );
 
     await client.query("COMMIT");
-    return cierreResult.rows[0];
+    return {
+      ...cierreResult.rows[0],
+      egresos_efectivo: egresosEfectivo,
+      egresos_digital: egresosDigital,
+      total_digital: totalDigital,
+      total_ingresos: ingresosEfectivo + ingresosDigital,
+    };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

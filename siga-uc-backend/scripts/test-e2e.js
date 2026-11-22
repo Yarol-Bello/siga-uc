@@ -6,7 +6,7 @@
  *  - Solo opera sobre una base cuyo nombre contenga "_e2e" (por defecto
  *    siga_uc_e2e). Nunca toca siga_uc ni una base de Supabase.
  *  - Crea la base, carga el dump y las migraciones, arranca el backend en el
- *    puerto 3101, ejecuta 14 flujos y al final detiene el backend y elimina la
+ *    puerto 3101, ejecuta 17 flujos y al final detiene el backend y elimina la
  *    base con dropdb --force.
  *  - Si la limpieza falla, imprime los comandos manuales.
  *
@@ -74,6 +74,8 @@ const ctx = {
   pagoPensionId: null,
   idPension: null,
   idConceptoPension: null,
+  idConceptoCaja50: null,
+  idConceptoCaja80: null,
 };
 
 const ANCHO_PRUEBA = 82;
@@ -345,6 +347,67 @@ async function saldoCajaAbierta() {
     )
   `);
   return Number(filas[0]?.saldo || 0);
+}
+
+async function resetCajaParaPrueba() {
+  await sql("DELETE FROM cierres_caja");
+  await sql("DELETE FROM movimientos_caja");
+  await sql("DELETE FROM aperturas_caja");
+  await sql("UPDATE cajas SET estado = 'CERRADA'");
+}
+
+async function abrirCajaPrueba(montoInicial) {
+  const respuesta = await api("/caja/aperturar", {
+    method: "POST",
+    token: ctx.adminToken,
+    body: {
+      id_caja: 1,
+      monto_inicial: montoInicial,
+      observaciones: "Apertura de prueba H50",
+    },
+  });
+  const { datos } = await leerJson(respuesta);
+  assert.equal(
+    respuesta.status,
+    201,
+    `Aperturar caja falló (${detalleHttp(respuesta, datos)})`,
+  );
+  assert.ok(datos?.data?.id_apertura, "La apertura no devolvió id_apertura");
+  return datos.data;
+}
+
+async function crearConceptoPrueba(nombre, monto) {
+  const filas = await sql(
+    `INSERT INTO conceptos_pago (nombre, monto_base, tipo, mes, anio_lectivo)
+     VALUES ($1, $2, 'OTROS', NULL, $3)
+     RETURNING id_concepto`,
+    [nombre, monto, ANIO],
+  );
+  return filas[0].id_concepto;
+}
+
+async function pagarConceptoPrueba(idConcepto, monto, formaPago, nroOperacion = null) {
+  const body = {
+    id_alumno: ctx.alumno2Id,
+    id_concepto: idConcepto,
+    monto,
+    forma_pago: formaPago,
+  };
+  if (nroOperacion) body.nro_operacion = nroOperacion;
+
+  const respuesta = await api("/tesoreria/pagos", {
+    method: "POST",
+    token: ctx.adminToken,
+    body,
+  });
+  const { datos } = await leerJson(respuesta);
+  assert.equal(
+    respuesta.status,
+    201,
+    `Pago ${formaPago} de S/ ${monto} falló (${detalleHttp(respuesta, datos)})`,
+  );
+  assert.ok(datos?.data?.pago?.id_pago, "El pago no devolvió id_pago");
+  return datos.data.pago;
 }
 
 // ============================================================
@@ -1317,6 +1380,180 @@ async function ejecutarPruebas() {
       "Acta cerrada: guardar nota devuelve 409",
       "PASS",
       "acta CERRADO, guardado 409",
+    );
+  });
+
+  // 15. Caja con efectivo + Yape + anulación: el digital neto vuelve a 0.
+  await prueba(15, "Caja digital: Yape anulado no descuenta efectivo", async () => {
+    assert.ok(ctx.adminToken, "No hay sesión ADMIN");
+    assert.ok(ctx.alumno2Id, "No hay segundo alumno");
+
+    ctx.idConceptoCaja50 = await crearConceptoPrueba("H50 efectivo 50", 50);
+    ctx.idConceptoCaja80 = await crearConceptoPrueba("H50 Yape 80", 80);
+
+    await resetCajaParaPrueba();
+    await abrirCajaPrueba(100);
+
+    await pagarConceptoPrueba(ctx.idConceptoCaja50, 50, "Efectivo");
+    const pagoYape = await pagarConceptoPrueba(
+      ctx.idConceptoCaja80,
+      80,
+      "Yape",
+      "YAPE-H50-1",
+    );
+
+    const anulacion = await api(
+      `/tesoreria/pagos/${pagoYape.id_pago}/anular`,
+      {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: { motivo: "Anulación H50 de pago Yape" },
+      },
+    );
+    const anulacionDatos = await leerJson(anulacion);
+    assert.equal(
+      anulacion.status,
+      200,
+      `Anular Yape falló (${detalleHttp(anulacion, anulacionDatos)})`,
+    );
+
+    const cajaRespuesta = await api("/caja/actual", { token: ctx.adminToken });
+    const cajaDatos = await leerJson(cajaRespuesta);
+    assert.equal(cajaRespuesta.status, 200, "No se pudo leer /caja/actual");
+    const caja = cajaDatos.datos.data;
+
+    assert.equal(Number(caja.total_ingresos_efectivo), 50);
+    assert.equal(Number(caja.total_ingresos_digital), 80);
+    assert.equal(Number(caja.total_egresos_efectivo), 0);
+    assert.equal(Number(caja.total_egresos_digital), 80);
+    assert.equal(Number(caja.total_ingresos), 130);
+    assert.equal(Number(caja.total_egresos), 80);
+
+    const cierre = await api("/caja/cerrar", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { efectivo_fisico: 150 },
+    });
+    const cierreDatos = await leerJson(cierre);
+    assert.equal(
+      cierre.status,
+      200,
+      `Cerrar caja falló (${detalleHttp(cierre, cierreDatos)})`,
+    );
+    const c = cierreDatos.datos.data;
+
+    assert.equal(Number(c.efectivo_esperado), 150);
+    assert.equal(Number(c.egresos_efectivo), 0);
+    assert.equal(Number(c.egresos_digital), 80);
+    assert.equal(Number(c.total_digital), 0);
+    assert.equal(Number(c.total_general), 150);
+    assert.equal(c.estado, "CUADRADO");
+
+    registrar(
+      15,
+      "Caja digital: Yape anulado no descuenta efectivo",
+      "PASS",
+      "efectivo=150, digital=0, cierre CUADRADO",
+    );
+  });
+
+  // 16. Caja sin anulación: digital neto S/ 80.
+  await prueba(16, "Caja digital: Yape vigente suma digital S/ 80", async () => {
+    assert.ok(ctx.adminToken, "No hay sesión ADMIN");
+    assert.ok(ctx.idConceptoCaja50, "Falta concepto H50 efectivo");
+    assert.ok(ctx.idConceptoCaja80, "Falta concepto H50 digital");
+
+    await resetCajaParaPrueba();
+    await abrirCajaPrueba(100);
+
+    await pagarConceptoPrueba(ctx.idConceptoCaja50, 50, "Efectivo");
+    await pagarConceptoPrueba(
+      ctx.idConceptoCaja80,
+      80,
+      "Yape",
+      "YAPE-H50-2",
+    );
+
+    const cajaRespuesta = await api("/caja/actual", { token: ctx.adminToken });
+    const cajaDatos = await leerJson(cajaRespuesta);
+    assert.equal(cajaRespuesta.status, 200, "No se pudo leer /caja/actual");
+    const caja = cajaDatos.datos.data;
+
+    assert.equal(Number(caja.total_ingresos_efectivo), 50);
+    assert.equal(Number(caja.total_ingresos_digital), 80);
+    assert.equal(Number(caja.total_egresos_efectivo), 0);
+    assert.equal(Number(caja.total_egresos_digital), 0);
+    assert.equal(Number(caja.total_ingresos), 130);
+    assert.equal(Number(caja.total_egresos), 0);
+
+    const cierre = await api("/caja/cerrar", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { efectivo_fisico: 150 },
+    });
+    const cierreDatos = await leerJson(cierre);
+    assert.equal(
+      cierre.status,
+      200,
+      `Cerrar caja falló (${detalleHttp(cierre, cierreDatos)})`,
+    );
+    const c = cierreDatos.datos.data;
+
+    assert.equal(Number(c.efectivo_esperado), 150);
+    assert.equal(Number(c.egresos_efectivo), 0);
+    assert.equal(Number(c.egresos_digital), 0);
+    assert.equal(Number(c.total_digital), 80);
+    assert.equal(Number(c.total_general), 230);
+    assert.equal(c.estado, "CUADRADO");
+
+    registrar(
+      16,
+      "Caja digital: Yape vigente suma digital S/ 80",
+      "PASS",
+      "efectivo=150, digital=80, cierre CUADRADO",
+    );
+  });
+
+  // 17. H63: PDF de acta solo ADMIN.
+  await prueba(17, "PDF de acta: ADMIN 200, DOCENTE 403, sin token 401", async () => {
+    assert.ok(ctx.adminToken, "No hay sesión ADMIN");
+
+    const actas = await sql(
+      `SELECT id_acta
+       FROM actas_bimestrales
+       WHERE id_grado = 1 AND anio_lectivo = $1 AND periodo = '1er Bimestre'
+       ORDER BY id_acta DESC
+       LIMIT 1`,
+      [ANIO],
+    );
+    assert.ok(actas[0]?.id_acta, "No hay acta de grado 1 para probar el PDF");
+
+    const ruta = `/auditoria/actas/${actas[0].id_acta}/pdf`;
+    const bytes = await verificarPdf(ruta, ctx.adminToken);
+
+    const docente = await iniciarSesion(
+      "DOCENTE",
+      credenciales.DOCENTE[0],
+      credenciales.DOCENTE[1],
+    );
+    const docenteRespuesta = await api(ruta, {
+      token: docente.token,
+      accept: "application/pdf",
+    });
+    assert.equal(
+      docenteRespuesta.status,
+      403,
+      "DOCENTE no debe descargar el PDF de acta",
+    );
+
+    const sinToken = await api(ruta, { accept: "application/pdf" });
+    assert.equal(sinToken.status, 401, "Sin token el PDF de acta debe dar 401");
+
+    registrar(
+      17,
+      "PDF de acta: ADMIN 200, DOCENTE 403, sin token 401",
+      "PASS",
+      `ADMIN ${bytes} bytes, DOCENTE 403, sin token 401`,
     );
   });
 }

@@ -44,6 +44,10 @@ interface CajaAbierta {
   id_caja: number;
   nombre_caja: string;
   responsable: string;
+  total_ingresos_efectivo: string;
+  total_ingresos_digital: string;
+  total_egresos_efectivo: string;
+  total_egresos_digital: string;
   total_ingresos: string;
   total_egresos: string;
 }
@@ -323,21 +327,37 @@ export class SecretariaCajaComponent implements OnInit {
   /**
    * Cálculos derivados del estado de la caja
    */
+  get totalIngresosEfectivo(): number {
+    return parseFloat(this.cajaAbierta()?.total_ingresos_efectivo || '0') || 0;
+  }
+
+  get totalIngresosDigital(): number {
+    return parseFloat(this.cajaAbierta()?.total_ingresos_digital || '0') || 0;
+  }
+
+  get totalEgresosEfectivo(): number {
+    return parseFloat(this.cajaAbierta()?.total_egresos_efectivo || '0') || 0;
+  }
+
+  get totalEgresosDigital(): number {
+    return parseFloat(this.cajaAbierta()?.total_egresos_digital || '0') || 0;
+  }
+
+  get totalDigital(): number {
+    return this.totalIngresosDigital - this.totalEgresosDigital;
+  }
+
   get efectivoEsperado(): number {
     const caja = this.cajaAbierta();
     if (!caja) return 0;
     const montoInicial = parseFloat(caja.monto_inicial) || 0;
-    const ingresos = parseFloat(caja.total_ingresos) || 0;
-    const egresos = parseFloat(caja.total_egresos) || 0;
-    return montoInicial + ingresos - egresos;
+    return (
+      montoInicial + this.totalIngresosEfectivo - this.totalEgresosEfectivo
+    );
   }
 
   get totalGeneral(): number {
-    const caja = this.cajaAbierta();
-    if (!caja) return 0;
-    const montoInicial = parseFloat(caja.monto_inicial) || 0;
-    const ingresos = parseFloat(caja.total_ingresos) || 0;
-    return montoInicial + ingresos;
+    return this.efectivoEsperado + this.totalDigital;
   }
 
   get diferenciaCierre(): number {
