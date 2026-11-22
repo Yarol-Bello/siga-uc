@@ -6,7 +6,7 @@
  *  - Solo opera sobre una base cuyo nombre contenga "_e2e" (por defecto
  *    siga_uc_e2e). Nunca toca siga_uc ni una base de Supabase.
  *  - Crea la base, carga el dump y las migraciones, arranca el backend en el
- *    puerto 3101, ejecuta 17 flujos y al final detiene el backend y elimina la
+ *    puerto 3101, ejecuta 19 flujos y al final detiene el backend y elimina la
  *    base con dropdb --force.
  *  - Si la limpieza falla, imprime los comandos manuales.
  *
@@ -41,6 +41,7 @@ const MIGRACIONES = [
   path.join(RAIZ_REPO, "database", "migracion_h10_h38_concurrencia_pagos.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h07_auditoria.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h47_horarios.sql"),
+  path.join(RAIZ_REPO, "database", "migracion_h48_actas.sql"),
 ];
 
 const PUERTO = 3101;
@@ -1039,7 +1040,7 @@ async function ejecutarPruebas() {
         id_curso: 1,
         id_competencia: idCompetencia,
         id_grado: 1,
-        bimestre: 1,
+        bimestre: 3,
         anio_lectivo: ANIO,
         calificacion: "AD",
       },
@@ -1055,7 +1056,7 @@ async function ejecutarPruebas() {
       `SELECT nota_final
        FROM notas_finales_area
        WHERE id_alumno = $1 AND id_curso = 1
-         AND bimestre = 1 AND anio_lectivo = $2`,
+         AND bimestre = 3 AND anio_lectivo = $2`,
       [ctx.alumno2Id, ANIO],
     );
     assert.ok(notas[0]?.nota_final, "No se guardó la nota final");
@@ -1110,7 +1111,7 @@ async function ejecutarPruebas() {
             id_curso: 1,
             id_competencia: 1,
             id_grado: 1,
-            bimestre: 1,
+            bimestre: 3,
             anio_lectivo: ANIO,
             calificacion: "A",
           },
@@ -1119,7 +1120,7 @@ async function ejecutarPruebas() {
             id_curso: 1,
             id_competencia: 2,
             id_grado: 1,
-            bimestre: 1,
+            bimestre: 3,
             anio_lectivo: ANIO,
             calificacion: "B",
           },
@@ -1128,7 +1129,7 @@ async function ejecutarPruebas() {
             id_curso: 1,
             id_competencia: 3,
             id_grado: 1,
-            bimestre: 1,
+            bimestre: 3,
             anio_lectivo: ANIO,
             calificacion: "X",
           },
@@ -1149,7 +1150,7 @@ async function ejecutarPruebas() {
       `SELECT COUNT(*)::int AS total
        FROM calificaciones
        WHERE id_alumno = $1 AND id_curso = 1
-         AND bimestre = 1 AND anio_lectivo = $2`,
+         AND bimestre = 3 AND anio_lectivo = $2`,
       [ctx.alumno2Id, ANIO],
     );
     assert.equal(conteo[0].total, 2, "La fila inválida se guardó o faltó una válida");
@@ -1169,7 +1170,7 @@ async function ejecutarPruebas() {
     assert.ok(ctx.pagoMatriculaId, "No hay pago de matrícula");
 
     const bytesLibreta = await verificarPdf(
-      `/reportes/libreta/${ctx.alumno2Id}/pdf?bimestre=1`,
+      `/reportes/libreta/${ctx.alumno2Id}/pdf?bimestre=3`,
       ctx.adminToken,
     );
     const bytesBoleta = await verificarPdf(
@@ -1297,28 +1298,24 @@ async function ejecutarPruebas() {
     );
   });
 
-  // 14. Acta cerrada bloquea nuevas notas.
-  await prueba(14, "Acta cerrada: guardar nota devuelve 409", async () => {
+  // 14. Cierre real por API, bloqueo de nota y reapertura.
+  await prueba(14, "Cerrar acta real, bloquear nota y reabrir", async () => {
     assert.ok(ctx.adminToken, "No hay sesión ADMIN");
     assert.ok(ctx.alumno2Id, "No hay segundo alumno");
 
-    await sql(
-      `DELETE FROM actas_bimestrales
-       WHERE id_grado = 1 AND anio_lectivo = $1 AND periodo = '1er Bimestre'`,
+    const actasAntes = await sql(
+      `SELECT COUNT(*)::int AS total
+       FROM actas_bimestrales
+       WHERE anio_lectivo = $1 AND bimestre = 3 AND id_grado = 1`,
       [ANIO],
     );
-    await sql(
-      `INSERT INTO actas_bimestrales (periodo, anio_lectivo, id_grado, estado)
-       VALUES ('1er Bimestre', $1, 1, 'ABIERTO')
-       RETURNING id_acta`,
-      [ANIO],
-    );
+    assert.equal(actasAntes[0].total, 0, "Ya existía un acta de 3er Bimestre");
 
     const cierre = await api("/auditoria/actas/cerrar", {
       method: "POST",
       token: ctx.adminToken,
       body: {
-        periodo: "1er Bimestre",
+        bimestre: 3,
         anio_lectivo: ANIO,
         id_grado: 1,
       },
@@ -1330,21 +1327,10 @@ async function ejecutarPruebas() {
       `Cerrar acta falló (${detalleHttp(cierre, cierreDatos)})`,
     );
 
-    const actas = await sql(
-      `SELECT estado
-       FROM actas_bimestrales
-       WHERE id_grado = 1 AND anio_lectivo = $1 AND periodo = '1er Bimestre'`,
-      [ANIO],
-    );
-    assert.equal(actas[0]?.estado, "CERRADO", "El acta no quedó CERRADO");
-
-    const antes = await sql(
-      `SELECT COUNT(*)::int AS total
-       FROM calificaciones
-       WHERE id_alumno = $1 AND id_curso = 1
-         AND bimestre = 1 AND anio_lectivo = $2`,
-      [ctx.alumno2Id, ANIO],
-    );
+    const acta = cierreDatos.datos.data;
+    assert.equal(acta.estado, "CERRADO");
+    assert.equal(Number(acta.bimestre), 3);
+    assert.equal(acta.periodo, "3er Bimestre");
 
     const intento = await api("/calificaciones", {
       method: "POST",
@@ -1354,7 +1340,7 @@ async function ejecutarPruebas() {
         id_curso: 1,
         id_competencia: 4,
         id_grado: 1,
-        bimestre: 1,
+        bimestre: 3,
         anio_lectivo: ANIO,
         calificacion: "B",
       },
@@ -1366,20 +1352,45 @@ async function ejecutarPruebas() {
       `Guardar nota con acta cerrada debía ser 409 (${detalleHttp(intento, intentoDatos)})`,
     );
 
-    const despues = await sql(
-      `SELECT COUNT(*)::int AS total
-       FROM calificaciones
-       WHERE id_alumno = $1 AND id_curso = 1
-         AND bimestre = 1 AND anio_lectivo = $2`,
-      [ctx.alumno2Id, ANIO],
+    const reapertura = await api(`/auditoria/actas/${acta.id_acta}/reabrir`, {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { motivo: "Reapertura E2E para continuar el registro de notas" },
+    });
+    const reaperturaDatos = await leerJson(reapertura);
+    assert.equal(
+      reapertura.status,
+      200,
+      `Reabrir acta falló (${detalleHttp(reapertura, reaperturaDatos)})`,
     );
-    assert.equal(despues[0].total, antes[0].total, "Se guardó una nota con acta cerrada");
+    assert.equal(reaperturaDatos.datos.data.estado, "ABIERTO");
+    assert.equal(reaperturaDatos.datos.data.hash_integridad, null);
+
+    const guardado = await api("/calificaciones", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: {
+        id_alumno: ctx.alumno2Id,
+        id_curso: 1,
+        id_competencia: 4,
+        id_grado: 1,
+        bimestre: 3,
+        anio_lectivo: ANIO,
+        calificacion: "B",
+      },
+    });
+    const guardadoDatos = await leerJson(guardado);
+    assert.equal(
+      guardado.status,
+      201,
+      `Guardar nota tras reabrir falló (${detalleHttp(guardado, guardadoDatos)})`,
+    );
 
     registrar(
       14,
-      "Acta cerrada: guardar nota devuelve 409",
+      "Cerrar acta real, bloquear nota y reabrir",
       "PASS",
-      "acta CERRADO, guardado 409",
+      "cierre 200, nota 409, reapertura 200, nota 201",
     );
   });
 
@@ -1521,7 +1532,7 @@ async function ejecutarPruebas() {
     const actas = await sql(
       `SELECT id_acta
        FROM actas_bimestrales
-       WHERE id_grado = 1 AND anio_lectivo = $1 AND periodo = '1er Bimestre'
+       WHERE id_grado = 1 AND anio_lectivo = $1 AND bimestre = 3
        ORDER BY id_acta DESC
        LIMIT 1`,
       [ANIO],
@@ -1554,6 +1565,212 @@ async function ejecutarPruebas() {
       "PDF de acta: ADMIN 200, DOCENTE 403, sin token 401",
       "PASS",
       `ADMIN ${bytes} bytes, DOCENTE 403, sin token 401`,
+    );
+  });
+
+  // 18. Acta global cerrada bloquea todos los grados.
+  await prueba(18, "Acta global bloquea 1ro y 5to; reabrir libera", async () => {
+    assert.ok(ctx.adminToken, "No hay sesión ADMIN");
+    assert.ok(ctx.alumno2Id, "No hay segundo alumno");
+
+    const cierre = await api("/auditoria/actas/cerrar", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: {
+        bimestre: 4,
+        anio_lectivo: ANIO,
+      },
+    });
+    const cierreDatos = await leerJson(cierre);
+    assert.equal(
+      cierre.status,
+      200,
+      `Cerrar acta global falló (${detalleHttp(cierre, cierreDatos)})`,
+    );
+    const actaGlobal = cierreDatos.datos.data;
+    assert.equal(actaGlobal.id_grado, null);
+    assert.equal(actaGlobal.estado, "CERRADO");
+
+    const notaBase = {
+      id_alumno: ctx.alumno2Id,
+      id_curso: 1,
+      id_competencia: 1,
+      bimestre: 4,
+      anio_lectivo: ANIO,
+      calificacion: "A",
+    };
+
+    const nota1 = await api("/calificaciones", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { ...notaBase, id_grado: 1 },
+    });
+    const nota1Datos = await leerJson(nota1);
+    assert.equal(
+      nota1.status,
+      409,
+      `Acta global no bloqueó 1ro (${detalleHttp(nota1, nota1Datos)})`,
+    );
+
+    const nota5 = await api("/calificaciones", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { ...notaBase, id_grado: 5 },
+    });
+    const nota5Datos = await leerJson(nota5);
+    assert.equal(
+      nota5.status,
+      409,
+      `Acta global no bloqueó 5to (${detalleHttp(nota5, nota5Datos)})`,
+    );
+
+    const reapertura = await api(
+      `/auditoria/actas/${actaGlobal.id_acta}/reabrir`,
+      {
+        method: "POST",
+        token: ctx.adminToken,
+        body: { motivo: "Reapertura global E2E para continuar notas" },
+      },
+    );
+    const reaperturaDatos = await leerJson(reapertura);
+    assert.equal(
+      reapertura.status,
+      200,
+      `Reabrir acta global falló (${detalleHttp(reapertura, reaperturaDatos)})`,
+    );
+
+    const nota1Despues = await api("/calificaciones", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { ...notaBase, id_grado: 1 },
+    });
+    const nota1DespuesDatos = await leerJson(nota1Despues);
+    assert.equal(
+      nota1Despues.status,
+      201,
+      `Guardar nota tras reabrir global falló (${detalleHttp(nota1Despues, nota1DespuesDatos)})`,
+    );
+
+    registrar(
+      18,
+      "Acta global bloquea 1ro y 5to; reabrir libera",
+      "PASS",
+      "global 200, notas 409/409, reapertura 200, nota 201",
+    );
+  });
+
+  // 19. Duplicado, motivo corto y autorización de cierre/reapertura.
+  await prueba(19, "Cierre duplicado 409, motivo corto 400 y roles 403/401", async () => {
+    assert.ok(ctx.adminToken, "No hay sesión ADMIN");
+
+    const cierre = await api("/auditoria/actas/cerrar", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { bimestre: 3, anio_lectivo: ANIO, id_grado: 1 },
+    });
+    const cierreDatos = await leerJson(cierre);
+    assert.equal(
+      cierre.status,
+      200,
+      `Cerrar acta para duplicado falló (${detalleHttp(cierre, cierreDatos)})`,
+    );
+    const actaId = cierreDatos.datos.data.id_acta;
+
+    const segundo = await api("/auditoria/actas/cerrar", {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { bimestre: 3, anio_lectivo: ANIO, id_grado: 1 },
+    });
+    const segundoDatos = await leerJson(segundo);
+    assert.equal(
+      segundo.status,
+      409,
+      `Cerrar dos veces debía dar 409 (${detalleHttp(segundo, segundoDatos)})`,
+    );
+
+    const corto = await api(`/auditoria/actas/${actaId}/reabrir`, {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { motivo: "corto" },
+    });
+    const cortoDatos = await leerJson(corto);
+    assert.equal(
+      corto.status,
+      400,
+      `Motivo corto debía dar 400 (${detalleHttp(corto, cortoDatos)})`,
+    );
+
+    const reapertura = await api(`/auditoria/actas/${actaId}/reabrir`, {
+      method: "POST",
+      token: ctx.adminToken,
+      body: { motivo: "Reapertura E2E para probar autorización" },
+    });
+    const reaperturaDatos = await leerJson(reapertura);
+    assert.equal(
+      reapertura.status,
+      200,
+      `Reapertura válida falló (${detalleHttp(reapertura, reaperturaDatos)})`,
+    );
+
+    const docente = await iniciarSesion(
+      "DOCENTE",
+      credenciales.DOCENTE[0],
+      credenciales.DOCENTE[1],
+    );
+    const secretaria = await iniciarSesion(
+      "SECRETARIA",
+      process.env.SMOKE_SECRETARIA_DNI || "40596837",
+      process.env.SMOKE_SECRETARIA_PASSWORD ||
+        process.env.SMOKE_ADMIN_PASSWORD,
+    );
+
+    for (const [rol, token] of [
+      ["DOCENTE", docente.token],
+      ["SECRETARIA", secretaria.token],
+    ]) {
+      const cierreRol = await api("/auditoria/actas/cerrar", {
+        method: "POST",
+        token,
+        body: { bimestre: 3, anio_lectivo: ANIO, id_grado: 1 },
+      });
+      assert.equal(
+        cierreRol.status,
+        403,
+        `${rol} no debe cerrar actas`,
+      );
+
+      const reabrirRol = await api(`/auditoria/actas/${actaId}/reabrir`, {
+        method: "POST",
+        token,
+        body: { motivo: "Intento de reapertura por rol no autorizado" },
+      });
+      assert.equal(
+        reabrirRol.status,
+        403,
+        `${rol} no debe reabrir actas`,
+      );
+    }
+
+    const cierreSinToken = await api("/auditoria/actas/cerrar", {
+      method: "POST",
+      body: { bimestre: 3, anio_lectivo: ANIO, id_grado: 1 },
+    });
+    assert.equal(cierreSinToken.status, 401);
+
+    const reabrirSinToken = await api(
+      `/auditoria/actas/${actaId}/reabrir`,
+      {
+        method: "POST",
+        body: { motivo: "Intento de reapertura sin token" },
+      },
+    );
+    assert.equal(reabrirSinToken.status, 401);
+
+    registrar(
+      19,
+      "Cierre duplicado 409, motivo corto 400 y roles 403/401",
+      "PASS",
+      "409, 400, DOCENTE/SECRETARIA 403, sin token 401",
     );
   });
 }

@@ -367,11 +367,16 @@ CREATE TABLE public.actas_bimestrales (
     id_acta integer NOT NULL,
     periodo character varying(30) NOT NULL,
     anio_lectivo integer NOT NULL,
+    bimestre integer NOT NULL,
     id_grado integer,
     estado character varying(20) DEFAULT 'ABIERTO'::character varying NOT NULL,
     fecha_cierre timestamp without time zone,
     cerrado_por integer,
+    reabierto_por integer,
+    fecha_reapertura timestamp without time zone,
+    motivo_reapertura character varying(250),
     hash_integridad character varying(255),
+    CONSTRAINT chk_acta_bimestre CHECK (((bimestre >= 1) AND (bimestre <= 4))),
     CONSTRAINT chk_acta_estado CHECK (((estado)::text = ANY (ARRAY[('ABIERTO'::character varying)::text, ('CERRADO'::character varying)::text])))
 );
 
@@ -2864,6 +2869,13 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
+-- Name: uq_acta_anio_bimestre_grado; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX uq_acta_anio_bimestre_grado ON public.actas_bimestrales USING btree (anio_lectivo, bimestre, id_grado) NULLS NOT DISTINCT;
+
+
+--
 -- Name: idx_alumnos_anio; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -3143,6 +3155,9 @@ ALTER TABLE ONLY public.actas_bimestrales
 
 ALTER TABLE ONLY public.actas_bimestrales
     ADD CONSTRAINT actas_bimestrales_id_grado_fkey FOREIGN KEY (id_grado) REFERENCES public.grados(id_grado) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.actas_bimestrales
+    ADD CONSTRAINT actas_bimestrales_reabierto_por_fkey FOREIGN KEY (reabierto_por) REFERENCES public.usuarios(id_usuario) ON DELETE SET NULL;
 
 
 --

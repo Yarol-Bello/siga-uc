@@ -40,7 +40,7 @@
       <i class="fa-solid fa-list-check"></i> Bitácora General de Cambios
     </button>
     <button class="tab-btn" [class.active]="tabActiva() === 'actas'" (click)="cambiarTab('actas')">
-      <i class="fa-solid fa-lock"></i> Cierre y Firmado de Actas
+      <i class="fa-solid fa-lock"></i> Cierre y Reapertura de Actas
     </button>
   </div>
 
@@ -81,6 +81,7 @@
           <option value="LOGOUT">Logout</option>
           <option value="ABRIR">Abrir</option>
           <option value="CERRAR">Cerrar</option>
+          <option value="REABRIR">Reabrir</option>
           <option value="RETIRAR">Retirar</option>
           <option value="CESAR">Cesar</option>
           <option value="DESCARGAR">Descargar</option>
@@ -173,16 +174,94 @@
   <!-- TAB 2: ACTAS -->
   <!-- ============================================================ -->
   @if (tabActiva() === 'actas') {
-  <div class="card-container">
+  <div class="card-container acta-cierre-card">
     <div class="section-header-banner">
       <h3>
         <i class="fa-solid fa-lock"></i>
-        Congelamiento de Notas y Cierre de Actas Bimestrales
+        Cerrar acta
       </h3>
     </div>
 
     <p class="section-hint">
-      Al cerrar un bimestre, las calificaciones quedan bloqueadas para edición de docentes.
+      El cierre bloquea la edición de notas del bimestre. Un acta con grado
+      <strong>Todos los grados</strong> bloquea todos los grados del año.
+    </p>
+
+    @if (errorCierre()) {
+    <div class="alert alert-danger" style="margin-bottom: 14px;">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      {{ errorCierre() }}
+    </div>
+    }
+
+    @if (exitoCierre()) {
+    <div class="alert alert-success" style="margin-bottom: 14px;">
+      <i class="fa-solid fa-circle-check"></i>
+      {{ exitoCierre() }}
+    </div>
+    }
+
+    @if (exitoReapertura()) {
+    <div class="alert alert-success" style="margin-bottom: 14px;">
+      <i class="fa-solid fa-circle-check"></i>
+      {{ exitoReapertura() }}
+    </div>
+    }
+
+    <div class="acta-form-grid">
+      <div class="acta-form-group">
+        <label>Bimestre</label>
+        <select
+          [ngModel]="bimestreCierre()"
+          (ngModelChange)="bimestreCierre.set(+$event)"
+        >
+          @for (b of bimestres; track b) {
+          <option [ngValue]="b">{{ nombreBimestre(b) }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="acta-form-group">
+        <label>Grado</label>
+        <select
+          [ngModel]="gradoCierre()"
+          (ngModelChange)="gradoCierre.set($event)"
+        >
+          <option [ngValue]="null">Todos los grados</option>
+          @for (g of grados(); track g.id_grado) {
+          <option [ngValue]="g.id_grado">{{ g.nombre_grado }} — {{ g.seccion }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="acta-form-group">
+        <label>Año lectivo</label>
+        <input type="text" [value]="anioLectivo()" disabled />
+      </div>
+    </div>
+
+    <div class="acta-cierre-actions">
+      <button class="btn-primary" [disabled]="cerrando()" (click)="cerrarActa()">
+        @if (cerrando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Cerrando...
+        } @else {
+        <i class="fa-solid fa-lock"></i> Cerrar acta
+        }
+      </button>
+    </div>
+  </div>
+
+  <div class="card-container">
+    <div class="section-header-banner">
+      <h3>
+        <i class="fa-solid fa-list-check"></i>
+        Actas Bimestrales
+      </h3>
+    </div>
+
+    <p class="section-hint">
+      El hash de integridad identifica el cierre. Reabrir exige un motivo y deja
+      el acta editable nuevamente.
     </p>
 
     @if (errorActaPdf()) {
@@ -201,14 +280,27 @@
             <th>Estado del Acta</th>
             <th>Fecha de Cierre</th>
             <th>Cerrado Por</th>
-            <th>Acción de Seguridad</th>
+            <th>Hash de Integridad</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           @for (a of actas(); track a.id_acta) {
           <tr>
             <td><strong>{{ a.periodo }} {{ a.anio_lectivo }}</strong></td>
-            <td>{{ a.nombre_grado || 'Todos los grados' }}</td>
+            <td>
+              <span>{{ a.nombre_grado || 'Todos los grados' }}</span>
+              @if (a.id_grado === null && a.estado === 'CERRADO') {
+              <span class="badge-global">Bloquea todos los grados</span>
+              }
+              @if (a.fecha_reapertura) {
+              <small class="reapertura-info">
+                Reabierta {{ a.fecha_reapertura | date:'dd/MM/yyyy HH:mm' }} por
+                {{ a.reabierto_por_nombre || '—' }}
+                @if (a.motivo_reapertura) { · {{ a.motivo_reapertura }} }
+              </small>
+              }
+            </td>
             <td>
               <span class="badge-acta" [ngClass]="a.estado === 'CERRADO' ? 'cerrado' : 'abierto'">
                 {{ a.estado }}
@@ -217,17 +309,12 @@
             <td>{{ a.fecha_cierre ? (a.fecha_cierre | date:'dd/MM/yyyy HH:mm') : 'En Cierre...' }}</td>
             <td>{{ a.cerrado_por_nombre || '—' }}</td>
             <td>
+              <code class="hash-code" [title]="a.hash_integridad || ''">
+                {{ hashCorto(a.hash_integridad) }}
+              </code>
+            </td>
+            <td>
               <div class="acta-actions">
-                @if (a.estado === 'ABIERTO') {
-                <button class="btn-lock" (click)="cerrarActa(a)">
-                  <i class="fa-solid fa-lock"></i> Firmar y Bloquear
-                </button>
-                } @else {
-                <button class="btn-secondary" disabled>
-                  <i class="fa-solid fa-shield-halved"></i> Acta Firmada
-                </button>
-                }
-
                 <button
                   class="btn-pdf"
                   title="Descargar acta en PDF"
@@ -237,9 +324,15 @@
                   @if (actaPdfId() === a.id_acta) {
                   <i class="fa-solid fa-spinner fa-spin"></i> Generando...
                   } @else {
-                  <i class="fa-solid fa-file-pdf"></i> Descargar PDF
+                  <i class="fa-solid fa-file-pdf"></i> PDF
                   }
                 </button>
+
+                @if (a.estado === 'CERRADO') {
+                <button class="btn-reabrir" (click)="abrirModalReapertura(a)">
+                  <i class="fa-solid fa-lock-open"></i> Reabrir
+                </button>
+                }
               </div>
             </td>
           </tr>
@@ -252,12 +345,81 @@
     <div class="empty-state">
       <i class="fa-solid fa-lock"></i>
       <h3>No hay actas registradas</h3>
+      <p>Use la tarjeta "Cerrar acta" para crear la primera.</p>
     </div>
     }
   </div>
   }
 
 </div>
+
+<!-- ============================================================ -->
+<!-- MODAL REAPERTURA DE ACTA -->
+<!-- ============================================================ -->
+@if (modalReapertura() && actaReabrir()) {
+<div class="modal-overlay" (click)="cerrarModalReapertura()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-lock-open"></i> Reabrir acta</h3>
+      <button class="modal-close" (click)="cerrarModalReapertura()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detalle-info">
+        <p>
+          <strong>Acta:</strong> {{ actaReabrir()!.periodo }}
+          {{ actaReabrir()!.anio_lectivo }}
+        </p>
+        <p>
+          <strong>Grado:</strong>
+          {{ actaReabrir()!.nombre_grado || 'Todos los grados' }}
+        </p>
+        <p>
+          <strong>Estado actual:</strong> {{ actaReabrir()!.estado }}
+        </p>
+      </div>
+
+      @if (errorReapertura()) {
+      <div class="alert alert-danger" style="margin-bottom: 14px;">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorReapertura() }}
+      </div>
+      }
+
+      <div class="acta-form-group">
+        <label>Motivo de reapertura *</label>
+        <textarea
+          rows="3"
+          maxlength="250"
+          [ngModel]="motivoReapertura()"
+          (ngModelChange)="motivoReapertura.set($event)"
+          placeholder="Mínimo 10 caracteres. Ej. Corrección de notas del bimestre."
+        ></textarea>
+        <small>{{ motivoReapertura().trim().length }}/250 · mínimo 10</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button
+        class="btn-secondary"
+        (click)="cerrarModalReapertura()"
+        [disabled]="procesandoReapertura()"
+      >
+        Cancelar
+      </button>
+      <button
+        class="btn-primary"
+        (click)="confirmarReapertura()"
+        [disabled]="procesandoReapertura()"
+      >
+        @if (procesandoReapertura()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Reabriendo...
+        } @else {
+        <i class="fa-solid fa-lock-open"></i> Reabrir acta
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
 
 <!-- ============================================================ -->
 <!-- MODAL DETALLE DE AUDITORÍA -->

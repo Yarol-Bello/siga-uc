@@ -187,17 +187,23 @@ const listarActas = async () => {
       a.id_acta,
       a.periodo,
       a.anio_lectivo,
+      a.bimestre,
       a.id_grado,
       a.estado,
       a.fecha_cierre,
       a.cerrado_por,
+      a.reabierto_por,
+      a.fecha_reapertura,
+      a.motivo_reapertura,
       a.hash_integridad,
       g.nombre_grado,
-      u.nombres || ' ' || u.apellidos AS cerrado_por_nombre
+      u.nombres || ' ' || u.apellidos AS cerrado_por_nombre,
+      ur.nombres || ' ' || ur.apellidos AS reabierto_por_nombre
     FROM actas_bimestrales a
     LEFT JOIN grados g ON g.id_grado = a.id_grado
     LEFT JOIN usuarios u ON u.id_usuario = a.cerrado_por
-    ORDER BY a.anio_lectivo DESC, a.periodo
+    LEFT JOIN usuarios ur ON ur.id_usuario = a.reabierto_por
+    ORDER BY a.anio_lectivo DESC, a.bimestre, a.id_grado NULLS FIRST
   `;
   const result = await query(sql);
   return result.rows;
@@ -212,19 +218,25 @@ const findActaById = async (id_acta) => {
       a.id_acta,
       a.periodo,
       a.anio_lectivo,
+      a.bimestre,
       a.id_grado,
       a.estado,
       a.fecha_cierre,
       a.cerrado_por,
+      a.reabierto_por,
+      a.fecha_reapertura,
+      a.motivo_reapertura,
       a.hash_integridad,
       g.nombre_grado,
       g.seccion,
       g.nivel,
       u.nombres || ' ' || u.apellidos AS cerrado_por_nombre,
-      u.dni AS cerrado_por_dni
+      u.dni AS cerrado_por_dni,
+      ur.nombres || ' ' || ur.apellidos AS reabierto_por_nombre
     FROM actas_bimestrales a
     LEFT JOIN grados g ON g.id_grado = a.id_grado
     LEFT JOIN usuarios u ON u.id_usuario = a.cerrado_por
+    LEFT JOIN usuarios ur ON ur.id_usuario = a.reabierto_por
     WHERE a.id_acta = $1
     LIMIT 1
   `;
@@ -233,26 +245,85 @@ const findActaById = async (id_acta) => {
 };
 
 /**
- * Cerrar un acta bimestral (con hash de integridad)
+ * Buscar un acta por su clave lógica (año, bimestre, grado).
+ * id_grado NULL representa el acta global.
+ */
+const findActaPorClave = async (anio_lectivo, bimestre, id_grado) => {
+  const sql = `
+    SELECT *
+    FROM actas_bimestrales
+    WHERE anio_lectivo = $1::INT
+      AND bimestre = $2::INT
+      AND id_grado IS NOT DISTINCT FROM $3::INT
+    LIMIT 1
+  `;
+  const result = await query(sql, [
+    anio_lectivo,
+    bimestre,
+    id_grado ?? null,
+  ]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Cerrar un acta bimestral (INSERT o UPDATE si estaba ABIERTA).
+ * No actualiza un acta que ya estaba CERRADA.
  */
 const cerrarActa = async (data) => {
   const sql = `
-    UPDATE actas_bimestrales
-    SET 
+    INSERT INTO actas_bimestrales (
+      periodo, anio_lectivo, bimestre, id_grado,
+      estado, fecha_cierre, cerrado_por, hash_integridad
+    )
+    VALUES (
+      $1::VARCHAR, $2::INT, $3::INT, $4::INT,
+      'CERRADO', NOW(), $5::INT,
+      MD5(CONCAT($1::text, $2::text, NOW()::text, $4::text))
+    )
+    ON CONFLICT (anio_lectivo, bimestre, id_grado) DO UPDATE
+    SET
+      periodo = EXCLUDED.periodo,
       estado = 'CERRADO',
       fecha_cierre = NOW(),
-      cerrado_por = $1,
-      hash_integridad = MD5(CONCAT($2, $3, NOW()::text, $4))
-    WHERE periodo = $2
-      AND anio_lectivo = $3
-      AND id_grado IS NOT DISTINCT FROM $4
+      cerrado_por = EXCLUDED.cerrado_por,
+      hash_integridad = EXCLUDED.hash_integridad,
+      reabierto_por = NULL,
+      fecha_reapertura = NULL,
+      motivo_reapertura = NULL
+    WHERE actas_bimestrales.estado <> 'CERRADO'
     RETURNING *
   `;
   const result = await query(sql, [
-    data.cerrado_por,
     data.periodo,
     data.anio_lectivo,
-    data.id_grado || null,
+    data.bimestre,
+    data.id_grado ?? null,
+    data.cerrado_por,
+  ]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Reabrir un acta CERRADA. El motivo y el usuario quedan registrados.
+ * Devuelve null si no existe o si no estaba CERRADA.
+ */
+const reabrirActa = async (id_acta, data) => {
+  const sql = `
+    UPDATE actas_bimestrales
+    SET
+      estado = 'ABIERTO',
+      reabierto_por = $2,
+      fecha_reapertura = NOW(),
+      motivo_reapertura = $3,
+      hash_integridad = NULL
+    WHERE id_acta = $1::INT
+      AND estado = 'CERRADO'
+    RETURNING *
+  `;
+  const result = await query(sql, [
+    id_acta,
+    data.id_usuario,
+    data.motivo,
   ]);
   return result.rows[0] || null;
 };
@@ -372,30 +443,33 @@ const findActaMatriz = async (id_grado, periodo, anioLectivo) => {
 
 /**
  * Verifica si existe un acta CERRADA para el grado/bimestre/año.
- * Las actas globales (id_grado NULL) se ignoran por decisión de negocio.
+ * Un acta global (id_grado NULL) en CERRADO bloquea todos los grados.
  */
 const actaEstaCerrada = async (
   id_grado,
   bimestre,
   anioLectivo = getAnioLectivo(),
 ) => {
-  const grado = Number(id_grado);
-  const periodo = PERIODOS_POR_BIMESTRE[Number(bimestre)];
+  const grado = id_grado === null || id_grado === undefined
+    ? null
+    : Number(id_grado);
+  const bim = Number(bimestre);
+  const anio = Number(anioLectivo);
 
-  if (!grado || !periodo || periodo.length === 0) {
+  if (!Number.isInteger(bim) || bim < 1 || bim > 4 || !Number.isInteger(anio)) {
     return false;
   }
 
   const sql = `
     SELECT 1
     FROM actas_bimestrales
-    WHERE id_grado = $1
-      AND anio_lectivo = $2
+    WHERE anio_lectivo = $3::INT
+      AND bimestre = $2::INT
       AND estado = 'CERRADO'
-      AND periodo::text ILIKE ANY($3::text[])
+      AND (id_grado = $1::INT OR id_grado IS NULL)
     LIMIT 1
   `;
-  const result = await query(sql, [grado, anioLectivo, periodo]);
+  const result = await query(sql, [grado, bim, anio]);
   return result.rows.length > 0;
 };
 
@@ -407,8 +481,10 @@ module.exports = {
   listarModulos,
   listarActas,
   findActaById,
+  findActaPorClave,
   findActaMatriz,
   cerrarActa,
+  reabrirActa,
   actaEstaCerrada,
   getEstadisticas,
 };

@@ -375,6 +375,12 @@ export class AdminReportesComponent implements OnInit {
   /**
    * Obtener clase CSS por nota
    */
+  libretaTieneNotas(): boolean {
+    return (this.libretaData()?.notas || []).some(
+      (nota: any) => !!nota?.nota_final,
+    );
+  }
+
   getNotaClass(nota: string | undefined): string {
     if (!nota) return 'nota-vacia';
     return 'nota-' + nota.toLowerCase();

@@ -334,6 +334,10 @@ tr:hover td {
     background: rgba(128, 0, 32, 0.12);
     color: var(--primary-guindo);
   }
+  &.reabrir {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success-green);
+  }
   &.retirar {
     background: rgba(239, 68, 68, 0.15);
     color: var(--danger-red);
@@ -631,4 +635,139 @@ tr:hover td {
     color: #065f46;
   }
   border: 1px solid #6ee7b7;
+}
+
+/* ============================================================
+   H48 — Cierre y reapertura de actas
+   ============================================================ */
+.btn-primary {
+  background: var(--primary-guindo);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.acta-cierre-card {
+  margin-bottom: 20px;
+}
+
+.acta-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+.acta-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+
+  label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #334155;
+  }
+
+  select,
+  input,
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-family: inherit;
+    background: white;
+
+    &:focus {
+      outline: none;
+      border-color: var(--primary-guindo);
+    }
+
+    &:disabled {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  small {
+    color: #64748b;
+    font-size: 0.72rem;
+  }
+}
+
+.acta-cierre-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.badge-global {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(128, 0, 32, 0.1);
+  color: var(--primary-guindo);
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.reapertura-info {
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.hash-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 3px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.btn-reabrir {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover {
+    background: rgba(16, 185, 129, 0.2);
+  }
 }

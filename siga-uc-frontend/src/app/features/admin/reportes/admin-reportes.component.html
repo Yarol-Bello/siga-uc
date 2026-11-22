@@ -23,17 +23,15 @@
       </select>
     </div>
 
-    @if (tabActiva() !== 'libretas') {
     <div class="filter-group" style="max-width: 220px;">
       <label><i class="fa-solid fa-calendar"></i> Bimestre</label>
-      <select [ngModel]="bimestre()" (ngModelChange)="bimestre.set($event); cambiarBimestre()">
+      <select [ngModel]="bimestre()" (ngModelChange)="bimestre.set(+$event); cambiarBimestre()">
         <option [value]="1">I Bimestre</option>
         <option [value]="2">II Bimestre</option>
         <option [value]="3">III Bimestre</option>
         <option [value]="4">IV Bimestre</option>
       </select>
     </div>
-    }
 
     <div class="toolbar-actions">
       @if (tabActiva() !== 'libretas') {
@@ -230,6 +228,14 @@
       <div class="alert alert-danger">
         <i class="fa-solid fa-circle-exclamation"></i>
         {{ errorPdf() }}
+      </div>
+      }
+
+      @if (libretaData() && !libretaTieneNotas()) {
+      <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        No hay calificaciones registradas para el {{ bimestre() }}° Bimestre.
+        La libreta se muestra con guiones y el PDF se generará sin notas.
       </div>
       }
 

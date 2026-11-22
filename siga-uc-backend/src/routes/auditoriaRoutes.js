@@ -39,4 +39,9 @@ router.post(
   auditoriaController.cerrarActa,
 );
 
+router.post(
+  "/actas/:id/reabrir",
+  auditoriaController.reabrirActa,
+);
+
 module.exports = router;

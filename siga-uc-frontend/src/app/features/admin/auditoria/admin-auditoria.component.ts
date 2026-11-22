@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 interface Bitacora {
@@ -25,13 +26,25 @@ interface Acta {
   id_acta: number;
   periodo: string;
   anio_lectivo: number;
+  bimestre: number;
   id_grado: number | null;
   estado: string;
   fecha_cierre: string | null;
   cerrado_por: number | null;
+  reabierto_por: number | null;
+  fecha_reapertura: string | null;
+  motivo_reapertura: string | null;
   hash_integridad: string | null;
   nombre_grado: string | null;
   cerrado_por_nombre: string | null;
+  reabierto_por_nombre: string | null;
+}
+
+interface Grado {
+  id_grado: number;
+  nombre_grado: string;
+  seccion: string;
+  anio_lectivo: number;
 }
 
 interface Estadisticas {
@@ -56,6 +69,9 @@ interface Estadisticas {
 })
 export class AdminAuditoriaComponent implements OnInit {
   private http = inject(HttpClient);
+  private configuracion = inject(ConfiguracionService);
+
+  anioLectivo = this.configuracion.anioLectivo;
 
   // Estado
   tabActiva = signal<'bitacora' | 'actas'>('bitacora');
@@ -64,10 +80,27 @@ export class AdminAuditoriaComponent implements OnInit {
 
   bitacora = signal<Bitacora[]>([]);
   actas = signal<Acta[]>([]);
+  grados = signal<Grado[]>([]);
   modulos = signal<string[]>([]);
   estadisticas = signal<Estadisticas | null>(null);
   actaPdfId = signal<number | null>(null);
   errorActaPdf = signal<string | null>(null);
+
+  // Cierre de acta
+  readonly bimestres = [1, 2, 3, 4];
+  bimestreCierre = signal<number>(1);
+  gradoCierre = signal<number | null>(null);
+  cerrando = signal(false);
+  errorCierre = signal<string | null>(null);
+  exitoCierre = signal<string | null>(null);
+
+  // Reapertura de acta
+  modalReapertura = signal(false);
+  actaReabrir = signal<Acta | null>(null);
+  motivoReapertura = signal('');
+  procesandoReapertura = signal(false);
+  errorReapertura = signal<string | null>(null);
+  exitoReapertura = signal<string | null>(null);
 
   // Paginación server-side (logs: 50 por página)
   readonly pageSize = 50;
@@ -89,6 +122,7 @@ export class AdminAuditoriaComponent implements OnInit {
     this.cargarActas();
     this.cargarModulos();
     this.cargarEstadisticas();
+    this.cargarGrados();
   }
 
   /**
@@ -98,7 +132,27 @@ export class AdminAuditoriaComponent implements OnInit {
     this.tabActiva.set(tab);
     if (tab === 'actas') {
       this.cargarActas();
+      if (this.grados().length === 0) {
+        this.cargarGrados();
+      }
     }
+  }
+
+  cargarGrados(): void {
+    this.http
+      .get<any>(`${environment.apiUrl}/grados`, {
+        params: { anio: this.anioLectivo() },
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.success && Array.isArray(res.data)) {
+            this.grados.set(res.data);
+          }
+        },
+        error: (err) => {
+          console.error('Error al cargar grados:', err);
+        },
+      });
   }
 
   /**
@@ -291,41 +345,137 @@ export class AdminAuditoriaComponent implements OnInit {
     this.registroDetalle.set(null);
   }
 
-  /**
-   * Cerrar acta bimestral
-   */
-  cerrarActa(acta: Acta): void {
-    if (acta.estado === 'CERRADO') {
-      alert('Esta acta ya está cerrada');
-      return;
+  nombreBimestre(bimestre: number): string {
+    const nombres: { [key: number]: string } = {
+      1: '1er Bimestre',
+      2: '2do Bimestre',
+      3: '3er Bimestre',
+      4: '4to Bimestre',
+    };
+    return nombres[Number(bimestre)] || `${bimestre}° Bimestre`;
+  }
+
+  nombreGrado(idGrado: number | null): string {
+    if (idGrado === null || idGrado === undefined) {
+      return 'Todos los grados';
     }
+    const grado = this.grados().find((g) => g.id_grado === idGrado);
+    return grado ? `${grado.nombre_grado} — ${grado.seccion}` : `Grado ${idGrado}`;
+  }
+
+  hashCorto(hash: string | null): string {
+    if (!hash) return '—';
+    return `${hash.slice(0, 12)}…`;
+  }
+
+  /**
+   * Cerrar acta por bimestre y grado (o global).
+   */
+  cerrarActa(): void {
+    if (this.cerrando()) return;
+
+    const bimestre = Number(this.bimestreCierre());
+    const idGrado = this.gradoCierre();
+    const gradoTexto = this.nombreGrado(idGrado);
 
     if (
       !confirm(
-        `¿Está seguro de cerrar y firmar digitalmente el ${acta.periodo}?\n\n` +
-          `Una vez bloqueado, ningún docente podrá alterar notas sin autorización.`,
+        `¿Cerrar el acta de ${this.nombreBimestre(bimestre)} para ${gradoTexto}?\n\n` +
+          `Al cerrarla, las notas de ese bimestre quedarán bloqueadas para edición. ` +
+          `Si el acta es global, bloqueará todos los grados.`,
       )
-    )
+    ) {
       return;
+    }
+
+    this.cerrando.set(true);
+    this.errorCierre.set(null);
+    this.exitoCierre.set(null);
+    this.exitoReapertura.set(null);
 
     this.http
       .post<any>(`${environment.apiUrl}/auditoria/actas/cerrar`, {
-        periodo: acta.periodo,
-        anio_lectivo: acta.anio_lectivo,
-        id_grado: acta.id_grado,
+        bimestre,
+        anio_lectivo: this.anioLectivo(),
+        id_grado: idGrado,
       })
+      .pipe(finalize(() => this.cerrando.set(false)))
       .subscribe({
         next: (res) => {
           if (res.success) {
-            alert(
-              `✅ ${acta.periodo} cerrado y firmado digitalmente\n\n` +
-                `Hash de integridad: ${res.data.hash_integridad}`,
+            this.exitoCierre.set(
+              res.message || 'Acta cerrada correctamente.',
             );
             this.cargarActas();
             this.cargarEstadisticas();
           }
         },
-        error: (err) => alert('Error: ' + (err.error?.message || 'Error al cerrar acta')),
+        error: (err) => {
+          this.errorCierre.set(
+            err.error?.message || 'No se pudo cerrar el acta.',
+          );
+        },
+      });
+  }
+
+  abrirModalReapertura(acta: Acta): void {
+    if (acta.estado !== 'CERRADO') return;
+    this.actaReabrir.set(acta);
+    this.motivoReapertura.set('');
+    this.errorReapertura.set(null);
+    this.exitoReapertura.set(null);
+    this.errorCierre.set(null);
+    this.exitoCierre.set(null);
+    this.modalReapertura.set(true);
+  }
+
+  cerrarModalReapertura(): void {
+    if (this.procesandoReapertura()) return;
+    this.modalReapertura.set(false);
+    this.actaReabrir.set(null);
+    this.motivoReapertura.set('');
+    this.errorReapertura.set(null);
+  }
+
+  confirmarReapertura(): void {
+    const acta = this.actaReabrir();
+    if (!acta || this.procesandoReapertura()) return;
+
+    const motivo = this.motivoReapertura().trim();
+    if (motivo.length < 10) {
+      this.errorReapertura.set(
+        'El motivo de reapertura debe tener al menos 10 caracteres.',
+      );
+      return;
+    }
+
+    this.procesandoReapertura.set(true);
+    this.errorReapertura.set(null);
+
+    this.http
+      .post<any>(
+        `${environment.apiUrl}/auditoria/actas/${acta.id_acta}/reabrir`,
+        { motivo },
+      )
+      .pipe(finalize(() => this.procesandoReapertura.set(false)))
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.modalReapertura.set(false);
+            this.actaReabrir.set(null);
+            this.motivoReapertura.set('');
+            this.exitoReapertura.set(
+              res.message || 'Acta reabierta correctamente.',
+            );
+            this.cargarActas();
+            this.cargarEstadisticas();
+          }
+        },
+        error: (err) => {
+          this.errorReapertura.set(
+            err.error?.message || 'No se pudo reabrir el acta.',
+          );
+        },
       });
   }
 
@@ -358,6 +508,8 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'abrir';
       case 'CERRAR':
         return 'cerrar';
+      case 'REABRIR':
+        return 'reabrir';
       case 'RETIRAR':
         return 'retirar';
       case 'CESAR':
@@ -404,6 +556,8 @@ export class AdminAuditoriaComponent implements OnInit {
         return 'fa-lock-open';
       case 'CERRAR':
         return 'fa-lock';
+      case 'REABRIR':
+        return 'fa-lock-open';
       case 'RETIRAR':
         return 'fa-user-slash';
       case 'CESAR':

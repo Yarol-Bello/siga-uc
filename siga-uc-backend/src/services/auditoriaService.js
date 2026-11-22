@@ -4,6 +4,14 @@
  */
 
 const auditoriaDao = require("../dao/auditoriaDao");
+const gradoDao = require("../dao/gradoDao");
+
+const PERIODOS_CANONICOS = {
+  1: "1er Bimestre",
+  2: "2do Bimestre",
+  3: "3er Bimestre",
+  4: "4to Bimestre",
+};
 
 /**
  * Registrar un evento de auditoría.
@@ -105,17 +113,144 @@ const obtenerActa = async (id_acta) => {
 };
 
 const cerrarActa = async (data) => {
-  if (!data.periodo || !data.anio_lectivo) {
-    const error = new Error("Faltan campos: periodo, anio_lectivo");
+  const bimestre = Number(data.bimestre);
+  const anioLectivo = Number(data.anio_lectivo);
+
+  if (!Number.isInteger(bimestre) || bimestre < 1 || bimestre > 4) {
+    const error = new Error("Bimestre inválido (1-4)");
     error.statusCode = 400;
     throw error;
   }
+
+  if (
+    !Number.isInteger(anioLectivo) ||
+    anioLectivo < 2000 ||
+    anioLectivo > 2100
+  ) {
+    const error = new Error("Año lectivo inválido");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let idGrado = null;
+  if (data.id_grado !== undefined && data.id_grado !== null && data.id_grado !== "") {
+    idGrado = Number(data.id_grado);
+    if (!Number.isInteger(idGrado) || idGrado <= 0) {
+      const error = new Error("Grado inválido");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
   if (!data.cerrado_por) {
     const error = new Error("Falta el usuario que cierra el acta");
     error.statusCode = 400;
     throw error;
   }
-  return await auditoriaDao.cerrarActa(data);
+
+  if (idGrado !== null) {
+    const grado = await gradoDao.findById(idGrado);
+    if (!grado) {
+      const error = new Error("Grado no encontrado");
+      error.statusCode = 404;
+      throw error;
+    }
+    if (Number(grado.anio_lectivo) !== anioLectivo) {
+      const error = new Error("El grado no pertenece al año lectivo indicado");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  const periodo = PERIODOS_CANONICOS[bimestre];
+  const anterior = await auditoriaDao.findActaPorClave(
+    anioLectivo,
+    bimestre,
+    idGrado,
+  );
+
+  if (anterior?.estado === "CERRADO") {
+    const error = new Error("El acta ya está cerrada.");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const acta = await auditoriaDao.cerrarActa({
+    periodo,
+    anio_lectivo: anioLectivo,
+    bimestre,
+    id_grado: idGrado,
+    cerrado_por: data.cerrado_por,
+  });
+
+  if (!acta) {
+    const error = new Error("El acta ya está cerrada.");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  return {
+    ...acta,
+    estado_anterior: anterior?.estado || "NO_EXISTIA",
+  };
+};
+
+const reabrirActa = async (id_acta, data) => {
+  const id = Number(id_acta);
+  if (!Number.isInteger(id) || id <= 0) {
+    const error = new Error("Acta inválida");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const motivo = String(data?.motivo || "").trim();
+  if (motivo.length < 10) {
+    const error = new Error(
+      "El motivo de reapertura debe tener al menos 10 caracteres.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+  if (motivo.length > 250) {
+    const error = new Error(
+      "El motivo de reapertura no puede superar los 250 caracteres.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!data?.id_usuario) {
+    const error = new Error("Falta el usuario que reabre el acta");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const acta = await auditoriaDao.findActaById(id);
+  if (!acta) {
+    const error = new Error("Acta no encontrada");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (acta.estado !== "CERRADO") {
+    const error = new Error("El acta no está cerrada.");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const reabierta = await auditoriaDao.reabrirActa(id, {
+    motivo,
+    id_usuario: data.id_usuario,
+  });
+
+  if (!reabierta) {
+    const error = new Error("El acta no está cerrada.");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  return {
+    ...reabierta,
+    estado_anterior: "CERRADO",
+  };
 };
 
 const getEstadisticas = async () => {
@@ -132,5 +267,6 @@ module.exports = {
   listarActas,
   obtenerActa,
   cerrarActa,
+  reabrirActa,
   getEstadisticas,
 };

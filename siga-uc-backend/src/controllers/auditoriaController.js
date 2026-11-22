@@ -130,24 +130,64 @@ const cerrarActa = async (req, res) => {
       cerrado_por: req.usuario.id_usuario,
     });
 
+    const gradoTexto = data.id_grado
+      ? `grado ${data.id_grado}`
+      : "Todos los grados";
+
     await auditoriaService.registrarSeguro(req, {
-      modulo: "Evaluaciones",
+      modulo: "Actas",
       accion: "CERRAR",
-      descripcion: `Cierre de acta ${data.periodo} - ${data.anio_lectivo}`,
+      descripcion: `Cierre de acta ${data.periodo} - ${gradoTexto} (${data.anio_lectivo})`,
+      anterior: {
+        estado: data.estado_anterior || "NO_EXISTIA",
+      },
       nuevo: {
         id_acta: data.id_acta,
         periodo: data.periodo,
+        bimestre: data.bimestre,
         grado: data.id_grado,
         anio_lectivo: data.anio_lectivo,
+        estado: "CERRADO",
       },
     });
 
-    return response.success(
-      res,
-      200,
-      "Acta cerrada y firmada digitalmente",
-      data,
-    );
+    return response.success(res, 200, "Acta cerrada correctamente", data);
+  } catch (error) {
+    return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
+const reabrirActa = async (req, res) => {
+  try {
+    const data = await auditoriaService.reabrirActa(req.params.id, {
+      ...req.body,
+      id_usuario: req.usuario.id_usuario,
+    });
+
+    const gradoTexto = data.id_grado
+      ? `grado ${data.id_grado}`
+      : "Todos los grados";
+
+    await auditoriaService.registrarSeguro(req, {
+      modulo: "Actas",
+      accion: "REABRIR",
+      descripcion: `Reapertura de acta ${data.periodo} - ${gradoTexto} (${data.anio_lectivo})`,
+      anterior: {
+        id_acta: data.id_acta,
+        estado: data.estado_anterior || "CERRADO",
+      },
+      nuevo: {
+        id_acta: data.id_acta,
+        periodo: data.periodo,
+        bimestre: data.bimestre,
+        grado: data.id_grado,
+        anio_lectivo: data.anio_lectivo,
+        estado: "ABIERTO",
+        motivo: data.motivo_reapertura,
+      },
+    });
+
+    return response.success(res, 200, "Acta reabierta correctamente", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);
   }
@@ -169,5 +209,6 @@ module.exports = {
   listarActas,
   getActaPdf,
   cerrarActa,
+  reabrirActa,
   getEstadisticas,
 };
