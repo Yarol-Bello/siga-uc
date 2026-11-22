@@ -116,6 +116,7 @@ const preview = async (req, res) => {
         id_politica: data.id_politica,
         id_grado: data.id_grado,
         incluir_retirados: data.incluir_retirados,
+        copiar_becas: data.copiar_becas,
         total: data.resumen.total,
         por_resultado: data.resumen.por_resultado,
         bloqueados: data.resumen.bloqueados,

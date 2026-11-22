@@ -73,11 +73,13 @@ export interface AlumnoPromocion {
     global_cerrada: boolean;
   };
   notas: {
-    bimestre: number;
+    bimestres: number[];
     requeridas: number;
     registradas: number;
     faltantes: string[];
     cursos: string[];
+    combinaciones_requeridas: number;
+    combinaciones_registradas: number;
   };
   asistencia: {
     total: number;
@@ -108,6 +110,7 @@ export interface PreviewPromocion {
   politica: PoliticaPromocion;
   id_grado: number | null;
   incluir_retirados: boolean;
+  copiar_becas: boolean;
   destino: {
     nombre: string;
     tiene_matricula: boolean;
@@ -253,6 +256,7 @@ export class PromocionService {
     id_grado?: number | null;
     incluir_retirados?: boolean;
     decisiones?: DecisionPromocion[];
+    copiar_becas?: boolean;
   }): Promise<PreviewPromocion> {
     const response = await firstValueFrom(
       this.http.post<any>(`${this.API}/preview`, payload),

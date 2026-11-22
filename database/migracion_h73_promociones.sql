@@ -84,7 +84,7 @@ SELECT
   '{
     "modo": "manual",
     "modo_repitencia": "DESACTIVADA",
-    "notas_bimestre": 4,
+    "notas_bimestres": [4],
     "bimestres_requeridos": [1, 2, 3, 4],
     "transiciones": [],
     "observacion": "La dirección revisa caso por caso. No se codifica la norma nacional."

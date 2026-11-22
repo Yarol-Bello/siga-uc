@@ -11,7 +11,7 @@ const politicaPromocionDao = require("../dao/politicaPromocionDao");
 const CRITERIO_DEFECTO = {
   modo: "manual",
   modo_repitencia: "DESACTIVADA",
-  notas_bimestre: 4,
+  notas_bimestres: [4],
   bimestres_requeridos: [1, 2, 3, 4],
   transiciones: [],
   observacion: "",
@@ -122,14 +122,32 @@ const normalizarCriterio = (criterio) => {
     );
   }
 
-  resultado.notas_bimestre = Number(resultado.notas_bimestre);
-  if (
-    !Number.isInteger(resultado.notas_bimestre) ||
-    resultado.notas_bimestre < 1 ||
-    resultado.notas_bimestre > 4
-  ) {
+  const bimestresNotasRaw =
+    valor.notas_bimestres !== undefined
+      ? valor.notas_bimestres
+      : valor.notas_bimestre !== undefined
+        ? [valor.notas_bimestre]
+        : CRITERIO_DEFECTO.notas_bimestres;
+  const listaBimestresNotas = Array.isArray(bimestresNotasRaw)
+    ? bimestresNotasRaw
+    : [bimestresNotasRaw];
+  resultado.notas_bimestres = [
+    ...new Set(
+      listaBimestresNotas
+        .map((valorBimestre) => Number(valorBimestre))
+        .filter(
+          (valorBimestre) =>
+            Number.isInteger(valorBimestre) &&
+            valorBimestre >= 1 &&
+            valorBimestre <= 4,
+        ),
+    ),
+  ].sort((a, b) => a - b);
+  delete resultado.notas_bimestre;
+
+  if (resultado.notas_bimestres.length === 0) {
     throw crearError(
-      "notas_bimestre debe ser un entero entre 1 y 4.",
+      "Debe indicar al menos un bimestre de notas (1-4).",
       400,
       { codigo: "CRITERIO_INVALIDO" },
     );

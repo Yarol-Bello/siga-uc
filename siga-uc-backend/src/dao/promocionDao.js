@@ -108,18 +108,18 @@ const listarActas = async (anio, idsGrados = [], client = null) => {
 };
 
 const listarNotasFinales = async (
-  { anio, bimestre, idsAlumnos = [] },
+  { anio, bimestres = [], idsAlumnos = [] },
   client = null,
 ) => {
-  if (idsAlumnos.length === 0) return [];
+  if (idsAlumnos.length === 0 || bimestres.length === 0) return [];
   const result = await ejecutar(
     client,
-    `SELECT id_alumno, id_curso, nota_final
+    `SELECT id_alumno, id_curso, bimestre, nota_final
      FROM notas_finales_area
      WHERE anio_lectivo = $1
-       AND bimestre = $2
+       AND bimestre = ANY($2::int[])
        AND id_alumno = ANY($3::int[])`,
-    [anio, bimestre, idsAlumnos],
+    [anio, bimestres, idsAlumnos],
   );
   return result.rows;
 };

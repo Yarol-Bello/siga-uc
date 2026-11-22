@@ -32,9 +32,13 @@ const existeTabla = async (nombre, client = null) => {
 const listar = async () => {
   const tieneActas = await existeTabla("actas_bimestrales");
   const tieneHorarios = await existeTabla("horarios");
+  const tienePeriodos = await existeTabla("periodos_clase");
 
   const subActas = tieneActas
     ? `(SELECT COUNT(*)::int FROM actas_bimestrales ab WHERE ab.anio_lectivo = a.anio)`
+    : `0`;
+  const subPeriodos = tienePeriodos
+    ? `(SELECT COUNT(*)::int FROM periodos_clase p WHERE p.anio_lectivo = a.anio)`
     : `0`;
   const subHorarios = tieneHorarios
     ? `(SELECT COUNT(*)::int FROM horarios h WHERE h.anio_lectivo = a.anio)`
@@ -59,8 +63,7 @@ const listar = async () => {
          WHERE cp.anio_lectivo = a.anio) AS conceptos,
        (SELECT COUNT(*)::int FROM conceptos_pago cp
          WHERE cp.anio_lectivo = a.anio AND cp.tipo = 'MATRICULA') AS conceptos_matricula,
-       (SELECT COUNT(*)::int FROM periodos_clase p
-         WHERE p.anio_lectivo = a.anio) AS periodos,
+       ${subPeriodos} AS periodos,
        (SELECT COUNT(*)::int FROM carga_curricular cc
          WHERE cc.anio_lectivo = a.anio) AS carga,
        (SELECT COUNT(*)::int FROM tutores_grado tg

@@ -252,6 +252,17 @@
           </div>
         }
 
+        @if (pendientes().length > 0) {
+          <div class="alert alert-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>
+              Hay <strong>{{ pendientes().length }}</strong> alumno(s) en
+              <strong>PENDIENTE</strong>. El lote no se puede confirmar: resuelva cada caso
+              con un override con motivo o corrija actas/notas y vuelva a previsualizar.
+            </span>
+          </div>
+        }
+
         <div class="table-responsive tabla-promociones">
           <table>
             <thead>
@@ -298,12 +309,15 @@
                   </td>
                   <td class="num">
                     @if (alumno.notas.faltantes.length === 0) {
-                      <span class="texto-ok">
+                      <span class="texto-ok" [title]="'Bimestres: ' + alumno.notas.bimestres.join(', ')">
                         <i class="fa-solid fa-circle-check"></i>
                         {{ alumno.notas.registradas }}/{{ alumno.notas.requeridas }}
                       </span>
                     } @else {
-                      <span class="texto-peligro" [title]="'Faltan: ' + alumno.notas.faltantes.join(', ')">
+                      <span
+                        class="texto-peligro"
+                        [title]="'Bimestres: ' + alumno.notas.bimestres.join(', ') + '. Faltan: ' + alumno.notas.faltantes.join(', ')"
+                      >
                         <i class="fa-solid fa-circle-exclamation"></i>
                         {{ alumno.notas.registradas }}/{{ alumno.notas.requeridas }}
                       </span>
@@ -700,6 +714,27 @@
         </div>
 
         <div class="form-group">
+          <label>Bimestres de notas finales *</label>
+          <div class="checks-politica">
+            @for (bimestre of bimestres; track bimestre) {
+              <label class="chk-inline">
+                <input
+                  type="checkbox"
+                  [checked]="notasBimestres().includes(bimestre)"
+                  (change)="onBimestreNotaChange(bimestre, $any($event.target).checked)"
+                />
+                Bimestre {{ bimestre }}
+              </label>
+            }
+          </div>
+          <small class="texto-muted">
+            Se exige una nota final por curso en cada bimestre marcado. Este control tiene
+            prioridad sobre el JSON al guardar. Si falta cualquier bimestre, el curso se
+            marca como faltante.
+          </small>
+        </div>
+
+        <div class="form-group">
           <label for="criterio">Criterio académico (JSON descriptivo) *</label>
           <textarea
             id="criterio"
@@ -709,7 +744,7 @@
             [disabled]="guardandoPolitica()"
           ></textarea>
           <small class="texto-muted">
-            Claves: modo_repitencia (DESACTIVADA/UMBRAL), notas_bimestre (1-4),
+            Claves: modo_repitencia (DESACTIVADA/UMBRAL), notas_bimestres (1-4),
             bimestres_requeridos, min_cursos_desaprobados, notas_desaprobadas,
             transiciones, observacion. No se codifica la norma nacional.
           </small>

@@ -24,8 +24,32 @@ const RESULTADOS = new Set([
 const RESULTADOS_CON_DESTINO = new Set(["PROMOVIDO", "REPITENTE"]);
 
 const crearError = politicaPromocionService.crearError;
-const traducirError = politicaPromocionService.traducirError;
+const traducirErrorBase = politicaPromocionService.traducirError;
 const parseAnio = politicaPromocionService.parseAnio;
+
+/**
+ * Traduce errores de promociones con mensajes propios. Los 42P01 siguen
+ * delegando en el servicio de políticas para distinguir H49/H73.
+ */
+const traducirError = (error) => {
+  if (error?.statusCode) return error;
+  if (error?.code === "42P01") return traducirErrorBase(error);
+  if (error?.code === "23505") {
+    return crearError(
+      "Ya existe una promoción confirmada o una matrícula destino para este alumno.",
+      409,
+      { codigo: "PROMOCION_DUPLICADA" },
+    );
+  }
+  if (error?.code === "23503") {
+    return crearError(
+      "La promoción hace referencia a una matrícula, grado o usuario inexistente.",
+      409,
+      { codigo: "PROMOCION_REGISTRO_RELACIONADO" },
+    );
+  }
+  return traducirErrorBase(error);
+};
 
 const aNumero = (valor) => {
   const numero = Number(valor);
@@ -222,6 +246,7 @@ const calcularPreview = async (
     idGrado = null,
     incluirRetirados = false,
     decisiones = [],
+    copiarBecas = false,
   },
   client = null,
 ) => {
@@ -305,6 +330,8 @@ const calcularPreview = async (
     anioO,
     anioD,
   );
+  const notasBimestres = politica.criterio_academico.notas_bimestres;
+  const bimestreRepitencia = Math.max(...notasBimestres);
 
   const alumnos = await promocionDao.listarMatriculasOrigen(
     {
@@ -334,7 +361,7 @@ const calcularPreview = async (
   const notas = await promocionDao.listarNotasFinales(
     {
       anio: anioO,
-      bimestre: politica.criterio_academico.notas_bimestre,
+      bimestres: notasBimestres,
       idsAlumnos,
     },
     client,
@@ -393,7 +420,7 @@ const calcularPreview = async (
   const notasMap = new Map();
   for (const nota of notas) {
     notasMap.set(
-      `${Number(nota.id_alumno)}|${Number(nota.id_curso)}`,
+      `${Number(nota.id_alumno)}|${Number(nota.id_curso)}|${Number(nota.bimestre)}`,
       String(nota.nota_final).toUpperCase(),
     );
   }
@@ -463,9 +490,28 @@ const calcularPreview = async (
     const faltantesNotas = cursosGrado
       .filter(
         (curso) =>
-          !notasMap.has(`${idAlumno}|${Number(curso.id_curso)}`),
+          !notasBimestres.every((bimestre) =>
+            notasMap.has(
+              `${idAlumno}|${Number(curso.id_curso)}|${Number(bimestre)}`,
+            ),
+          ),
       )
       .map((curso) => curso.nombre_curso);
+    const cursosCompletos = cursosGrado.length - faltantesNotas.length;
+    const combinacionesNotasRequeridas =
+      cursosGrado.length * notasBimestres.length;
+    let combinacionesNotasRegistradas = 0;
+    for (const curso of cursosGrado) {
+      for (const bimestre of notasBimestres) {
+        if (
+          notasMap.has(
+            `${idAlumno}|${Number(curso.id_curso)}|${Number(bimestre)}`,
+          )
+        ) {
+          combinacionesNotasRegistradas += 1;
+        }
+      }
+    }
 
     const asistencia = asistenciaMap.get(idAlumno) || {
       total: 0,
@@ -560,7 +606,7 @@ const calcularPreview = async (
         let desaprobados = 0;
         for (const curso of cursosGrado) {
           const nota = notasMap.get(
-            `${idAlumno}|${Number(curso.id_curso)}`,
+            `${idAlumno}|${Number(curso.id_curso)}|${Number(bimestreRepitencia)}`,
           );
           if (nota && notasDesaprobadas.has(nota)) desaprobados += 1;
         }
@@ -587,7 +633,9 @@ const calcularPreview = async (
         }
       }
 
-      if (resultadoSugerido === "PROMOVIDO") {
+      if (
+        ["PROMOVIDO", "REPITENTE", "EGRESADO"].includes(resultadoSugerido)
+      ) {
         if (
           politica.requiere_actas_cerradas &&
           faltantesActas.length > 0
@@ -607,7 +655,7 @@ const calcularPreview = async (
           idGradoDestinoSugerido = null;
           agregarBloqueo(
             "NOTAS_PENDIENTES",
-            `Faltan notas finales del bimestre ${politica.criterio_academico.notas_bimestre} en ${faltantesNotas.length} curso(s).`,
+            `Faltan notas finales de los bimestres ${notasBimestres.join(", ")} en ${faltantesNotas.length} curso(s).`,
             faltantesNotas,
           );
         }
@@ -853,11 +901,13 @@ const calcularPreview = async (
         global_cerrada: actaGlobalCerrada,
       },
       notas: {
-        bimestre: politica.criterio_academico.notas_bimestre,
+        bimestres: notasBimestres,
         requeridas: cursosGrado.length,
-        registradas: cursosGrado.length - faltantesNotas.length,
+        registradas: cursosCompletos,
         faltantes: faltantesNotas,
         cursos: cursosGrado.map((curso) => curso.nombre_curso),
+        combinaciones_requeridas: combinacionesNotasRequeridas,
+        combinaciones_registradas: combinacionesNotasRegistradas,
       },
       asistencia: {
         total: Number(asistencia.total || 0),
@@ -913,6 +963,7 @@ const calcularPreview = async (
     anio_destino: anioD,
     id_grado: gradoFiltro,
     incluir_retirados: incluir,
+    copiar_becas: Boolean(copiarBecas),
     politica: {
       id_politica: politica.id_politica,
       nombre: politica.nombre,
@@ -1009,6 +1060,7 @@ const calcularPreview = async (
     },
     id_grado: gradoFiltro,
     incluir_retirados: incluir,
+    copiar_becas: Boolean(copiarBecas),
     destino: {
       nombre: destinoAnio?.nombre || `Año ${anioD}`,
       tiene_matricula: Boolean(conceptoMatricula),
@@ -1050,6 +1102,7 @@ const previsualizar = async (data = {}) => {
       idGrado: data.id_grado,
       incluirRetirados: data.incluir_retirados,
       decisiones: data.decisiones,
+      copiarBecas: data.copiar_becas,
     });
   } catch (error) {
     throw traducirError(error);
@@ -1100,6 +1153,7 @@ const confirmar = async (data = {}, idUsuario = null) => {
         idGrado: data.id_grado,
         incluirRetirados: data.incluir_retirados,
         decisiones,
+        copiarBecas,
       },
       client,
     );
@@ -1109,6 +1163,26 @@ const confirmar = async (data = {}, idUsuario = null) => {
         "La previsualización cambió desde que se generó. Vuelva a previsualizar antes de confirmar.",
         409,
         { codigo: "PREVIEW_DESACTUALIZADA" },
+      );
+    }
+
+    const pendientes = preview.alumnos.filter(
+      (alumno) =>
+        alumno.resultado_final === "PENDIENTE" && !alumno.ya_confirmada,
+    );
+    if (pendientes.length > 0) {
+      throw crearError(
+        "No se puede confirmar el lote mientras haya alumnos PENDIENTE. Resuélvalos con un override o vuelva a previsualizar.",
+        422,
+        {
+          codigo: "PROMOCION_PENDIENTE",
+          alumnos: pendientes.map((alumno) => ({
+            id_alumno_origen: alumno.id_alumno_origen,
+            nombre_completo: alumno.nombre_completo,
+            resultado_sugerido: alumno.resultado_sugerido,
+            bloqueos: alumno.bloqueos,
+          })),
+        },
       );
     }
 
@@ -1184,6 +1258,17 @@ const confirmar = async (data = {}, idUsuario = null) => {
     };
 
     for (const alumno of preview.alumnos) {
+      if (alumno.resultado_final === "PENDIENTE") {
+        throw crearError(
+          "No se puede crear una promoción CONFIRMADA con resultado PENDIENTE.",
+          422,
+          {
+            codigo: "PROMOCION_PENDIENTE",
+            id_alumno_origen: alumno.id_alumno_origen,
+          },
+        );
+      }
+
       const anulada = await promocionDao.buscarAnuladaParaReversion(
         {
           idAlumnoOrigen: alumno.id_alumno_origen,
@@ -1205,6 +1290,7 @@ const confirmar = async (data = {}, idUsuario = null) => {
         asistencia: alumno.asistencia,
         deuda: alumno.deuda,
         becas: alumno.becas,
+        copiar_becas: Boolean(preview.copiar_becas),
         retiro:
           alumno.resultado_final === "RETIRADO"
             ? {
@@ -1261,7 +1347,7 @@ const confirmar = async (data = {}, idUsuario = null) => {
         }
 
         const becasCopiadas = [];
-        if (copiarBecas) {
+        if (preview.copiar_becas) {
           for (const beca of alumno.becas) {
             const nueva = await promocionDao.copiarBeca(
               {

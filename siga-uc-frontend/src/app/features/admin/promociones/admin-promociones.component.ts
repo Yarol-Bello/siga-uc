@@ -31,7 +31,7 @@ interface GradoOpcion {
 const CRITERIO_DEFECTO = {
   modo: 'manual',
   modo_repitencia: 'DESACTIVADA',
-  notas_bimestre: 4,
+  notas_bimestres: [4],
   bimestres_requeridos: [1, 2, 3, 4],
   transiciones: [],
   observacion: 'La dirección revisa caso por caso.',
@@ -99,11 +99,13 @@ export class AdminPromocionesComponent implements OnInit {
   guardandoPolitica = signal(false);
   errorPolitica = signal<string | null>(null);
   criterioTexto = signal(JSON.stringify(CRITERIO_DEFECTO, null, 2));
+  notasBimestres = signal<number[]>([4]);
   formPolitica: any = this.formPoliticaVacio();
 
   mensaje = signal<{ tipo: TipoMensaje; texto: string } | null>(null);
 
   resultados = RESULTADOS;
+  bimestres = [1, 2, 3, 4];
 
   anioActivo = computed(
     () => this.anios().find((anio) => anio.estado === 'ACTIVO') || null,
@@ -156,12 +158,20 @@ export class AdminPromocionesComponent implements OnInit {
     ),
   );
 
+  pendientes = computed(() =>
+    (this.preview()?.alumnos || []).filter(
+      (alumno) =>
+        !alumno.ya_confirmada && alumno.resultado_final === 'PENDIENTE',
+    ),
+  );
+
   puedeConfirmar = computed(() => {
     const vista = this.preview();
     return Boolean(
       vista &&
         !this.previewDesactualizada() &&
         vista.resumen.bloqueados === 0 &&
+        this.pendientes().length === 0 &&
         this.responsabilidad() &&
         !this.confirmando(),
     );
@@ -283,6 +293,9 @@ export class AdminPromocionesComponent implements OnInit {
 
   onCopiarBecasChange(valor: boolean): void {
     this.copiarBecas.set(Boolean(valor));
+    this.previewDesactualizada.set(true);
+    this.responsabilidad.set(false);
+    this.resultadoConfirmacion.set(null);
   }
 
   invalidarPreview(): void {
@@ -329,10 +342,12 @@ export class AdminPromocionesComponent implements OnInit {
         id_grado: this.idGrado(),
         incluir_retirados: this.incluirRetirados(),
         decisiones: this.decisiones(),
+        copiar_becas: this.copiarBecas(),
       });
       this.preview.set(vista);
       this.previewDesactualizada.set(false);
       this.idPolitica.set(vista.id_politica);
+      this.copiarBecas.set(vista.copiar_becas);
     } catch (error: any) {
       this.cargandoPreview.set(false);
       this.preview.set(null);
@@ -587,7 +602,36 @@ export class AdminPromocionesComponent implements OnInit {
         2,
       ),
     );
+    const criterio = (politica?.criterio_academico ||
+      CRITERIO_DEFECTO) as Record<string, any>;
+    const rawBimestres =
+      criterio['notas_bimestres'] !== undefined
+        ? criterio['notas_bimestres']
+        : criterio['notas_bimestre'] !== undefined
+          ? [criterio['notas_bimestre']]
+          : [4];
+    const lista = (Array.isArray(rawBimestres) ? rawBimestres : [rawBimestres])
+      .map((bimestre: any) => Number(bimestre))
+      .filter(
+        (bimestre: number) =>
+          Number.isInteger(bimestre) && bimestre >= 1 && bimestre <= 4,
+      );
+    this.notasBimestres.set(
+      lista.length > 0 ? [...new Set(lista)].sort((a, b) => a - b) : [4],
+    );
     this.modalPolitica.set(true);
+  }
+
+  onBimestreNotaChange(bimestre: number, marcado: boolean): void {
+    const actuales = new Set(this.notasBimestres());
+    if (marcado) {
+      actuales.add(Number(bimestre));
+    } else {
+      actuales.delete(Number(bimestre));
+    }
+    this.notasBimestres.set(
+      [...actuales].sort((a, b) => a - b),
+    );
   }
 
   cerrarModalPolitica(): void {
@@ -612,6 +656,18 @@ export class AdminPromocionesComponent implements OnInit {
       );
       return;
     }
+
+    if (this.notasBimestres().length === 0) {
+      this.errorPolitica.set(
+        'Seleccione al menos un bimestre de notas (1-4).',
+      );
+      return;
+    }
+
+    criterio['notas_bimestres'] = [...this.notasBimestres()].sort(
+      (a, b) => a - b,
+    );
+    delete criterio['notas_bimestre'];
 
     this.guardandoPolitica.set(true);
     this.errorPolitica.set(null);
