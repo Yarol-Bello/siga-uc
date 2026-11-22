@@ -94,7 +94,8 @@ La **Fase 6.3 (promoción)** quedó implementada y verificada **solo en local**:
 - Tests 39–54: **54 E2E** y **20 invariantes**; smoke 11; H47 4; build OK.
 - No crea usuarios/QR; no copia notas, asistencia, pagos, pensiones ni pre-tickets; no
   activa el año. Traslado = `RETIRADO` + condición `Traslado`.
-- Commits: `c893e02` (DB), `cf8efb3` (backend), `8b15041` (UI) y `7226003` (tests).
+- Commits: `c893e02` (DB), `cf8efb3` (backend), `8b15041` (UI), `7226003` (tests) y
+  `5f73049` (docs).
 - **No desplegada en Render ni aplicada en Supabase.**
 
 **Siguiente paso:** aplicar H49 y H73 en Supabase con autorización y backup previo (2026

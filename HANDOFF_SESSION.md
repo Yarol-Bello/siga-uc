@@ -271,7 +271,7 @@ En esta fase **no** se prepara el despliegue definitivo.
   navegador con ADMIN: preview 2026→2028, confirm (2 matrículas), historial y override con
   re-previsualización.
 - **Cambios locales de 6.3:** migración `c893e02`, backend `cf8efb3`, UI `8b15041`,
-  tests `7226003`; documentación en el commit de cierre. Sin push ni despliegue.
+  tests `7226003` y documentación `5f73049`. Sin push ni despliegue.
 - **Estado:** implementado y verificado solo en local; **no desplegado en Render ni aplicado
   en Supabase**. Allí siguen 40 tablas, H48 aplicado, 2026 activo y 2027 sin activar.
 
