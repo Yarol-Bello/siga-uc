@@ -909,6 +909,32 @@ async function main() {
     `,
   );
 
+  // 35. H79: una instalación con ADMIN no debe quedar pendiente de setup.
+  await verificarInvariante(
+    35,
+    "Configuración inicial pendiente con administrador existente",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT c.id_configuracion, c.setup_completado,
+               (SELECT COUNT(*)::int
+                FROM usuarios u
+                INNER JOIN roles r ON r.id_rol = u.id_rol
+                WHERE r.nombre_rol = 'ADMIN') AS admins
+        FROM configuracion_institucional c
+        WHERE c.setup_completado = false
+          AND EXISTS (
+            SELECT 1
+            FROM usuarios u
+            INNER JOIN roles r ON r.id_rol = u.id_rol
+            WHERE r.nombre_rol = 'ADMIN'
+          )
+      ) q
+      ORDER BY q.id_configuracion
+      LIMIT 5
+    `,
+  );
+
   const pass = resultados.filter((r) => r.estado === "PASS").length;
   const fail = resultados.filter((r) => r.estado === "FAIL").length;
 

@@ -68,6 +68,7 @@ cambios y para pruebas de regresión.
 | 57 | Tarifas | `AdminTarifasComponent` | `GET/POST/PUT /api/configuracion/tarifas`, `/preview`, `/:id/version`, `/:id/desactivar` | `configuracionController` | `conceptoPagoService` | `conceptoPagoDao` | `conceptos_pago`, `pensiones`, `pre_tickets`, `bitacora_auditoria` |
 | 58 | Catálogo académico y jornada | `AdminAcademicoComponent`, `AdminHorarioConfigComponent` | `/api/configuracion/academico/*`, `/api/configuracion/horarios/:anio` | `configuracionController` | `academicoService`, `configuracionAnioService` | `cursoDao`, `cargaCurricularDao`, `configuracionAnioDao` | `areas_academicas`, `cursos`, `competencias`, `carga_curricular`, `configuracion_anio` |
 | 59 | Becas | `AdminBecasComponent` | `/api/configuracion/becas/*` | `configuracionController` | `becaService`, `becaCalculator` | `becaDao` | `tipos_beca`, `becas`, `aplicaciones_beca`, `pensiones`, `pre_tickets`, `bitacora_auditoria` |
+| 60 | Primera configuración | `SetupComponent` | `GET /api/setup/status`, `POST /api/setup/inicializar` | `setupController` | `setupService` | `setupDao` | `usuarios`, `configuracion_institucional`, `anios_lectivos`, `grados`, `cajas`, `personal` |
 
 ---
 

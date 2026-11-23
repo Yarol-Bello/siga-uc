@@ -282,7 +282,7 @@
             class="form-control"
             maxlength="100"
             [(ngModel)]="form.nombre"
-            placeholder="Matrícula Escolar 2026"
+            [placeholder]="'Matrícula Escolar ' + anioSeleccionado()"
           />
         </div>
         <div class="col-6 col-lg-2">

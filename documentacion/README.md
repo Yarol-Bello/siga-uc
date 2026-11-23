@@ -24,7 +24,7 @@
 | Entender capas, patrones y ciclo de una petición | `02-ARQUITECTURA-Y-PATRONES.md` |
 | Ubicar archivos, controladores, servicios y DAOs | `03-ESTRUCTURA-Y-CLASES.md` |
 | Conocer las 48 tablas, relaciones, triggers y seeds | `04-BASE-DE-DATOS.md` |
-| Consumir o auditar la API (163 endpoints) | `05-API-REST.md` |
+| Consumir o auditar la API (165 endpoints) | `05-API-REST.md` |
 | Ver roles, usuarios semilla y matriz de permisos | `06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Reproducir el recorrido completo de cada rol | `07-FLUJOS-POR-ROL.md` |
 | Entender un proceso de negocio de inicio a fin | `08-PROCESOS-DE-NEGOCIO.md` |
@@ -51,13 +51,13 @@
 | Paneles frontend | 4 + autenticación |
 | Tablas PostgreSQL | 48 base (49 en local con `horarios_h47_backup`) |
 | Funciones + triggers | 11 objetos en el esquema base; H47/H48/H74/H75/H77 agregan triggers |
-| Endpoints REST | 163 (80 GET, 45 POST, 30 PUT, 8 DELETE) |
-| Routers backend | 17 |
-| Controladores backend | 17 |
-| Servicios backend | 30 |
-| DAOs backend | 26 |
-| Archivos backend | 100 JS |
-| Archivos frontend | 164 (69 TypeScript) |
+| Endpoints REST | 165 (81 GET, 46 POST, 30 PUT, 8 DELETE) |
+| Routers backend | 18 |
+| Controladores backend | 18 |
+| Servicios backend | 31 |
+| DAOs backend | 27 |
+| Archivos backend | 104 JS |
+| Archivos frontend | 169 (72 TypeScript) |
 | Transacciones de negocio | Matrícula, pago+boleta, cierre de caja, carga masiva, asignación de tutor |
 | Autenticación | JWT (8 h) + bcrypt (coste 10) |
 | Correo transaccional | Resend (API HTTP), con degradación no bloqueante |
@@ -78,8 +78,9 @@
    servicios, 16 DAOs, 14 controladores y Nodemailer/SMTP. El estado real está en estos
    documentos y en el código.
 5. **Sí existen suites automatizadas locales**: `npm run smoke` (12), `npm run
-   test:integridad` (34 en base nueva), `npm run test:e2e` (100, base desechable) y
-   `npm run test:h47-generador` (4). No hay CI/CD ni Docker.
+   test:integridad` (35 en base nueva), `npm run test:e2e` (100, base desechable),
+   `npm run test:setup` (5, base vacía) y `npm run test:h47-generador` (4). No hay CI/CD ni
+   Docker.
 
 ---
 

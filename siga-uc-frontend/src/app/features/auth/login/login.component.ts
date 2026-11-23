@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -10,6 +10,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 import { LoginRequest } from '../../../core/models/usuario.model';
 import { environment } from '../../../../environments/environment';
 
@@ -30,6 +31,19 @@ export class LoginComponent {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
+  private configuracion = inject(ConfiguracionService);
+
+  readonly nombreInstitucion = this.configuracion.nombreInstitucion;
+  readonly anioActual = new Date().getFullYear();
+  readonly iniciales = computed(() => {
+    const palabras = this.nombreInstitucion()
+      .replace(/[^\p{L}\p{N} ]/gu, '')
+      .split(/\s+/)
+      .filter(Boolean);
+    const primera = palabras[0] || 'SIGA';
+    const segunda = palabras[1] || primera;
+    return `${primera.charAt(0)}${segunda.charAt(0)}`.toUpperCase();
+  });
 
   // Formulario reactivo
   loginForm: FormGroup = this.fb.group({

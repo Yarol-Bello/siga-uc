@@ -1,7 +1,7 @@
 # 03 — Estructura y Mapa de Clases
 
-> Conteo verificado el 23/11/2026: **98 archivos JS backend**, **151 archivos frontend
-> (66 TypeScript)**, **17 routers**, **17 controladores**, **26 servicios** y **23 DAOs**.
+> Conteo verificado el 23/11/2026: **104 archivos JS backend**, **169 archivos frontend
+> (72 TypeScript)**, **18 routers**, **18 controladores**, **31 servicios** y **27 DAOs**.
 
 ## 1. Backend
 
@@ -9,7 +9,7 @@
 
 | Archivo | Responsabilidad |
 |---|---|
-| `src/app.js` | Crea Express, registra middlewares globales, 17 routers, health check, 404 y error handler; arranca en `0.0.0.0:PORT`; prueba BD y correo |
+| `src/app.js` | Crea Express, registra middlewares globales, 18 routers, health check, 404 y error handler; arranca en `0.0.0.0:PORT`; prueba BD y correo |
 | `src/config/env.js` | Carga `.env`, valida `DB_*`, `JWT_SECRET` y `ANIO_LECTIVO`, exporta configuración centralizada |
 | `src/config/academico.js` | Expone `getAnioLectivo()` desde `ANIO_LECTIVO` |
 | `src/config/database.js` | Pool `pg` (`max=20`), helper `query`, `getClient` transaccional, `testConnection` |
@@ -22,6 +22,7 @@
 |---|---|---|---|
 | `authRoutes.js` | `/api/auth` | 9 | ADMIN para reset por DNI |
 | `configuracionRoutes.js` | `/api/configuracion` | 34 | Público GET; ADMIN/SECRETARÍA lectura; ADMIN escritura |
+| `setupRoutes.js` | `/api/setup` | 2 | Público con token; solo mientras no haya ADMIN |
 | `academicoRoutes.js` | `/api` | 7 | Solo lectura |
 | `alumnoRoutes.js` | `/api/alumnos` | 6 | ADMIN/SECRETARIA |
 | `personalRoutes.js` | `/api/personal` | 8 | ADMIN |
@@ -35,12 +36,13 @@
 | `siagieRoutes.js` | `/api/siagie` | 2 | ADMIN (exportación interna) |
 | `notificacionRoutes.js` | `/api/notificaciones` | 8 | ADMIN/DOCENTE; masivo ADMIN |
 
-### 1.3 Controladores (17)
+### 1.3 Controladores (18)
 
 | Controlador | Métodos | Notas |
 |---|---|---|
 | `authController.js` | `login`, `perfil`, `verify`, `logout`, `resetPassword`, `solicitarRecuperacion`, `validarToken`, `restablecerPassword`, `cambiarPassword` | `validationResult` en login y cambio de contraseña; recuperación delega a `recuperacionService` |
 | `configuracionController.js` | `obtenerPublica`, `obtenerAdmin`, `actualizarInstitucional`, tarifas, académico, jornada y becas | H74–H78: configuración, tarifas, catálogo, jornada y becas con motivo/auditoría |
+| `setupController.js` | `estado`, `inicializar` | H79: primera configuración con token y transacción única |
 | `academicoController.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion` | Solo lectura |
 | `horarioController.js` | `listarPeriodos`, CRUD de períodos, `listar`, `miHorario`, CRUD de bloques, `generar`, `publicar`, `despublicar` | H47; ADMIN/SECRETARIA/DOCENTE/ESTUDIANTE según ruta |
 | `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda, año, `limit`, `solo_activos` y paginación (`page`/`pageSize`) |
@@ -55,7 +57,7 @@
 | `siagieController.js` | `obtenerResumen`, `exportarInterno` | Valida año/grado/bimestre, audita y descarga el Excel interno |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
-### 1.4 Servicios (30)
+### 1.4 Servicios (31)
 
 | Servicio | Métodos principales | Reglas que concentra |
 |---|---|---|
@@ -65,6 +67,7 @@
 | `configuracionAnioService.js` | `obtener`, `actualizar` | H77: días/jornada/límites, horarios publicados y auditoría |
 | `becaService.js` | `listarTipos`, `crearTipo`, `actualizarTipo`, `listarBecas`, `crearBeca`, `actualizarBeca`, `aprobarBeca`, `rechazarBeca`, `anularBeca`, `previewBeca` | H78: estados, evidencia, motivo, aplicación y auditoría |
 | `becaCalculator.js` | `calcular`, `aplicarPension`, `aplicarPreticket`, `aplicarPensionesAlumno`, `aplicarPensionesMes` | H78: prioridad, tope, exclusividad, combinación, `EXONERADO` y pagos intactos |
+| `setupService.js` | `estadoPublico`, `anunciarTokenSiPendiente`, `inicializar` | H79: token, rate limit, validaciones, transacción y auditoría inicial |
 | `academicoService.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion` | 404 si no existe; agrega tutor/competencias |
 | `horarioService.js` | `listar`, `miHorario`, CRUD de bloques, `generar`, `publicar`, `despublicar` | Alcance por token, conflictos, publicación y auditoría |
 | `periodoClaseService.js` | `listar`, `crear`, `actualizar`, `eliminar` | Malla por año, sin solapes |
@@ -86,7 +89,7 @@
 | `recuperacionService.js` | `solicitarRecuperacion`, `validarToken`, `restablecerPassword` | Token 32 bytes, 2 h, un uso, no revelar existencia |
 | `emailService.js` | `verificarConexion`, `enviarCorreo`, `enviarNotificacion` | Resend; plantilla guindo/dorado |
 
-### 1.5 DAOs (26)
+### 1.5 DAOs (27)
 
 | DAO | Entidades / operaciones | Consultas destacadas |
 |---|---|---|
@@ -95,6 +98,7 @@
 | `configuracionAnioDao.js` | `configuracion_anio`, `periodos_clase` | Lectura/actualización de jornada y validación de períodos |
 | `conceptoPagoDao.js` | `conceptos_pago`, `pensiones`, `pre_tickets` | Resolución por grado/nivel/fecha, impacto y versiones |
 | `becaDao.js` | `tipos_beca`, `becas`, `aplicaciones_beca`, `pensiones`, `pre_tickets` | Catálogo, aplicables, aplicaciones y recálculo de cargos |
+| `setupDao.js` | `configuracion_institucional`, `usuarios`, `roles`, `escala_calificacion`, `anios_lectivos`, `grados`, `cajas`, `personal` | Estado inicial, admin, año, grados y caja |
 | `alumnoDao.js` | `apoderados`, `usuarios`, `alumnos`, `expediente_alumno`, `credenciales_qr` | Listado con filtros, búsqueda `unaccent` por DNI/nombre completo, `LIMIT` opcional y `LIMIT/OFFSET` con `contar`; código `EST-XXX`, matrícula transaccional, retiro |
 | `personalDao.js` | `usuarios`, `personal`, `credenciales_qr` | Listado con rol, creación transaccional, cese/reactivación, reset |
 | `gradoDao.js` | `grados`, `alumnos`, `tutores_grado` | Grados con conteo y tutor |

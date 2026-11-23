@@ -129,6 +129,7 @@ psql -U postgres -d siga_uc -f database/migracion_h75_tarifas.sql
 psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
 psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
 psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
+psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -155,6 +156,7 @@ psql -U postgres -d siga_uc -f database/migracion_h75_tarifas.sql
 psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
 psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
 psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
+psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -165,6 +167,34 @@ una caja principal y **un único usuario ADMIN** (`74829102`) con
 `-v anio_lectivo=YYYY` (si falta, aborta); si la contraseña está vacía,
 el script aborta. No crea alumnos, apoderados, pagos, pensiones, calificaciones, asistencias,
 movimientos, bitácora ni becas.
+
+### 3.1.3 Primera configuración del cliente (H79)
+
+Hay dos rutas de instalación:
+
+| Ruta | Cuándo usarla | Admin inicial |
+|---|---|---|
+| **A. Setup web** | Entrega al cliente final | Se crea en `/setup` |
+| **B. Seed técnico** | Demo, pruebas o instalación asistida | `74829102` del seed |
+
+**Ruta A — recomendada para el cliente:**
+
+1. Ejecutar solo `siga_uc.sql` + migraciones H32…H79. **No** cargar
+   `seed_produccion.sql` si se quiere crear el admin desde el asistente.
+2. Definir `SETUP_TOKEN` en el backend (mínimo 16 caracteres). En desarrollo, si se omite,
+   el backend genera uno y lo imprime una sola vez al arrancar.
+3. Abrir `http://localhost:4200`; el login redirige a `/setup`.
+4. Completar token, institución, año lectivo, niveles y datos del administrador.
+5. El sistema crea en una transacción el admin, institución, año activo, grados, caja,
+   roles, escala y auditoría. Después, `/setup` queda bloqueado con `409`.
+6. El admin entra y configura tarifas, áreas, cursos, competencias y carga curricular.
+
+**Ruta B — seed técnico:** ejecutar el seed como antes. H79 marca
+`setup_completado=true` porque ya existe un ADMIN y el login funciona sin asistente.
+
+> El setup no crea cursos, áreas, tarifas ni carga curricular: esos datos dependen del
+> colegio y se configuran desde `/admin/configuracion`. Sí crea los grados de los niveles
+> seleccionados para que el ADMIN pueda continuar.
 
 ### 3.1.1 Migración H49 (multi-año base)
 
@@ -636,6 +666,7 @@ Crear una tarea diaria a las 02:00:
 | `database/migracion_h76_academico.sql` | Áreas académicas y activo/orden en cursos, competencias y carga; requiere H74 |
 | `database/migracion_h77_horario_jornada.sql` | Días lunes–domingo, jornada y duración mínima; requiere H47/H74 |
 | `database/migracion_h78_becas.sql` | Tipos de beca, aplicaciones, descuento y `EXONERADO`; requiere H74/H75 |
+| `database/migracion_h79_setup_inicial.sql` | Primera configuración, `setup_completado` y token de instalación; requiere H74/H49 |
 | `database/rollback_h59_observaciones_personal.sql` | Solo bases desechables: elimina `personal.observaciones` y sus datos |
 | `database/rollback_h73_promociones.sql` | Solo bases desechables: elimina las tablas de promoción |
 | `database/preparar_anio_lectivo.sql` | Utilidad histórica y parcial (conceptos + períodos); la UI de 6.2 la reemplaza |

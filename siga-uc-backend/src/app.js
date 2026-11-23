@@ -111,6 +111,9 @@ app.get("/", (req, res) => {
 });
 
 // Rutas de autenticación
+const setupRoutes = require("./routes/setupRoutes");
+app.use("/api/setup", setupRoutes);
+
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
 
@@ -268,6 +271,14 @@ const startServer = async () => {
     console.log(
       `   📅 Año lectivo activo: ${anioActivo.anio} (fuente: ${anioActivo.fuente})`,
     );
+
+    // Aviso de primera configuración. Si H79 no está aplicada, no bloquea.
+    try {
+      const setupService = require("./services/setupService");
+      await setupService.anunciarTokenSiPendiente();
+    } catch (error) {
+      console.warn("⚠️ No se pudo verificar la configuración inicial:", error.message);
+    }
 
     // Arrancar el servidor PRIMERO (sin esperar a Resend)
     server = app.listen(PORT, "0.0.0.0", () => {

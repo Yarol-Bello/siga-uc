@@ -283,12 +283,13 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
 
 ## 4. Testeo
 
-El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
+El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con cuatro suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(34 invariantes de datos, solo lectura) y **E2E** (100 flujos sobre una base desechable,
+(35 invariantes de datos, solo lectura), **E2E** (100 flujos sobre una base desechable,
 incluidos los de multi-año H49, rollover 6.2, promociones 6.3, histórico 6.4, pulido
-H59/H62/H65–H69, exportación interna SIAGIE, H71 y configuración H74–H78 + textos/PDF). El
-resto de la estrategia sigue siendo manual y por rol.
+H59/H62/H65–H69, exportación interna SIAGIE, H71, configuración H74–H78 y textos/PDF) y
+**setup** (5 flujos sobre una base vacía con H79). El resto de la estrategia sigue siendo
+manual y por rol.
 
 ### 4.1 Preparación
 
@@ -468,14 +469,15 @@ cd siga-uc-backend
 npm run test:integridad
 ```
 
-- Verifica **34 invariantes**: 48 tablas base, índices críticos de pagos/boletas, multi-año
+- Verifica **35 invariantes**: 48 tablas base, índices críticos de pagos/boletas, multi-año
   y promociones (`uq_alumno_*_anio`, `uq_anio_activo`, `uq_promocion_*`,
   `uq_politica_*`), pagos/pensiones/boletas coherentes, movimientos de caja, usuarios
   activos asociados, escala AD/A/B/C, alumnos matriculados con usuario activo, matrículas
   anuales con grado del mismo año, `grados.orden` válido, carga/tutores del mismo año,
   invariantes de promociones (una confirmada por origen, destino del año/grado correcto,
-  egresados/retirados sin destino y política única) y H74–H78 (configuración, tarifas,
-  áreas, competencias, carga, becas, aplicaciones y cargos `EXONERADO`).
+  egresados/retirados sin destino y política única), H74–H78 (configuración, tarifas,
+  áreas, competencias, carga, becas, aplicaciones y cargos `EXONERADO`) y H79 (setup
+  pendiente con admin existente).
 - Fuerza `default_transaction_read_only=on`: no escribe nada.
 - Usa `DATABASE_URL` si existe; si no, `DB_*`. Puede ejecutarse contra local, una réplica
   de lectura o producción.
@@ -487,9 +489,9 @@ npm run test:integridad
 > En la base local del 23/11/2026 hay violaciones reales de seed en los invariantes 4 y 8
 > (5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El invariante 7 solo exige ficha
 > a ESTUDIANTE/DOCENTE; ADMIN y SECRETARIA están exentos. No son fallos de la suite: deben
-> revisarse antes de cargar datos reales. La base local da **32 PASS / 2 FAIL**; una base de
+> revisarse antes de cargar datos reales. La base local da **33 PASS / 2 FAIL**; una base de
 > producción sembrada con `siga_uc.sql` + `seed_produccion.sql` + migraciones (incluidas H49,
-> H73, H59, H71, H74–H78) da **34 PASS**.
+> H73, H59, H71, H74–H79) da **35 PASS**.
 
 #### `test:e2e` — base desechable
 
@@ -537,6 +539,21 @@ npm run test:e2e
 - Resultado esperado: **100 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
+
+#### `test:setup` — base vacía y primera configuración
+
+```powershell
+cd siga-uc-backend
+npm run test:setup
+```
+
+- Crea `siga_uc_setup_e2e` con `siga_uc.sql` + migraciones H32…H79, **sin** admin ni datos
+  demo.
+- Arranca el backend en `3102` con `SETUP_TOKEN`.
+- Verifica estado pendiente, token inválido `401`, creación transaccional del admin,
+  institución, año, 5 grados, caja y auditoría, segundo intento `409` y login del admin.
+- Resultado esperado: **5 PASS, 0 FAIL**, exit `0`; limpia la base y detiene el backend.
+- **Cuándo:** antes de entregar una instalación nueva o cambiar H79/setup.
 
 ---
 
@@ -662,8 +679,9 @@ WHERE m.id_movimiento IS NULL;
 | Mejora | Beneficio |
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
-| ~~Integridad de datos~~ ✅ | 34 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
+| ~~Integridad de datos~~ ✅ | 35 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
 | ~~E2E de flujos críticos~~ ✅ | 100 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~Setup de instalación nueva~~ ✅ | 5 flujos sobre base vacía (`npm run test:setup`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

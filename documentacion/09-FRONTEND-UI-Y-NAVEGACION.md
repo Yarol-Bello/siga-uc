@@ -18,14 +18,16 @@ index.html
 - `main.ts` importa `zone.js` primero y hace `bootstrapApplication(App, appConfig)`.
 - `app.config.ts` registra router, HttpClient y el interceptor.
 - `app.html` solo contiene `<router-outlet>`.
-- `index.html` usa `lang="es"` y el título `SIGA-UC — I.E.P. Unión Científica`.
+- `index.html` usa `lang="es"` y el título `SIGA-UC`; el nombre institucional se aplica
+  dinámicamente con `Title` al cargar `GET /api/configuracion`.
 
 ## 2. Rutas
 
 | Ruta | Componente | Guard | Layout |
 |---|---|---|---|
 | `''` | redirect `/login` | — | — |
-| `login` | `LoginComponent` | — | Auth |
+| `login` | `LoginComponent` | `loginSetupGuard` | Auth |
+| `setup` | `SetupComponent` | `setupGuard` | Auth |
 | `reset-password` | `ResetPasswordComponent` | — | Auth |
 | `cambiar-password` | `CambiarPasswordComponent` | `authGuard` | Auth |
 | `admin` | `AdminLayoutComponent` | `authGuard`, `roleGuard(['ADMIN'])` | Admin |
@@ -297,6 +299,7 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 | `AdminAcademicoComponent` | `GET/POST/PUT/DELETE /configuracion/academico/areas`, `/cursos`, `/cursos/:id/competencias`; activo/inactivo y guardas de borrado (H76) |
 | `AdminHorarioConfigComponent` | `GET/PUT /configuracion/horarios/:anio`, `GET /horarios/periodos`; días, jornada, duración mínima y máximos (H77) |
 | `AdminBecasComponent` | `GET/POST/PUT /configuracion/becas/tipos`, `GET/POST/PUT /configuracion/becas`, `POST /preview`, `PUT /:id/aprobar`, `/rechazar`, `/anular`; asignaciones y tipos con motivo (H78) |
+| `SetupComponent` | `GET /setup/status`, `POST /setup/inicializar`; asistente de 3 pasos con token, institución, año, niveles y primer admin (H79) |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id`; botones Asistencia/Notas navegan con `id_curso` e `id_grado` (H53) |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53) |
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53), usa `parseFechaLocal`/`diaSemanaLocal` y muestra el día en español (H61); bloquea observación sin P/T/F con error inline (H60) |

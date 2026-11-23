@@ -1,5 +1,14 @@
 # HANDOFF_SESSION.md — SIGA-UC
 
+> **Actualización 23/11/2026 (módulo de configuración Fases 1–7 + primera instalación).**
+> HEAD de esta sesión: ver `git log -1`. **Fases 1–7 implementadas y probadas en local**:
+> H74 configuración institucional, H75 tarifas, H76 académico, H77 jornada, H78 becas,
+> Fase 6 textos/PDF/correo y **H79 primera configuración (`/setup` + `SETUP_TOKEN`)**.
+> Verificación: **E2E 100 PASS**, **integridad 35 PASS** en base nueva (33/2 local por seed),
+> **`test:setup` 5 PASS**, smoke 12, H47 4 y build Angular OK. **No se desplegó**; Supabase
+> demo intacto (43 tablas, 2026 activo, 2027 no activo, H74–H79 no aplicadas). El responsive
+> de ADMIN/SECRETARÍA/DOCENTE sigue **pausado**.
+>
 > **Fase actual: demostración y aprobación.** SIGA-UC se muestra a la dirección del
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.

@@ -66,6 +66,7 @@ const MIGRACIONES = [
   path.join(RAIZ_REPO, "database", "migracion_h76_academico.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h77_horario_jornada.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h78_becas.sql"),
+  path.join(RAIZ_REPO, "database", "migracion_h79_setup_inicial.sql"),
 ];
 
 const PUERTO = 3101;
@@ -6191,6 +6192,8 @@ async function ejecutarPruebas() {
         "11 cursos",
         "Firmar y Cerrar",
         "Firmado digitalmente",
+        "I.E.P. Unión Científica",
+        "I.E.P. UNIÓN CIENTÍFICA",
       ];
 
       for (const archivo of archivos) {
@@ -6209,7 +6212,10 @@ async function ejecutarPruebas() {
       );
       assert.ok(indexHtml.includes('lang="es"'));
       assert.ok(indexHtml.includes("SIGA-UC"));
-      assert.ok(indexHtml.includes("I.E.P. Unión Científica"));
+      assert.ok(
+        !indexHtml.includes("I.E.P."),
+        "index.html no debe fijar una institución; el nombre es dinámico",
+      );
 
       const rutas = fs.readFileSync(
         path.join(raizFrontend, "app", "app.routes.ts"),

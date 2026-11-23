@@ -1,4 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -22,6 +23,7 @@ export interface InstitucionPublica {
 })
 export class ConfiguracionService {
   private http = inject(HttpClient);
+  private title = inject(Title);
 
   // Fallback inmediato: año calendario actual (nunca queda undefined)
   private anio = signal<number>(new Date().getFullYear());
@@ -61,6 +63,7 @@ export class ConfiguracionService {
       const institucion = response?.data?.institucion;
       if (institucion?.nombre_institucion) {
         this.institucionState.set(institucion as InstitucionPublica);
+        this.title.setTitle(`${institucion.nombre_institucion} — SIGA-UC`);
       } else {
         this.institucionState.set(null);
       }

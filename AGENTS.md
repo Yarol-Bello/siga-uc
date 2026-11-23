@@ -34,9 +34,9 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | Suites manuales (`smoke`, integridad, E2E); sin CI ni Docker |
 
-**Conteos actuales:** 48 tablas base (49 en local con `horarios_h47_backup`) · 163 endpoints ·
-4 roles · 17 routers · 17 controladores · 30 servicios · 26 DAOs · 100 archivos JS backend ·
-164 archivos frontend (69 TS).
+**Conteos actuales:** 48 tablas base (49 en local con `horarios_h47_backup`) · 165 endpoints ·
+4 roles · 18 routers · 18 controladores · 31 servicios · 27 DAOs · 104 archivos JS backend ·
+169 archivos frontend (72 TS).
 
 ---
 
@@ -193,6 +193,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Histórico | `reporteRoutes` (`/consolidado/:dni`), `alumnoDao.validarMatriculaAnual` | `admin/historico` |
 | Años lectivos (lectura) | `anioLectivoRoutes` (`GET` ADMIN/SECRETARIA) | selector `shared/components/selector-anio` |
 | Configuración | `configuracionRoutes/Controller/Service`, `conceptoPagoService/Dao`, `academicoService`, `configuracionAnioService/Dao`, `becaService/Calculator/Dao` | `admin/configuracion` (General, Tarifas, Académico, Horarios, Becas) |
+| Primera configuración | `setupRoutes/Controller/Service/Dao` | `features/auth/setup` (`/setup`) |
 | Auditoría | `auditoriaRoutes/...` | `admin/auditoria` |
 | SIAGIE interno | `siagieRoutes/...` (2 GET, solo ADMIN) | `admin/siagie` |
 | Notificaciones | `notificacionRoutes/...` | header + `core/services/notificacion.service` |
@@ -337,11 +338,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   tabla de pensiones aún muestra 12 meses fijos y el mensaje “hasta diciembre”. El módulo
   de configuración reemplazará esos supuestos por tarifas y calendarios administrables.
 - **Módulo de configuración:** Fase 0 documentada en
-  `documentacion/20-MODULO-CONFIGURACION.md`. **Fases 1–6 implementadas y aplicadas en local**:
+  `documentacion/20-MODULO-CONFIGURACION.md`. **Fases 1–7 implementadas y aplicadas en local**:
   H74 (general/institucional), H75 (tarifas por nivel/grado con vigencia), H76 (áreas,
   cursos, competencias y carga activables), H77 (jornada, días y límites), H78 (becas,
-  `tipos_beca`, `aplicaciones_beca` y `EXONERADO`) y Fase 6 (textos, moneda y pie en PDFs y
-  correos, sin migración).
+  `tipos_beca`, `aplicaciones_beca` y `EXONERADO`), Fase 6 (textos, moneda y pie en PDFs y
+  correos) y H79 (primera configuración).
   UI `/admin/configuracion` con pestañas General, Tarifas, Académico, Horarios y Becas.
   **Solo ADMIN escribe**; SECRETARÍA lee tarifas, académico, horarios y becas.
   H74–H78 no se aplicaron en Supabase. 48 tablas base (49 en local con
@@ -357,10 +358,18 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   alimenta boleta, libreta, acta, notificaciones y recuperación con nombre, ubicación,
   moneda, zona horaria, locale y textos de H74. `pdfCommon` ya no fija “I.E.P. UNIÓN
   CIENTÍFICA” ni “S/”; el remitente real sigue en `EMAIL_FROM`/Resend.
+- **Fase 7 / H79 — primera configuración:** con la base sin ADMIN, `GET /api/setup/status`
+  devuelve `requiere_setup=true` y el frontend redirige a `/setup`. El asistente exige
+  `SETUP_TOKEN` (en producción obligatorio; en desarrollo se genera y se imprime una vez),
+  crea en una transacción el admin, la institución, el año activo, los grados por nivel,
+  la caja principal y la auditoría `CONFIGURACION_INICIAL`, y marca
+  `configuracion_institucional.setup_completado=true`. Después, el setup responde `409`.
+  `npm run test:setup` verifica el flujo en una base vacía.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
-- Sí hay suites automatizadas: `npm run smoke` (12), `npm run test:integridad` (34) y
-  `npm run test:e2e` (100, base desechable); el resto del testeo es manual.
+- Sí hay suites automatizadas: `npm run smoke` (12), `npm run test:integridad` (35),
+  `npm run test:e2e` (100, base desechable) y `npm run test:setup` (5, base vacía); el resto
+  del testeo es manual.
 
 ---
 
@@ -372,7 +381,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 48 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 163 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 165 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |

@@ -133,6 +133,7 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 | Becas: aplicar / aprobar / anular | ✅ | ❌ | ❌ | ❌ |
 | Configuración: leer tarifas, académico, jornada y becas | ✅ | ❌ | ✅ | ❌ |
 | Configuración: escribir tarifas, académico, jornada y becas | ✅ | ❌ | ❌ | ❌ |
+| Primera configuración (`/setup`) | Público solo con `SETUP_TOKEN`, mientras no exista ADMIN | ❌ | ❌ | ❌ |
 | Caja: consultar | ✅ | ✅ | ✅ | ✅ |
 | Caja: aperturar / egreso / cerrar | ✅ | ✅ | ❌ | ❌ |
 | Reportes: cuadro de mérito / riesgo / asistencia | ✅ | ❌ | ✅ | ❌ |

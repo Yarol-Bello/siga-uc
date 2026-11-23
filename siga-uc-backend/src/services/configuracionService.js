@@ -497,4 +497,5 @@ module.exports = {
   obtenerConfiguracionAdmin,
   obtenerInstitucionDocumentos,
   actualizarInstitucion,
+  normalizarInstitucion,
 };

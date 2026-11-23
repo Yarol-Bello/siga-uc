@@ -1,0 +1,369 @@
+<div class="setup-page">
+  <div class="setup-shell">
+    <aside class="setup-brand">
+      <div class="brand-head">
+        <div class="brand-logo">SU</div>
+        <div>
+          <h1>SIGA-UC</h1>
+          <p>Primera configuración</p>
+        </div>
+      </div>
+
+      <div class="brand-copy">
+        <span class="eyebrow">Bienvenido</span>
+        <h2>Prepare el sistema para su colegio</h2>
+        <p>
+          Este asistente se ejecuta una sola vez. Creará la institución, el año
+          lectivo, el primer administrador y los grados iniciales.
+        </p>
+      </div>
+
+      <ol class="steps">
+        <li [class.active]="paso() === 1" [class.done]="paso() > 1">
+          <span>1</span>
+          <div><strong>Institución</strong><small>Datos y token</small></div>
+        </li>
+        <li [class.active]="paso() === 2" [class.done]="paso() > 2">
+          <span>2</span>
+          <div><strong>Año y grados</strong><small>Estructura inicial</small></div>
+        </li>
+        <li [class.active]="paso() === 3" [class.done]="!!exito()">
+          <span>3</span>
+          <div><strong>Administrador</strong><small>Primer acceso</small></div>
+        </li>
+      </ol>
+
+      <div class="brand-note">
+        <i class="fa-solid fa-shield-halved"></i>
+        <p>
+          El token de instalación es de un solo uso. Después de completar el
+          asistente, esta pantalla quedará bloqueada.
+        </p>
+      </div>
+
+      <footer>© {{ anioActual }} SIGA-UC</footer>
+    </aside>
+
+    <main class="setup-main">
+      @if (cargandoEstado()) {
+      <div class="state-box">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <p>Verificando el estado del sistema...</p>
+      </div>
+      } @else if (errorEstado()) {
+      <div class="state-box error">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <h2>Configuración no disponible</h2>
+        <p>{{ errorEstado() }}</p>
+        <button type="button" class="btn-soft" (click)="cargarEstado()">
+          Reintentar
+        </button>
+      </div>
+      } @else if (exito(); as resultado) {
+      <div class="success-card">
+        <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+        <h2>Sistema configurado</h2>
+        <p>
+          El administrador <strong>{{ resultado.admin?.nombre_completo }}</strong>
+          fue creado con DNI <strong>{{ resultado.admin?.dni }}</strong>.
+        </p>
+        <dl class="summary">
+          <div><dt>Institución</dt><dd>{{ resultado.institucion }}</dd></div>
+          <div><dt>Año lectivo</dt><dd>{{ resultado.anio_lectivo }}</dd></div>
+          <div><dt>Niveles</dt><dd>{{ resultado.niveles?.join(', ') }}</dd></div>
+        </dl>
+        <p class="hint">
+          Ingrese con el DNI y la contraseña que acaba de definir. Luego podrá
+          crear secretaría, docentes, tarifas y carga curricular.
+        </p>
+        <button type="button" class="btn-primary" (click)="irLogin()">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          Ir al inicio de sesión
+        </button>
+      </div>
+      } @else {
+      <div class="setup-card">
+        <div class="card-head">
+          <span class="eyebrow">Paso {{ paso() }} de 3</span>
+          @if (paso() === 1) {
+          <h2>Datos de la institución</h2>
+          <p>Ingrese el token de instalación y los datos visibles del colegio.</p>
+          } @else if (paso() === 2) {
+          <h2>Año lectivo y grados</h2>
+          <p>Defina el primer año y los niveles que se crearán automáticamente.</p>
+          } @else {
+          <h2>Primer administrador</h2>
+          <p>Esta cuenta tendrá acceso total y podrá crear a los demás usuarios.</p>
+          }
+        </div>
+
+        @if (error()) {
+        <div class="alert alert-danger" role="alert">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          {{ error() }}
+        </div>
+        }
+
+        @if (paso() === 1) {
+        <div class="form-grid">
+          <div class="col-12">
+            <label class="form-label" for="token">Token de configuración *</label>
+            <input
+              id="token"
+              type="password"
+              class="form-control"
+              [(ngModel)]="form.token"
+              autocomplete="off"
+              placeholder="Token entregado por el sistema"
+            />
+            <div class="hint">
+              En desarrollo aparece en la consola del backend al arrancar. En
+              producción se define con <code>SETUP_TOKEN</code>.
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label" for="nombre_institucion">Nombre de la institución *</label>
+            <input
+              id="nombre_institucion"
+              type="text"
+              class="form-control"
+              maxlength="200"
+              [(ngModel)]="form.institucion.nombre_institucion"
+              placeholder="I.E.P. Nombre del colegio"
+            />
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="nombre_corto">Nombre corto</label>
+            <input
+              id="nombre_corto"
+              type="text"
+              class="form-control"
+              maxlength="100"
+              [(ngModel)]="form.institucion.nombre_corto"
+              placeholder="Nombre para reportes"
+            />
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="ruc">RUC</label>
+            <input
+              id="ruc"
+              type="text"
+              class="form-control"
+              maxlength="11"
+              inputmode="numeric"
+              [(ngModel)]="form.institucion.ruc"
+              placeholder="11 dígitos"
+            />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label" for="direccion">Dirección</label>
+            <input
+              id="direccion"
+              type="text"
+              class="form-control"
+              maxlength="250"
+              [(ngModel)]="form.institucion.direccion"
+            />
+          </div>
+          <div class="col-4">
+            <label class="form-label" for="distrito">Distrito</label>
+            <input id="distrito" type="text" class="form-control" [(ngModel)]="form.institucion.distrito" />
+          </div>
+          <div class="col-4">
+            <label class="form-label" for="provincia">Provincia</label>
+            <input id="provincia" type="text" class="form-control" [(ngModel)]="form.institucion.provincia" />
+          </div>
+          <div class="col-4">
+            <label class="form-label" for="departamento">Departamento</label>
+            <input id="departamento" type="text" class="form-control" [(ngModel)]="form.institucion.departamento" />
+          </div>
+
+          <div class="col-6">
+            <label class="form-label" for="telefono">Teléfono</label>
+            <input id="telefono" type="text" class="form-control" [(ngModel)]="form.institucion.telefono" />
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="correo_contacto">Correo de contacto</label>
+            <input
+              id="correo_contacto"
+              type="email"
+              class="form-control"
+              [(ngModel)]="form.institucion.correo_contacto"
+            />
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="sitio_web">Sitio web</label>
+            <input
+              id="sitio_web"
+              type="url"
+              class="form-control"
+              placeholder="https://..."
+              [(ngModel)]="form.institucion.sitio_web"
+            />
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="logo_url">URL del logo</label>
+            <input
+              id="logo_url"
+              type="url"
+              class="form-control"
+              placeholder="https://..."
+              [(ngModel)]="form.institucion.logo_url"
+            />
+          </div>
+        </div>
+        } @else if (paso() === 2) {
+        <div class="form-grid">
+          <div class="col-4">
+            <label class="form-label" for="anio_lectivo">Año lectivo *</label>
+            <input
+              id="anio_lectivo"
+              type="number"
+              min="2000"
+              max="2100"
+              class="form-control"
+              [(ngModel)]="form.anio_lectivo"
+            />
+          </div>
+          <div class="col-4">
+            <label class="form-label" for="fecha_inicio">Inicio *</label>
+            <input id="fecha_inicio" type="date" class="form-control" [(ngModel)]="form.fecha_inicio" />
+          </div>
+          <div class="col-4">
+            <label class="form-label" for="fecha_fin">Fin *</label>
+            <input id="fecha_fin" type="date" class="form-control" [(ngModel)]="form.fecha_fin" />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Niveles iniciales *</label>
+            <div class="niveles-grid">
+              @for (nivel of nivelesDisponibles; track nivel.valor) {
+              <label class="nivel-check" [class.activo]="nivelMarcado(nivel.valor)">
+                <input
+                  type="checkbox"
+                  [checked]="nivelMarcado(nivel.valor)"
+                  (change)="toggleNivel(nivel.valor, $any($event.target).checked)"
+                />
+                <span>
+                  <strong>{{ nivel.label }}</strong>
+                  <small>{{ nivel.detalle }}</small>
+                </span>
+              </label>
+              }
+            </div>
+            <div class="hint">
+              Se crearán los grados con sección “Única”. Podrá ajustarlos al
+              configurar la carga curricular.
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="notice">
+              <i class="fa-solid fa-circle-info"></i>
+              <span>
+                El año se activará automáticamente. Si ya existe otro año activo,
+                se cerrará para mantener uno solo.
+              </span>
+            </div>
+          </div>
+        </div>
+        } @else {
+        <div class="form-grid">
+          <div class="col-6">
+            <label class="form-label" for="admin_dni">DNI *</label>
+            <input
+              id="admin_dni"
+              type="text"
+              class="form-control"
+              maxlength="8"
+              inputmode="numeric"
+              [(ngModel)]="form.admin.dni"
+            />
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="admin_telefono">Teléfono</label>
+            <input id="admin_telefono" type="text" class="form-control" [(ngModel)]="form.admin.telefono" />
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="admin_nombres">Nombres *</label>
+            <input id="admin_nombres" type="text" class="form-control" maxlength="100" [(ngModel)]="form.admin.nombres" />
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="admin_apellidos">Apellidos *</label>
+            <input id="admin_apellidos" type="text" class="form-control" maxlength="100" [(ngModel)]="form.admin.apellidos" />
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="admin_correo">Correo electrónico *</label>
+            <input id="admin_correo" type="email" class="form-control" [(ngModel)]="form.admin.correo" />
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="admin_password">Contraseña *</label>
+            <div class="password-wrap">
+              <input
+                id="admin_password"
+                [type]="mostrarPassword() ? 'text' : 'password'"
+                class="form-control"
+                autocomplete="new-password"
+                [(ngModel)]="form.admin.password"
+              />
+              <button type="button" class="toggle-password" (click)="togglePassword()" [attr.aria-label]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                <i class="fa-solid" [class.fa-eye]="!mostrarPassword()" [class.fa-eye-slash]="mostrarPassword()"></i>
+              </button>
+            </div>
+          </div>
+          <div class="col-6">
+            <label class="form-label" for="admin_password2">Confirmar contraseña *</label>
+            <input
+              id="admin_password2"
+              [type]="mostrarPassword() ? 'text' : 'password'"
+              class="form-control"
+              autocomplete="new-password"
+              [(ngModel)]="form.admin.confirmar_password"
+            />
+          </div>
+          <div class="col-12">
+            <div class="hint">Mínimo 8 caracteres. No use una contraseña compartida.</div>
+          </div>
+
+          <div class="col-12">
+            <dl class="summary">
+              <div><dt>Institución</dt><dd>{{ form.institucion.nombre_institucion }}</dd></div>
+              <div><dt>Año lectivo</dt><dd>{{ form.anio_lectivo }}</dd></div>
+              <div><dt>Niveles</dt><dd>{{ form.niveles.join(', ') }}</dd></div>
+              <div><dt>Administrador</dt><dd>{{ form.admin.nombres }} {{ form.admin.apellidos }}</dd></div>
+            </dl>
+          </div>
+        </div>
+        }
+
+        <div class="card-actions">
+          @if (paso() > 1) {
+          <button type="button" class="btn-soft" (click)="atras()" [disabled]="guardando()">
+            <i class="fa-solid fa-arrow-left"></i>
+            Atrás
+          </button>
+          } @else {
+          <span></span>
+          }
+          @if (paso() < 3) {
+          <button type="button" class="btn-primary" (click)="siguiente()">
+            Continuar
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+          } @else {
+          <button type="button" class="btn-primary" (click)="finalizar()" [disabled]="guardando()">
+            @if (guardando()) {
+            <i class="fa-solid fa-spinner fa-spin"></i> Configurando...
+            } @else {
+            <i class="fa-solid fa-rocket"></i> Finalizar configuración
+            }
+          </button>
+          }
+        </div>
+      </div>
+      }
+    </main>
+  </div>
+</div>

@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto la exportación interna SIAGIE, que responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **163 endpoints** - 80 GET, 45 POST, 30 PUT, 8 DELETE.
+**Total verificado:** **165 endpoints** - 81 GET, 46 POST, 30 PUT, 8 DELETE.
 
 ---
 
@@ -217,6 +217,24 @@ Reglas verificadas:
 
 > El flujo legacy `GET/POST /api/tesoreria/becas` se conserva; el `POST` delega en el
 > servicio nuevo y no crea becas sin tipo.
+
+### 2.4 Primera configuración — `/api/setup` (H79/Fase 7)
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/setup/status` | Público | Indica `requiere_setup`, `setup_disponible`, `setup_completado`, `token_configurado` y año sugerido |
+| POST | `/api/setup/inicializar` | Público con token | Crea en una transacción el primer ADMIN, institución, año activo, grados por nivel, caja y auditoría |
+
+Reglas:
+
+- Solo funciona si no existe ningún usuario con rol ADMIN y `setup_completado=false`.
+- Exige el token `SETUP_TOKEN`; en producción es obligatorio y en desarrollo se genera y se
+  imprime una vez al arrancar.
+- Token inválido `401`; intentos repetidos `429`; sistema ya configurado `409`.
+- El admin nace `ACTIVO` con `requiere_cambio_password=false` porque elige su contraseña.
+- Crea grados para los niveles seleccionados (`INICIAL`, `PRIMARIA`, `SECUNDARIA`) y activa
+  el año lectivo, cerrando el anterior.
+- Audita `CONFIGURACION_INICIAL` y marca `setup_completado=true`.
 
 Reglas:
 
@@ -758,6 +776,7 @@ contraseñas.
 | Módulo | Endpoints |
 |---|---|
 | Generales / Configuración (H74–H78) | 34 |
+| Primera configuración (H79) | 2 |
 | Años lectivos (6.2) | 5 |
 | Promociones (6.3) | 8 |
 | Auth | 9 |
@@ -774,12 +793,12 @@ contraseñas.
 | Auditoría | 8 |
 | SIAGIE interno | 2 |
 | Notificaciones | 8 |
-| **Total** | **163** |
+| **Total** | **165** |
 
 | Verbo | Cantidad |
 |---|---|
-| GET | 80 |
-| POST | 45 |
+| GET | 81 |
+| POST | 46 |
 | PUT | 30 |
 | DELETE | 8 |
 
@@ -790,7 +809,7 @@ consolidado histórico por DNI. En el cierre de demo, SIAGIE pasó de un `POST`
 `multipart/form-data` (plantilla) a dos `GET`: `resumen` y `exportar` interno.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo vigente es 163 (80 GET, 45 POST, 30 PUT, 8 DELETE), tras H75–H78.
+> El conteo vigente es 165 (81 GET, 46 POST, 30 PUT, 8 DELETE), tras H75–H79.
 
 ---
 

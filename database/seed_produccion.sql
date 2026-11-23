@@ -311,7 +311,31 @@ WHERE u.dni = '74829102'
   );
 
 -- ============================================================
--- 12. Conclusiones descriptivas
+-- 12. Marcar la primera configuración si H79 ya existe
+--    El orden habitual es seed -> migraciones, por lo que H79
+--    también hace el backfill. Esto cubre el orden inverso.
+-- ============================================================
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'configuracion_institucional'
+      AND column_name = 'setup_completado'
+  ) THEN
+    UPDATE public.configuracion_institucional
+    SET setup_completado = TRUE,
+        setup_completado_en = COALESCE(setup_completado_en, now()),
+        setup_completado_por = COALESCE(
+          setup_completado_por,
+          (SELECT id_usuario FROM usuarios WHERE dni = '74829102' LIMIT 1)
+        )
+    WHERE setup_completado = FALSE;
+  END IF;
+END $$;
+
+-- ============================================================
+-- 13. Conclusiones descriptivas
 --    NO se siembran: la tabla depende de id_alumno y es un dato
 --    operativo, no un catálogo MINEDU. Queda vacía a propósito.
 -- ============================================================

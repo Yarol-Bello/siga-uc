@@ -78,6 +78,7 @@ export class AdminReportesComponent implements OnInit {
   private route = inject(ActivatedRoute);
 
   anioActivo = this.configuracion.anioLectivo;
+  nombreInstitucion = this.configuracion.nombreInstitucion;
   anioSeleccionado = signal<number>(this.configuracion.anioLectivo());
   aniosDisponibles = computed(() =>
     this.anioLectivoService.anios().map((item) => Number(item.anio)),

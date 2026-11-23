@@ -230,6 +230,7 @@ top = 10
 | RN-107 | 100% deja pensión o pre-ticket `EXONERADO` en 0; matrícula exonera y marca `Matriculado` | `becaCalculator` | H78 |
 | RN-108 | Anular borra aplicaciones y devuelve pendientes a `PENDIENTE`; si la matrícula deja de estar exenta, vuelve a `PendientePago` | `becaService.revertirCobros` | H78 |
 | RN-109 | La promoción copia los campos H78 de la beca y aplica la beca de matrícula al pre-ticket destino | `promocionService` | `copiar_becas` |
+| RN-110 | La primera configuración exige token, no admite ADMIN existente y crea un solo admin con contraseña propia | `setupService` | H79; `409` al repetir |
 
 ## 11. Caja
 

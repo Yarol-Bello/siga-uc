@@ -430,7 +430,7 @@ export class AdminSiagieComponent implements OnInit {
           `(${item.porcentaje || 0}% completado)\n\n` +
           `Por favor, ingresa al módulo "Registro de Notas" para completar las calificaciones ` +
           `antes del cierre del bimestre.\n\n` +
-          `Atentamente,\nDirección Académica — I.E.P. Unión Científica`;
+          `Atentamente,\nDirección Académica - ${this.configuracion.nombreInstitucion()}`;
 
         this.http
           .post<any>(`${environment.apiUrl}/notificaciones`, {

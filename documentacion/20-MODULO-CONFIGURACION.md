@@ -290,7 +290,7 @@ CHECK (descuento <= monto_base);
 | **H76** | `areas_academicas`; `activo`/orden/timestamps en cursos, competencias y carga. | H74 |
 | **H77** | Días/jornada/límites; CHECK de días si se aprueba sábado. | H47, H74 |
 | **H78** | `tipos_beca`, columnas de `becas`, `aplicaciones_beca`, descuento en pre-ticket. | H74, H49 |
-| **H79** | No necesaria: la Fase 6 usa `configuracion_institucional` (nombre, moneda, zona, textos y pie). | H74 |
+| **H79** | `setup_completado`, fecha y admin en `configuracion_institucional`; asistente `/setup`. | H74, H49 |
 
 Todas idempotentes, con `BEGIN/COMMIT`, `to_regclass` y preflight que aborta con mensaje
 claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de instalación y
@@ -340,7 +340,7 @@ claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de insta
 | 4 | Jornada, días, límites, generador. ✅ Implementada y E2E. | 1, 3 | Medio | 5–7 días |
 | 5 | Becas, aprobación, aplicación, combinación. ✅ Implementada y E2E. | 1, 2 | Alto | 10–14 días |
 | 6 | Textos, PDF, correo. ✅ Implementada y E2E (sin migración). | 1 | Bajo-medio | 3–4 días |
-| 7 | Pruebas, documentación y despliegue. | Todas | Medio | 4–6 días |
+| 7 | Pruebas, documentación y despliegue. ✅ Implementada en local; despliegue pendiente de autorización. | Todas | Medio | 4–6 días |
 
 **MVP recomendado:** fases 0–2 + 7.
 
@@ -405,10 +405,11 @@ claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de insta
 
 ### Fase 7
 
-- E2E >= 75 + nuevos; integridad >= 21 + nuevos; smoke >= 11 + nuevos; H47.
+- E2E >= 100 + `test:setup`; integridad >= 35; smoke 12; H47.
 - Build y `node --check`.
 - Documentación y AGENTS actualizados.
 - Backup; Supabase solo con autorización; 2026 activo; 2027 no se activa.
+- Primera configuración con `/setup` y `SETUP_TOKEN`; sin despliegue automático.
 
 ---
 
@@ -487,8 +488,9 @@ base desechable E2E. Idempotente. Crea:
 - UI probada a 768 y 1366 px; a 390 px el componente se adapta, pero el sidebar fijo del
   ADMIN (responsive pausado) limita el ancho. No se modificó el layout por indicación.
 
-**Pendiente:** fase 7 (endurecimiento, documentación final y despliegue). H74–H78 no se
-aplicaron en Supabase; no se activó 2027.
+**Pendiente:** despliegue en Render/Supabase, que requiere autorización expresa. Las fases
+funcionales 1–7 están implementadas y probadas en local. H74–H79 no se aplicaron en
+Supabase; no se activó 2027.
 
 ---
 
@@ -536,13 +538,13 @@ alta/edición, aprobación/rechazo/anulación con motivo y aviso de año histór
 - H78 aplicada dos veces en local sin error.
 - E2E: **99 PASS, 0 FAIL** (90 previos + 9 de becas).
 - Integridad en base nueva de producción: **34 PASS, 0 FAIL**.
-- Integridad local: **32 PASS, 2 FAIL** de seed (invariantes 4 y 8, conocidos).
+- Integridad local: **33 PASS, 2 FAIL** de seed (invariantes 4 y 8, conocidos).
 - Smoke: **12 PASS, 0 FAIL**; H47: **4 PASS**.
 - Build Angular y `node --check`: OK.
 
 ---
 
-## 15. Estado de implementación (Fase 6)
+## 16. Estado de implementación (Fase 6)
 
 **Sin migración nueva.** La Fase 6 reutiliza `configuracion_institucional` (H74):
 `nombre_institucion`, `distrito/provincia/departamento`, `simbolo_moneda`, `zona_horaria`,
@@ -576,10 +578,56 @@ horaria, locale y los cuatro textos; no se requieren campos nuevos.
 
 ---
 
-## 16. Registro de cambios
+## 17. Estado de implementación (Fase 7 / H79)
+
+**Migración:** `database/migracion_h79_setup_inicial.sql`, aplicada en local y en bases
+desechables. Idempotente. Agrega `setup_completado`, `setup_completado_en` y
+`setup_completado_por` a `configuracion_institucional`; marca como completadas las
+instalaciones que ya tienen un ADMIN. No crea tablas nuevas (48 tablas base).
+
+**Flujo:**
+
+1. En una base nueva, `GET /api/setup/status` devuelve `requiere_setup=true`.
+2. El frontend redirige `/login` a `/setup` con `loginSetupGuard`.
+3. El asistente pide token, institución, año lectivo, niveles y primer administrador.
+4. `POST /api/setup/inicializar` valida el token `SETUP_TOKEN` y ejecuta una transacción:
+   roles/escala base, admin, ficha de personal, institución, año activo, grados, caja y
+   auditoría `CONFIGURACION_INICIAL`.
+5. Marca `setup_completado=true`; el login queda habilitado y `/setup` ya no acepta otro
+   intento (`409`).
+6. `seed_produccion.sql` marca el setup como completado si H79 ya existe.
+
+**Seguridad:**
+
+- En producción `SETUP_TOKEN` es obligatorio (mínimo 16 caracteres); en desarrollo se
+  genera y se imprime una sola vez al arrancar.
+- Token inválido `401`; más de 8 intentos por IP en 15 minutos `429`.
+- El endpoint no está disponible si ya existe un ADMIN o la bandera está activa.
+- La contraseña se guarda con bcrypt coste 10; el admin nace sin cambio obligatorio porque
+  la eligió en el asistente.
+- No se registra el token ni la contraseña en bitácora.
+
+**Frontend:** ruta pública `/setup`, asistente de 3 pasos, resumen, estado de éxito y
+redirección al login. El login ahora usa el nombre institucional y el título dinámico.
+
+**Verificación (23/11/2026):**
+
+- `npm run test:setup`: **5 PASS, 0 FAIL** en base vacía.
+- E2E: **100 PASS, 0 FAIL**.
+- Prueba manual en navegador: redirección `/login → /setup`, creación del admin, login y
+  dashboard con el nombre institucional nuevo.
+- Build Angular y `node --check`: OK.
+- Integridad: **35 invariantes** (se agregó “setup pendiente con admin existente”).
+
+**Pendiente:** aplicar H79 y desplegar solo con autorización. No se tocó Supabase ni Render.
+
+---
+
+## 18. Registro de cambios
 
 | Fecha | Cambio | Autor |
 |---|---|---|
 | 23/11/2026 | Fase 0: documento de diseño, decisiones, línea base y plan de fases. | Sesión de código |
 | 23/11/2026 | Fase 1: H74, backend de configuración, UI general, auditoría con motivo y pruebas. | Sesión de código |
 | 23/11/2026 | Fases 2–6: H75 tarifas, H76 académico, H77 jornada, H78 becas y textos/PDF/correo configurables; E2E 100. | Sesión de código |
+| 23/11/2026 | Fase 7: H79, asistente `/setup`, token de instalación, admin inicial y `test:setup`. | Sesión de código |

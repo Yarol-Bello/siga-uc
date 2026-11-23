@@ -11,6 +11,7 @@
     "smoke": "node scripts/smoke.js",
     "test:integridad": "node scripts/test-integridad.js",
     "test:e2e": "node scripts/test-e2e.js",
+    "test:setup": "node scripts/test-setup.js",
     "test:h47-generador": "node scripts/test-h47-generador.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

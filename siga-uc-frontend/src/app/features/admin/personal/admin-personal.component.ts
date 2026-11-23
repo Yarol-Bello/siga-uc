@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import * as QRCode from 'qrcode';
 import { environment } from '../../../../environments/environment';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 import { fechaLocalISO } from '../../../core/utils/fecha.util';
 
 interface Personal {
@@ -48,6 +49,8 @@ interface Rol {
 })
 export class AdminPersonalComponent implements OnInit {
   private http = inject(HttpClient);
+  private configuracion = inject(ConfiguracionService);
+  nombreInstitucion = this.configuracion.nombreInstitucion;
 
   // Estado principal
   cargando = signal(true);

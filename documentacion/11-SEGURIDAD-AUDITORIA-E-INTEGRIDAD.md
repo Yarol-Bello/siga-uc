@@ -184,6 +184,7 @@ sequenceDiagram
 | Horarios: publicar/despublicar/generar | ✅ | `PUBLICAR` / `DESPUBLICAR` / `GENERAR` (`Horarios`) |
 | Configuración, tarifas, académico y jornada | ✅ | `CREAR` / `MODIFICAR` / `ELIMINAR` (`Configuración`) con `motivo` y antes/después |
 | Becas: tipo, asignación, aprobación, rechazo y anulación | ✅ | `CREAR` / `MODIFICAR` / `APROBAR` / `RECHAZADA` / `ANULADA` (`Configuración`) con `motivo` y evidencia |
+| Primera configuración del sistema | ✅ | `CONFIGURACION_INICIAL` (`Configuración`) con DNI, año, niveles e institución; sin token ni contraseña |
 
 Los eventos de seguridad y dinero se insertan **después** del COMMIT del negocio. Un fallo de
 auditoría se registra en consola y nunca revierte la operación (`auditoriaService.registrar`
@@ -267,6 +268,7 @@ algoritmo y permitir verificación; bloquear escrituras si el acta está cerrada
 | `DB_PASSWORD` | `.env` | Ignorado por Git; no rotado |
 | `JWT_SECRET` | `.env` | Si se filtra, se pueden firmar tokens |
 | `RESEND_API_KEY` | `.env` | Permite enviar correos |
+| `SETUP_TOKEN` | `.env` | Habilita `/setup`; en producción es obligatorio y de un solo uso lógico |
 | Credenciales de prueba | `docs/CREDENCIALES.md` | Públicas en repo; rotar en producción |
 | `siga_uc_completo.sql` | Repo | Contiene hashes de contraseñas de prueba |
 
@@ -276,6 +278,7 @@ algoritmo y permitir verificación; bloquear escrituras si el acta está cerrada
 - CORS con lista blanca.
 - Helmet activo.
 - Contraseñas hasheadas.
+- `/setup` exige token, solo funciona sin ADMIN y se bloquea con `409` al completarse.
 
 **Pendientes:**
 - Rotar `JWT_SECRET` y contraseñas al desplegar.

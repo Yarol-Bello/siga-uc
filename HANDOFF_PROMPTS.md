@@ -1,6 +1,6 @@
 # HANDOFF_PROMPTS.md — SIGA-UC (sesión de asesoría)
 
-> **Fecha de cierre:** 22/11/2026
+> **Fecha de cierre:** 23/11/2026
 > **Rol de esta sesión:** asesor de prompts. No implementa código; revisa resultados
 > reales y prepara prompts para la sesión de código.
 > **Handoff técnico:** `HANDOFF_SESSION.md` (raíz). Este archivo no lo reemplaza:
@@ -43,10 +43,11 @@
 | Fase 6.3 + 6.3.1 (promoción) | Desplegadas en Render (`89eba24`); H73 aplicada en Supabase, 0 promociones |
 | Fase 6.4 (histórico) | Desplegada en Render (`cdc129e`); sin migración; Supabase sin cambios |
 | Fase 7 (pulido) | Desplegada en Render (`df1f384`); H59 aplicada en Supabase (columna `personal.observaciones`); H70 y H71 cerrados en el cierre de demo |
-| E2E | **80 PASS** |
-| Integridad (base de producción desechable) | **24 PASS**; local 22 PASS / 2 FAIL de seed |
+| E2E | **100 PASS** |
+| Integridad (base de producción desechable) | **35 PASS**; local 33 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 12 PASS / 4 PASS |
-| Módulo de configuración | Fase 0 documentada (`documentacion/20`); Fase 1 implementada y aplicada en local (H74, commit `3a0d20b`); no desplegada; H74 no aplicada en Supabase |
+| Setup inicial (`npm run test:setup`) | **5 PASS** sobre base vacía |
+| Módulo de configuración | **Fases 1–7 implementadas y probadas en local**: H74–H79, tarifas, académico, jornada, becas, textos/PDF/correo y `/setup`; **no desplegado**; H74–H79 no aplicadas en Supabase |
 
 > Recordatorio: un push que solo toca `database/` o `documentacion/` **no despliega**.
 > Las migraciones se aplican a mano en Supabase.

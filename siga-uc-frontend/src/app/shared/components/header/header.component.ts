@@ -11,6 +11,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 import { NotificacionService, Notificacion } from '../../../core/services/notificacion.service';
 import { environment } from '../../../../environments/environment';
 import * as QRCode from 'qrcode';
@@ -35,10 +36,12 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   private authService = inject(AuthService);
   private notificacionService = inject(NotificacionService);
+  private configuracion = inject(ConfiguracionService);
   private http = inject(HttpClient);
 
   usuario = this.authService.usuario;
   noLeidas = this.notificacionService.noLeidas;
+  nombreInstitucion = this.configuracion.nombreInstitucion;
 
   // Modal Notificaciones
   modalInbox = signal(false);

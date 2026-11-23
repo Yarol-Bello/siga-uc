@@ -445,11 +445,13 @@ matrícula destino por promoción confirmada. No usa `ON DELETE CASCADE`; no agr
 `simbolo_moneda` default `S/` · `zona_horaria` default `America/Lima` · `locale` default
 `es-PE` · `nombre_remitente` · `texto_boleta`, `texto_libreta`, `texto_acta`, `texto_pie` ·
 `serie_boleta` default `B001` · `numero_boleta_inicial` default 4820 · `actualizado_por` FK
-usuarios SET NULL · `actualizado_en`.
+usuarios SET NULL · `actualizado_en` · `setup_completado` boolean default false ·
+`setup_completado_en` · `setup_completado_por` FK usuarios SET NULL (H79).
 
-> La migración H74 inserta la fila inicial con los datos institucionales actuales. El
-> ADMIN puede editarla desde `/admin/configuracion`; `GET /api/configuracion` solo expone
-> nombre, nombre corto, logo, moneda, símbolo, zona horaria y locale.
+> La migración H74 inserta la fila inicial con los datos institucionales actuales. H79 marca
+> `setup_completado` cuando ya existe un ADMIN o cuando termina el asistente `/setup`. El
+> ADMIN puede editar la institución desde `/admin/configuracion`; `GET /api/configuracion`
+> solo expone nombre, nombre corto, logo, moneda, símbolo, zona horaria y locale.
 
 #### `configuracion_anio` (una fila por año)
 `anio` PK/FK `anios_lectivos` ON DELETE CASCADE · `dias_clase` varchar(15)[] default

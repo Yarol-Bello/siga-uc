@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../../shared/components/header/header.component';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfiguracionService } from '../../../core/services/configuracion.service';
 
 const TITULOS_POR_RUTA: Record<string, string> = {
   '/admin': 'Resumen Ejecutivo',
@@ -40,9 +41,11 @@ export class AdminLayoutComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  private configuracion = inject(ConfiguracionService);
 
   usuario = this.authService.usuario;
   titulo = signal('Resumen Ejecutivo');
+  nombreInstitucion = this.configuracion.nombreInstitucion;
 
   constructor() {
     this.actualizarTitulo(this.router.url);
