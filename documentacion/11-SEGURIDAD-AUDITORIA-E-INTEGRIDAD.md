@@ -111,7 +111,7 @@ sequenceDiagram
 | Tesorería | ❌ | Service (campos/mes) |
 | Caja | ❌ | Service (montos) |
 | Notificaciones | ❌ | Service (campos) |
-| SIAGIE | ❌ | Controller + multer |
+| SIAGIE interno | ❌ | Sin carga de archivos; solo lectura de notas y descarga |
 
 **Riesgos:**
 - Tipos inesperados pueden llegar a SQL (aunque parametrizado, PostgreSQL puede fallar).
@@ -179,7 +179,7 @@ sequenceDiagram
 | Notificaciones | ✅ | `ENVIAR` (`Notificaciones`) |
 | Descargas de libreta/boleta/acta | ✅ | `DESCARGAR` (`Reportes` / `Tesorería`) |
 | Cierre de acta | ✅ | `CERRAR` (`Evaluaciones`) + `cerrado_por` y hash |
-| SIAGIE | ✅ | `IMPORTAR` (`SIAGIE`) |
+| SIAGIE interno | ✅ | `EXPORTAR` (`SIAGIE`) |
 | Horarios: crear/editar/eliminar | ✅ | `CREAR` / `MODIFICAR` / `ELIMINAR` (`Horarios`) |
 | Horarios: publicar/despublicar/generar | ✅ | `PUBLICAR` / `DESPUBLICAR` / `GENERAR` (`Horarios`) |
 

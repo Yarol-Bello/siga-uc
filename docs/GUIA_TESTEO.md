@@ -170,15 +170,17 @@ NO subir capturas con contraseñas visibles.
 
 &#x20; - \[ ] Cerrar caja con arqueo
 
-\- \[ ] SIAGIE:
+\- \[ ] SIAGIE interno (no oficial):
 
-&#x20; - \[ ] Subir plantilla .xlsx
+&#x20; - \[ ] Elegir año, grado y bimestre
+
+&#x20; - \[ ] Ver resumen de cursos/alumnos/notas y advertencias
 
 &#x20; - \[ ] Auditoría de docentes carga
 
 &#x20; - \[ ] Notificar a profesor
 
-&#x20; - \[ ] Generar Excel con notas inyectadas
+&#x20; - \[ ] Descargar Excel interno con todos los cursos y abrir la hoja Aviso
 
 \- \[ ] Reportes:
 
@@ -326,7 +328,7 @@ NO subir capturas con contraseñas visibles.
 
 
 
-\- Errores de SMTP si no configuraste correo (es esperado).
+\- Errores de Resend si no configuraste correo (es esperado).
 
 \- Que la campanita no marque nada si no hay notificaciones nuevas.
 

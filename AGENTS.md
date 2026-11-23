@@ -29,12 +29,12 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | Base de datos | PostgreSQL 18.4 (`pgcrypto`, `unaccent`, `uuid-ossp`) |
 | Auth | JWT 8 h + bcrypt coste 10 |
 | Correo | **Resend** (API HTTP), no Nodemailer/SMTP |
-| Excel | ExcelJS + Multer (SIAGIE) |
+| Excel | ExcelJS (exportación interna de calificaciones) |
 | PDF | PDFKit + fuentes estándar (libretas) |
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | Suites manuales (`smoke`, integridad, E2E); sin CI ni Docker |
 
-**Conteos actuales:** 43 tablas base (44 en local con `horarios_h47_backup`) · 128 endpoints ·
+**Conteos actuales:** 43 tablas base (44 en local con `horarios_h47_backup`) · 129 endpoints ·
 4 roles · 17 routers · 17 controladores · 26 servicios · 22 DAOs · 97 archivos JS backend ·
 147 archivos frontend (62 TS).
 
@@ -91,6 +91,7 @@ psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
@@ -106,6 +107,7 @@ psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 ```
 
 > **H49:** antes de ejecutar `migracion_h49_multianio_base.sql`, editar `_param_anio` al año
@@ -127,7 +129,7 @@ cd siga-uc-backend
 npm run backup   # genera backups/backup_siga_uc_YYYY-MM-DD_HH-mm-ss.sql
 ```
 
-> `.env.example` todavía muestra SMTP. El correo real usa `RESEND_API_KEY` y `EMAIL_FROM`.
+> `.env.example` ya usa Resend (`RESEND_API_KEY` y `EMAIL_FROM`). No hay SMTP ni Nodemailer.
 
 ---
 
@@ -189,7 +191,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Histórico | `reporteRoutes` (`/consolidado/:dni`), `alumnoDao.validarMatriculaAnual` | `admin/historico` |
 | Años lectivos (lectura) | `anioLectivoRoutes` (`GET` ADMIN/SECRETARIA) | selector `shared/components/selector-anio` |
 | Auditoría | `auditoriaRoutes/...` | `admin/auditoria` |
-| SIAGIE | `siagieRoutes/...` | `admin/siagie` |
+| SIAGIE interno | `siagieRoutes/...` (2 GET, solo ADMIN) | `admin/siagie` |
 | Notificaciones | `notificacionRoutes/...` | header + `core/services/notificacion.service` |
 
 ---
@@ -276,8 +278,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - **6.4 — UI:** año no activo = badge **Histórico** y solo lectura en padrón y tesorería
   (se ocultan nueva matrícula, editar, retirar, reset, cobrar y generar pensiones).
   `/admin/historico` enlaza a libreta/asistencia/tesorería con `?anio`.
-- Estado 6.4: implementado, verificado y **desplegado en Render** (`cdc129e`); **72 E2E**,
-  20 integridad en base nueva (18/2 de seed local), smoke 11, H47 4 y build Angular OK.
+- Estado 6.4: implementado, verificado y **desplegado en Render** (`cdc129e`); **75 E2E**,
+  21 integridad en base nueva (19/2 de seed local), smoke 11, H47 4 y build Angular OK.
   Sin migración y sin cambios en Supabase.
 - **Fase 7 (pulido de demo):** H62, H59, H65, H66, H67, H68 y H69 implementados y
   desplegados en Render (`8eba9e9`). `POST /api/notificaciones` es ADMIN/SECRETARIA;
@@ -289,9 +291,13 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   nombres responde 400. La columna no cambia el conteo de tablas (43). Sin la migración,
   `GET /personal` sigue funcionando y un cese con observación responde
   `503 H59_NO_APLICADO`; no se pierde el texto en silencio.
-- **H70 parcial:** queda `nodemailer` en `package.json` sin uso y variables SMTP en
-  `config/env.js`; el log de login ya no imprime el objeto usuario y el arranque dice
-  “Resend configurado”. **H71 pendiente** (backfill de retirados históricos).
+- **H70 cerrado:** `nodemailer`, `multer` y las variables SMTP se retiraron; el correo usa
+  solo Resend. El login no imprime el objeto usuario, el arranque dice "Resend
+  configurado" y los logs de correo no incluyen destinatarios.
+- **H71 implementado:** `database/migracion_h71_retirados_historicos.sql` congela
+  expedientes de retirados y desactiva al usuario solo si no conserva otra matrícula
+  vigente. Aplicado en local; no se aplicó en Supabase demo (no hay retirados allí).
+  `test:integridad` incluye el invariante 21.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y
@@ -313,13 +319,16 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - El trigger de pagos imputa a la **última apertura de caja**, aunque esté cerrada.
 - `asistencia_alumnos` **no tiene `anio_lectivo`**: el año se deriva de `fecha`
   (`EXTRACT(YEAR FROM fecha)`). No agregar la columna en 6.1.
-- El SIAGIE solo detecta cursos con prefijos `ARITM`, `ALGEBRA`, `COMUNIC`, `FISICA`.
+- **SIAGIE es una exportación interna**, no oficial. Genera un Excel con todos los cursos
+  de la carga curricular del grado/año, notas finales y conclusión descriptiva. No hay
+  portal MINEDU, plantilla oficial ni carga de archivos. El aviso visible es
+  "Exportación interna. No es una exportación oficial a SIAGIE/MINEDU."
 - Algunos IDs de conceptos de tesorería y los meses Oct–Dic siguen hardcodeados en el
   frontend.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
-- Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (20) y
-  `npm run test:e2e` (72, base desechable); el resto del testeo es manual.
+- Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (21) y
+  `npm run test:e2e` (75, base desechable); el resto del testeo es manual.
 
 ---
 
@@ -331,7 +340,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 43 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 128 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 129 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |

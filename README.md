@@ -2,7 +2,7 @@
 
 Sistema web full-stack para la I.E.P. Unión Científica (Huancayo, Junín, Perú).
 
-Digitaliza procesos académicos y administrativos: matrículas, notas por competencias MINEDU, asistencia QR, tesorería, caja, reportes SIAGIE, notificaciones y auditoría.
+Digitaliza procesos académicos y administrativos: matrículas, notas por competencias MINEDU, asistencia QR, tesorería, caja, exportación interna de calificaciones, notificaciones y auditoría.
 
 ---
 
@@ -14,8 +14,8 @@ Digitaliza procesos académicos y administrativos: matrículas, notas por compet
 | Backend | Node.js 20 + Express 5 |
 | Base de Datos | PostgreSQL 18 |
 | Autenticación | JWT + bcrypt |
-| Correo | Nodemailer + Gmail SMTP |
-| Excel | ExcelJS (para SIAGIE) |
+| Correo | Resend (API HTTP; modo prueba en la demo) |
+| Excel | ExcelJS (exportación interna de calificaciones) |
 | QR | qrcode (carné digital) |
 
 ---
@@ -66,7 +66,7 @@ Ver docs/CREDENCIALES.md.
 |-----|-----|-----------|
 | Administrador | 74829102 | UC2026* |
 | Secretaría | 40596837 | UC2026* |
-| Docente | 10293847 | UC2026* |
+| Docente | 20394812 | UC2026* |
 | Estudiante | 75918234 | UC75918234 |
 
 ---

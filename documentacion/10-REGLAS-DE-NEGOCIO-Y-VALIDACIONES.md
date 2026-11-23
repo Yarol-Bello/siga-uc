@@ -226,13 +226,13 @@ top = 10
 
 | ID | Regla | Dónde | Detalle |
 |---|---|---|---|
-| RN-108 | Solo ADMIN exporta | Router | 403 |
-| RN-109 | Plantilla `.xlsx/.xls` ≤10 MB | Multer | Error |
-| RN-110 | Debe existir grado y notas finales | Service | 404 |
-| RN-111 | Detecta encabezado por DNI/DOCUMENTO | Service | Fallback fila 5 |
-| RN-112 | Detecta cursos por prefijos ARITM/ALGEBRA/COMUNIC/FISICA | Service | Solo 4 |
-| RN-113 | Cruza por DNI exacto | Service | Sin normalización |
-| RN-114 | Registra exportación | DAO | Estado GENERADO |
+| RN-108 | Solo ADMIN exporta | Router | 403 para otros roles |
+| RN-109 | La exportación es interna, no oficial | UI + Excel | Aviso obligatorio |
+| RN-110 | Grado del año y al menos un curso y un alumno | Service | 404/422 |
+| RN-111 | Todos los cursos de la carga curricular del grado/año | Service | Sin prefijos ni límite de 4 (H05) |
+| RN-112 | Alumnos `Matriculado`/`PendientePago`; excluye `Retirado` | Service | — |
+| RN-113 | Sin notas finales: celdas vacías y advertencia | Service/UI | No inventa notas |
+| RN-114 | Registra exportación y auditoría | DAO | `GENERADO` + `EXPORTAR` |
 | RN-115 | Borra el temporal | Controller | — |
 
 ## 13. Notificaciones

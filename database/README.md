@@ -24,6 +24,8 @@ psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -44,6 +46,8 @@ psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 ```
 
 > **H49:** antes de ejecutar la migración, editar `_param_anio` en
@@ -92,6 +96,8 @@ caja, bitácora ni becas.
 | `migracion_h61_dia_semana.sql` | Solo datos: normaliza `asistencia_alumnos.dia_semana` a español y lo alinea con `fecha`. Idempotente; no cambia el esquema. |
 | `migracion_h49_multianio_base.sql` | Crea `anios_lectivos`, agrega `grados.orden` y reemplaza los UNIQUE globales de `alumnos` por UNIQUE por año. No crea promociones ni clona oferta. Se pega completo en SQL Editor (sin variables psql). Idempotente. |
 | `migracion_h73_promociones.sql` | Crea `politicas_promocion` y `promociones` (H73/6.3). Requiere H49. Idempotente; no agrega `TRASLADADO` ni toca el CHECK de alumnos. |
+| `migracion_h59_observaciones_personal.sql` | Agrega `personal.observaciones` (H59). Idempotente; no cambia el número de tablas. |
+| `migracion_h71_retirados_historicos.sql` | Backfill H71: congela el expediente de los alumnos `Retirado` y desactiva al usuario solo si no conserva otra matrícula no retirada. Idempotente; no toca alumnos no retirados. |
 | `rollback_h73_promociones.sql` | Solo base desechable: elimina `promociones` y `politicas_promocion`. En producción se restaura el backup. |
 | `rollback_h49_multianio_base.sql` | Solo para base desechable: restaura los UNIQUE globales y elimina `anios_lectivos`/`grados.orden`. Aborta si hay varias matrículas por persona o promociones con filas. |
 | `preparar_anio_lectivo.sql` | Utilidad **histórica y parcial**: solo copia conceptos `MATRICULA`/`PENSION` y períodos. No crea grados, carga ni tutores. La reemplaza la pantalla ADMIN de 6.2 (años lectivos y rollover). |
@@ -119,7 +125,7 @@ SELECT
 Además, desde `siga-uc-backend`:
 
 ```powershell
-npm run test:integridad   # 20 invariantes; debe dar 20 PASS en una base de producción limpia
+npm run test:integridad   # 21 invariantes; debe dar 21 PASS en una base de producción limpia
 ```
 
 ## Migraciones sobre una base existente
@@ -137,6 +143,12 @@ variables `psql`: crea una tabla temporal `_param_anio` (2026 por defecto; **edi
 la instalación**, 2027 en producción), marca ese año como
 `ACTIVO` solo si no hay otro y usa `current_setting`. Es idempotente y no crea promociones ni
 clona oferta. Aplicarla solo con backup previo y ventana sin usuarios.
+
+**H71 (retirados históricos)** se aplica después de H49 y H59. Es un backfill de datos:
+no crea tablas. En local corrige la inconsistencia de alumnos `Retirado` con usuario
+`ACTIVO` o expediente sin congelar. En Supabase demo no se aplicó porque no hay alumnos
+retirados; aplicar antes de cargar datos reales o al detectar el invariante 21 en
+`test:integridad`.
 
 **Fase 6.2 (rollover) no agrega una migración.** Se opera desde la pantalla ADMIN
 `/admin/anios-lectivos` después de aplicar H49: preview, confirmación idempotente, activación

@@ -197,7 +197,7 @@ Cada layout contiene:
 | Horarios | `/admin/horarios` |
 | Tesorería y Pensiones | `/admin/tesoreria` |
 | Cuadre de Caja | `/admin/caja` |
-| Exportación SIAGIE | `/admin/siagie` |
+| Exportación interna | `/admin/siagie` |
 | Reportes y Libretas | `/admin/reportes` |
 | Histórico por Estudiante | `/admin/historico` |
 | Años Lectivos y Rollover | `/admin/anios-lectivos` |
@@ -270,7 +270,7 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 | `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar` (con `observaciones` H59), `PUT /:id/reactivar`, `PUT /:id/reset-password`; el carné genera un QR real con `codigo_qr` (H55) y la impresión aísla la credencial (H58); la ficha muestra el cese y su observación |
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
-| `AdminSiagieComponent` | `GET /grados`, `GET /reportes/auditoria-docentes/:id`, `POST /siagie/generar-excel`, `GET /personal/:id`, `POST /notificaciones` |
+| `AdminSiagieComponent` | `GET /anios-lectivos` (selector), `GET /grados?anio=`, `GET /reportes/auditoria-docentes/:id?bimestre=&anio=`, `GET /siagie/resumen`, `GET /siagie/exportar`, `GET /personal/:id`, `POST /notificaciones`. Exportación interna: sin portal, plantilla ni archivo subido; aviso visible y Excel con todos los cursos |
 | `AdminReportesComponent` | `GET /grados?anio=`, `GET /alumnos?anio=`, `GET /anios-lectivos` (selector 6.4), `GET /reportes/cuadro-merito/:id?bimestre=&anio=`, `/alumnos-riesgo/:id?bimestre=&anio=`, `/libreta/:id?bimestre=&anio=`, `/libreta/:id/pdf?bimestre=&anio=`; selector de bimestre 1-4 también en libretas (H51); deep link `?anio=&dni=&grado=&bimestre=` abre la libreta; mérito/riesgo se imprimen con vista aislada y libreta descarga PDF de backend (H58) |
 | `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `POST /actas/:id/reabrir`, `GET /actas/:id/pdf`; tarjeta de cierre, badge global, modal de reapertura (H48) |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id`; botones Asistencia/Notas navegan con `id_curso` e `id_grado` (H53) |

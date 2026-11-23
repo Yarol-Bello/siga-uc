@@ -84,8 +84,10 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > **Actualización 22/11/2026 (Fase 7):** se cierran H59 (observaciones de cese), H62
 > (DOCENTE ya no envía notificaciones), H65 (docentes vs. personal activo), H66 (panel de
 > cobranza y expedientes), H67 (grados/cursos desde la API), H68 (hash de integridad, no
-> firma digital) y H69 (textos de demo, `lang="es"` y títulos por ruta). H70 queda parcial y
-> H71 pendiente. Ver la sección 7.
+> firma digital) y H69 (textos de demo, `lang="es"` y títulos por ruta). **Cierre de demo:**
+> H05/H52 resueltos con una exportación interna honesta (sin portal ni análisis simulado),
+> H70 cerrado (sin Nodemailer/SMTP ni PII en logs) y H71 implementado (backfill de retirados).
+> Ver secciones 7 y 8.
 >
 > **Actualización 22/11/2026 (H49/6.1):** separación entre identidad (`usuarios`) y
 > matrícula anual (`alumnos`), tabla `anios_lectivos`, `grados.orden`, login por año,
@@ -145,10 +147,11 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Campo | Detalle |
 |---|---|
 | Severidad | **Alta** |
-| Evidencia | `siagieService` detecta solo `ARITM`, `ALGEBRA`, `COMUNIC`, `FISICA`; usa `worksheets[0]`; comparación por primeros 5 caracteres |
-| Impacto | Plantillas con otros cursos (Historia, Geografía, Química, Razonamiento) no se llenan; nombres similares pueden confundirse |
-| Recomendación | Mapeo configurable columna↔curso, soporte multi-hoja, normalización de nombres |
-| Esfuerzo | M |
+| Evidencia original | `siagieService` detectaba solo `ARITM`, `ALGEBRA`, `COMUNIC`, `FISICA`; usaba `worksheets[0]` y comparaba los primeros 5 caracteres |
+| Impacto original | Plantillas con otros cursos (Historia, Geografía, Química, Razonamiento) no se llenaban; nombres similares podían confundirse |
+| Decisión | **No se implementa integración oficial con MINEDU.** El módulo es una exportación interna honesta |
+| Estado | ✅ Resuelto (22/11/2026): `siagieService` genera un Excel propio con **todos los cursos de `carga_curricular`** del grado/año (más cursos con notas), una fila por alumno-curso, nota final y conclusión. Sin prefijos, sin primera hoja y sin plantilla. E2E 73–75 |
+| Limitación | No tiene validez oficial ante SIAGIE/MINEDU; el aviso está en la UI y en la hoja `Aviso` |
 
 ### H06 — El cierre de acta no bloquea modificaciones
 
@@ -392,6 +395,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | Impacto | Un despliegue nuevo configura correo incorrecto |
 | Recomendación | Actualizar `.env.example`, README e INSTALACION |
 | Esfuerzo | S |
+| Estado | ✅ Resuelto (22/11/2026, H70): `.env.example` usa `RESEND_API_KEY`/`EMAIL_FROM`; se retiraron Nodemailer, Multer y las variables SMTP |
 
 ### H28 — `siga_uc.sql` con meta-orden de psql 18
 
@@ -841,11 +845,29 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | **H67** | ✅ Resuelto | Filtro de grados desde `grados()` y texto de carga desde `cursos().length`; sin 1–5 ni “11 cursos” fijos. E2E 70 |
 | **H68** | ✅ Resuelto | “Hash de integridad” y “Acta cerrada por”; botón “Cerrar caja”; sin “firma digital” ni “Firmado digitalmente”. E2E 71 |
 | **H69** | ✅ Resuelto | `lang="es"`, título del colegio, “Boletas internas”, “Correo institucional (referencia)”, DNI real en pre-tickets, títulos por ruta, `/en-construccion` eliminado, aviso de correo en modo prueba. E2E 72 |
-| **H70** | 🟡 Parcial | Se quitó el log del objeto usuario y se cambió “SMTP” por “Resend configurado”; `nodemailer` sigue en `package.json` sin uso y las variables SMTP siguen en `env.js`. No bloquea la demo |
-| **H71** | ⏳ Pendiente | Requiere migración/backfill de retirados históricos y autorización con backup; no se toca Supabase en esta fase |
+| **H70** | ✅ Resuelto (cierre de demo) | Se retiraron `nodemailer`, `multer` y las variables SMTP de `env.js`/`.env.example`; el correo usa solo Resend. El login no imprime el objeto usuario, el arranque dice “Resend configurado” y los logs de correo no incluyen destinatarios. Build y E2E OK |
+| **H71** | ✅ Resuelto (local) | `database/migracion_h71_retirados_historicos.sql` congela expedientes de retirados y desactiva al usuario solo si no conserva otra matrícula no retirada. Aplicado en local (1 expediente y 1 usuario corregidos). Invariante 21 en `test:integridad`. En Supabase demo no hay retirados; no se aplicó |
 
 **Verificación Fase 7:** E2E **72 PASS**, integridad **20 PASS** en base nueva (18/2 de seed
-local), smoke **11 PASS**, H47 **4 PASS**, build Angular y `node --check` OK. Código
-desplegado en Render (`8eba9e9`). H59 se aplicó solo en la base local; Supabase queda
-pendiente de autorización y, sin la migración, el cese con observación responde
-`503 H59_NO_APLICADO` (el listado sigue funcionando con `observaciones: null`).
+local), smoke **11 PASS**, H47 **4 PASS**, build Angular y `node --check` OK. El cierre de
+demo subió a **75 E2E** y **21 invariantes** (19/2 en local). Código
+desplegado en Render (`8eba9e9`). H59 está aplicada en Supabase demo (43 tablas) y el cese
+con observación persiste el texto.
+
+---
+
+## 8. Cierre de demo — SIAGIE interno, UAT y límites (22/11/2026)
+
+| Tema | Resultado |
+|---|---|
+| **SIAGIE** | Exportación interna; sin “Abrir Portal MINEDU”, sin `setTimeout`, sin análisis falso y sin carga de plantilla. Formulario año/grado/bimestre, aviso visible y Excel con todos los cursos del grado (H05) |
+| **H70** | Cerrado: sin Nodemailer, Multer ni SMTP; logs sin correos, tokens ni contraseñas; arranque “Resend configurado” |
+| **H71** | Implementado y aplicado en local; Supabase demo no tiene retirados. Invariante 21 |
+| **UAT local** | Login ADMIN/SECRETARÍA/DOCENTE/ESTUDIANTE; padrón, caja, tesorería, notas, horarios, reportes, auditoría, histórico, rollover preview y exportación SIAGIE descargada y abierta con ExcelJS. Promoción completa en E2E |
+| **Suites** | E2E **75 PASS**; integridad **21 PASS** en base nueva y **19/2** de seed en local; smoke **11 PASS**; H47 **4 PASS**; build Angular OK; `node --check` OK |
+| **Supabase demo** | 43 tablas, 2026 ACTIVO, 2027 no activo, 1 política, 0 promociones confirmadas, 0 actas, 1 alumno. Solo sirve para previews y consultas |
+| **Limitaciones** | Correo en modo prueba; datos ficticios; SIAGIE no oficial; local con la carga en ADMIN (el docente no ve cursos hasta reasignarla); Supabase no sirve para confirmar promociones ni para probar el flujo completo |
+
+**Pendiente después de la aprobación:** dominio/SPF/DKIM de Resend, planes pagos,
+backups definitivos, carga de datos reales y rotación de credenciales. **No iniciar Fase 8**
+ni cargar datos reales en esta fase.

@@ -98,7 +98,8 @@ monousuario en secretaría. Esto producía:
 - Alumnos en riesgo (2+ cursos con `C`).
 - Resumen de asistencia por grado.
 - Auditoría de avance de carga de notas por docente.
-- Exportación SIAGIE inyectando notas en plantilla oficial `.xlsx`.
+- **Exportación interna de calificaciones** en `.xlsx` (no es una exportación oficial a
+  SIAGIE/MINEDU): incluye todos los cursos del grado, nota final y conclusión descriptiva.
 
 ### 4.8 Comunicación y trazabilidad
 
@@ -111,7 +112,7 @@ monousuario en secretaría. Esto producía:
 
 | Actor | Responsabilidad principal |
 |---|---|
-| **ADMIN** | Configuración académica, personal, carga curricular, supervisión, SIAGIE, auditoría y control total |
+| **ADMIN** | Configuración académica, personal, carga curricular, supervisión, exportación interna, auditoría y control total |
 | **SECRETARIA** | Padrón, matrículas, tesorería, caja y asistencia del personal |
 | **DOCENTE** | Asistencia y calificaciones de sus cursos, ficha de estudiantes y reportes de aula |
 | **ESTUDIANTE** | Consulta de notas, asistencia y horario propios |

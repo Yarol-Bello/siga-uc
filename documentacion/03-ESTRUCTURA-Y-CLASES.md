@@ -32,7 +32,7 @@
 | `cajaRoutes.js` | `/api/caja` | 9 | ADMIN/SECRETARIA |
 | `reporteRoutes.js` | `/api/reportes` | 7 | Solo lectura con roles |
 | `auditoriaRoutes.js` | `/api/auditoria` | 7 | Cierre de acta: ADMIN; PDF de acta: ADMIN/DOCENTE |
-| `siagieRoutes.js` | `/api/siagie` | 1 | ADMIN |
+| `siagieRoutes.js` | `/api/siagie` | 2 | ADMIN (exportación interna) |
 | `notificacionRoutes.js` | `/api/notificaciones` | 8 | ADMIN/DOCENTE; masivo ADMIN |
 
 ### 1.3 Controladores (14)
@@ -52,7 +52,7 @@
 | `cajaController.js` | `obtenerCajaAbierta`, `listarCajas`, `listarAperturas`, `obtenerApertura`, `aperturar`, `listarMovimientos`, `registrarEgreso`, `cerrar`, `listarCierres` | Inyecta usuario de apertura/egreso/cierre |
 | `reporteController.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getLibretaPdf`, `getResumenAsistencia`, `getAuditoriaDocentes` | KPIs, reportes y PDF de libreta |
 | `auditoriaController.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `getActaPdf`, `cerrarActa`, `reabrirActa`, `getEstadisticas` | Inyecta `cerrado_por`; PDF de acta; cierre/reapertura auditados; paginación con `page`/`pageSize` |
-| `siagieController.js` | `generarExcel` | Valida archivo/parámetros, borra temporal y descarga |
+| `siagieController.js` | `obtenerResumen`, `exportarInterno` | Valida año/grado/bimestre, audita y descarga el Excel interno |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
 ### 1.4 Servicios (19)
@@ -77,7 +77,7 @@
 | `boletaPdfService.js` | `generarBoletaPdf` | PDFKit, comprobante de pago y datos SUNAT/hash |
 | `actaPdfService.js` | `generarActaPdf` | PDFKit, acta landscape, matriz real, watermark para borrador |
 | `auditoriaService.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `reabrirActa`, `getEstadisticas` | Valida bimestre/año/grado; periodo canónico; 404/409; motivo de reapertura |
-| `siagieService.js` | `generarExcel` | Detecta encabezados, inyecta notas, guarda archivo, audita exportación |
+| `siagieService.js` | `obtenerResumen`, `generarExcelInterno` | Cursos de la carga, notas/conclusiones, workbook con aviso interno y auditoría |
 | `notificacionService.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Correo no bloqueante, propiedad del destinatario; el masivo resuelve TODOS/GRADO/ALUMNO y cuenta correos enviados/fallidos |
 | `recuperacionService.js` | `solicitarRecuperacion`, `validarToken`, `restablecerPassword` | Token 32 bytes, 2 h, un uso, no revelar existencia |
 | `emailService.js` | `verificarConexion`, `enviarCorreo`, `enviarNotificacion` | Resend; plantilla guindo/dorado |
@@ -101,7 +101,7 @@
 | `reporteDao.js` | Múltiples tablas | Dashboard, mérito, riesgo, libreta, asistencia, auditoría docente |
 | `auditoriaDao.js` | `bitacora_auditoria`, `actas_bimestrales` | Bitácora filtrada con `COUNT` y `LIMIT/OFFSET` (sin `page` máx. 200); actas con `INSERT ... ON CONFLICT`, reapertura y `actaEstaCerrada` con bloqueo global |
 | `notificacionDao.js` | `notificaciones`, `usuarios`, `alumnos`, `grados` | Listar/contar/marcar/eliminar por destinatario; `listarDestinatarios` por TODOS/GRADO/ALUMNO e inserción masiva con `unnest` |
-| `siagieDao.js` | `alumnos`, `cursos`, `notas_finales_area`, `grados`, `exportaciones_siagie` | Notas por grado/bimestre, grado, registro de exportación |
+| `siagieDao.js` | `alumnos`, `cursos`, `carga_curricular`, `notas_finales_area`, `conclusiones_descriptivas`, `grados`, `exportaciones_siagie` | Cursos del grado/año, alumnos vigentes, notas, conclusiones y registro de exportación |
 | `recuperacionDao.js` | `recuperacion_password`, `usuarios` | Crear token (expira en PostgreSQL), validar, marcar usado |
 
 ### 1.6 Servicios transversales

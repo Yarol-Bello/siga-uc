@@ -123,6 +123,7 @@ psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -143,6 +144,7 @@ psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -248,7 +250,7 @@ Y ejecutar la suite de invariantes:
 
 ```powershell
 cd siga-uc-backend
-npm run test:integridad   # 20 PASS, 0 FAIL
+npm run test:integridad   # 21 PASS, 0 FAIL
 ```
 
 ### 3.5 Extensiones
@@ -416,7 +418,7 @@ tiene otro nombre.
 ### 7.3 Checklist de despliegue
 
 - [ ] PostgreSQL creado con `siga_uc.sql` + `seed_produccion.sql` + migraciones (sin dump demo).
-- [ ] `npm run test:integridad` → 20 PASS, 0 FAIL.
+- [ ] `npm run test:integridad` → 21 PASS, 0 FAIL.
 - [ ] Confirmado: 0 alumnos, 0 pagos, 0 pensiones, 1 usuario.
 - [ ] Admin inicial cambió su contraseña temporal.
 - [ ] Variables de entorno cargadas.
@@ -618,6 +620,7 @@ Crear una tarea diaria a las 02:00:
 | `database/migracion_h49_multianio_base.sql` | Crea `anios_lectivos`, `grados.orden` y UNIQUE de alumnos por año; se aplica antes del rollover |
 | `database/migracion_h73_promociones.sql` | Crea `politicas_promocion` y `promociones`; requiere H49 y se aplica antes de operar 6.3 |
 | `database/migracion_h59_observaciones_personal.sql` | Agrega `personal.observaciones`; aplicar antes de desplegar el código que la lee (H59) |
+| `database/migracion_h71_retirados_historicos.sql` | Backfill H71: congela expedientes de retirados y desactiva usuarios sin otra matrícula vigente; idempotente |
 | `database/rollback_h59_observaciones_personal.sql` | Solo bases desechables: elimina `personal.observaciones` y sus datos |
 | `database/rollback_h73_promociones.sql` | Solo bases desechables: elimina las tablas de promoción |
 | `database/preparar_anio_lectivo.sql` | Utilidad histórica y parcial (conceptos + períodos); la UI de 6.2 la reemplaza |

@@ -10,7 +10,7 @@ flowchart LR
     FE -->|REST /api + JWT| BE[API Express 5<br/>Node 20]
     BE -->|SQL parametrizado| DB[(PostgreSQL 18.4)]
     BE -->|API HTTP| RS[Resend<br/>correo]
-    BE -->|ExcelJS| XLS[Plantillas .xlsx<br/>SIAGIE]
+    BE -->|ExcelJS| XLS[Exportación interna .xlsx<br/>SIAGIE]
 ```
 
 | Capa | Tecnología | Responsabilidad |
@@ -21,7 +21,7 @@ flowchart LR
 | Datos | DAOs + `pg` | SQL crudo parametrizado, transacciones |
 | Persistencia | PostgreSQL 18.4 | Restricciones, unicidad, triggers y funciones |
 | Correo | Resend | Notificaciones y recuperación de contraseña |
-| Archivos | Multer + ExcelJS | Plantilla SIAGIE y archivo generado |
+| Archivos | ExcelJS | Exportación interna SIAGIE (sin carga de plantilla) |
 
 ## 2. Backend: MVC + DAO
 
@@ -240,7 +240,7 @@ siga-uc/
 ├── documentacion/            # Esta documentación detallada
 ├── AGENTS.md                 # Resumen operativo para asistentes
 ├── siga-uc-backend/
-│   ├── uploads/              # temporales SIAGIE y salidas
+│   ├── uploads/              # carpeta histórica de salidas (la exportación interna ya no escribe archivos)
 │   └── src/
 │       ├── app.js
 │       ├── config/           # env.js, academico.js, database.js

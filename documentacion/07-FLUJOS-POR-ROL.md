@@ -217,26 +217,34 @@ Es un **wrapper** de `SecretariaTesoreriaComponent`; el flujo es idéntico al de
 Es un **wrapper** de `SecretariaCajaComponent`; el flujo es idéntico al de Secretaría
 (ver §2.4).
 
-### 1.8 Exportación SIAGIE (`/admin/siagie`)
+### 1.8 Exportación interna SIAGIE (`/admin/siagie`)
 
-1. Carga grados (`GET /api/grados`) y selecciona grado/bimestre.
-2. `GET /api/reportes/auditoria-docentes/:id_grado?bimestre=`.
-3. Muestra por curso: docente, total alumnos, alumnos calificados, % y estado
-   (Completo/En Proceso/Iniciado/Pendiente).
-4. “Alertar docente”:
-   - `GET /api/personal/:id_personal` para obtener `id_usuario`.
-   - `POST /api/notificaciones` con recordatorio.
-   - Guarda notificación y envía correo real.
-5. “Descargar plantilla” solo muestra un aviso (no descarga nada).
-6. Selecciona archivo `.xlsx/.xls` (drag & drop o input).
-7. `POST /api/siagie/generar-excel` con `FormData`:
-   - `plantilla`, `id_grado`, `bimestre`, `anio_lectivo`.
-8. Backend valida, inyecta notas, registra exportación y responde blob.
-9. El navegador descarga `SIAGIE_BIM<n>_2026.xlsx`.
+> **No es una exportación oficial a SIAGIE/MINEDU.** No hay portal, plantilla oficial ni
+> carga de archivos. Es un Excel de apoyo interno generado desde las notas de SIGA-UC.
 
-> Requiere que existan `notas_finales_area`. Si los docentes solo registraron calificaciones
-> por competencia y nadie ejecutó el cálculo de nota final, el archivo puede salir sin notas.
-> Ver `15-HALLAZGOS`.
+1. Carga el catálogo de años (`GET /api/anios-lectivos`, ADMIN/SECRETARIA) y los grados del
+   año elegido (`GET /api/grados?anio=`).
+2. El formulario solo pide año, grado y bimestre. Muestra el aviso:
+   “Exportación interna. No es una exportación oficial a SIAGIE/MINEDU.”
+3. `GET /api/siagie/resumen?anio=&bimestre=&id_grado=` devuelve cursos, alumnos, notas,
+   conclusiones y advertencias. Si faltan notas, el resumen lo dice; el Excel se puede
+   generar con celdas vacías.
+4. `GET /api/reportes/auditoria-docentes/:id_grado?bimestre=&anio=` muestra el estado de
+   carga por docente.
+5. “Notificar al docente” obtiene `GET /api/personal/:id_personal` y envía
+   `POST /api/notificaciones` (campanita + correo en modo prueba).
+6. “Exportar Excel interno” llama a `GET /api/siagie/exportar?anio=&bimestre=&id_grado=`.
+7. El backend incluye **todos los cursos de la carga curricular** (H05) y los alumnos
+   `Matriculado`/`PendientePago`; responde
+   `EXPORTACION_INTERNA_<grado>_BIM<n>_<año>.xlsx`, registra `exportaciones_siagie` y
+   audita `SIAGIE`/`EXPORTAR`.
+8. El navegador descarga el archivo. `422` si no hay cursos o alumnos; `403` para roles
+   distintos de ADMIN.
+
+> Requiere que existan `notas_finales_area` para que el archivo traiga notas. Si los
+> docentes solo registraron calificaciones por competencia y nadie ejecutó el cálculo de
+> nota final, el Excel sale con celdas de nota vacías (sin inventar datos). Ver
+> `15-HALLAZGOS`.
 
 ### 1.9 Reportes y libretas (`/admin/reportes`)
 
@@ -522,8 +530,9 @@ sequenceDiagram
     API->>API: (opcional) POST /api/calificaciones/notas-finales
     A->>API: GET /api/reportes/auditoria-docentes/:grado
     A->>API: POST /api/notificaciones (recordatorio)
-    A->>API: POST /api/siagie/generar-excel
-    API-->>A: .xlsx con notas finales
+    A->>API: GET /api/siagie/resumen?anio=&bimestre=&id_grado=
+    A->>API: GET /api/siagie/exportar?anio=&bimestre=&id_grado=
+    API-->>A: .xlsx interno con todos los cursos
 ```
 
 ### 6.3 Pago → caja
@@ -564,7 +573,7 @@ sequenceDiagram
 | Edición de alumno | Sincroniza nombres/apellidos con `usuarios`; el correo personal también se actualiza |
 | Retiro | Desactiva el usuario (`INACTIVO`) y congela el expediente en la misma transacción |
 | Notas | Sin cálculo automático de nota final, reportes y SIAGIE quedan vacíos |
-| SIAGIE | Solo detecta 4 cursos por prefijo; plantillas con otros nombres no se llenan |
+| SIAGIE | Exportación interna, no oficial; incluye todos los cursos del grado. Sin notas finales, las celdas salen vacías |
 | Tesorería | IDs de conceptos y meses hardcodeados en el frontend |
 | Caja | Pagos sin caja abierta se imputan a la última apertura (aunque esté cerrada) |
 | Reportes | `resumen-asistencia` ignora el año en la consulta |

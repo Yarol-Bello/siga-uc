@@ -530,51 +530,49 @@ si no      → C
 
 ---
 
-## P12 — Exportación SIAGIE
+## P12 — Exportación interna SIAGIE
+
+> **No es una exportación oficial a SIAGIE/MINEDU.** No hay portal, plantilla oficial ni
+> carga de archivos. Es un Excel de apoyo interno generado desde SIGA-UC.
 
 | Campo | Detalle |
 |---|---|
-| Disparador | Admin sube plantilla MINEDU |
+| Disparador | Admin elige año, grado y bimestre |
 | Actores | ADMIN |
-| Endpoint | `POST /api/siagie/generar-excel` |
-| Archivo | `multipart/form-data`, campo `plantilla` |
+| Endpoints | `GET /api/siagie/resumen`, `GET /api/siagie/exportar` |
+| Archivo | `EXPORTACION_INTERNA_<grado>_BIM<n>_<año>.xlsx` |
 
 **Precondiciones**
 
-- Grado existente.
-- Al menos una nota final registrada para grado/bimestre/año.
-- Plantilla `.xlsx` o `.xls` ≤10 MB.
+- Grado del año solicitado.
+- Al menos un curso en `carga_curricular` (o con notas) y un alumno
+  `Matriculado`/`PendientePago`.
+- Si no hay notas finales, el Excel se genera con celdas vacías y una advertencia; no se
+  inventan notas.
 
 **Pasos**
 
-1. Multer guarda temporal en `uploads/temp/plantilla-<timestamp>-<nombre>`.
-2. Controller valida archivo y parámetros.
-3. Service valida grado.
-4. Consulta notas:
-   - `alumnos` × `cursos` con `LEFT JOIN notas_finales_area`.
-   - Solo alumnos `Matriculado` del año.
-5. Abre workbook con ExcelJS (primera hoja).
-6. Detecta fila de encabezado:
-   - busca celda que contenga “DNI” o “DOCUMENTO”;
-   - guarda número de fila y columna.
-7. Detecta columnas de cursos por prefijos:
-   - `ARITM`, `ALGEBRA`, `COMUNIC`, `FISICA`.
-8. Si no detecta encabezado, usa fila 5 y columna 3.
-9. Agrupa notas por DNI.
-10. Recorre filas desde el encabezado:
-    - lee DNI;
-    - si coincide, escribe cada curso detectado.
-    - Coincidencia de curso por primeros 5 caracteres.
-11. Guarda `uploads/siagie/SIAGIE_<grado>_BIM<n>_<año>.xlsx`.
-12. Registra en `exportaciones_siagie` (`GENERADO`).
-13. Controller borra el temporal y descarga el archivo.
+1. Controller valida `anio`, `bimestre` (1–4) e `id_grado`.
+2. Service valida que el grado pertenezca al año.
+3. Consulta en paralelo:
+   - cursos de `carga_curricular` del grado/año, unidos a cursos con notas;
+   - alumnos del grado/año (`Matriculado`/`PendientePago`);
+   - notas finales del bimestre;
+   - conclusiones descriptivas del bimestre.
+4. Calcula el resumen: cursos, alumnos, notas, conclusiones y advertencias.
+5. Construye un workbook ExcelJS:
+   - hoja `Notas`: una fila por alumno-curso con DNI, alumno, grado, sección, año,
+     bimestre, curso, área, nota final y conclusión descriptiva;
+   - hoja `Aviso`: “Exportación interna. No es una exportación oficial a
+     SIAGIE/MINEDU.” y metadatos.
+6. Registra en `exportaciones_siagie` (`GENERADO`) y audita `SIAGIE`/`EXPORTAR`.
+7. Responde el archivo como descarga; no escribe temporales.
 
 **Limitaciones**
 
-- Solo primera hoja.
-- Solo 4 prefijos de curso.
-- No procesa fórmulas ni celdas combinadas.
-- Si el DNI viene con espacios/formato, puede no coincidir.
+- No tiene validez oficial ante SIAGIE/MINEDU.
+- Sin `notas_finales_area`, las celdas de nota salen vacías.
+- No procesa competencias individuales: usa la nota final por curso.
 - Si no hay notas finales, responde 404.
 - El nombre de curso se compara por primeros 5 caracteres; nombres similares pueden
   confundirse.
@@ -920,7 +918,7 @@ revocación ni rotación. `credenciales_qr.activo` no se usa en la marcación.
 | P09 Calificaciones | Alta | Completo | Sin validación de docente-curso |
 | P10 Nota final | Alta | Endpoint listo | Sin UI que lo dispare |
 | P11 Reportes | Alta | Completo | Resumen filtrado por año (H56); panel del estudiante corregido (H57) |
-| P12 SIAGIE | Alta | Completo con limitaciones | Solo 4 cursos |
+| P12 SIAGIE interno | Media | Completo | Exportación interna, no oficial; incluye todos los cursos |
 | P13 Tesorería base | Alta | Parcial | Sin UI de pre-tickets/becas/generación |
 | P14 Pago/boleta | Alta | Completo | Boleta simulada |
 | P15 Caja | Alta | Completo | Una sola caja global |

@@ -72,8 +72,9 @@ verificar el checklist.
 ```powershell
 cd siga-uc-backend
 npm run smoke              # 11 PASS, 0 FAIL, 0 SKIP (exit 0)
-npm run test:integridad    # 20 invariantes; los FAIL de seed son esperados en demo
-npm run test:e2e           # 58 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
+npm run test:integridad    # 21 invariantes; en local se esperan 19 PASS y 2 FAIL de seed
+npm run test:e2e           # 75 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
+npm run test:h47-generador # 4 PASS; no toca la BD
 ```
 
 `npm run smoke` contra Render **no** se ejecuta sin confirmación explícita: hace login y
@@ -83,15 +84,18 @@ Para ensayar notificaciones sin correo real, arrancar el backend con una key inv
 vacía (`RESEND_API_KEY=re_test_no_enviar`). En PowerShell, `RESEND_API_KEY=""` elimina la
 variable y `dotenv` carga la key real.
 
-**Resultado del ensayo local (21/11/2026):**
+**Resultado del ensayo local (22/11/2026, cierre de demo):**
 
-- `npm run smoke`: **11 PASS, 0 FAIL, 0 SKIP** (exit 0), tras alinear la contraseña del
-  ADMIN local `74829102` con `SMOKE_ADMIN_PASSWORD` de `.env`.
-- `npm run test:integridad`: **8 PASS, 2 FAIL** esperados por el seed de demo
-  (pagos sin INGRESO y pensiones `PAGADO` sin pago).
-- `npm run test:e2e`: **58 PASS, 0 FAIL** (exit 0), base `siga_uc_e2e` eliminada.
-- Notificación con Resend deshabilitado: **guardada 1, correos enviados 0, fallidos 1**,
-  visible en la campanita. Los residuos de la prueba se eliminaron.
+- `npm run smoke`: **11 PASS, 0 FAIL, 0 SKIP** (exit 0), con la contraseña del ADMIN local
+  alineada a `SMOKE_ADMIN_PASSWORD` de `.env`.
+- `npm run test:integridad`: **19 PASS, 2 FAIL** esperados por el seed de demo
+  (pagos sin INGRESO y pensiones `PAGADO` sin pago). En una base nueva: **21 PASS**.
+- `npm run test:e2e`: **75 PASS, 0 FAIL** (exit 0), base `siga_uc_e2e` eliminada.
+- `npm run test:h47-generador`: **4 PASS**.
+- Notificación con Resend deshabilitado: guardada y visible en la campanita; correos
+  fallidos sin romper el flujo. Los residuos de la prueba se eliminaron.
+- SIAGIE interno: Excel descargado desde la UI y abierto con ExcelJS; 11 cursos, 4 alumnos,
+  nota final y conclusión. Hoja `Aviso` con el texto de exportación interna.
 
 ---
 
@@ -100,8 +104,9 @@ variable y `dotenv` carga la key real.
 ### Paso 0 — Contexto (2 min)
 
 Decir qué es SIGA-UC: matrícula, pensiones y caja, notas por competencias, asistencia QR,
-reportes, SIAGIE, notificaciones y auditoría. Aclarar que es una **demostración con datos
-ficticios** y que el correo está en modo prueba.
+reportes, exportación interna de calificaciones, notificaciones y auditoría. Aclarar que es
+una **demostración con datos ficticios**, que el correo está en modo prueba y que la
+exportación **no es oficial ante SIAGIE/MINEDU**.
 
 ### Paso 1 — Login y panel (2 min)
 
@@ -250,6 +255,27 @@ matrícula del año siguiente; activar el año es una acción separada de la Fas
 **Mensaje:** “El sistema conserva la trayectoria completa del estudiante sin mezclar
 matrículas anuales. Los años cerrados se consultan, pero no se editan.”
 
+### Paso 7f — Exportación interna de calificaciones (2 min)
+
+1. En **ADMIN** → **Exportación interna**, leer en voz alta el aviso:
+   “Exportación interna. No es una exportación oficial a SIAGIE/MINEDU.”
+2. Elegir año, grado (por ejemplo 3ro) y bimestre. Mostrar el resumen: cursos, alumnos,
+   notas finales y conclusiones; si faltan notas, el sistema lo advierte y no inventa datos.
+3. Señalar que **no hay portal, plantilla ni archivo que subir**: el Excel se genera desde
+   la base de datos de SIGA-UC.
+4. Pulsar **Exportar Excel interno** y abrir el archivo. Verificar que aparecen todos los
+   cursos del grado (no solo Matemática/Comunicación), con DNI, alumno, grado, sección,
+   año, bimestre, curso, nota final y conclusión descriptiva.
+5. Abrir la hoja **Aviso** y mostrar el texto de exportación interna.
+6. Mostrar en **Auditoría** el evento `SIAGIE`/`EXPORTAR` con el nombre del archivo y los
+   conteos.
+
+**Mensaje:** “Es una herramienta interna de apoyo y respaldo; no reemplaza la exportación
+oficial del colegio ni sube datos a MINEDU. Incluye todos los cursos del grado.”
+
+> Si el grado no tiene notas finales, el Excel se genera con celdas vacías y una
+> advertencia. No prometer que el SIAGIE oficial ya está integrado.
+
 ### Paso 8 — Notificación interna (2 min)
 
 1. En **ADMIN** → dashboard → **Nueva Notificación**.
@@ -290,13 +316,16 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 
 - [ ] Frontend y backend responden; health check en `ok`.
 - [ ] Commit desplegado identificado y documentado.
-- [ ] 43 tablas base y migraciones H32, H10/H38, H07, H45, H47, H48, H61, H49 y H73
-      aplicadas (44 en local si existe `horarios_h47_backup`).
+- [ ] 43 tablas base y migraciones H32, H10/H38, H07, H45, H47, H48, H61, H49, H73, H59 y
+      H71 aplicadas (44 en local si existe `horarios_h47_backup`).
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
 - [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
-- [ ] `npm run test:e2e` local: **72 PASS, 0 FAIL** (exit 0).
-- [ ] `npm run test:integridad` revisado; **20 PASS** en base nueva y los FAIL de seed
+- [ ] `npm run test:e2e` local: **75 PASS, 0 FAIL** (exit 0).
+- [ ] `npm run test:h47-generador`: **4 PASS**.
+- [ ] `npm run test:integridad` revisado; **21 PASS** en base nueva y **19/2** de seed
       local explicados.
+- [ ] SIAGIE interno sin portal ni plantilla; el Excel incluye todos los cursos y el aviso
+      de exportación interna.
 - [ ] Selector de año visible en Reportes, Padrón y Tesorería; un año no activo muestra
       **Histórico** y oculta las escrituras.
 - [ ] `/admin/historico` responde por DNI y los enlaces abren libreta/asistencia/tesorería
@@ -312,9 +341,14 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 - [ ] Notificación de prueba visible en la campanita.
 - [ ] Dashboard: “Estudiantes matriculados”, “Plana Docente” y “Personal activo” con cifras
       coherentes; panel “Cobranza y expedientes” sin badge de filtro falso.
+- [ ] Grado con notas finales cargadas para que la exportación interna no salga vacía.
+- [ ] Carga equilibrada o consciente: en local las 142 h están en el ADMIN y el docente no
+      ve cursos; para la demo docente, reasignar cargas a docentes o usar una base de ensayo.
 - [ ] Personal: cese con observación y ficha del cesado muestran el texto guardado.
-- [ ] Textos de demo corregidos: sin “Facturación”, “Decorativo”, “11 cursos” ni “firma
-      digital”; `index.html` con `lang="es"` y título del colegio.
+- [ ] Textos de demo corregidos: sin “Facturación”, “Decorativo”, “11 cursos”, “firma
+      digital”, “Abrir Portal” ni “mapeado correctamente”; `index.html` con `lang="es"` y
+      título del colegio.
+- [ ] Correo en modo prueba y logs sin correos, tokens ni contraseñas.
 - [ ] Eventos de auditoría de la demo visibles.
 
 ### Discurso y seguridad
@@ -337,8 +371,7 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 | No deja cobrar | Caja cerrada | Aperturar caja |
 | La libreta sale vacía | Sin `notas_finales_area` | Guardar notas del bimestre y regenerar |
 | El correo no llega | Modo prueba de Resend | Mostrar la campanita; no prometer correo |
-| “No hay notas” en SIAGIE | Faltan notas finales | No demostrar SIAGIE sin preparar datos |
-| El acta cerrada permite editar | Limitación conocida (H06) | No demostrarlo como control |
+| El Excel interno sale sin notas | Faltan `notas_finales_area` | Cargar notas del bimestre; el sistema avisa y no inventa datos |
 | El estudiante no ve libreta | Mejora pendiente (H35) | Mostrar el PDF desde ADMIN |
 
 ---
@@ -348,10 +381,12 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 - Que los correos llegan a apoderados: hoy solo llegan a la cuenta dueña de Resend.
 - Que el sistema es producción real: es un entorno de demostración gratuito.
 - Que hay backups garantizados: Supabase gratuito no ofrece garantías de retención.
-- Que el SIAGIE cubre todos los cursos: solo detecta prefijos `ARITM`, `ALGEBRA`,
-  `COMUNIC` y `FISICA`.
-- Que el acta cerrada bloquea notas: no lo hace (H06).
+- Que la exportación interna es oficial o sube datos a SIAGIE/MINEDU: no lo es y no lo
+  hace. Los cursos sí se incluyen todos.
+- Que el sistema ya está integrado con el portal del MINEDU: no hay integración oficial.
 - Que existe app móvil, pasarela de pagos o integración con el colegio.
+- Que el correo ya llega a apoderados: en modo prueba solo llega a la cuenta dueña de
+  Resend; la campanita sí funciona.
 
 ---
 
@@ -367,7 +402,15 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 
 ## 8. Limpieza de datos de prueba
 
-La demo usa **solo datos ficticios**. Al terminar, hay dos caminos:
+La demo usa **solo datos ficticios**. Antes de tocar nada, hacer backup:
+
+```powershell
+cd siga-uc-backend
+npm run backup   # backups/backup_siga_uc_YYYY-MM-DD_HH-mm-ss.sql
+```
+
+> El backup local no reemplaza el backup del proveedor. En Supabase, verificar el backup o
+> exportar antes de cualquier limpieza. **Nunca** ejecutar la limpieza sobre datos reales.
 
 ### Opción A — Recrear la base de demo (recomendado)
 
@@ -382,18 +425,27 @@ CREATE SCHEMA public;
 Luego aplicar en orden, a mano:
 
 1. `database/siga_uc.sql`
-2. `database/seed_produccion.sql` (con `-v admin_password`)
+2. `database/seed_produccion.sql` (con `-v anio_lectivo=YYYY -v admin_password=...`)
 3. `database/migracion_h32_anulacion_pagos.sql`
 4. `database/migracion_h10_h38_concurrencia_pagos.sql`
 5. `database/migracion_h07_auditoria.sql`
 6. `database/migracion_h45_pensiones_anuladas.sql`
+7. `database/migracion_h47_horarios.sql`
+8. `database/migracion_h48_actas.sql`
+9. `database/migracion_h61_dia_semana.sql`
+10. `database/migracion_h49_multianio_base.sql` (editar `_param_anio` al año)
+11. `database/migracion_h73_promociones.sql`
+12. `database/migracion_h59_observaciones_personal.sql`
+13. `database/migracion_h71_retirados_historicos.sql`
 
-> Un `git push` **no** aplica migraciones. Cada archivo se ejecuta manualmente.
+> Un `git push` **no** aplica migraciones. Cada archivo se ejecuta manualmente y en orden.
+> `database/rollback_h49_multianio_base.sql` y `database/rollback_h73_promociones.sql` son
+> **solo para bases desechables**; en una base real se restaura el backup.
 
 ### Opción B — Conservar la demo
 
 Dejar los datos ficticios y marcar la base como “demo”. No cargar datos reales en el mismo
-proyecto sin recrearlo antes.
+proyecto sin recrearlo antes. Mantener 2026 como ACTIVO; 2027 no se activa en Supabase.
 
 ### Opción C — Base local
 
@@ -401,11 +453,73 @@ proyecto sin recrearlo antes.
 dropdb -U postgres siga_uc
 createdb -U postgres siga_uc
 psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
-# y las migraciones en orden
+psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
+psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
+psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
+psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 ```
 
-**Nunca** ejecutar la limpieza sobre una base con datos reales.
+### Plan de reinicio rápido
+
+1. Detener backend y frontend.
+2. Hacer backup (`npm run backup`) o exportar Supabase.
+3. Recrear la base (Opción A/C) o restaurar el backup.
+4. Arrancar el backend y esperar `/api/health` con `database: "ok"`.
+5. Ejecutar `npm run test:integridad` (21 PASS en base nueva; 19/2 en demo local).
+6. Ejecutar `npm run smoke` (11 PASS) y `npm run test:e2e` (75 PASS).
+7. Borrar `database/siga_uc_e2e` si el script no pudo hacerlo.
 
 ---
 
-*Última actualización: 21/11/2026 — fase de demostración y aprobación.*
+## 9. UAT de cierre (22/11/2026)
+
+### Cuentas usadas
+
+| Rol | DNI | Contraseña |
+|---|---|---|
+| ADMIN | `74829102` | La de `SMOKE_ADMIN_PASSWORD` en `.env` (no se documenta) |
+| SECRETARIA | `40596837` | La misma clave de demo del ADMIN |
+| DOCENTE | `20394812` | La de `SMOKE_DOCENTE_PASSWORD` en `.env` |
+| ESTUDIANTE | `75918234` (3ro) | `UC75918234` (demo local) |
+
+En Supabase demo no se usan estas claves: la base es de prueba y no debe rotarse ni
+cargarse con datos reales.
+
+### Resultado
+
+| Área | Resultado |
+|---|---|
+| Login 4 roles | ✅ ADMIN, SECRETARIA, DOCENTE y ESTUDIANTE entran y ven su panel |
+| Padrón y matrícula | ✅ 21 alumnos, alta/edición/retiro disponibles; E2E cubre alta, pago y retiro |
+| Tesorería y caja | ✅ Cobro, boleta, movimientos y cierre; efectivo/digital separados (H50) |
+| Notas, actas y libretas | ✅ E2E 9–19; UI de reportes lista 4 alumnos de 3ro y PDF de libreta |
+| Asistencia y horarios | ✅ Estudiante ve su asistencia; horario vacío porque no hay bloques publicados |
+| Rollover | ✅ Preview 2026→2027 con hash y bloqueo real por sobrecapacidad (142 h en ADMIN) |
+| Promoción | ✅ Flujo completo en E2E (preview, confirmación, egresados, repitentes, anulación); en local falta oferta 2027 para previsualizar |
+| Histórico | ✅ Búsqueda por DNI, una fila por año, enlaces a libreta/asistencia/tesorería |
+| SIAGIE interno | ✅ Excel descargado desde la UI, abierto con ExcelJS: 11 cursos, 4 alumnos, nota y conclusión; auditoría `EXPORTAR` |
+| Sin 503 / botones muertos | ✅ Las pantallas probadas cargan datos o un estado vacío honesto; no hay éxito falso |
+| Consola | ✅ Sin errores de JavaScript en las pantallas probadas |
+
+### Limitaciones conocidas del demo
+
+1. **SIAGIE no es oficial**: no hay integración con MINEDU; el Excel es interno.
+2. **Correo en modo prueba**: solo llega a la cuenta dueña de Resend; la campanita sí.
+3. **Datos ficticios**: no cargar alumnos, apoderados ni personal reales.
+4. **Supabase demo**: 1 alumno, 0 actas, 0 promociones; sirve para previews y consultas,
+   no para confirmar promociones ni para el flujo completo.
+5. **Local**: las 142 h de carga están en el ADMIN; para la demo docente hay que reasignar
+   cargas a docentes. El horario local está en 0 bloques hasta generarlo/publicarlo.
+6. **Sin notas finales** el Excel y las libretas salen vacíos; no se inventan notas.
+7. **Sin CI/Docker**: las suites son manuales y la base de demo no tiene backups pagos.
+
+---
+
+*Última actualización: 22/11/2026 — cierre de demo: SIAGIE interno, H70/H71, UAT y plan de reinicio.*

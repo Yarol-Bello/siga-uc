@@ -2,6 +2,11 @@
 
 Sistema Integrado de Gestión Académica para la I.E.P. Unión Científica.
 
+> **Guía histórica.** Para la instalación vigente usar
+> `documentacion/12-CONFIGURACION-INSTALACION-DESPLIEGUE.md` y `database/README.md`.
+> El correo usa **Resend**, no SMTP; la exportación SIAGIE es interna y ya no carga
+> plantillas.
+
 Esta guía asume Windows 10/11 y primera instalación del proyecto.
 
 ---
@@ -80,7 +85,7 @@ Verificar:
 
     psql -U postgres -d siga_uc -c "\dt"
 
-Debe mostrar 39 tablas.
+Debe mostrar 43 tablas base (44 en local si existe `horarios_h47_backup`).
 
 ---
 
@@ -94,7 +99,7 @@ Edita estas líneas dentro de .env:
 
 - DB_PASSWORD: la contraseña de tu PostgreSQL.
 - JWT_SECRET: una clave larga y segura.
-- SMTP_* : opcional, solo si quieres correos reales.
+- RESEND_API_KEY / EMAIL_FROM: opcional, solo si quieres correos reales. No hay SMTP.
 
 Instalar y levantar:
 
@@ -161,13 +166,13 @@ Debe decir Running.
 | database siga_uc does not exist | No se ejecutó el SQL | Ejecutar database/siga_uc.sql |
 | Port 3000 already in use | Otro proceso usa el puerto | netstat -ano findstr :3000 |
 | Port 4200 already in use | Otro Angular corriendo | ng serve --port 4300 |
-| Error 535 SMTP | App Password inválida | Regenerar App Password |
+| Error de Resend | Key inválida o remitente no verificado | Revisar `RESEND_API_KEY` y `EMAIL_FROM` |
 
 ---
 
-## 10. SMTP opcional
+## 10. Resend opcional
 
-Sin SMTP:
+Sin `RESEND_API_KEY`:
 
 - Las notificaciones se guardan en BD.
 - Aparecen en la campanita.
@@ -175,10 +180,11 @@ Sin SMTP:
 
 Para correos reales:
 
-1. Activa verificación en 2 pasos en Gmail.
-2. Genera una Contraseña de Aplicación.
-3. Copia los 16 caracteres sin espacios en SMTP_PASSWORD.
+1. Crear una cuenta en Resend y una API key.
+2. Configurar `RESEND_API_KEY` y `EMAIL_FROM`.
+3. En modo prueba, `onboarding@resend.dev` solo entrega a la cuenta dueña de Resend.
+4. Para producción, verificar un dominio (SPF/DKIM). No se usa SMTP ni Nodemailer.
 
 ---
 
-Última actualización: Octubre 2026
+Última actualización: Noviembre 2026 (nota de vigencia; usar `documentacion/12`).

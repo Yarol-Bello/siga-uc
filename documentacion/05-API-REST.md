@@ -1,9 +1,9 @@
 # 05 — API REST
 
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
-**Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
+**Formato:** JSON (excepto la exportación interna SIAGIE, que responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **128 endpoints** - 69 GET, 37 POST, 17 PUT, 5 DELETE.
+**Total verificado:** **129 endpoints** - 71 GET, 36 POST, 17 PUT, 5 DELETE.
 
 ---
 
@@ -596,24 +596,37 @@ Mensaje: **"Acta reabierta correctamente"**.
 
 ---
 
-## 14. SIAGIE — `/api/siagie` (1)
+## 14. SIAGIE interno - `/api/siagie` (2)
+
+> **Exportación interna, no oficial.** No hay integración con el portal del MINEDU, no se
+> sube ni se descarga una plantilla oficial y no se simula un análisis de archivo. El
+> sistema genera un Excel propio con las notas finales de SIGA-UC.
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 92 | POST | `/api/siagie/generar-excel` | ADMIN | Inyecta notas en plantilla y descarga |
+| 92 | GET | `/api/siagie/resumen?anio=&bimestre=&id_grado=` | ADMIN | Conteos y advertencias de la exportación |
+| 93 | GET | `/api/siagie/exportar?anio=&bimestre=&id_grado=` | ADMIN | Descarga el Excel interno |
 
-`multipart/form-data`:
-- `plantilla`: `.xlsx`/`.xls`, máx. 10 MB.
-- `id_grado`: entero.
-- `bimestre`: 1–4.
-- `anio_lectivo`: entero (default año activo).
+Parámetros (query string):
+- `anio`: año lectivo (default año activo). También se acepta `anio_lectivo`.
+- `bimestre`: 1-4.
+- `id_grado`: entero del año solicitado.
 
-Respuesta: archivo `SIAGIE_<grado>_BIM<n>_<año>.xlsx`.
+**Resumen:** devuelve `total_cursos`, `total_alumnos`, `total_notas`,
+`total_conclusiones`, `total_combinaciones`, `exportable` y `advertencias`.
 
-**Lógica:** valida grado; obtiene notas finales; lee la primera hoja; detecta fila de
-encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`, `ALGEBRA`,
-`COMUNIC`, `FISICA`; si no detecta, usa fila 5/columna 3; cruza por DNI; escribe; guarda en
-`uploads/siagie`; registra en `exportaciones_siagie`; elimina temporal.
+**Exportación:** responde
+`EXPORTACION_INTERNA_<grado>_BIM<n>_<año>.xlsx` con dos hojas:
+- `Notas`: una fila por alumno y curso con DNI, alumno, grado, sección, año, bimestre,
+  curso, área, nota final y conclusión descriptiva.
+- `Aviso`: "Exportación interna. No es una exportación oficial a SIAGIE/MINEDU." y
+  metadatos del archivo.
+
+**Cursos:** se obtienen de `carga_curricular` del grado y año, más los cursos con notas
+finales registradas. No se filtra por prefijos (H05). **Alumnos:** matrículas
+`Matriculado` o `PendientePago`; se excluyen los `Retirado`. Si no hay cursos o alumnos,
+responde `422`. La generación se registra en `exportaciones_siagie` (`GENERADO`) y en la
+bitácora (`SIAGIE`/`EXPORTAR`). No escribe archivos temporales ni usa Multer.
 
 ---
 
@@ -621,14 +634,14 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 93 | GET | `/api/notificaciones?leido=` | Autenticado | Mis notificaciones |
-| 94 | GET | `/api/notificaciones/no-leidas` | Autenticado | Contador para campanita |
-| 95 | GET | `/api/notificaciones/:id` | Autenticado | Detalle propio |
-| 96 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
-| 97 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
-| 98 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
-| 99 | POST | `/api/notificaciones` | ADMIN/SECRETARIA | Envía a un usuario; DOCENTE recibe 403 (H62) |
-| 100 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, PERSONAL, ROL, GRADO o ALUMNO |
+| 94 | GET | `/api/notificaciones?leido=` | Autenticado | Mis notificaciones |
+| 95 | GET | `/api/notificaciones/no-leidas` | Autenticado | Contador para campanita |
+| 96 | GET | `/api/notificaciones/:id` | Autenticado | Detalle propio |
+| 97 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
+| 98 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
+| 99 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
+| 100 | POST | `/api/notificaciones` | ADMIN/SECRETARIA | Envía a un usuario; DOCENTE recibe 403 (H62) |
+| 101 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, PERSONAL, ROL, GRADO o ALUMNO |
 
 **Crear body:** `{ id_usuario_destino, asunto, cuerpo }`.
 
@@ -690,24 +703,25 @@ contraseñas.
 | Caja | 9 |
 | Reportes | 8 |
 | Auditoría | 8 |
-| SIAGIE | 1 |
+| SIAGIE interno | 2 |
 | Notificaciones | 8 |
-| **Total** | **128** |
+| **Total** | **129** |
 
 | Verbo | Cantidad |
 |---|---|
-| GET | 69 |
-| POST | 37 |
+| GET | 71 |
+| POST | 36 |
 | PUT | 17 |
 | DELETE | 5 |
 
 Acceso: el detalle exacto está en la columna **Acceso** de cada tabla. Con H47 se retiró
 el endpoint abierto `/api/horarios/grado/:id_grado` y se agregaron 12 endpoints de horarios.
 Con 6.2 se agregaron 5 de años lectivos, con 6.3, 8 de promociones, y con 6.4, el
-consolidado histórico por DNI.
+consolidado histórico por DNI. En el cierre de demo, SIAGIE pasó de un `POST`
+`multipart/form-data` (plantilla) a dos `GET`: `resumen` y `exportar` interno.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo vigente es 128 (69 GET, 37 POST, 17 PUT, 5 DELETE).
+> El conteo vigente es 129 (71 GET, 36 POST, 17 PUT, 5 DELETE).
 
 ---
 
@@ -728,9 +742,11 @@ curl -X POST http://localhost:3000/api/tesoreria/pagos \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d "{\"id_alumno\":1,\"id_concepto\":9,\"id_pension\":10,\"monto\":250,\"forma_pago\":\"Efectivo\"}"
 
-# SIAGIE
-curl -X POST http://localhost:3000/api/siagie/generar-excel \
+# SIAGIE interno (exportación, no oficial)
+curl -s "http://localhost:3000/api/siagie/resumen?anio=2026&bimestre=2&id_grado=3" \
+  -H "Authorization: Bearer $TOKEN"
+
+curl -s "http://localhost:3000/api/siagie/exportar?anio=2026&bimestre=2&id_grado=3" \
   -H "Authorization: Bearer $TOKEN" \
-  -F "plantilla=@PLANTILLA_SIAGIE.xlsx" -F "id_grado=2" -F "bimestre=2" \
-  -o SIAGIE.xlsx
+  -o EXPORTACION_INTERNA.xlsx
 ```

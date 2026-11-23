@@ -19,10 +19,12 @@
 > menor o higiene operativa.
 >
 > **Actualización 22/11/2026:** **H50** (caja efectivo/digital) y **H63** (PDF de actas
-> ADMIN-only) se corrigieron en `2449cf3`; **H48** (actas reales) y **H51** (libretas por
-> bimestre) se corrigieron después. `test:e2e` pasó a **19 PASS**; ver
-> `HANDOFF_SESSION.md` y `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`. El resto de hallazgos de este
-> documento sigue vigente.
+> ADMIN-only) se corrigieron en `2449cf3`; **H48** (actas reales), **H51** (libretas por
+> bimestre), H49/H73 (multi-año/promoción), H59/H62/H65–H69 (Fase 7), **H70** (Resend sin
+> SMTP/Nodemailer) y **H71** (backfill de retirados) se cerraron después. **H05/H52** se
+> resolvieron en el cierre de demo: SIAGIE es una **exportación interna** honesta, sin
+> portal MINEDU, análisis simulado ni carga de plantilla. `test:e2e` pasó a **75 PASS**;
+> ver `HANDOFF_SESSION.md` y `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`.
 
 ---
 

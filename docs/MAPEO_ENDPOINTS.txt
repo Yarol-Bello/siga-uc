@@ -2,6 +2,9 @@
    SIGA-UC — SISTEMA INTEGRADO DE GESTIÓN ACADÉMICA
    MAPEO COMPLETO DE ENDPOINTS (API REST)
 ================================================================================
+   HISTÓRICO: el conteo vigente (129 endpoints) está en
+   documentacion/05-API-REST.md. Este archivo puede estar desactualizado.
+================================================================================
 
 Proyecto : siga-uc
 Backend  : siga-uc-backend (Node.js 20 + Express 5.3)
@@ -214,10 +217,13 @@ POST    /api/auditoria/actas/cerrar   Cerrar acta bimestral (hash de      [ADMIN
 ================================================================================
 Metodo  Ruta                          Descripcion                         Acceso
 ------  ----------------------------  ----------------------------------  ----------
-POST    /api/siagie/generar-excel     Generar Excel SIAGIE con notas      [ADMIN]
-                                      inyectadas. Usa multipart/form-data
-                                      con el campo "plantilla" (.xlsx/.xls,
-                                      máx. 10 MB) vía multer.
+GET     /api/siagie/resumen           Conteos y advertencias de la        [ADMIN]
+                                      exportación interna.
+GET     /api/siagie/exportar          Descarga el Excel interno con       [ADMIN]
+                                      todos los cursos del grado/año.
+                                      No es una exportación oficial a
+                                      SIAGIE/MINEDU; sin plantilla ni
+                                      multipart.
 
 ================================================================================
 14. NOTIFICACIONES (routes/notificacionRoutes.js → /api/notificaciones)

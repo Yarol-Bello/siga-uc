@@ -4,6 +4,14 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
+> **Actualización 22/11/2026 (cierre de demo):** SIAGIE quedó como **exportación interna**
+> honesta (sin portal MINEDU, sin análisis simulado y sin carga de plantilla); incluye
+> **todos los cursos** del grado/año (H05), nota final y conclusión, con aviso visible.
+> **H70 cerrado** (sin `nodemailer`, `multer` ni SMTP; logs sin PII) y **H71 implementado**
+> (backfill de retirados; aplicado en local). UAT de los 4 roles en local; Supabase solo
+> para previews. `test:e2e` **75 PASS**, integridad **21 PASS** en base nueva (19/2 en
+> local), smoke 11, H47 4 y build Angular OK. Ver sección 1.7.
+>
 > **Actualización 22/11/2026 (Fase 7 desplegada):** pulido de demo con H62 (DOCENTE ya no
 > envía notificaciones), H59 (observaciones de cese; **aplicada en Supabase demo**), H65
 > (docentes vs. personal activo), H66 (panel de cobranza y expedientes), H67 (grados/cursos
@@ -18,9 +26,9 @@
 > históricos. **Sin migración y sin cambios en Supabase.** `test:e2e` **65 PASS**, integridad
 > **20 PASS** en base nueva. Desplegada en Render (`cdc129e`). Ver sección 1.5.
 >
-> **Próximo bloque:** cierre de demo/UAT. **H59 ya está aplicada en Supabase demo**;
-> 2026 sigue activo. No iniciar Fase 8 ni tocar 2027. `test:e2e` **72 PASS**. Ver sección
-> 1.6.
+> **Próximo bloque:** demo y aprobación. **H59 ya está aplicada en Supabase demo**;
+> 2026 sigue activo, 2027 no se activa y no hay promociones confirmadas. No iniciar Fase 8
+> ni cargar datos reales. `test:e2e` **75 PASS**. Ver sección 1.7.
 >
 > **Actualización 22/11/2026 (Fases 6.3 y 6.3.1 desplegadas):** promoción anual con
 > política configurable, preview por alumno y hash, confirmación transaccional e idempotente,
@@ -368,17 +376,51 @@ En esta fase **no** se prepara el despliegue definitivo.
   institucional (referencia)”; DNI real en pre-tickets; títulos del ADMIN por ruta;
   `/en-construccion` eliminado; aviso de correo en modo prueba en recuperación; sidebar
   docente usa especialidad/cargo real.
-- **H70 parcial:** el login ya no imprime el objeto usuario y el arranque dice “Resend
-  configurado”. `nodemailer` y variables SMTP siguen sin uso; no se retiraron.
-- **H71 pendiente:** backfill de retirados históricos; requiere migración y autorización.
+- **H70 (estado al cierre de Fase 7):** el login ya no imprimía el objeto usuario y el
+  arranque decía “Resend configurado”; `nodemailer` y SMTP se retiraron en el cierre (1.7).
+- **H71 (estado al cierre de Fase 7):** pendiente; se implementó en el cierre (1.7).
 - **Verificación (local, 22/11/2026):** `test:e2e` **72 PASS**; `test:integridad` **20 PASS**
   en base nueva y **18/2** de seed local; smoke **11 PASS**; H47 **4 PASS**; build Angular y
-  `node --check` OK.
+  `node --check` OK. (El cierre de demo subió a 75 E2E y 21 invariantes; ver 1.7.)
 - **Commits de 7:** `c5f974e` (H62), `520cb7e` (H59), `184a543` (H65-H69), `c097b15`
   (tests), `882da76` (docs) y `8eba9e9` (compatibilidad H59 sin migración).
 - **Estado:** código desplegado en Render (`8eba9e9`); el frontend ya sirve `lang="es"` y el
   título del colegio. **H59 aplicada en Supabase demo** (43 tablas, 2026 ACTIVO,
   0 promociones).
+
+### 1.7 Cierre de demo — SIAGIE interno, H70/H71 y UAT (22/11/2026)
+
+- **SIAGIE interno (decisión cerrada):** no se implementa integración oficial con MINEDU.
+  Se retiraron “Abrir Portal MINEDU”, el `alert` de plantilla y el falso “Análisis Dinámico
+  Exitoso” con `setTimeout`. El formulario solo pide año, grado y bimestre; muestra el
+  aviso “Exportación interna. No es una exportación oficial a SIAGIE/MINEDU.” y el botón
+  “Exportar Excel interno”.
+- **Backend:** `GET /api/siagie/resumen` y `GET /api/siagie/exportar` (ADMIN). Usa
+  `carga_curricular` + cursos con notas (sin prefijos H05), alumnos
+  `Matriculado`/`PendientePago`, notas finales y conclusiones. Genera
+  `EXPORTACION_INTERNA_<grado>_BIM<n>_<año>.xlsx` con hojas `Notas` y `Aviso`; registra
+  `exportaciones_siagie` y audita `EXPORTAR`. No escribe archivos ni usa Multer.
+- **UI:** se eliminó la carga de archivo y el mapeo simulado; se conservó la auditoría real
+  de notas por docente y la notificación. El sidebar y el título dicen “Exportación
+  interna”.
+- **H70 cerrado:** se retiraron `nodemailer`, `multer` y las variables SMTP de
+  `config/env.js` y `.env.example`. El arranque dice “Resend configurado”; el login no
+  imprime el objeto usuario y `emailService` no imprime destinatarios.
+- **H71 implementado:** `database/migracion_h71_retirados_historicos.sql` (idempotente)
+  congela el expediente de los `Retirado` y desactiva al usuario solo si no conserva otra
+  matrícula no retirada. Aplicado en local: 1 expediente sin congelar y 1 usuario ACTIVO
+  corregidos. Invariante 21 en `test:integridad`. **No aplicado en Supabase demo** porque
+  no hay retirados allí; aplicarlo antes de datos reales.
+- **Verificación (local, 22/11/2026):** `test:e2e` **75 PASS**, integridad **21 PASS** en
+  base nueva y **19/2** de seed local, smoke **11 PASS**, H47 **4 PASS**, build Angular OK
+  y `node --check` OK. SIAGIE descargado desde la UI y abierto con ExcelJS: 11 cursos,
+  4 alumnos, nota y conclusión.
+- **UAT:** login ADMIN, SECRETARÍA, DOCENTE y ESTUDIANTE; padrón (21), tesorería, caja,
+  notas, reportes, auditoría, histórico, rollover preview 2026→2027 (bloqueo real por
+  sobrecapacidad) y SIAGIE. Promoción completa en E2E (local no tiene oferta 2027).
+  Detalle y límites en `documentacion/17`, sección 9.
+- **Estado Supabase:** 43 tablas, 2026 ACTIVO, 2027 no activo, 1 política, 0 promociones
+  confirmadas, 0 actas, 1 alumno. Solo previews y consultas.
 
 ---
 
@@ -421,20 +463,21 @@ En esta fase **no** se prepara el despliegue definitivo.
   SKIP; `1` si hay FAIL; `2` si hay SKIP sin `SMOKE_ALLOW_SKIP=1`.
 - Verificación local del 21/11/2026: **11 PASS, 0 FAIL, 0 SKIP** (exit 0) con las tres
   cuentas; **3 PASS, 0 FAIL, 8 SKIP** (exit 2) sin credenciales.
-- `npm run test:integridad` (`scripts/test-integridad.js`): 20 invariantes de solo lectura
+- `npm run test:integridad` (`scripts/test-integridad.js`): 21 invariantes de solo lectura
   sobre cualquier base. Fuerza `default_transaction_read_only=on`. Exit 1 si hay FAIL.
 - `npm run test:e2e` (`scripts/test-e2e.js`): crea `siga_uc_e2e`, carga el dump y las
-  migraciones (incluidas H49, H73 y H59), arranca el backend en el puerto 3101, ejecuta 72
-  flujos y elimina la base con `dropdb --force`. Verificado: **72 PASS, 0 FAIL** y exit 0
-  (incluye H48, H49, H50, H51, H63, rollover 6.2, promociones 6.3, histórico 6.4 y pulido 7).
-- Integridad local del 22/11/2026: **18 PASS, 2 FAIL** por datos de seed reales
+  migraciones (incluidas H49, H73, H59 y H71), arranca el backend en el puerto 3101, ejecuta
+  75 flujos y elimina la base con `dropdb --force`. Verificado: **75 PASS, 0 FAIL** y exit 0
+  (incluye H48, H49, H50, H51, H63, rollover 6.2, promociones 6.3, histórico 6.4, pulido 7 y
+  SIAGIE interno).
+- Integridad local del 22/11/2026 (tras H71): **19 PASS, 2 FAIL** por datos de seed reales
   (invariantes 4 y 8: 5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El
   invariante 7 ya no marca al ADMIN: solo exige ficha a ESTUDIANTE (rol 4) y
   DOCENTE (rol 2). Los invariantes 15 y 16 (carga/tutores del mismo año) pasan.
 - `database/seed_produccion.sql` crea solo catálogos, una caja y un ADMIN inicial
   (`74829102`, `requiere_cambio_password=TRUE`) con contraseña recibida por
   `-v admin_password` y año por `-v anio_lectivo`. En la base desechable de 6.2 (2027):
-  **20 PASS, 0 FAIL**, **0 alumnos, 0 pagos, 0 pensiones, 1 usuario**, 43 tablas.
+  **21 PASS, 0 FAIL**, **0 alumnos, 0 pagos, 0 pensiones, 1 usuario**, 43 tablas.
   Login inicial bloqueado con `CAMBIO_PASSWORD_REQUERIDO`; tras cambiarla, login y
   `/alumnos` funcionan.
 - `POST /api/notificaciones/masivo` acepta `TODOS`, `PERSONAL`, `ROL`, `GRADO` y
@@ -523,15 +566,16 @@ En esta fase **no** se prepara el despliegue definitivo.
 
 ## 4. Hallazgos PENDIENTES
 
+> **Cerrados en el cierre de demo:** H05 (todos los cursos en la exportación interna),
+> H27 (`.env.example` usa Resend), H70 (sin Nodemailer/SMTP) y H71 (backfill de retirados).
+
 | Hallazgo | Detalle | Severidad | Esfuerzo |
 |---|---|---|---|
-| H05 | SIAGIE limitado a 4 cursos y primera hoja | Alta | M |
 | H21 | Cambio de rol no regenera QR ni permisos históricos | Media | S |
 | H22 | N+1 en tesorería (pensiones por alumno) | Media | S/M |
 | H23 | Paginación faltante en personal, pagos y pre-tickets | Media | M |
 | H24 | Sin tests automatizados ni CI/CD | Media | L |
 | H26 | Documentación histórica desactualizada | Baja | S |
-| H27 | `.env.example` usa SMTP y no Resend | Baja/Media | S |
 | H28 | `siga_uc.sql` con meta-orden `\restrict` de psql 18 | Baja | S |
 | H29 | Tablas de reportes no persistidas | Baja | S |
 | H30 | Título e identidad menores | Baja | S |
@@ -789,7 +833,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **6.3:** `SECRETARIA` puede listar políticas, previsualizar y consultar promociones por
   API; confirmar y anular son solo ADMIN. DOCENTE/ESTUDIANTE reciben 403.
 - **Estado 6.3/6.3.1:** implementado, verificado y **desplegado en Render (`89eba24`)**;
-  H73 aplicada en Supabase demo. 20 integridad en base nueva y 18/2 en local.
+  H73 aplicada en Supabase demo. 21 integridad en base nueva y 19/2 en local.
   Supabase: 43 tablas, 2026 activo, 1 política, 0 promociones; 2027 no se activa.
 - **6.4:** sin migración. `GET /api/anios-lectivos` es legible por ADMIN/SECRETARIA;
   escrituras solo ADMIN. Asistencia y calificaciones históricas validan la matrícula anual y
@@ -816,22 +860,25 @@ En esta fase **no** se prepara el despliegue definitivo.
 
 ---
 
-## 7. Próximo paso exacto (cierre de Fase 7)
+## 7. Próximo paso exacto (demo y aprobación)
 
-H49/H73 ya están aplicadas en Supabase demo (43 tablas, 2026 ACTIVO, 1 política,
-0 promociones, 0 actas, 145 horarios, 5 docentes). 6.3/6.3.1 están desplegadas en Render
-(`cdc129e`); `/api/anios-lectivos`, `/api/promociones` y `/api/reportes/consolidado/:dni`
-existen y responden 401 sin token. **6.4 está desplegada y no tiene migración.**
+H49/H73/H59 están aplicadas en Supabase demo (43 tablas, 2026 ACTIVO, 1 política,
+0 promociones, 0 actas, 145 horarios, 5 docentes). 6.3/6.3.1/6.4 y el cierre de demo están
+en Render (`8eba9e9` para el código base de Fase 7; el commit de cierre se publica aparte).
+`/api/anios-lectivos`, `/api/promociones`, `/api/reportes/consolidado/:dni` y
+`/api/siagie/*` existen y responden 401 sin token.
 
-1. No volver a aplicar H49/H73 en Supabase.
-2. Mantener 2026 activo. No activar 2027 en el demo.
+1. No volver a aplicar H49/H73/H59 en Supabase.
+2. Mantener 2026 activo. No activar 2027 en la demo.
 3. En Supabase, si se necesita oferta 2027, confirmar el rollover 2026→2027 (solo oferta).
-4. **Fase 7 desplegada en Render (`8eba9e9`) y H59 aplicada en Supabase demo.** El cese
-   con observación ya puede persistirla; no volver a aplicar H59.
+4. **H71 no se aplicó en Supabase** porque no hay alumnos retirados; aplicarlo antes de
+   datos reales o si el invariante 21 falla.
 5. Probar en Supabase **solo previews** de promoción; el confirm/anulación se valida en
    local/E2E. Con 0 actas, el preview bloqueará por actas: es correcto.
-6. No iniciar Fase 8 ni SIAGIE oficial sin pedido explícito.
-7. El rollback H49/H73/H59 **no** se ejecuta en Supabase.
+6. **SIAGIE es exportación interna**: no prometer integración oficial con MINEDU. El Excel
+   incluye todos los cursos del grado y el aviso visible.
+7. No iniciar Fase 8 ni cargar datos reales sin aprobación.
+8. El rollback H49/H73/H59 **no** se ejecuta en Supabase.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
@@ -852,10 +899,10 @@ Nada de esta lista se hace en la fase actual.
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
 | **Migraciones** | H47, H48, H49, H59 y H73 ya aplicadas en Supabase demo. H61 es solo datos y **aún no** está aplicada allí. 6.1-6.4 y Fase 7 desplegadas en Render (`8eba9e9`). Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
-| **Integridad** | `npm run test:integridad` contra la base definitiva: 20 PASS |
+| **Integridad** | `npm run test:integridad` contra la base definitiva: 21 PASS |
 | **Multi-año** | 6.2 rollover, 6.3/6.3.1 promoción y 6.4 histórico implementados y desplegados en Render (`cdc129e`); H49/H73 aplicadas en Supabase demo. 6.4 no tiene migración. 2026 debe seguir activo en Supabase hasta la aprobación |
 | **Promociones** | 6.3 no crea usuarios ni QR; no copia notas/pagos/pensiones; no activa el año. La política estándar se siembra con el año ACTIVO. Revisar con dirección/UGEL los criterios de repitencia y transición |
-| **Fase 7** | H62, H59, H65, H66, H67, H68 y H69 desplegados en Render; H59 aplicada en Supabase demo. H70 parcial y H71 pendiente (backfill de retirados). Queda cierre de demo/UAT |
+| **Fase 7 / cierre** | H62, H59, H65, H66, H67, H68, H69, H70 y H71 cerrados. H59 aplicada en Supabase demo; H71 aplicado en local y pendiente solo en Supabase (no hay retirados). SIAGIE interno, UAT y guion listos |
 
 ---
 
@@ -863,27 +910,29 @@ Nada de esta lista se hace en la fase actual.
 
 ```powershell
 git log -1 --oneline
-# Solo si la base aún no tiene H47/H48/H61/H49/H73:
+# Solo si la base aún no tiene H47/H48/H61/H49/H73/H59/H71:
 psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'; SELECT anio, estado FROM anios_lectivos ORDER BY anio; SELECT indexname FROM pg_indexes WHERE indexname='ux_pago_pension_activo';"
 # Requiere el backend corriendo en localhost:3000
 curl.exe -s http://localhost:3000/api/health
 cd siga-uc-backend; npm run smoke          # 11 PASS, exit 0
-npm run test:integridad                    # 20 invariantes; revisar FAIL reales
-npm run test:e2e                           # 72 PASS, exit 0; elimina siga_uc_e2e
+npm run test:integridad                    # 21 invariantes; revisar FAIL reales
+npm run test:e2e                           # 75 PASS, exit 0; elimina siga_uc_e2e
 npm run test:h47-generador                 # 4 PASS; no toca BD
 ```
 
-El primero confirma el commit; los `psql` aplican H47/H48/H61/H49/H73 si faltan; el conteo
+El primero confirma el commit; los `psql` aplican H47/H48/H61/H49/H73/H59/H71 si faltan; el conteo
 debe devolver **43** sin backup o **44** con `horarios_h47_backup`; `anios_lectivos` debe
 tener un solo `ACTIVO`; el health debe devolver `success: true` y `database: "ok"` **con el
 backend en marcha**; el smoke debe terminar en **11 PASS, 0 FAIL**; integridad puede reportar
-violaciones reales de seed; E2E debe terminar en **72 PASS, 0 FAIL** y dejar `siga_uc_e2e`
-eliminada; el generador en **4 PASS**. La base nueva de producción debe dar **20 PASS**.
+violaciones reales de seed; E2E debe terminar en **75 PASS, 0 FAIL** y dejar `siga_uc_e2e`
+eliminada; el generador en **4 PASS**. La base nueva de producción debe dar **21 PASS**.
 
 Para una base **definitiva** (solo después de la aprobación):
 
@@ -900,5 +949,7 @@ psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
-cd siga-uc-backend; npm run test:integridad   # 20 PASS
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
+cd siga-uc-backend; npm run test:integridad   # 21 PASS
 ```

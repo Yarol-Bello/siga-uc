@@ -238,12 +238,27 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
 - Agrega `personal.observaciones text`; no modifica datos ni tablas (siguen 43).
 - Es idempotente. El rollback `database/rollback_h59_observaciones_personal.sql` solo se usa
   en bases desechables o con backup verificado.
-- En Supabase demo **no se aplicó** en esta fase; requiere autorización y backup.
+- **Ya está aplicada en Supabase demo** (columna `personal.observaciones`; 43 tablas).
 - El cese guarda la observación y la reactivación la limpia. La ficha del trabajador cesado
   muestra fecha, motivo y observación.
 - Si la columna todavía no existe, `GET /personal` sigue funcionando (devuelve
   `observaciones: null`); un cese **con** observación responde
   `503 H59_NO_APLICADO` para no perder el texto. Un cese sin observación funciona normal.
+
+### 3.9 Retirados históricos (H71)
+
+- Backfill idempotente; no crea tablas. Se aplica **después** de H49 y H59, con backup:
+  ```powershell
+  psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
+  ```
+- Congela `expediente_alumno` de todos los `Retirado` (crea el expediente si faltaba) y
+  pasa `usuarios.estado` a `INACTIVO` **solo** si el usuario no conserva otra matrícula
+  no retirada.
+- No toca alumnos no retirados. Es seguro ejecutarla dos veces.
+- En local corrigió 1 expediente sin congelar y 1 usuario ACTIVO con retiro (22/11/2026).
+  En Supabase demo no se aplicó porque no hay alumnos retirados; aplicarla antes de cargar
+  datos reales o si el invariante 21 falla.
+- El rollback es el backup; no hay script de reversa porque el backfill no es destructivo.
 
 ---
 
@@ -251,9 +266,10 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(20 invariantes de datos, solo lectura) y **E2E** (72 flujos sobre una base desechable,
-incluidos los de multi-año H49, rollover 6.2, promociones 6.3, histórico 6.4 y pulido
-H59/H62/H65–H69). El resto de la estrategia sigue siendo manual y por rol.
+(21 invariantes de datos, solo lectura) y **E2E** (75 flujos sobre una base desechable,
+incluidos los de multi-año H49, rollover 6.2, promociones 6.3, histórico 6.4, pulido
+H59/H62/H65–H69, exportación interna SIAGIE y H71). El resto de la estrategia sigue siendo
+manual y por rol.
 
 ### 4.1 Preparación
 
@@ -350,7 +366,7 @@ sirve para diagnósticos parciales.
 - [ ] QR: listar personal, marcar Puntual/Tardanza/Falta.
 - [ ] Tesorería: ver pensiones, cobrar, ver boleta.
 - [ ] Caja: aperturar, egreso, cerrar, ver diferencia.
-- [ ] SIAGIE: ver auditoría, notificar docente, subir plantilla, descargar.
+- [ ] SIAGIE interno: ver resumen, revisar estado de notas, notificar docente y descargar el Excel; comprobar que el aviso dice “Exportación interna…” y que aparecen todos los cursos.
 - [ ] Reportes: libreta, mérito, riesgo.
 - [ ] Histórico: selector de año, badge Histórico, consolidado por DNI y enlaces con `?anio`.
 - [ ] Auditoría: bitácora, filtros, detalle.
@@ -404,9 +420,10 @@ sirve para diagnósticos parciales.
 | Pago con monto 0 o distinto al esperado | 400, el backend exige el monto exacto |
 | Nota inválida | 400 |
 | Bimestre 5 | 400 |
-| SIAGIE sin notas | 404 |
-| Archivo SIAGIE PDF | 400 multer |
-| Archivo >10 MB | 400 multer |
+| SIAGIE sin alumnos o sin cursos | 422 |
+| SIAGIE con notas vacías | Excel generado con celdas vacías y advertencia; no inventa notas |
+| SIAGIE con rol DOCENTE/SECRETARIA | 403 |
+| Endpoint viejo `POST /siagie/generar-excel` | 404 (retirado) |
 | Notificación ajena | 404 |
 | Acta ya cerrada | 409, el backend bloquea la edición |
 | Curso duplicado en carga | Error de llave duplicada |
@@ -420,7 +437,7 @@ sirve para diagnósticos parciales.
 5. Reporte de libreta.
 6. Caja apertura/cierre.
 7. Campanita.
-8. SIAGIE con plantilla de prueba.
+8. SIAGIE interno: resumen + Excel con todos los cursos del grado.
 
 ### 4.10 Suites de integridad y E2E pre-despliegue
 
@@ -431,7 +448,7 @@ cd siga-uc-backend
 npm run test:integridad
 ```
 
-- Verifica **20 invariantes**: 43 tablas base, índices críticos de pagos/boletas, multi-año
+- Verifica **21 invariantes**: 43 tablas base, índices críticos de pagos/boletas, multi-año
   y promociones (`uq_alumno_*_anio`, `uq_anio_activo`, `uq_promocion_*`,
   `uq_politica_*`), pagos/pensiones/boletas coherentes, movimientos de caja, usuarios
   activos asociados, escala AD/A/B/C, alumnos matriculados con usuario activo, matrículas
@@ -449,9 +466,10 @@ npm run test:integridad
 > En la base local del 22/11/2026 hay violaciones reales de seed en los invariantes 4 y 8
 > (5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El invariante 7 solo exige ficha
 > a ESTUDIANTE/DOCENTE; ADMIN y SECRETARIA están exentos. No son fallos de la suite: deben
-> revisarse antes de cargar datos reales. La base local da **18 PASS / 2 FAIL**; una base de
-> producción sembrada con `siga_uc.sql` + `seed_produccion.sql` + migraciones (incluidas H49
-> y H73) da **20 PASS**.
+> revisarse antes de cargar datos reales. La base local da **19 PASS / 2 FAIL**; una base de
+> producción sembrada con `siga_uc.sql` + `seed_produccion.sql` + migraciones (incluidas H49,
+> H73, H59 y H71) da **21 PASS**. En la base local de demo se esperan **19 PASS y 2 FAIL**
+> de seed (pagos sin INGRESO y pensiones PAGADO sin pago).
 
 #### `test:e2e` — base desechable
 
@@ -461,8 +479,8 @@ npm run test:e2e
 ```
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
-  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`, `h59`), arranca el
-  backend en `http://localhost:3101` y ejecuta **72 flujos**: alta/retiro de alumno, matrícula, pensión,
+  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`, `h59`, `h71`), arranca el
+  backend en `http://localhost:3101` y ejecuta **75 flujos**: alta/retiro de alumno, matrícula, pensión,
   doble pago, anulación, doble anulación, calificaciones, guardado masivo, PDFs, RBAC,
   auditoría, cierre/reapertura real de actas, bloqueo global, caja con efectivo/Yape (con y
   sin anulación), PDF de acta ADMIN-only, multi-año (43 tablas, uniques por año, apoderado
@@ -481,7 +499,9 @@ npm run test:e2e
   asistencia, pagos y deuda, RBAC ADMIN/SECRETARIA y contrato de UI del selector) y pulido
   Fase 7 (H62: DOCENTE 403 en notificaciones; H59: observación de cese persistida y
   apoderado sin nombres 400; H65: docentes vs personal activo; H67/H68/H69: contratos de UI
-  sin grados/cursos fijos, sin “firma digital” y sin textos de maqueta).
+  sin grados/cursos fijos, sin “firma digital” y sin textos de maqueta) y cierre de demo
+  (SIAGIE interno: resumen/RBAC, Excel con todos los cursos y conclusión, aviso interno,
+  auditoría `exportaciones_siagie`, endpoint viejo 404 y UI sin portal/análisis simulado).
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -489,7 +509,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **72 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **75 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -617,7 +637,7 @@ WHERE m.id_movimiento IS NULL;
 | Mejora | Beneficio |
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
-| ~~Integridad de datos~~ ✅ | 20 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
+| ~~Integridad de datos~~ ✅ | 21 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
 | ~~E2E de flujos críticos~~ ✅ | 72 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
