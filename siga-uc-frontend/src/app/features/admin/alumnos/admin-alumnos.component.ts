@@ -1,10 +1,12 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
+import { AnioLectivoService } from '../../../core/services/anio-lectivo.service';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
+import { SelectorAnioComponent } from '../../../shared/components/selector-anio/selector-anio.component';
 import { fechaLocalISO } from '../../../core/utils/fecha.util';
 
 interface Alumno {
@@ -39,15 +41,23 @@ interface Grado {
 @Component({
   selector: 'app-admin-alumnos',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, SelectorAnioComponent],
   templateUrl: './admin-alumnos.component.html',
   styleUrl: './admin-alumnos.component.scss',
 })
 export class AdminAlumnosComponent implements OnInit {
   private http = inject(HttpClient);
   private configuracion = inject(ConfiguracionService);
+  private anioLectivoService = inject(AnioLectivoService);
 
-  anioLectivo = this.configuracion.anioLectivo;
+  anioActivo = this.configuracion.anioLectivo;
+  anioSeleccionado = signal<number>(this.configuracion.anioLectivo());
+  aniosDisponibles = computed(() =>
+    this.anioLectivoService.anios().map((item) => Number(item.anio)),
+  );
+  esHistorico = computed(
+    () => this.anioSeleccionado() !== this.anioActivo(),
+  );
 
   // Estado principal
   cargando = signal(true);
@@ -99,8 +109,29 @@ export class AdminAlumnosComponent implements OnInit {
   colegioDestino = signal('');
 
   ngOnInit(): void {
+    this.anioLectivoService.asegurarCargado().catch(() => {
+      // El selector conserva el año activo como respaldo.
+    });
     this.cargarAlumnos();
     this.cargarGrados();
+  }
+
+  /**
+   * Cambiar de año: los grados y las matrículas son anuales.
+   */
+  cambiarAnio(anio: number): void {
+    if (anio === this.anioSeleccionado()) return;
+
+    this.anioSeleccionado.set(anio);
+    this.filtroGrado.set('');
+    this.pagina.set(1);
+    this.cerrarModal();
+    this.cerrarModalEditar();
+    this.cerrarModalRetiro();
+    this.cerrarModalPassword();
+    this.cerrarModalMatricula();
+    this.cargarGrados();
+    this.cargarAlumnos(1);
   }
 
   cargarAlumnos(pagina = 1): void {
@@ -108,7 +139,7 @@ export class AdminAlumnosComponent implements OnInit {
     this.error.set(null);
 
     const params: any = {
-      anio: this.anioLectivo(),
+      anio: this.anioSeleccionado(),
       page: pagina,
       pageSize: this.pageSize,
     };
@@ -146,7 +177,7 @@ export class AdminAlumnosComponent implements OnInit {
   cargarGrados(): void {
     this.http
       .get<any>(`${environment.apiUrl}/grados`, {
-        params: { anio: this.anioLectivo() },
+        params: { anio: this.anioSeleccionado() },
       })
       .subscribe({
         next: (res) => {
@@ -183,6 +214,10 @@ export class AdminAlumnosComponent implements OnInit {
   // MODAL NUEVA MATRÍCULA
   // ============================================================
   abrirModalMatricula(): void {
+    if (this.esHistorico()) {
+      alert('El año seleccionado es histórico: solo lectura.');
+      return;
+    }
     this.nuevaMatricula = {
       dni: '',
       nombres: '',
@@ -279,6 +314,10 @@ export class AdminAlumnosComponent implements OnInit {
   // MODAL RETIRO
   // ============================================================
   abrirModalRetiro(alumno: Alumno): void {
+    if (this.esHistorico()) {
+      alert('El año seleccionado es histórico: solo lectura.');
+      return;
+    }
     if (alumno.estado_matricula === 'Retirado') {
       alert('Este alumno ya está retirado');
       return;
@@ -345,6 +384,10 @@ export class AdminAlumnosComponent implements OnInit {
   };
 
   abrirModalEditar(alumno: Alumno): void {
+    if (this.esHistorico()) {
+      alert('El año seleccionado es histórico: solo lectura.');
+      return;
+    }
     this.alumnoEditando.set(alumno);
     this.formEditar = {
       nombres: alumno.nombres,
@@ -418,6 +461,10 @@ export class AdminAlumnosComponent implements OnInit {
   passwordTemporal = signal<string>('');
 
   abrirModalPassword(alumno: Alumno): void {
+    if (this.esHistorico()) {
+      alert('El año seleccionado es histórico: solo lectura.');
+      return;
+    }
     this.alumnoPassword.set(alumno);
     this.passwordTemporal.set('');
     this.modalPassword.set(true);

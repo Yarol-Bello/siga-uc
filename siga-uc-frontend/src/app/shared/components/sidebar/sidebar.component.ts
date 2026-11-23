@@ -83,6 +83,12 @@ export class SidebarComponent {
       roles: ['ADMIN'],
     },
     {
+      path: '/admin/historico',
+      label: 'Histórico por Estudiante',
+      icon: 'fa-clock-rotate-left',
+      roles: ['ADMIN'],
+    },
+    {
       path: '/admin/auditoria',
       label: 'Auditoría y Actas',
       icon: 'fa-shield-halved',

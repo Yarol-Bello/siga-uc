@@ -1,0 +1,278 @@
+<div class="historico-container">
+  <!-- BUSCADOR -->
+  <div class="search-panel">
+    <div class="search-header">
+      <i class="fa-solid fa-clock-rotate-left"></i>
+      <div>
+        <h3>Histórico por Estudiante</h3>
+        <p>
+          Busca por DNI para ver todas sus matrículas, una fila por año lectivo.
+          La identidad se agrupa por DNI/usuario, no por matrícula anual.
+        </p>
+      </div>
+    </div>
+
+    <div class="search-body">
+      <div class="search-input-group">
+        <input
+          type="text"
+          maxlength="8"
+          inputmode="numeric"
+          placeholder="DNI de 8 dígitos (ej. 74829102)"
+          [(ngModel)]="dni"
+          (keyup.enter)="buscar()"
+        />
+        <button class="btn-primary" [disabled]="buscando()" (click)="buscar()">
+          @if (buscando()) {
+          <i class="fa-solid fa-spinner fa-spin"></i> Buscando...
+          } @else {
+          <i class="fa-solid fa-magnifying-glass"></i> Buscar
+          }
+        </button>
+        @if (data() || error()) {
+        <button class="btn-secondary" (click)="limpiar()">
+          <i class="fa-solid fa-xmark"></i> Limpiar
+        </button>
+        }
+      </div>
+
+      @if (error()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ error() }}
+      </div>
+      }
+    </div>
+  </div>
+
+  @if (data(); as consolidado) {
+  <!-- IDENTIDAD -->
+  <div class="identidad-card">
+    <div class="identidad-avatar">
+      {{ consolidado.usuario.nombre_completo.charAt(0) }}
+    </div>
+    <div class="identidad-datos">
+      <h3>{{ consolidado.usuario.nombre_completo }}</h3>
+      <p><strong>DNI:</strong> {{ consolidado.usuario.dni }}</p>
+      <p><strong>ID usuario:</strong> {{ consolidado.usuario.id_usuario }}</p>
+    </div>
+    <div class="identidad-totales">
+      <div class="total-item">
+        <span class="total-label">Años registrados</span>
+        <strong>{{ consolidado.totales.anios }}</strong>
+      </div>
+      <div class="total-item">
+        <span class="total-label">Total pagado</span>
+        <strong>S/ {{ consolidado.totales.total_pagado | number:'1.2-2' }}</strong>
+      </div>
+      <div class="total-item">
+        <span class="total-label">Deuda pendiente</span>
+        <strong [class.deuda]="consolidado.totales.deuda_pendiente > 0">
+          S/ {{ consolidado.totales.deuda_pendiente | number:'1.2-2' }}
+        </strong>
+      </div>
+      <div class="total-item">
+        <span class="total-label">Pensiones</span>
+        <strong>{{ consolidado.totales.total_pensiones }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA POR AÑO -->
+  <div class="card-container">
+    <div class="table-header">
+      <h3>
+        <i class="fa-solid fa-layer-group"></i>
+        Matrículas por año lectivo
+      </h3>
+      <span class="badge-count">{{ consolidado.anios.length }} años</span>
+    </div>
+
+    @if (consolidado.anios.length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-folder-open"></i>
+      <h3>Sin matrículas registradas</h3>
+      <p>El usuario existe, pero no tiene matrículas anuales.</p>
+    </div>
+    } @else {
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Año</th>
+            <th>Grado / Sección</th>
+            <th>Estado</th>
+            <th>Promoción</th>
+            <th style="text-align: center;">AD</th>
+            <th style="text-align: center;">A</th>
+            <th style="text-align: center;">B</th>
+            <th style="text-align: center;">C</th>
+            <th style="text-align: center;">Asistencia</th>
+            <th style="text-align: right;">Pagado</th>
+            <th style="text-align: right;">Deuda</th>
+            <th style="text-align: center;">Pensiones</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (fila of consolidado.anios; track fila.anio) {
+          <tr>
+            <td>
+              <strong>{{ fila.anio }}</strong>
+              @if (esAnioActivo(fila)) {
+              <span class="tag tag-actual">Actual</span>
+              } @else {
+              <span class="tag tag-historico">Histórico</span>
+              }
+            </td>
+            <td>
+              <strong>{{ fila.grado || 'Sin grado' }}</strong>
+              <small>{{ fila.seccion || '-' }}</small>
+            </td>
+            <td>
+              <span
+                class="badge-estado"
+                [ngClass]="{
+                  'matriculado': fila.estado_matricula === 'Matriculado',
+                  'pendiente': fila.estado_matricula === 'PendientePago',
+                  'retirado': fila.estado_matricula === 'Retirado'
+                }"
+              >
+                {{ fila.estado_matricula }}
+              </span>
+            </td>
+            <td>
+              <span class="promo" [ngClass]="colorPromocion(fila)">
+                {{ estadoPromocion(fila) }}
+              </span>
+            </td>
+            <td style="text-align: center;">{{ fila.notas_ad }}</td>
+            <td style="text-align: center;">{{ fila.notas_a }}</td>
+            <td style="text-align: center;">{{ fila.notas_b }}</td>
+            <td style="text-align: center;">{{ fila.notas_c }}</td>
+            <td style="text-align: center;">
+              @if (fila.porcentaje_asistencia === null) {
+              <span class="sin-dato">-</span>
+              } @else {
+              <strong>{{ fila.porcentaje_asistencia | number:'1.0-2' }}%</strong>
+              <small>{{ fila.total_asistencias }} registros</small>
+              }
+            </td>
+            <td style="text-align: right;">
+              S/ {{ fila.total_pagado | number:'1.2-2' }}
+            </td>
+            <td style="text-align: right;" [class.deuda]="fila.deuda_pendiente > 0">
+              S/ {{ fila.deuda_pendiente | number:'1.2-2' }}
+            </td>
+            <td style="text-align: center;">
+              {{ fila.pensiones_pagadas }}/{{ fila.total_pensiones }}
+            </td>
+            <td>
+              <div class="acciones-historico">
+                <a
+                  class="btn-link"
+                  [routerLink]="['/admin/reportes']"
+                  [queryParams]="{
+                    anio: fila.anio,
+                    dni: consolidado.usuario.dni,
+                    grado: fila.id_grado,
+                    bimestre: 4
+                  }"
+                  title="Ver libreta del año"
+                >
+                  <i class="fa-solid fa-id-card"></i> Libreta
+                </a>
+                <button class="btn-link" (click)="verAsistencia(fila)" title="Ver asistencia del año">
+                  <i class="fa-solid fa-clipboard-check"></i> Asistencia
+                </button>
+                <a
+                  class="btn-link"
+                  [routerLink]="['/admin/tesoreria']"
+                  [queryParams]="{ anio: fila.anio, dni: consolidado.usuario.dni }"
+                  title="Ver tesorería del año"
+                >
+                  <i class="fa-solid fa-wallet"></i> Tesorería
+                </a>
+              </div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+  }
+</div>
+
+<!-- MODAL ASISTENCIA HISTÓRICA -->
+@if (modalAsistencia() && alumnoAsistencia(); as fila) {
+<div class="modal-overlay" (click)="cerrarAsistencia()">
+  <div class="modal-container modal-large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        <i class="fa-solid fa-clipboard-check"></i>
+        Asistencia {{ fila.anio }} — {{ fila.grado || 'Sin grado' }}
+      </h3>
+      <button class="modal-close" (click)="cerrarAsistencia()">&times;</button>
+    </div>
+    <div class="modal-body">
+      @if (cargandoAsistencia()) {
+      <div class="loading-state">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <p>Cargando asistencia...</p>
+      </div>
+      }
+
+      @if (errorAsistencia()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorAsistencia() }}
+      </div>
+      }
+
+      @if (!cargandoAsistencia() && !errorAsistencia()) {
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Día</th>
+              <th>Curso</th>
+              <th>Estado</th>
+              <th>Observación</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (registro of asistencias(); track registro.id_asistencia) {
+            <tr>
+              <td>{{ registro.fecha | date:'dd/MM/yyyy' }}</td>
+              <td>{{ registro.dia_semana }}</td>
+              <td>{{ registro.nombre_curso }}</td>
+              <td>
+                <span class="estado" [ngClass]="getEstadoClass(registro.estado)">
+                  {{ getEstadoTexto(registro.estado) }}
+                </span>
+              </td>
+              <td>{{ registro.observacion || '-' }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (asistencias().length === 0) {
+      <div class="empty-state">
+        <i class="fa-solid fa-calendar-xmark"></i>
+        <h3>Sin asistencias registradas</h3>
+        <p>No hay registros de asistencia para el año {{ fila.anio }}.</p>
+      </div>
+      }
+      }
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarAsistencia()">Cerrar</button>
+    </div>
+  </div>
+</div>
+}

@@ -175,6 +175,7 @@ export class AnioLectivoService {
   private _anios = signal<AnioLectivo[]>([]);
   private _cargando = signal(false);
   private _error = signal<string | null>(null);
+  private cargaEnCurso: Promise<void> | null = null;
 
   readonly anios = this._anios.asReadonly();
   readonly cargando = this._cargando.asReadonly();
@@ -197,6 +198,30 @@ export class AnioLectivoService {
     }
 
     this._cargando.set(false);
+  }
+
+  /**
+   * Garantiza que el catálogo esté cargado una sola vez.
+   * Las pantallas con selector de año (6.4) lo llaman al inicializar.
+   */
+  async asegurarCargado(): Promise<void> {
+    if (this._anios().length > 0) return;
+    if (this.cargaEnCurso) return this.cargaEnCurso;
+
+    this.cargaEnCurso = this.cargar().finally(() => {
+      this.cargaEnCurso = null;
+    });
+    return this.cargaEnCurso;
+  }
+
+  /**
+   * Años disponibles ordenados de más reciente a más antiguo.
+   */
+  aniosDisponibles(): number[] {
+    return this._anios()
+      .map((item) => Number(item.anio))
+      .filter((anio) => Number.isInteger(anio) && anio > 0)
+      .sort((a, b) => b - a);
   }
 
   /**

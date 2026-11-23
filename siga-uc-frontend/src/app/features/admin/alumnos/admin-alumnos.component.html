@@ -1,6 +1,13 @@
 <div class="alumnos-container">
   <!-- BARRA DE FILTROS -->
   <div class="filter-toolbar">
+    <app-selector-anio
+      [anios]="aniosDisponibles()"
+      [anioActivo]="anioActivo()"
+      [anio]="anioSeleccionado()"
+      (anioChange)="cambiarAnio($event)"
+    />
+
     <div class="search-box">
       <i class="fa-solid fa-magnifying-glass"></i>
       <input type="text" placeholder="Buscar por DNI, nombres o apellidos..." [(ngModel)]="busqueda"
@@ -10,11 +17,9 @@
     <div class="filter-group">
       <select [(ngModel)]="filtroGrado" (change)="aplicarFiltros()">
         <option value="">Todos los Grados</option>
-        <option value="1">1ro de Secundaria</option>
-        <option value="2">2do de Secundaria</option>
-        <option value="3">3ro de Secundaria</option>
-        <option value="4">4to de Secundaria</option>
-        <option value="5">5to de Secundaria</option>
+        @for (g of grados(); track g.id_grado) {
+        <option [value]="g.id_grado">{{ g.nombre_grado }}</option>
+        }
       </select>
     </div>
 
@@ -31,10 +36,20 @@
       <i class="fa-solid fa-xmark"></i> Limpiar
     </button>
 
+    @if (!esHistorico()) {
     <button class="btn-primary" (click)="abrirModalMatricula()">
       <i class="fa-solid fa-user-plus"></i> Nueva Matrícula
     </button>
+    }
   </div>
+
+  @if (esHistorico()) {
+  <div class="alert alert-warning">
+    <i class="fa-solid fa-clock-rotate-left"></i>
+    Estás consultando el año {{ anioSeleccionado() }} en modo histórico.
+    Solo lectura: no se puede editar, retirar ni restablecer contraseñas.
+  </div>
+  }
 
   <!-- ESTADO CARGA -->
   @if (cargando()) {
@@ -57,7 +72,10 @@
     <div class="table-header">
       <h3>
         <i class="fa-solid fa-users"></i>
-        Padrón de Alumnos — Año Lectivo {{ anioLectivo() }}
+        Padrón de Alumnos — Año Lectivo {{ anioSeleccionado() }}
+        @if (esHistorico()) {
+        <span class="badge-historico-inline">Histórico</span>
+        }
       </h3>
       <span class="badge-count">{{ totalRegistros() }} estudiantes</span>
     </div>
@@ -102,9 +120,11 @@
             <td>
               <div class="action-icons">
                 <i class="fa-solid fa-eye" (click)="verDetalle(alumno)" title="Ver Ficha"></i>
+                @if (!esHistorico()) {
                 <i class="fa-solid fa-pen-to-square" (click)="abrirModalEditar(alumno)" title="Editar Ficha"></i>
                 <i class="fa-solid fa-key" (click)="abrirModalPassword(alumno)" title="Restablecer Contraseña"></i>
                 <i class="fa-solid fa-user-slash" (click)="abrirModalRetiro(alumno)" title="Registrar Retiro"></i>
+                }
               </div>
             </td>
           </tr>

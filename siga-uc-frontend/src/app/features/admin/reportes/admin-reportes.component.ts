@@ -1,10 +1,13 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
+import { AnioLectivoService } from '../../../core/services/anio-lectivo.service';
+import { SelectorAnioComponent } from '../../../shared/components/selector-anio/selector-anio.component';
 
 interface Grado {
   id_grado: number;
@@ -64,15 +67,23 @@ interface LibretaData {
 @Component({
   selector: 'app-admin-reportes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SelectorAnioComponent],
   templateUrl: './admin-reportes.component.html',
   styleUrl: './admin-reportes.component.scss',
 })
 export class AdminReportesComponent implements OnInit {
   private http = inject(HttpClient);
   private configuracion = inject(ConfiguracionService);
+  private anioLectivoService = inject(AnioLectivoService);
+  private route = inject(ActivatedRoute);
 
-  anioLectivo = this.configuracion.anioLectivo;
+  anioActivo = this.configuracion.anioLectivo;
+  anioSeleccionado = signal<number>(this.configuracion.anioLectivo());
+  aniosDisponibles = computed(() =>
+    this.anioLectivoService.anios().map((item) => Number(item.anio)),
+  );
+
+  private dniPendiente: string | null = null;
 
   // Estado general
   cargando = signal(true);
@@ -99,6 +110,44 @@ export class AdminReportesComponent implements OnInit {
   errorPdf = signal<string | null>(null);
 
   ngOnInit(): void {
+    const query = this.route.snapshot.queryParamMap;
+
+    const anioQuery = Number(query.get('anio'));
+    if (Number.isInteger(anioQuery) && anioQuery > 0) {
+      this.anioSeleccionado.set(anioQuery);
+    }
+
+    const bimestreQuery = Number(query.get('bimestre'));
+    if (bimestreQuery >= 1 && bimestreQuery <= 4) {
+      this.bimestre.set(bimestreQuery);
+    }
+
+    const gradoQuery = Number(query.get('grado'));
+    if (Number.isInteger(gradoQuery) && gradoQuery > 0) {
+      this.gradoSeleccionado.set(gradoQuery);
+    }
+
+    const dniQuery = query.get('dni');
+    if (dniQuery && /^\d{8}$/.test(dniQuery)) {
+      this.dniPendiente = dniQuery;
+    }
+
+    this.anioLectivoService.asegurarCargado().catch(() => {
+      // El selector conserva el año activo como respaldo.
+    });
+
+    this.cargarGrados();
+  }
+
+  /**
+   * Cambiar el año lectivo: recarga grados y la pestaña activa.
+   */
+  cambiarAnio(anio: number): void {
+    if (anio === this.anioSeleccionado()) return;
+
+    this.anioSeleccionado.set(anio);
+    this.dniPendiente = null;
+    this.cerrarModalLibreta();
     this.cargarGrados();
   }
 
@@ -108,7 +157,7 @@ export class AdminReportesComponent implements OnInit {
   cargarGrados(): void {
     this.http
       .get<any>(`${environment.apiUrl}/grados`, {
-        params: { anio: this.anioLectivo() },
+        params: { anio: this.anioSeleccionado() },
       })
       .subscribe({
         next: (res) => {
@@ -119,11 +168,21 @@ export class AdminReportesComponent implements OnInit {
             if (!res.data.some((g: Grado) => g.id_grado === actual)) {
               this.gradoSeleccionado.set(res.data[0].id_grado);
             }
-
-            this.cargarAlumnos();
+          } else if (res.success) {
+            this.grados.set([]);
+            this.alumnos.set([]);
+            this.cuadroMerito.set([]);
+            this.alumnosRiesgo.set([]);
+            this.cargando.set(false);
+            return;
           }
+
+          this.recargarTabActiva();
         },
-        error: (err) => console.error('Error grados:', err),
+        error: (err) => {
+          console.error('Error grados:', err);
+          this.cargando.set(false);
+        },
       });
   }
 
@@ -132,7 +191,14 @@ export class AdminReportesComponent implements OnInit {
    */
   cambiarTab(tab: 'libretas' | 'merito' | 'riesgo'): void {
     this.tabActiva.set(tab);
-    switch (tab) {
+    this.recargarTabActiva();
+  }
+
+  /**
+   * Recarga la pestaña visible con el grado, bimestre y año actuales.
+   */
+  private recargarTabActiva(): void {
+    switch (this.tabActiva()) {
       case 'libretas':
         this.cargarAlumnos();
         break;
@@ -175,13 +241,14 @@ export class AdminReportesComponent implements OnInit {
       .get<any>(`${environment.apiUrl}/alumnos`, {
         params: {
           id_grado: this.gradoSeleccionado(),
-          anio: this.anioLectivo(),
+          anio: this.anioSeleccionado(),
         },
       })
       .subscribe({
         next: (res) => {
           if (res.success) this.alumnos.set(res.data);
           this.cargando.set(false);
+          this.abrirLibretaPorDni();
         },
         error: (err) => {
           console.error('Error alumnos:', err);
@@ -189,6 +256,21 @@ export class AdminReportesComponent implements OnInit {
           this.cargando.set(false);
         },
       });
+  }
+
+  /**
+   * Abre la libreta del DNI recibido por query param (enlace desde Histórico).
+   */
+  private abrirLibretaPorDni(): void {
+    if (!this.dniPendiente) return;
+
+    const alumno = this.alumnos().find(
+      (item) => item.dni === this.dniPendiente,
+    );
+    if (!alumno) return;
+
+    this.dniPendiente = null;
+    this.verLibreta(alumno);
   }
 
   /**
@@ -200,7 +282,7 @@ export class AdminReportesComponent implements OnInit {
 
     this.http
       .get<any>(
-        `${environment.apiUrl}/reportes/cuadro-merito/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}&anio=${this.anioLectivo()}`,
+        `${environment.apiUrl}/reportes/cuadro-merito/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}&anio=${this.anioSeleccionado()}`,
       )
       .subscribe({
         next: (res) => {
@@ -224,7 +306,7 @@ export class AdminReportesComponent implements OnInit {
 
     this.http
       .get<any>(
-        `${environment.apiUrl}/reportes/alumnos-riesgo/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}&anio=${this.anioLectivo()}`,
+        `${environment.apiUrl}/reportes/alumnos-riesgo/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}&anio=${this.anioSeleccionado()}`,
       )
       .subscribe({
         next: (res) => {
@@ -258,7 +340,7 @@ export class AdminReportesComponent implements OnInit {
 
     this.http
       .get<any>(
-        `${environment.apiUrl}/reportes/libreta/${alumno.id_alumno}?bimestre=${this.bimestre()}&anio=${this.anioLectivo()}`,
+        `${environment.apiUrl}/reportes/libreta/${alumno.id_alumno}?bimestre=${this.bimestre()}&anio=${this.anioSeleccionado()}`,
       )
       .subscribe({
         next: (res) => {
@@ -290,7 +372,7 @@ export class AdminReportesComponent implements OnInit {
 
     const idAlumno = data.alumno.id_alumno;
     const bimestre = this.bimestre();
-    const anio = this.anioLectivo();
+    const anio = this.anioSeleccionado();
 
     this.generandoPdf.set(true);
     this.errorPdf.set(null);

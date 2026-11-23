@@ -59,6 +59,14 @@ export const routes: Routes = [
       },
 
       {
+        path: 'historico',
+        loadComponent: () =>
+          import('./features/admin/historico/admin-historico.component').then(
+            (m) => m.AdminHistoricoComponent,
+          ),
+      },
+
+      {
         path: 'personal',
         loadComponent: () =>
           import('./features/admin/personal/admin-personal.component').then(

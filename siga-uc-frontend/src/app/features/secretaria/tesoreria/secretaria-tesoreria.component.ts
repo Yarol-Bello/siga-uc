@@ -6,6 +6,8 @@ import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
+import { AnioLectivoService } from '../../../core/services/anio-lectivo.service';
+import { SelectorAnioComponent } from '../../../shared/components/selector-anio/selector-anio.component';
 
 interface Pension {
   id_pension: number;
@@ -68,16 +70,24 @@ interface PreTicket {
 @Component({
   selector: 'app-secretaria-tesoreria',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SelectorAnioComponent],
   templateUrl: './secretaria-tesoreria.component.html',
   styleUrl: './secretaria-tesoreria.component.scss',
 })
 export class SecretariaTesoreriaComponent implements OnInit {
   private http = inject(HttpClient);
   private configuracion = inject(ConfiguracionService);
+  private anioLectivoService = inject(AnioLectivoService);
   private route = inject(ActivatedRoute);
 
-  anioLectivo = this.configuracion.anioLectivo;
+  anioActivo = this.configuracion.anioLectivo;
+  anioSeleccionado = signal<number>(this.configuracion.anioLectivo());
+  aniosDisponibles = computed(() =>
+    this.anioLectivoService.anios().map((item) => Number(item.anio)),
+  );
+  esHistorico = computed(
+    () => this.anioSeleccionado() !== this.anioActivo(),
+  );
 
   // Preselección desde el dashboard de Secretaría (H54)
   private preticketQueryProcesado = false;
@@ -130,6 +140,36 @@ export class SecretariaTesoreriaComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    const query = this.route.snapshot.queryParamMap;
+
+    const anioQuery = Number(query.get('anio'));
+    if (Number.isInteger(anioQuery) && anioQuery > 0) {
+      this.anioSeleccionado.set(anioQuery);
+    }
+
+    const dniQuery = query.get('dni');
+    if (dniQuery && /^\d{8}$/.test(dniQuery)) {
+      this.busqueda.set(dniQuery);
+    }
+
+    this.anioLectivoService.asegurarCargado().catch(() => {
+      // El selector conserva el año activo como respaldo.
+    });
+
+    this.cargarDatos();
+  }
+
+  /**
+   * Cambiar de año: recarga padrón, pre-tickets y conceptos del año.
+   */
+  cambiarAnio(anio: number): void {
+    if (anio === this.anioSeleccionado()) return;
+
+    this.anioSeleccionado.set(anio);
+    this.busqueda.set('');
+    this.filtroEstado.set('');
+    this.cerrarModalCobro();
+    this.preticketQueryProcesado = true;
     this.cargarDatos();
   }
 
@@ -140,7 +180,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
 
-    const anio = this.anioLectivo();
+    const anio = this.anioSeleccionado();
 
     // Cargar alumnos
     this.http.get<any>(`${environment.apiUrl}/alumnos?anio=${anio}`).subscribe({
@@ -316,6 +356,11 @@ export class SecretariaTesoreriaComponent implements OnInit {
     idConcepto?: number,
     tipoConcepto?: string,
   ): void {
+    if (this.esHistorico()) {
+      alert('El año seleccionado es histórico: solo lectura.');
+      return;
+    }
+
     const matricula = this.conceptoMatricula();
     const esMatricula =
       tipoConcepto === 'MATRICULA' ||
@@ -342,7 +387,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
 
       if (!idConceptoFinal || !conceptoFinal || montoFinal <= 0) {
         alert(
-          `No hay un concepto de matrícula configurado para el año lectivo ${this.anioLectivo()}.`,
+          `No hay un concepto de matrícula configurado para el año lectivo ${this.anioSeleccionado()}.`,
         );
         return;
       }
@@ -383,7 +428,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
         id_pension: p.id_pension,
         nombre:
           p.concepto_nombre ||
-          `Pensión ${p.mes}/${this.anioLectivo()}`,
+          `Pensión ${p.mes}/${this.anioSeleccionado()}`,
         monto: Number(p.monto_final) || Number(p.monto_base) || 0,
         mes: p.mes,
       }))
@@ -423,6 +468,11 @@ export class SecretariaTesoreriaComponent implements OnInit {
    * Generar el cronograma de pensiones de un alumno ya matriculado.
    */
   generarPensionesAlumno(): void {
+    if (this.esHistorico()) {
+      alert('El año seleccionado es histórico: solo lectura.');
+      return;
+    }
+
     const alumno = this.alumnoSeleccionado();
     if (!alumno || this.generandoPensiones()) return;
 
@@ -466,6 +516,11 @@ export class SecretariaTesoreriaComponent implements OnInit {
    * Procesar cobro
    */
   procesarCobro(): void {
+    if (this.esHistorico()) {
+      alert('El año seleccionado es histórico: solo lectura.');
+      return;
+    }
+
     const alumno = this.alumnoSeleccionado();
     if (!alumno) return;
 
