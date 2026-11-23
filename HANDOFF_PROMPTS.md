@@ -239,6 +239,9 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
    cerrado, H71 aplicado en local, UAT de los 4 roles, guion, backup y reinicio. H71 no se
    aplicó en Supabase porque no hay retirados.
 6. No empezar Fase 8 ni integración oficial con MINEDU sin pedido explícito.
+7. **Siguiente bloque de código:** responsive de ADMIN, SECRETARÍA y DOCENTE. Login,
+   sidebar y módulos del ESTUDIANTE ya están adaptados. El prompt completo está en
+   `HANDOFF_SESSION.md`, sección 10.
 
 ---
 
@@ -270,8 +273,9 @@ No implementas código, no tocas Supabase ni Render.
 3. Revisa el cierre de Fase 7: H62 (DOCENTE 403), H59 (observaciones de cese), H65
    (docentes vs personal), H66/H67/H68/H69 (textos y credibilidad).
 4. Verifica el cierre de demo: SIAGIE interno, H70/H71, UAT de los 4 roles y límites.
-   SIAGIE interno y guion de demo.
-5. No implementes código; no toques Supabase/Render sin confirmación.
+5. Revisa el estado responsive: login, sidebar y ESTUDIANTE ya están listos; falta
+   ADMIN, SECRETARÍA y DOCENTE. Usa el prompt de `HANDOFF_SESSION.md`, sección 10.
+6. No implementes código; no toques Supabase/Render sin confirmación.
 6. No confirmes promociones, no actives 2027 y no anules en Supabase en esta fase.
 
 ## Reglas

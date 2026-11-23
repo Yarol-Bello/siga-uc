@@ -300,6 +300,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   expedientes de retirados y desactiva al usuario solo si no conserva otra matrícula
   vigente. Aplicado en local; no se aplicó en Supabase demo (no hay retirados allí).
   `test:integridad` incluye el invariante 21.
+- **Responsive:** login, sidebar (4 roles) y módulos del ESTUDIANTE ya están adaptados a
+  móvil/tableta. **Pendiente:** ADMIN, SECRETARÍA y DOCENTE. No cambiar rutas, servicios,
+  permisos ni lógica al adaptar el diseño.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y

@@ -4,6 +4,13 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
+> **Cierre de sesión 22/11/2026:** HEAD `9a29122`; frontend/API desplegados en Render con
+> el código `df1f384` (login, sidebar y módulos del ESTUDIANTE responsive). E2E **75 PASS**,
+> integridad **21 PASS** en base nueva (19/2 local), smoke **11**, H47 **4**, build OK.
+> Supabase intacto: 43 tablas, 2026 ACTIVO, 2027 no activo, 1 política, 0 promociones,
+> 0 actas, 1 alumno. **Siguiente bloque:** responsive de ADMIN/SECRETARÍA/DOCENTE.
+> Prompt de arranque en la sección 10.
+>
 > **Actualización 22/11/2026 (despliegue `df1f384`):** módulos del **ESTUDIANTE**
 > adaptados a móviles, tabletas y laptops: drawer de navegación, cabecera compacta,
 > dashboard, asistencia y horario responsive; tablas con scroll interno y horario con
@@ -501,8 +508,26 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Verificación:** 320×568, 360×640, 390×844, 412×915, 600×960, 640×360, 768×1024,
   1024×600 y 1366×768. Sin desbordamiento horizontal; drawer, overlay, cierre, navegación,
   logout y modales probados. `npm run build` OK, E2E **75 PASS**, smoke **11 PASS**.
-- **Despliegue:** commit `df1f384` en `origin/main`; pendiente de verificación final en
-  Render.
+- **Despliegue:** commit `df1f384` en `origin/main`; Render sirve el `main-SCTCECV3.js`
+  generado por ese commit. Verificado en producción: API `200`, `database: "ok"`.
+
+### 1.11 Estado final de la sesión (22/11/2026)
+
+- **HEAD:** `9a29122` (`docs(estudiante): registrar diseno responsive df1f384`).
+- **Código desplegado:** `df1f384` en Render (frontend y API). La documentación posterior
+  (`9a29122`) no cambia el código.
+- **Trabajo cerrado:** SIAGIE interno, H70, H71 local, login responsive, sidebar corregido
+  en los cuatro roles y módulos del ESTUDIANTE responsive.
+- **Suites:** E2E **75 PASS**; integridad **21 PASS** en base nueva y **19/2** de seed local;
+  smoke **11 PASS**; H47 **4 PASS**; build Angular OK; `node --check` OK.
+- **Supabase:** sin cambios en esta sesión. 43 tablas, 2026 ACTIVO, 2027 no activo,
+  1 política, 0 promociones confirmadas, 0 actas, 1 alumno. H71 sigue pendiente allí porque
+  no hay retirados en la demo.
+- **Pendiente inmediato:** adaptar a móvil/tableta los módulos de ADMIN, SECRETARÍA y
+  DOCENTE (login, sidebar y estudiante ya están hechos). No iniciar Fase 8.
+- **Datos locales:** 21 alumnos, 54 cargas/142 h en el ADMIN, 0 horarios publicados. Para
+  una demo docente hay que reasignar cargas; para el horario del estudiante hay que generar
+  y publicar.
 
 ---
 
@@ -945,9 +970,9 @@ En esta fase **no** se prepara el despliegue definitivo.
 ## 7. Próximo paso exacto (demo y aprobación)
 
 H49/H73/H59 están aplicadas en Supabase demo (43 tablas, 2026 ACTIVO, 1 política,
-0 promociones, 0 actas, 145 horarios, 5 docentes). 6.3/6.3.1/6.4 y el cierre de demo están
-en Render (`8eba9e9` para el código base de Fase 7; el commit de cierre se publica aparte).
-`/api/anios-lectivos`, `/api/promociones`, `/api/reportes/consolidado/:dni` y
+0 promociones, 0 actas, 145 horarios, 5 docentes). El cierre de demo, el login responsive,
+el sidebar y los módulos del estudiante están en Render (`df1f384`; documentación
+`9a29122`). `/api/anios-lectivos`, `/api/promociones`, `/api/reportes/consolidado/:dni` y
 `/api/siagie/*` existen y responden 401 sin token.
 
 1. No volver a aplicar H49/H73/H59 en Supabase.
@@ -961,6 +986,8 @@ en Render (`8eba9e9` para el código base de Fase 7; el commit de cierre se publ
    incluye todos los cursos del grado y el aviso visible.
 7. No iniciar Fase 8 ni cargar datos reales sin aprobación.
 8. El rollback H49/H73/H59 **no** se ejecuta en Supabase.
+9. **Siguiente bloque:** responsive de ADMIN, SECRETARÍA y DOCENTE. Login, sidebar y
+   ESTUDIANTE ya están adaptados. No mezclar con Fase 8.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
@@ -980,7 +1007,7 @@ Nada de esta lista se hace en la fase actual.
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | H47, H48, H49, H59 y H73 ya aplicadas en Supabase demo. H61 es solo datos y **aún no** está aplicada allí. 6.1-6.4 y Fase 7 desplegadas en Render (`8eba9e9`). Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Migraciones** | H47, H48, H49, H59 y H73 ya aplicadas en Supabase demo. H61 es solo datos y **aún no** está aplicada allí. Cierre de demo y responsive desplegados en Render (`df1f384`). Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
 | **Integridad** | `npm run test:integridad` contra la base definitiva: 21 PASS |
 | **Multi-año** | 6.2 rollover, 6.3/6.3.1 promoción y 6.4 histórico implementados y desplegados en Render (`cdc129e`); H49/H73 aplicadas en Supabase demo. 6.4 no tiene migración. 2026 debe seguir activo en Supabase hasta la aprobación |
 | **Promociones** | 6.3 no crea usuarios ni QR; no copia notas/pagos/pensiones; no activa el año. La política estándar se siembra con el año ACTIVO. Revisar con dirección/UGEL los criterios de repitencia y transición |
@@ -1034,4 +1061,82 @@ psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 cd siga-uc-backend; npm run test:integridad   # 21 PASS
+```
+
+---
+
+## 10. Prompt de arranque para la nueva sesión de código
+
+```text
+Estás retomando la sesión de CÓDIGO de SIGA-UC. No es una sesión de asesoría.
+Tu tarea ahora es continuar con el DISEÑO RESPONSIVE de los módulos de ADMIN,
+SECRETARÍA y DOCENTE, sin romper funcionalidades ni cambiar el stack.
+
+## Lectura mínima (en este orden)
+1. AGENTS.md (raíz).
+2. HANDOFF_SESSION.md: secciones 1.8, 1.9, 1.10, 1.11, 7 y 10.
+3. HANDOFF_PROMPTS.md: estado del sistema y pendientes.
+4. documentacion/09-FRONTEND-UI-Y-NAVEGACION.md.
+5. documentacion/13-OPERACION-MANTENIMIENTO-Y-TESTEO.md.
+6. documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md.
+7. documentacion/17-GUION-DEMOSTRACION.md.
+8. Revisar el código real antes de modificar: layouts, sidebars, header y módulos.
+
+## Estado verificado al cierre (22/11/2026)
+- HEAD local: 9a29122. Código desplegado en Render: df1f384.
+- Frontend de Render sirve main-SCTCECV3.js (build de df1f384).
+- API Render: 200, database "ok".
+- E2E 75 PASS; integridad 21 PASS en base nueva y 19/2 de seed local;
+  smoke 11 PASS; H47 4 PASS; build Angular OK.
+- Supabase demo: 43 tablas, 2026 ACTIVO, 2027 NO activo, 1 política,
+  0 promociones confirmadas, 0 actas, 1 alumno. No tocar sin autorización.
+- Ya están hechos: SIAGIE interno, H70, H71 local, login responsive,
+  sidebar con scroll en los 4 roles y módulos del ESTUDIANTE responsive.
+
+## Objetivo de esta sesión
+Adaptar a móvil, tableta, plegable, laptop y escritorio los módulos de:
+- ADMIN: dashboard, padrón, personal, carga, horarios, años lectivos,
+  promociones, tesorería, caja, SIAGIE, reportes, histórico y auditoría.
+- SECRETARÍA: dashboard, padrón, tesorería, caja, asistencia QR y horarios.
+- DOCENTE: dashboard, notas, asistencia, ficha, horarios y reportes.
+
+Prioridad:
+1. Que ninguna pantalla tenga desbordamiento horizontal.
+2. Que tablas anchas hagan scroll interno (no que rompan la página).
+3. Que filtros, formularios, modales y botones sean táctiles y legibles.
+4. Que el sidebar/drawer y el header sigan funcionando como en ESTUDIANTE.
+5. No tocar rutas, servicios, permisos, endpoints ni lógica de negocio.
+
+## Reglas
+- No cambiar el stack. No agregar librerías de UI.
+- No implementar Fase 8. No integrar SIAGIE oficial. No activar 2027.
+- No tocar Supabase ni cargar datos reales.
+- Mantener el español en mensajes, documentación y commits.
+- Commits atómicos: un bloque por rol o por módulo.
+- Antes de cada commit: npm run build; node --check si se toca backend.
+- Antes de desplegar: npm run test:e2e (75+ PASS) y npm run smoke (11 PASS).
+- Si se toca integridad: npm run test:integridad (21 PASS en base nueva).
+- Probar en navegador a 320×568, 360×640, 390×844, 412×915, 600×960,
+  768×1024, 1024×600, 1366×768 y 1920×1080.
+- No imprimir tokens, correos ni contraseñas.
+
+## Entorno local
+- Backend: http://localhost:3000 (npm run dev en siga-uc-backend).
+- Frontend: http://localhost:4200 (ng serve en siga-uc-frontend).
+- Base local: siga_uc (21 alumnos; 54 cargas/142 h en el ADMIN; 0 horarios
+  publicados). La carga docente y el horario del estudiante requieren
+  preparación manual para la demo.
+- Credenciales de demo en docs/CREDENCIALES.md y README.md. La contraseña del
+  ADMIN de producción no está en el repo.
+
+## Entregable esperado
+- Módulos ADMIN/SECRETARÍA/DOCENTE adaptados sin romper nada.
+- Pruebas responsive documentadas.
+- Build, E2E, smoke e integridad ejecutados.
+- Commits y push a origin/main; Render actualizado y verificado.
+- HANDOFF_SESSION.md, HANDOFF_PROMPTS.md, AGENTS.md y documentacion/09
+  actualizados con el nuevo estado.
+
+Empieza inspeccionando los layouts y sidebars reales, propone el orden de
+módulos y no modifiques nada hasta confirmar el alcance.
 ```
