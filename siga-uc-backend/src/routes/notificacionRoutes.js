@@ -30,11 +30,11 @@ router.put("/leer-todas", notificacionController.marcarTodasLeidas);
 router.delete("/:id", notificacionController.eliminar);
 
 // ============================================================
-// ENVÍO (solo ADMIN y DOCENTE)
+// ENVÍO (solo ADMIN y SECRETARIA)
 // ============================================================
 router.post(
   "/",
-  verificarRol("ADMIN", "DOCENTE"),
+  verificarRol("ADMIN", "SECRETARIA"),
   notificacionController.crear,
 );
 router.post(
