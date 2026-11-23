@@ -25,6 +25,8 @@
       <p>{{ usuario()?.nombre_completo || 'Estudiante' }}</p>
       <span>{{ gradoAlumno() }}</span>
     </div>
-    <i class="fa-solid fa-right-from-bracket user-logout" (click)="logout()" title="Cerrar Sesión"></i>
+    <button type="button" class="user-logout" (click)="logout()" aria-label="Cerrar sesión" title="Cerrar sesión">
+      <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+    </button>
   </div>
 </aside>

@@ -29,6 +29,8 @@
       <p>{{ usuario()?.nombre_completo || 'Usuario' }}</p>
       <span>{{ usuario()?.rol || 'Cargando...' }}</span>
     </div>
-    <i class="fa-solid fa-right-from-bracket user-logout" (click)="logout()" title="Cerrar Sesión"></i>
+    <button type="button" class="user-logout" (click)="logout()" aria-label="Cerrar sesión" title="Cerrar sesión">
+      <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+    </button>
   </div>
 </aside>

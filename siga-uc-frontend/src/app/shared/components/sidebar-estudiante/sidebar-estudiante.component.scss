@@ -5,22 +5,35 @@
 .sidebar {
   width: 280px;
   height: 100vh;
-  background: #ffffff;
+  height: 100dvh;
+  background: var(--white, #ffffff);
   border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 24px;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 20px 16px;
   position: sticky;
   top: 0;
+  overflow: hidden;
+}
+
+/* La marca y el menú ocupan el espacio disponible; el menú es el único que
+   hace scroll. El bloque de usuario/cerrar sesión queda siempre visible. */
+.sidebar > div:first-child {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .sidebar-brand {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 25px;
-  padding-bottom: 15px;
+  flex: 0 0 auto;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
   border-bottom: 1px solid #e2e8f0;
 
   h3 {
@@ -30,6 +43,7 @@
     text-transform: uppercase;
     margin: 0;
   }
+
   p {
     font-size: 0.72rem;
     color: #64748b;
@@ -54,10 +68,36 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 0;
+  gap: 3px;
+  padding: 0 4px 0 0;
   margin: 0;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  li {
+    flex: 0 0 auto;
+  }
 
   a {
     display: flex;
@@ -76,11 +116,13 @@
       background-color: rgba(128, 0, 32, 0.08);
       color: #800020;
     }
+
     &.active {
       background-color: rgba(128, 0, 32, 0.1);
       color: #800020;
       font-weight: 700;
     }
+
     i {
       font-size: 1rem;
       width: 20px;
@@ -90,19 +132,34 @@
 }
 
 .sidebar-user {
+  flex: 0 0 auto;
   border-top: 1px solid #e2e8f0;
-  padding-top: 16px;
+  padding-top: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
 
   .user-info {
+    flex: 1 1 auto;
+    min-width: 0;
+
+    p,
+    span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.3;
+    }
+
     p {
       font-size: 0.85rem;
       font-weight: 700;
       color: #1e293b;
       margin: 0;
     }
+
     span {
       font-size: 0.72rem;
       color: #64748b;
@@ -110,12 +167,135 @@
   }
 
   .user-logout {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    line-height: 1;
     color: #800020;
     font-size: 1.1rem;
     cursor: pointer;
-    padding: 8px;
+    border-radius: 10px;
+
     &:hover {
       color: #600018;
+      background: rgba(128, 0, 32, 0.08);
+    }
+  }
+}
+
+/* En pantallas bajas se compacta el menú para mostrar más opciones sin
+   perder el bloque de usuario/cerrar sesión. */
+@media (max-height: 800px) {
+  .sidebar {
+    padding: 14px 12px;
+    gap: 8px;
+  }
+
+  .sidebar-brand {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+
+    h3 {
+      font-size: 0.88rem;
+    }
+
+    p {
+      font-size: 0.68rem;
+    }
+  }
+
+  .sidebar-logo-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    font-size: 16px;
+  }
+
+  .sidebar-menu {
+    gap: 2px;
+
+    a {
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      border-radius: 9px;
+    }
+  }
+
+  .sidebar-user {
+    padding-top: 9px;
+
+    .user-logout {
+      width: 36px;
+      height: 36px;
+    }
+  }
+}
+
+/* Laptops de 600 px de alto o menos: compactar aún más para que el menú
+   completo siga siendo accesible sin perder usuario/cerrar sesión. */
+@media (max-height: 650px) {
+  .sidebar {
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .sidebar-brand {
+    gap: 9px;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+
+    h3 {
+      font-size: 0.82rem;
+    }
+
+    p {
+      font-size: 0.64rem;
+    }
+  }
+
+  .sidebar-logo-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .sidebar-menu {
+    gap: 1px;
+
+    a {
+      gap: 9px;
+      padding: 6px 10px;
+      font-size: 0.78rem;
+
+      i {
+        width: 18px;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .sidebar-user {
+    padding-top: 6px;
+
+    .user-info {
+      p {
+        font-size: 0.78rem;
+      }
+
+      span {
+        font-size: 0.68rem;
+      }
+    }
+
+    .user-logout {
+      width: 32px;
+      height: 32px;
     }
   }
 }
