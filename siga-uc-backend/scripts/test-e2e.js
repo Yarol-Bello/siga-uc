@@ -6,7 +6,7 @@
  *  - Solo opera sobre una base cuyo nombre contenga "_e2e" (por defecto
  *    siga_uc_e2e). Nunca toca siga_uc ni una base de Supabase.
  *  - Crea la base, carga el dump y las migraciones, arranca el backend en el
- *    puerto 3101, ejecuta 65 flujos y al final detiene el backend y elimina la
+ *    puerto 3101, ejecuta 72 flujos y al final detiene el backend y elimina la
  *    base con dropdb --force.
  *  - Si la limpieza falla, imprime los comandos manuales.
  *
@@ -46,6 +46,11 @@ const MIGRACIONES = [
   path.join(RAIZ_REPO, "database", "migracion_h61_dia_semana.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h49_multianio_base.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h73_promociones.sql"),
+  path.join(
+    RAIZ_REPO,
+    "database",
+    "migracion_h59_observaciones_personal.sql",
+  ),
 ];
 
 const PUERTO = 3101;
@@ -155,6 +160,7 @@ const entornoBackend = {
   NODE_ENV: "test",
   TZ: "America/Lima",
   ANIO_LECTIVO: String(ANIO),
+  RESEND_API_KEY: "re_test_no_enviar",
 };
 delete entornoBackend.DATABASE_URL;
 
@@ -5783,6 +5789,416 @@ async function ejecutarPruebas() {
         "Histórico: UI tiene selector, modo read-only y enlaces con ?anio",
         "PASS",
         "selector, badge, acciones ocultas y deep links verificados",
+      );
+    },
+  );
+
+  // ============================================================
+  // FASE 7 — SEGURIDAD, DATOS Y TEXTO DE DEMO
+  // ============================================================
+
+  // 66. H62: DOCENTE no puede enviar notificaciones individuales.
+  await prueba(
+    66,
+    "H62: DOCENTE no envía notificaciones; ADMIN/SECRETARIA sí",
+    async () => {
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+
+      const intentoDocente = await api("/notificaciones", {
+        method: "POST",
+        token: docente.token,
+        body: {
+          id_usuario_destino: ctx.adminId,
+          asunto: "Intento DOCENTE E2E",
+          cuerpo: "No debería enviarse.",
+        },
+      });
+      assert.equal(
+        intentoDocente.status,
+        403,
+        "DOCENTE no debe enviar notificaciones individuales",
+      );
+
+      const sinToken = await api("/notificaciones", {
+        method: "POST",
+        body: {
+          id_usuario_destino: ctx.adminId,
+          asunto: "Sin token E2E",
+          cuerpo: "No debería enviarse.",
+        },
+      });
+      assert.equal(sinToken.status, 401);
+
+      const admin = await api("/notificaciones", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_usuario_destino: ctx.adminId,
+          asunto: "Notificación E2E H62",
+          cuerpo: "Mensaje de prueba sin correo real.",
+        },
+      });
+      const datosAdmin = await leerJson(admin);
+      assert.equal(admin.status, 201, detalleHttp(admin, datosAdmin));
+      assert.ok(datosAdmin.datos?.data?.id_notificacion);
+
+      const secretaria = await iniciarSesion(
+        "SECRETARIA",
+        process.env.SMOKE_SECRETARIA_DNI || "40596837",
+        process.env.SMOKE_SECRETARIA_PASSWORD ||
+          process.env.SMOKE_ADMIN_PASSWORD,
+      );
+      const envioSecretaria = await api("/notificaciones", {
+        method: "POST",
+        token: secretaria.token,
+        body: {
+          id_usuario_destino: ctx.adminId,
+          asunto: "Notificación E2E SECRETARIA",
+          cuerpo: "Mensaje de prueba sin correo real.",
+        },
+      });
+      assert.equal(
+        envioSecretaria.status,
+        201,
+        "SECRETARIA debe conservar el envío individual",
+      );
+
+      registrar(
+        66,
+        "H62: DOCENTE no envía notificaciones; ADMIN/SECRETARIA sí",
+        "PASS",
+        "DOCENTE 403, ADMIN 201, SECRETARIA 201, sin token 401",
+      );
+    },
+  );
+
+  // 67. H59: la observación de cese se persiste y se lee.
+  await prueba(
+    67,
+    "H59: cese con observación persiste; sin observación no falla",
+    async () => {
+      const dni = "99999301";
+      const creado = await api("/personal", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          dni,
+          nombres: "Cese",
+          apellidos: "Observación",
+          id_rol: 2,
+          correo_personal: `cese.${dni}@e2e.local`,
+          telefono: "999999999",
+          password: dni,
+        },
+      });
+      const datosCreado = await leerJson(creado);
+      assert.equal(creado.status, 201, detalleHttp(creado, datosCreado));
+      const idPersonal = datosCreado.datos?.data?.id_personal;
+      assert.ok(idPersonal, "El alta de personal no devolvió id_personal");
+
+      const observacion =
+        "Entrega de cargo completa y sin pendientes documentarios.";
+      const cese = await api(`/personal/${idPersonal}/cesar`, {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: {
+          motivo_cese: "Renuncia Voluntaria",
+          fecha_cese: `${ANIO_HIST_2}-11-20`,
+          observaciones: observacion,
+        },
+      });
+      const datosCese = await leerJson(cese);
+      assert.equal(cese.status, 200, detalleHttp(cese, datosCese));
+      assert.equal(datosCese.datos?.data?.observaciones, observacion);
+
+      const ficha = await api(`/personal/${idPersonal}`, {
+        token: ctx.adminToken,
+      });
+      const datosFicha = await leerJson(ficha);
+      assert.equal(ficha.status, 200, detalleHttp(ficha, datosFicha));
+      assert.equal(datosFicha.datos?.data?.observaciones, observacion);
+
+      const enBase = await sql(
+        `SELECT observaciones, motivo_cese
+         FROM personal WHERE id_personal = $1`,
+        [idPersonal],
+      );
+      assert.equal(enBase[0]?.observaciones, observacion);
+      assert.equal(enBase[0]?.motivo_cese, "Renuncia Voluntaria");
+
+      const reactivar = await api(`/personal/${idPersonal}/reactivar`, {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: {},
+      });
+      assert.equal(reactivar.status, 200);
+
+      const ceseSinObservacion = await api(
+        `/personal/${idPersonal}/cesar`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            motivo_cese: "Término de Contrato",
+            fecha_cese: `${ANIO_HIST_2}-12-15`,
+          },
+        },
+      );
+      const datosSinObservacion = await leerJson(ceseSinObservacion);
+      assert.equal(
+        ceseSinObservacion.status,
+        200,
+        detalleHttp(ceseSinObservacion, datosSinObservacion),
+      );
+      assert.equal(
+        datosSinObservacion.datos?.data?.observaciones,
+        null,
+        "El cese sin observación no debe inventar texto",
+      );
+
+      registrar(
+        67,
+        "H59: cese con observación persiste; sin observación no falla",
+        "PASS",
+        `personal=${idPersonal}, observación persistida y limpiada al reactivar`,
+      );
+    },
+  );
+
+  // 68. H59: correo de apoderado sin nombres se rechaza.
+  await prueba(
+    68,
+    "H59: apoderado con correo pero sin nombres responde 400",
+    async () => {
+      const dni = "99999302";
+      const respuesta = await api("/alumnos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          dni,
+          nombres: "Apoderado",
+          apellidos: "SinNombres",
+          fecha_nacimiento: "2012-05-10",
+          id_grado: 1,
+          apoderado: { correo: "apoderado@e2e.local" },
+        },
+      });
+      const datos = await leerJson(respuesta);
+      assert.equal(respuesta.status, 400, detalleHttp(respuesta, datos));
+      assert.match(
+        String(datos.datos?.message || ""),
+        /nombres y apellidos/i,
+      );
+
+      const creados = await sql(
+        `SELECT COUNT(*)::int AS total FROM alumnos WHERE dni = $1`,
+        [dni],
+      );
+      assert.equal(creados[0].total, 0, "No debe crear al alumno sin apoderado válido");
+
+      registrar(
+        68,
+        "H59: apoderado con correo pero sin nombres responde 400",
+        "PASS",
+        "400 y 0 matrículas creadas",
+      );
+    },
+  );
+
+  // 69. H65: el dashboard separa docentes y personal activo.
+  await prueba(
+    69,
+    "H65: dashboard distingue docentes de personal activo",
+    async () => {
+      const respuesta = await api(`/reportes/dashboard?anio=${ANIO_HIST_2}`, {
+        token: ctx.adminToken,
+      });
+      const datos = await leerJson(respuesta);
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+
+      const esperado = await sql(
+        `SELECT
+           (SELECT COUNT(*)::int FROM personal WHERE fecha_cese IS NULL)
+             AS personal,
+           (SELECT COUNT(*)::int
+            FROM personal p
+            INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+            WHERE p.fecha_cese IS NULL
+              AND u.estado = 'ACTIVO'
+              AND u.id_rol = 2) AS docentes`,
+      );
+
+      const data = datos.datos?.data || {};
+      assert.equal(Number(data.total_personal), esperado[0].personal);
+      assert.equal(Number(data.total_docentes), esperado[0].docentes);
+      assert.ok(
+        Number(data.total_docentes) <= Number(data.total_personal),
+        "Los docentes no pueden superar al personal activo",
+      );
+
+      registrar(
+        69,
+        "H65: dashboard distingue docentes de personal activo",
+        "PASS",
+        `docentes=${data.total_docentes}, personal=${data.total_personal}`,
+      );
+    },
+  );
+
+  // 70. H67: grados y cursos vienen del catálogo real.
+  await prueba(
+    70,
+    "H67: filtros y textos usan grados/cursos de la API",
+    async () => {
+      const leer = (rutaRelativa) =>
+        fs.readFileSync(path.join(RAIZ_REPO, rutaRelativa), "utf8");
+
+      const alumnosHtml = leer(
+        "siga-uc-frontend/src/app/features/admin/alumnos/admin-alumnos.component.html",
+      );
+      assert.ok(
+        alumnosHtml.includes("@for (g of grados(); track"),
+        "El filtro de grados no usa grados() de la API",
+      );
+      assert.ok(
+        !alumnosHtml.includes('<option value="1">1ro de Secundaria</option>'),
+        "El filtro de grados sigue hardcodeado",
+      );
+
+      const cargaHtml = leer(
+        "siga-uc-frontend/src/app/features/admin/carga-curricular/admin-carga-curricular.component.html",
+      );
+      assert.ok(
+        cargaHtml.includes("cursos().length"),
+        "El texto de carga curricular no usa cursos().length",
+      );
+      assert.ok(!cargaHtml.includes("11 cursos"));
+
+      registrar(
+        70,
+        "H67: filtros y textos usan grados/cursos de la API",
+        "PASS",
+        "grados() y cursos().length sin 1–5 ni 11 fijos",
+      );
+    },
+  );
+
+  // 71. H68: no se promete firma digital sobre MD5.
+  await prueba(
+    71,
+    "H68: la UI y el PDF hablan de hash de integridad, no de firma digital",
+    async () => {
+      const leer = (rutaRelativa) =>
+        fs.readFileSync(path.join(RAIZ_REPO, rutaRelativa), "utf8");
+
+      const actaPdf = leer(
+        "siga-uc-backend/src/services/actaPdfService.js",
+      );
+      assert.ok(
+        actaPdf.includes("HASH DE INTEGRIDAD"),
+        "El PDF del acta no rotula el hash de integridad",
+      );
+      assert.ok(
+        !/firmado digitalmente/i.test(actaPdf),
+        "El PDF sigue diciendo 'Firmado digitalmente'",
+      );
+
+      const cajaHtml = leer(
+        "siga-uc-frontend/src/app/features/secretaria/caja/secretaria-caja.component.html",
+      );
+      assert.ok(cajaHtml.includes("Cerrar caja"));
+      assert.ok(!/firmar y cerrar/i.test(cajaHtml));
+
+      const auditoriaHtml = leer(
+        "siga-uc-frontend/src/app/features/admin/auditoria/admin-auditoria.component.html",
+      );
+      assert.ok(/hash de integridad/i.test(auditoriaHtml));
+      assert.ok(!/firma digital/i.test(auditoriaHtml));
+
+      registrar(
+        71,
+        "H68: la UI y el PDF hablan de hash de integridad, no de firma digital",
+        "PASS",
+        "hash de integridad / cierre; sin firma digital",
+      );
+    },
+  );
+
+  // 72. H69/H70: textos de demo, lang y placeholders eliminados.
+  await prueba(
+    72,
+    "H69: textos de demo, lang y placeholders eliminados",
+    async () => {
+      const raizFrontend = path.join(RAIZ_REPO, "siga-uc-frontend", "src");
+      const recorrer = (directorio) =>
+        fs.readdirSync(directorio, { withFileTypes: true }).flatMap((entrada) => {
+          const ruta = path.join(directorio, entrada.name);
+          return entrada.isDirectory() ? recorrer(ruta) : [ruta];
+        });
+
+      const archivos = recorrer(raizFrontend).filter((archivo) =>
+        /\.(ts|html|scss|json)$/i.test(archivo),
+      );
+      assert.ok(archivos.length > 50, "No se pudieron leer los archivos del frontend");
+
+      const prohibidos = [
+        "Facturación",
+        "(Decorativo)",
+        'lang="en"',
+        "SigaUcFrontend",
+        "en desarrollo",
+        "Docente de Área",
+        "11 cursos",
+        "Firmar y Cerrar",
+        "Firmado digitalmente",
+      ];
+
+      for (const archivo of archivos) {
+        const texto = fs.readFileSync(archivo, "utf8");
+        for (const prohibido of prohibidos) {
+          assert.ok(
+            !texto.includes(prohibido),
+            `${path.relative(RAIZ_REPO, archivo)} todavía contiene "${prohibido}"`,
+          );
+        }
+      }
+
+      const indexHtml = fs.readFileSync(
+        path.join(raizFrontend, "index.html"),
+        "utf8",
+      );
+      assert.ok(indexHtml.includes('lang="es"'));
+      assert.ok(indexHtml.includes("SIGA-UC"));
+      assert.ok(indexHtml.includes("I.E.P. Unión Científica"));
+
+      const rutas = fs.readFileSync(
+        path.join(raizFrontend, "app", "app.routes.ts"),
+        "utf8",
+      );
+      assert.ok(!rutas.includes("en-construccion"));
+
+      const loginHtml = fs.readFileSync(
+        path.join(
+          raizFrontend,
+          "app",
+          "features",
+          "auth",
+          "login",
+          "login.component.html",
+        ),
+        "utf8",
+      );
+      assert.ok(/Modo prueba de correo/i.test(loginHtml));
+
+      registrar(
+        72,
+        "H69: textos de demo, lang y placeholders eliminados",
+        "PASS",
+        `${archivos.length} archivos sin textos prohibidos; lang=es y modo prueba`,
       );
     },
   );
