@@ -845,5 +845,7 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | **H71** | ⏳ Pendiente | Requiere migración/backfill de retirados históricos y autorización con backup; no se toca Supabase en esta fase |
 
 **Verificación Fase 7:** E2E **72 PASS**, integridad **20 PASS** en base nueva (18/2 de seed
-local), smoke **11 PASS**, H47 **4 PASS**, build Angular y `node --check` OK. H59 se aplicó
-solo en la base local; Supabase queda pendiente de autorización.
+local), smoke **11 PASS**, H47 **4 PASS**, build Angular y `node --check` OK. Código
+desplegado en Render (`8eba9e9`). H59 se aplicó solo en la base local; Supabase queda
+pendiente de autorización y, sin la migración, el cese con observación responde
+`503 H59_NO_APLICADO` (el listado sigue funcionando con `observaciones: null`).

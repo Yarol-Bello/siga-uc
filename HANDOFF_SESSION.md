@@ -4,6 +4,13 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
+> **Actualización 22/11/2026 (Fase 7 desplegada):** pulido de demo con H62 (DOCENTE ya no
+> envía notificaciones), H59 (observaciones de cese; migración pendiente en Supabase), H65
+> (docentes vs. personal activo), H66 (panel de cobranza y expedientes), H67 (grados/cursos
+> desde la API), H68 (hash de integridad, no firma digital) y H69 (textos, `lang="es"` y
+> títulos por ruta). Código `8eba9e9`; frontend de Render ya sirve los textos nuevos.
+> `test:e2e` **72 PASS**, integridad **20 PASS** en base nueva. Ver sección 1.6.
+>
 > **Actualización 22/11/2026 (Fase 6.4 desplegada):** histórico por año con selector en
 > reportes, padrón y tesorería; modo de solo lectura en años no activos; consolidado por
 > DNI/`id_usuario` con notas, asistencia, pagos, deuda y promoción; pantalla ADMIN
@@ -11,9 +18,10 @@
 > históricos. **Sin migración y sin cambios en Supabase.** `test:e2e` **65 PASS**, integridad
 > **20 PASS** en base nueva. Desplegada en Render (`cdc129e`). Ver sección 1.5.
 >
-> **Próximo bloque:** Fase 7 implementada en local: H62, H59, H65, H66, H67, H68 y H69.
-> **H59 requiere aplicar la migración en Supabase antes de desplegar el código**; no se tocó
-> Supabase. `test:e2e` **72 PASS**. Ver sección 1.6.
+> **Próximo bloque:** aplicar **H59** en Supabase con backup y autorización para habilitar
+> las observaciones de cese en el demo; sin la migración, el cese con observación responde
+> `503 H59_NO_APLICADO`. No iniciar Fase 8 ni tocar 2027. `test:e2e` **72 PASS**. Ver
+> sección 1.6.
 >
 > **Actualización 22/11/2026 (Fases 6.3 y 6.3.1 desplegadas):** promoción anual con
 > política configurable, preview por alumno y hash, confirmación transaccional e idempotente,
@@ -337,7 +345,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Estado:** implementado, verificado y **desplegado en Render** (`cdc129e`); **sin
   migración** y sin cambios en Supabase.
 
-### 1.6 Fase 7 — Pulido de credibilidad, datos y seguridad (22/11/2026)
+### 1.6 Fase 7 — Pulido de credibilidad, datos y seguridad (22/11/2026, desplegada)
 
 - **H62:** `POST /api/notificaciones` quedó para ADMIN/SECRETARIA; DOCENTE recibe 403.
   `/masivo` sigue solo ADMIN. No hay UI de envío para docente.
@@ -367,7 +375,10 @@ En esta fase **no** se prepara el despliegue definitivo.
   en base nueva y **18/2** de seed local; smoke **11 PASS**; H47 **4 PASS**; build Angular y
   `node --check` OK.
 - **Commits de 7:** `c5f974e` (H62), `520cb7e` (H59), `184a543` (H65-H69), `c097b15`
-  (tests) y el cierre de documentación.
+  (tests), `882da76` (docs) y `8eba9e9` (compatibilidad H59 sin migración).
+- **Estado:** código desplegado en Render (`8eba9e9`); el frontend ya sirve `lang="es"` y el
+  título del colegio. **H59 sigue pendiente en Supabase**: aplicar con backup y autorización
+  antes de registrar observaciones de cese en el demo.
 
 ---
 
