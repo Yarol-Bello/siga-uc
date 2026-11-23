@@ -345,7 +345,8 @@ En esta fase **no** se prepara el despliegue definitivo.
   `personal.observaciones text` (idempotente). El cese la guarda, `GET /personal` la
   devuelve y la ficha del cesado la muestra; la reactivación limpia fecha, motivo y
   observación. El apoderado con correo y sin nombres sigue respondiendo 400.
-  **Aplicada en local; no en Supabase.**
+  **Aplicada en local; no en Supabase.** Sin la migración, el listado devuelve
+  `observaciones: null` y un cese con observación responde `503 H59_NO_APLICADO`.
 - **H65:** `GET /reportes/dashboard` agrega `total_docentes` (rol 2 activo con ficha sin
   cese) y conserva `total_personal` (todo el personal sin cese). La UI rotula “Estudiantes
   matriculados”, “Plana Docente” y “Personal activo”; Secretaría usa “Pagos del Mes”.

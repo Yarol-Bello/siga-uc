@@ -286,7 +286,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   `total_personal` en el dashboard. No tocar `/en-construccion`: fue eliminado.
 - **H59:** cese con `observaciones` (texto opcional) las persiste y la ficha las muestra;
   la reactivación limpia fecha, motivo y observación. El apoderado con correo pero sin
-  nombres responde 400. La columna no cambia el conteo de tablas (43).
+  nombres responde 400. La columna no cambia el conteo de tablas (43). Sin la migración,
+  `GET /personal` sigue funcionando y un cese con observación responde
+  `503 H59_NO_APLICADO`; no se pierde el texto en silencio.
 - **H70 parcial:** queda `nodemailer` en `package.json` sin uso y variables SMTP en
   `config/env.js`; el log de login ya no imprime el objeto usuario y el arranque dice
   “Resend configurado”. **H71 pendiente** (backfill de retirados históricos).

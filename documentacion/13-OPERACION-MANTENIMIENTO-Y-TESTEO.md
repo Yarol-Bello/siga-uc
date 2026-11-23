@@ -241,6 +241,9 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
 - En Supabase demo **no se aplicó** en esta fase; requiere autorización y backup.
 - El cese guarda la observación y la reactivación la limpia. La ficha del trabajador cesado
   muestra fecha, motivo y observación.
+- Si la columna todavía no existe, `GET /personal` sigue funcionando (devuelve
+  `observaciones: null`); un cese **con** observación responde
+  `503 H59_NO_APLICADO` para no perder el texto. Un cese sin observación funciona normal.
 
 ---
 

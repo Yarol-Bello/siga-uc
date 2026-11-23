@@ -330,7 +330,8 @@ Si no se envía contraseña: `UC2026*`. Genera QR según rol.
 
 **Cese body:** `{ motivo_cese, fecha_cese?, observaciones? }`. `observaciones` se guarda en
 `personal.observaciones` (máximo 1000 caracteres) y se devuelve en
-`GET /personal` y `GET /personal/:id`.
+`GET /personal` y `GET /personal/:id`. Si H59 no está aplicada y se envía una observación,
+responde `503 H59_NO_APLICADO`; un cese sin observación sigue funcionando.
 
 > Orden de rutas: `/roles` está antes de `/:id`, evitando colisión.
 > `GET /personal` y `GET /personal/:id` incluyen `codigo_qr` y `tipo_credencial` desde

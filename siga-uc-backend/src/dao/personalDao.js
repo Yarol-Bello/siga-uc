@@ -44,7 +44,7 @@ const listar = async (filtros = {}) => {
       p.fecha_ingreso,
       p.fecha_cese,
       p.motivo_cese,
-      p.observaciones,
+      to_jsonb(p)->>'observaciones' AS observaciones,
       u.id_usuario,
       u.dni,
       u.nombres,
@@ -253,6 +253,23 @@ const actualizar = async (id_personal, data) => {
 };
 
 /**
+ * Comprueba si H59 está aplicada. Permite desplegar el código sin romper
+ * `GET /personal` en bases que todavía no tienen la columna; el cese con
+ * observación responde 503 en lugar de perder el texto.
+ */
+const existeColumnaObservaciones = async (client) => {
+  const result = await client.query(
+    `SELECT 1
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'personal'
+       AND column_name = 'observaciones'
+     LIMIT 1`,
+  );
+  return result.rows.length > 0;
+};
+
+/**
  * Registrar cese de personal
  */
 const cesar = async (id_personal, data) => {
@@ -260,20 +277,38 @@ const cesar = async (id_personal, data) => {
   try {
     await client.query("BEGIN");
 
+    const tieneObservaciones = await existeColumnaObservaciones(client);
+    const observaciones =
+      data.observaciones ? String(data.observaciones).trim() : null;
+
+    if (observaciones && !tieneObservaciones) {
+      const error = new Error(
+        "La base de datos no tiene aplicada H59; no se puede guardar la observación del cese.",
+      );
+      error.statusCode = 503;
+      error.details = { codigo: "H59_NO_APLICADO" };
+      throw error;
+    }
+
+    const columnas = tieneObservaciones
+      ? "fecha_cese = $1, motivo_cese = $2, observaciones = $3"
+      : "fecha_cese = $1, motivo_cese = $2";
+    const parametros = tieneObservaciones
+      ? [
+          data.fecha_cese || new Date(),
+          data.motivo_cese,
+          observaciones,
+          id_personal,
+        ]
+      : [data.fecha_cese || new Date(), data.motivo_cese, id_personal];
+
     await client.query(
       `
       UPDATE personal SET
-        fecha_cese = $1,
-        motivo_cese = $2,
-        observaciones = $3
-      WHERE id_personal = $4
+        ${columnas}
+      WHERE id_personal = $${parametros.length}
     `,
-      [
-        data.fecha_cese || new Date(),
-        data.motivo_cese,
-        data.observaciones ? String(data.observaciones).trim() : null,
-        id_personal,
-      ],
+      parametros,
     );
 
     await client.query(
@@ -306,10 +341,20 @@ const reactivar = async (id_personal) => {
     [id_personal],
   );
 
+  const columna = await query(
+    `SELECT 1
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'personal'
+       AND column_name = 'observaciones'
+     LIMIT 1`,
+  );
+  const limpiaObservaciones =
+    columna.rows.length > 0 ? ", observaciones = NULL" : "";
+
   await query(
     `
-    UPDATE personal SET fecha_cese = NULL, motivo_cese = NULL,
-      observaciones = NULL
+    UPDATE personal SET fecha_cese = NULL, motivo_cese = NULL${limpiaObservaciones}
     WHERE id_personal = $1
   `,
     [id_personal],
