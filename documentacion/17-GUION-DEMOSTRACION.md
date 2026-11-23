@@ -233,6 +233,23 @@ previsualización.”
 **Mensaje:** “El sistema recomienda, pero la decisión es humana. La promoción crea la
 matrícula del año siguiente; activar el año es una acción separada de la Fase 6.2.”
 
+### Paso 7e — Histórico por estudiante (2 min)
+
+1. En **ADMIN** → **Histórico por Estudiante**, buscar el DNI de un alumno con más de un año
+   (en local/E2E; en Supabase demo puede no haber dos años del mismo alumno).
+2. Mostrar la tarjeta de identidad y la tabla de una fila por año: grado, estado, promoción,
+   notas AD/A/B/C, % de asistencia, pagado, deuda y pensiones.
+3. Abrir **Libreta** del año: navega a Reportes con `?anio=&dni=&grado=` y abre el modal.
+   Abrir **Asistencia**: modal con la asistencia de ese año.
+4. Volver al padrón y cambiar el selector a un año anterior: aparece el badge **Histórico**
+   y desaparecen **Nueva matrícula**, editar, retirar y reset. En Tesorería ocurre lo mismo
+   con Cobrar/Generar pensiones.
+5. Recalcar que la identidad se agrupa por DNI/`id_usuario` y que los pagos y notas de un año
+   no se suman con los de otro.
+
+**Mensaje:** “El sistema conserva la trayectoria completa del estudiante sin mezclar
+matrículas anuales. Los años cerrados se consultan, pero no se editan.”
+
 ### Paso 8 — Notificación interna (2 min)
 
 1. En **ADMIN** → dashboard → **Nueva Notificación**.
@@ -277,9 +294,13 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
       aplicadas (44 en local si existe `horarios_h47_backup`).
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
 - [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
-- [ ] `npm run test:e2e` local: **58 PASS, 0 FAIL** (exit 0).
+- [ ] `npm run test:e2e` local: **65 PASS, 0 FAIL** (exit 0).
 - [ ] `npm run test:integridad` revisado; **20 PASS** en base nueva y los FAIL de seed
       local explicados.
+- [ ] Selector de año visible en Reportes, Padrón y Tesorería; un año no activo muestra
+      **Histórico** y oculta las escrituras.
+- [ ] `/admin/historico` responde por DNI y los enlaces abren libreta/asistencia/tesorería
+      con `?anio=`.
 
 ### Datos de demo
 

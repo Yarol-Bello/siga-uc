@@ -34,9 +34,9 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | Suites manuales (`smoke`, integridad, E2E); sin CI ni Docker |
 
-**Conteos actuales:** 43 tablas base (44 en local con `horarios_h47_backup`) · 127 endpoints ·
+**Conteos actuales:** 43 tablas base (44 en local con `horarios_h47_backup`) · 128 endpoints ·
 4 roles · 17 routers · 17 controladores · 26 servicios · 22 DAOs · 92 archivos JS backend ·
-146 archivos frontend (61 TS).
+150 archivos frontend (63 TS).
 
 ---
 
@@ -182,6 +182,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Tesorería | `tesoreriaRoutes/...` | `secretaria/tesoreria` (wrapper admin) |
 | Caja | `cajaRoutes/...` | `secretaria/caja` (wrapper admin) |
 | Reportes | `reporteRoutes/...` | `admin/reportes`, `docente/reportes` |
+| Histórico | `reporteRoutes` (`/consolidado/:dni`), `alumnoDao.validarMatriculaAnual` | `admin/historico` |
+| Años lectivos (lectura) | `anioLectivoRoutes` (`GET` ADMIN/SECRETARIA) | selector `shared/components/selector-anio` |
 | Auditoría | `auditoriaRoutes/...` | `admin/auditoria` |
 | SIAGIE | `siagieRoutes/...` | `admin/siagie` |
 | Notificaciones | `notificacionRoutes/...` | header + `core/services/notificacion.service` |
@@ -203,11 +205,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - El **año activo** se lee de `anios_lectivos.estado='ACTIVO'` al arrancar; `ANIO_LECTIVO`
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
-- **6.1, 6.2, 6.3 y 6.3.1 están desplegadas en Render** (código `89eba24`).
-  **H49 y H73 están aplicadas en Supabase demo**: 43 tablas, 2026 ACTIVO, 1 política,
-  0 promociones, 0 actas, 145 horarios y 5 docentes. `/admin/anios-lectivos` y
-  `/admin/promociones` ya no responden 503. 2027 no está activo. El rollback H49 es solo
-  para bases desechables.
+- **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas**; 6.1–6.3.1 desplegadas en Render
+  (código `89eba24`). **H49 y H73 están aplicadas en Supabase demo**: 43 tablas, 2026
+  ACTIVO, 1 política, 0 promociones, 0 actas, 145 horarios y 5 docentes.
+  `/admin/anios-lectivos` y `/admin/promociones` ya no responden 503. 2027 no está activo.
+  El rollback H49 es solo para bases desechables.
 - **6.2 no agrega migración**: opera sobre H49 desde `/admin/anios-lectivos`. Si la tabla
   `anios_lectivos` no existe, los endpoints responden `503 H49_NO_APLICADO`, no 500.
 - El rollover clona solo **grados, conceptos, períodos, carga y tutores**. No crea alumnos,
@@ -257,7 +259,22 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - La pantalla ADMIN es `/admin/promociones`; SECRETARIA puede listar/previsualizar por API,
   pero no confirmar ni anular. DOCENTE/ESTUDIANTE reciben 403.
 - Estado 6.3/6.3.1: implementado, verificado y **desplegado en Render**; H73 aplicada en
-  Supabase demo. 58 E2E, 20 integridad, 2026 activo, 0 promociones y 2027 no se activa.
+  Supabase demo. 20 integridad, 2026 activo, 0 promociones y 2027 no se activa.
+- **6.4 no agrega migración** y no requiere tocar Supabase. `GET /api/anios-lectivos` es
+  legible por ADMIN y SECRETARIA; preview, rollover, activación y reversión siguen siendo
+  solo ADMIN. El selector de año usa `anio-lectivo.service.ts`; no duplicar el catálogo.
+- **6.4 — matrícula anual en endpoints históricos:** asistencia y calificaciones validan el
+  `id_alumno` contra el año (`alumnoDao.validarMatriculaAnual`). Un `id_alumno` de otro año
+  responde `404 MATRICULA_NO_ENCONTRADA_EN_ANIO`; no una lista vacía.
+- **6.4 — consolidado:** `GET /api/reportes/consolidado/:dni` (ADMIN/SECRETARIA) devuelve
+  una fila por año agrupada por `id_usuario`/DNI. No sumar notas, pagos ni pensiones por
+  `id_alumno` entre años.
+- **6.4 — UI:** año no activo = badge **Histórico** y solo lectura en padrón y tesorería
+  (se ocultan nueva matrícula, editar, retirar, reset, cobrar y generar pensiones).
+  `/admin/historico` enlaza a libreta/asistencia/tesorería con `?anio`.
+- Estado 6.4: implementado y verificado en local/E2E; **65 E2E**, 20 integridad en base nueva
+  (18/2 de seed local), smoke 11, H47 4 y build Angular OK. Desplegable en Render sin
+  migración.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y
@@ -285,7 +302,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
 - Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (20) y
-  `npm run test:e2e` (58, base desechable); el resto del testeo es manual.
+  `npm run test:e2e` (65, base desechable); el resto del testeo es manual.
 
 ---
 
@@ -297,7 +314,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 43 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 127 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 128 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |

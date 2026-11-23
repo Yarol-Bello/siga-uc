@@ -1,9 +1,10 @@
 # 19 — Diseño multi-año y promoción de alumnos
 
-> **Estado:** diseño. **Fases 6.1 (multi-año base), 6.2 (rollover anual) y 6.3/6.3.1
-> (promoción) implementadas, probadas y documentadas.** El histórico (6.4) sigue pendiente.
-> Este documento conserva el diseño original; lo implementado se contrasta con el código real
-> (`siga-uc-backend`, `siga-uc-frontend`) y con `documentacion/05`, `12` y `13`.
+> **Estado:** diseño. **Fases 6.1 (multi-año base), 6.2 (rollover anual), 6.3/6.3.1
+> (promoción) y 6.4 (histórico) implementadas, probadas y documentadas.** El histórico no
+> agrega migración. Este documento conserva el diseño original; lo implementado se contrasta
+> con el código real (`siga-uc-backend`, `siga-uc-frontend`) y con `documentacion/05`, `12` y
+> `13`.
 >
 > **Alcance:** diseñar la convivencia de varios años lectivos y la promoción anual de
 > alumnos en SIGA-UC. **No** se codifica la norma peruana de promoción: los criterios
@@ -823,6 +824,25 @@ reportes, derivarlo de `promociones` o de la ausencia de matrícula activa.
 - Si se necesita una foto histórica del apoderado o varios apoderados por alumno, se
   requiere una tabla puente/historial adicional (fuera de esta fase).
 
+### 6.6 Estado de la Fase 6.4 (histórico)
+
+Implementada el 22/11/2026 sin migración ni cambios en Supabase.
+
+- `GET /api/anios-lectivos` es legible por ADMIN y SECRETARIA; las escrituras siguen siendo
+  solo ADMIN.
+- Helper `alumnoDao.validarMatriculaAnual(id_alumno, anio)`: los endpoints históricos de
+  asistencia y calificaciones responden `404 MATRICULA_NO_ENCONTRADA_EN_ANIO` si el
+  `id_alumno` no pertenece al año; no devuelven una lista vacía.
+- `GET /api/reportes/consolidado/:dni` (ADMIN/SECRETARIA) devuelve una fila por año agrupada
+  por `id_usuario`/DNI: grado, sección, estado, resultado de promoción, notas AD/A/B/C,
+  % de asistencia, total pagado, deuda pendiente y pensiones.
+- UI: selector de año en `admin/reportes`, `admin/alumnos`, `secretaria/padron` y
+  `secretaria/tesoreria`; badge **Histórico** y escrituras ocultas en años no activos.
+  Pantalla ADMIN `/admin/historico` con búsqueda por DNI y enlaces con `?anio` a libreta,
+  asistencia y tesorería. El catálogo se reutiliza de `anio-lectivo.service.ts`.
+- Verificación: `test:e2e` **65 PASS**, integridad **20 PASS** en base nueva (18/2 de seed
+  local), smoke **11 PASS**, H47 **4 PASS**, build Angular y `node --check` OK.
+
 ---
 
 ## 7. Plan de pruebas
@@ -943,9 +963,9 @@ Cada pregunta incluye una recomendación, pero **ninguna se implementa sin confi
 3. **Autenticación multi-año** y perfil por año. ✅ 6.1.
 4. **Rollover** con preview/confirmación y activación de año. ✅ 6.2.
 5. **Promoción** con preview, confirmación transaccional y auditoría. ✅ 6.3 en local.
-6. **Histórico** en reportes/libretas y ajustes de UI. ⏳ 6.4.
-7. **Pruebas de regresión** y despliegue controlado. ✅ 58 E2E / 20 integridad; 6.3 aún no
-   desplegada ni aplicada en Supabase.
+6. **Histórico** en reportes/libretas y ajustes de UI. ✅ 6.4 (sin migración).
+7. **Pruebas de regresión** y despliegue controlado. ✅ 65 E2E / 20 integridad; 6.4 lista
+   para desplegar en Render. 6.3/6.3.1 ya desplegadas.
 
 ---
 
@@ -1060,3 +1080,10 @@ resolverMatricula(id_usuario,anio) -> fila anual o null
 Ningún DAO debe repetir `LEFT JOIN alumnos ... LIMIT 1` sin año. Toda consulta que reciba
 `id_alumno` desde la URL debe validar que ese `id_alumno` pertenece al año solicitado
 cuando el endpoint sea histórico.
+
+**Estado 6.4:** el helper existe como `alumnoDao.validarMatriculaAnual(id_alumno, anio)` y
+se usa en asistencia y calificaciones. El consolidado por DNI está en
+`GET /api/reportes/consolidado/:dni` y agrupa por `id_usuario`; no suma años por
+`id_alumno`. Los elementos 1–3, 7–8, 17–19 y 24–28 del inventario quedaron cubiertos por
+H49/6.1; 31–38 por los filtros de año de tesorería; 40 queda en el año activo (la ficha
+docente no tiene selector histórico).

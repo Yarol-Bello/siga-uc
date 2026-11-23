@@ -209,15 +209,35 @@ creada por el rollover.
 > es una advertencia, no una exclusión automática. `copiar_becas` forma parte del
 > `preview_hash`: cambiarlo obliga a re-previsualizar.
 
+### 3.7 Consulta de años históricos (Fase 6.4)
+
+Los años no activos se consultan en **modo lectura**. No requieren migración ni cambios en
+Supabase: usan las tablas H49/H73 ya aplicadas.
+
+1. En **Reportes y Libretas**, **Padrón de Alumnos** o **Tesorería**, elegir el año en el
+   selector. El valor por defecto es el año activo (`ConfiguracionService`).
+2. Si el año no es el activo, aparece el badge **Histórico** y se ocultan las escrituras:
+   nueva matrícula, editar, retirar, reset de contraseña, cobrar y generar pensiones.
+3. Las libretas, el PDF, la asistencia y las consultas siguen disponibles con `?anio=`.
+4. Para ver la trayectoria completa de una persona, abrir **ADMIN → Histórico por
+   Estudiante**, ingresar el DNI y revisar una fila por año. Los enlaces abren la libreta, la
+   asistencia o la tesorería del año elegido con `?anio=`.
+5. Regla de identidad: `usuarios.dni` es global; `alumnos` es matrícula anual. No sumar
+   notas, pagos ni pensiones por `id_alumno` entre años: agrupar por `id_usuario`/DNI.
+6. Si un endpoint histórico recibe un `id_alumno` de otro año, responde `404`
+   `MATRICULA_NO_ENCONTRADA_EN_ANIO`; no devuelve una lista vacía.
+7. `GET /api/anios-lectivos` es legible por ADMIN y SECRETARIA. Las escrituras de años
+   (preview, rollover, activar, revertir) siguen siendo solo ADMIN.
+
 ---
 
 ## 4. Testeo
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(20 invariantes de datos, solo lectura) y **E2E** (58 flujos sobre una base desechable,
-incluidos los de multi-año H49, rollover 6.2 y promociones 6.3). El resto de la estrategia
-sigue siendo manual y por rol.
+(20 invariantes de datos, solo lectura) y **E2E** (65 flujos sobre una base desechable,
+incluidos los de multi-año H49, rollover 6.2, promociones 6.3 y el histórico 6.4). El resto
+de la estrategia sigue siendo manual y por rol.
 
 ### 4.1 Preparación
 
@@ -316,6 +336,7 @@ sirve para diagnósticos parciales.
 - [ ] Caja: aperturar, egreso, cerrar, ver diferencia.
 - [ ] SIAGIE: ver auditoría, notificar docente, subir plantilla, descargar.
 - [ ] Reportes: libreta, mérito, riesgo.
+- [ ] Histórico: selector de año, badge Histórico, consolidado por DNI y enlaces con `?anio`.
 - [ ] Auditoría: bitácora, filtros, detalle.
 - [ ] Auditoría: cerrar acta.
 
@@ -323,7 +344,8 @@ sirve para diagnósticos parciales.
 
 - [ ] Dashboard financiero.
 - [ ] Padrón (mismo que Admin).
-- [ ] Tesorería: cobrar pensión/matrícula.
+- [ ] Selector de año: un año no activo muestra Histórico y oculta editar/retirar.
+- [ ] Tesorería: cobrar pensión/matrícula en el año activo; en histórico no permite cobrar.
 - [ ] Caja: aperturar, egreso, cierre.
 - [ ] QR: marcar personal.
 - [ ] Verificar que no accede por UI a Personal/Carga/SIAGIE/Reportes.
@@ -424,7 +446,7 @@ npm run test:e2e
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
   (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`), arranca el backend en
-  `http://localhost:3101` y ejecuta **58 flujos**: alta/retiro de alumno, matrícula, pensión,
+  `http://localhost:3101` y ejecuta **65 flujos**: alta/retiro de alumno, matrícula, pensión,
   doble pago, anulación, doble anulación, calificaciones, guardado masivo, PDFs, RBAC,
   auditoría, cierre/reapertura real de actas, bloqueo global, caja con efectivo/Yape (con y
   sin anulación), PDF de acta ADMIN-only, multi-año (43 tablas, uniques por año, apoderado
@@ -432,12 +454,15 @@ npm run test:e2e
   login con año activo 2027 y pre-tickets/pendientes sin mezclar años), rollover 6.2
   (preview sin escrituras, confirm idempotente, oferta distinta, docente inactivo/sobrecarga,
   hash desactualizado, activación con caché y auditoría, activación sin oferta, reversión con
-  y sin actividad, RBAC del módulo y rollback forzado sin filas parciales) y promociones
+  y sin actividad, RBAC del módulo y rollback forzado sin filas parciales), promociones
   6.3/6.3.1 (política por defecto, preview, confirm normal, egresado, repitente,
   retirado/traslado, bloqueo por actas/notas y override, asistencia bajo umbral, doble
   confirmación, anulación sin/con actividad, reintento con reversa, rollback forzado,
   QR/código/pre-ticket, RBAC, auditoría, histórico, notas multibimestre, egresado/repitente
-  estrictos, `copiar_becas` en el hash y rechazo de PENDIENTE).
+  estrictos, `copiar_becas` en el hash y rechazo de PENDIENTE) e histórico 6.4
+  (listados y DNI sin mezclar años, libreta/asistencia/pensiones por año, `404`
+  `MATRICULA_NO_ENCONTRADA_EN_ANIO` en 5 endpoints, consolidado por `id_usuario` con notas,
+  asistencia, pagos y deuda, RBAC ADMIN/SECRETARIA y contrato de UI del selector).
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -445,7 +470,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **58 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **65 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -574,7 +599,7 @@ WHERE m.id_movimiento IS NULL;
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
 | ~~Integridad de datos~~ ✅ | 20 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 58 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~E2E de flujos críticos~~ ✅ | 65 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

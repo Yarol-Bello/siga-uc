@@ -78,8 +78,16 @@ Ruta solicitada
 
 #### Listado
 1. `GET /api/alumnos?anio=2026` (opcional `id_grado`, `estado_matricula`, `search`).
-2. Tabla con DNI, nombre, grado, estado, apoderado y acciones.
-3. Filtros: grado, estado, texto; botón limpiar.
+2. Selector de año (6.4): por defecto el año activo; el catálogo viene de
+   `GET /api/anios-lectivos` (ADMIN/SECRETARIA).
+3. Tabla con DNI, nombre, grado, estado, apoderado y acciones.
+4. Filtros: grado, estado, texto; botón limpiar.
+
+#### Modo histórico (6.4)
+Si el año elegido no es el activo, la pantalla muestra el badge **Histórico** y un aviso de
+solo lectura: se ocultan **Nueva matrícula**, editar, retirar y restablecer contraseña.
+El listado, la ficha y la búsqueda siguen disponibles. Los grados del filtro se cargan del
+año elegido (no hay IDs fijos 1–5).
 
 #### Ver ficha
 1. Clic en “Ver”.
@@ -229,9 +237,14 @@ Tres pestañas:
 
 | Pestaña | Llamada | Resultado |
 |---|---|---|
-| Libretas | `GET /api/alumnos?id_grado=&anio=2026` | Lista de alumnos; “Ver libreta” → `GET /api/reportes/libreta/:id?bimestre=` |
-| Cuadro de mérito | `GET /api/reportes/cuadro-merito/:id_grado?bimestre=` | Top 10, medallas, promedio ponderado |
-| Alumnos en riesgo | `GET /api/reportes/alumnos-riesgo/:id_grado?bimestre=` | Alumnos con ≥2 cursos en C y tutor |
+| Libretas | `GET /api/alumnos?id_grado=&anio=<año>` | Lista de alumnos; “Ver libreta” → `GET /api/reportes/libreta/:id?bimestre=&anio=` |
+| Cuadro de mérito | `GET /api/reportes/cuadro-merito/:id_grado?bimestre=&anio=` | Top 10, medallas, promedio ponderado |
+| Alumnos en riesgo | `GET /api/reportes/alumnos-riesgo/:id_grado?bimestre=&anio=` | Alumnos con ≥2 cursos en C y tutor |
+
+Selector de año (6.4): por defecto el activo; los años no activos muestran el badge
+**Histórico**. Las libretas y el PDF usan el año elegido. Los deep links
+`/admin/reportes?anio=&dni=&grado=&bimestre=` preseleccionan grado/año y abren la libreta
+del DNI.
 
 La libreta muestra alumno, tutor, notas por curso, conclusión y asistencia; se imprime con el
 navegador (no genera PDF).
@@ -252,6 +265,19 @@ navegador (no genera PDF).
   pantalla propia; el header solo lee).
 - Envío masivo existe en API, pero **no tiene UI**.
 
+### 1.12 Histórico por estudiante (`/admin/historico`, 6.4)
+
+1. Input de DNI (8 dígitos) y `GET /api/reportes/consolidado/:dni` (ADMIN/SECRETARIA).
+2. La identidad se agrupa por `id_usuario`/DNI, no por `id_alumno` anual.
+3. Muestra una fila por año con grado/sección, estado de matrícula, resultado de promoción,
+   notas AD/A/B/C, % de asistencia, total pagado, deuda pendiente y pensiones pagadas/total.
+4. Totales por persona: años, pagado, deuda, notas y pensiones (suma de las filas anuales).
+5. Acciones por año:
+   - **Libreta**: `/admin/reportes?anio=&dni=&grado=&bimestre=4` (abre el modal).
+   - **Asistencia**: modal con `GET /api/asistencias/alumno/:id_alumno?anio=`.
+   - **Tesorería**: `/admin/tesoreria?anio=&dni=` (filtra el padrón de ese año).
+6. Los años no activos aparecen con etiqueta **Histórico**; la pantalla es solo lectura.
+
 ---
 
 ## 2. SECRETARIA
@@ -268,29 +294,34 @@ navegador (no genera PDF).
 ### 2.2 Padrón de alumnos (`/secretaria/padron`)
 
 Wrapper de `AdminAlumnosComponent`. Puede listar, matricular, editar, retirar y resetear
-contraseña, igual que Admin.
+contraseña, igual que Admin. Incluye el selector de año (6.4); si elige un año no activo, la
+pantalla pasa a **solo lectura** y oculta las escrituras.
 
 ### 2.3 Tesorería y pensiones (`/secretaria/tesoreria`)
 
-1. `GET /api/alumnos?anio=2026`.
-2. Para **cada alumno**, `GET /api/tesoreria/pensiones/alumno/:id` (N+1 peticiones en
-   paralelo). Calcula estado general:
+1. `GET /api/alumnos?anio=<año>`; el selector de año (6.4) usa el catálogo de
+   `GET /api/anios-lectivos` (SECRETARIA puede leerlo).
+2. Para **cada alumno**, `GET /api/tesoreria/pensiones/alumno/:id?anio=<año>` (N+1
+   peticiones en paralelo). Calcula estado general:
    - Sin pensiones → “Sin datos”.
    - 0 pendientes → “Al Día”.
    - ≥3 pendientes → “Moroso”.
    - Otros → “Con Deuda”.
-3. `GET /api/tesoreria/pre-tickets?estado=PENDIENTE`.
+3. `GET /api/tesoreria/pre-tickets?estado=PENDIENTE&anio=<año>`.
 4. Tabla con meses Ene–Dic, estado por mes y acciones.
-5. **Cobrar pensión/matrícula:**
+5. Si el año no es el activo, la pantalla muestra el badge **Histórico** y oculta
+   **Cobrar** y **Generar pensiones**; el padrón, los meses y los pre-tickets quedan en
+   solo lectura.
+6. **Cobrar pensión/matrícula:**
    - Abre modal con concepto, monto (250 por defecto), forma de pago y número de operación
      (obligatorio).
    - Mapea concepto a ID **hardcodeado**:
      `Matrícula Escolar 2026 → 1`, `Pensión Octubre → 9`, `Noviembre → 10`, `Diciembre → 11`.
    - Busca `id_pension` del mes en la lista del alumno.
    - `POST /api/tesoreria/pagos`.
-6. Backend crea pago + boleta, actualiza pensión/pre-ticket, y si es matrícula pasa al alumno
+7. Backend crea pago + boleta, actualiza pensión/pre-ticket, y si es matrícula pasa al alumno
    a `Matriculado`.
-7. Alerta con número de boleta y recarga todo.
+8. Alerta con número de boleta y recarga todo.
 
 **Limitaciones visibles:**
 - Solo ofrece Oct/Nov/Dic en el modal de cobro (aunque el backend soporta cualquier mes).

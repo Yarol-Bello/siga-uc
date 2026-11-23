@@ -39,6 +39,9 @@ index.html
 | `admin/caja` | `AdminCajaComponent` (wrapper) | hereda | Admin |
 | `admin/siagie` | `AdminSiagieComponent` | hereda | Admin |
 | `admin/reportes` | `AdminReportesComponent` | hereda | Admin |
+| `admin/historico` | `AdminHistoricoComponent` | hereda | Admin |
+| `admin/anios-lectivos` | `AdminAniosLectivosComponent` | hereda | Admin |
+| `admin/promociones` | `AdminPromocionesComponent` | hereda | Admin |
 | `admin/auditoria` | `AdminAuditoriaComponent` | hereda | Admin |
 | `docente` | `DocenteLayoutComponent` | `authGuard`, `roleGuard(['DOCENTE'])` | Docente |
 | `docente/horario` | `DocenteHorarioComponent` | hereda | Docente |
@@ -196,6 +199,9 @@ Cada layout contiene:
 | Cuadre de Caja | `/admin/caja` |
 | Exportación SIAGIE | `/admin/siagie` |
 | Reportes y Libretas | `/admin/reportes` |
+| Histórico por Estudiante | `/admin/historico` |
+| Años Lectivos y Rollover | `/admin/anios-lectivos` |
+| Promoción de Alumnos | `/admin/promociones` |
 | Auditoría y Actas | `/admin/auditoria` |
 
 #### DOCENTE
@@ -231,6 +237,25 @@ Cada layout contiene:
 > El sidebar ADMIN declara `roles` en cada ítem, pero no filtra en el template; el acceso real
 > lo impone la ruta. Secretaría usa su propio sidebar.
 
+### Selector de año y modo histórico (6.4)
+
+Componente compartido `shared/components/selector-anio`:
+
+- Recibe `anios`, `anioActivo`, `anio` y emite `anioChange`.
+- El valor por defecto es `ConfiguracionService.anioLectivo()` (año activo).
+- El catálogo se reutiliza de `AnioLectivoService` (`asegurarCargado()`), que llama a
+  `GET /api/anios-lectivos`. No se duplica la lista de años.
+- Si el año elegido no es el activo, muestra el badge **Histórico**.
+
+Pantallas con selector: `admin/reportes` (libretas, mérito y riesgo), `admin/alumnos` y su
+wrapper `secretaria/padron`, y `secretaria/tesoreria`. En padrón y tesorería, un año no
+activo oculta las escrituras (nueva matrícula, editar, retirar, reset, cobrar, generar
+pensiones) y deja las consultas en solo lectura. La ficha docente conserva el año activo.
+
+`admin/historico` busca por DNI en `GET /reportes/consolidado/:dni`, muestra una fila por año
+y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia (modal con
+`?anio=`) y tesorería (`/admin/tesoreria?anio=&dni=`).
+
 ## 6. Matriz componente → endpoints
 
 | Componente | Endpoints consumidos |
@@ -240,12 +265,13 @@ Cada layout contiene:
 | `CambiarPasswordComponent` | `PUT /auth/cambiar-password` |
 | `HeaderComponent` | `GET /notificaciones/no-leidas`, `GET /notificaciones`, `PUT /:id/leer`, `PUT /leer-todas`, `GET /auth/perfil`; el carné propio usa QR real y se imprime aislado (H58) |
 | `DashboardComponent` | `GET /reportes/dashboard`, `GET /grados`, `GET /personal/roles`, `GET /alumnos?search=&limit=10&solo_activos=1`, `POST /notificaciones/masivo` |
-| `AdminAlumnosComponent` | `GET /alumnos?page=&pageSize=`, `GET /grados`, `POST /alumnos`, `PUT /alumnos/:id`, `PUT /alumnos/:id/retirar`, `PUT /auth/reset-password` |
+| `AdminAlumnosComponent` | `GET /alumnos?page=&pageSize=&anio=`, `GET /grados?anio=`, `GET /anios-lectivos` (selector 6.4), `POST /alumnos`, `PUT /alumnos/:id`, `PUT /alumnos/:id/retirar`, `PUT /auth/reset-password`; en año no activo oculta las escrituras |
+| `AdminHistoricoComponent` | `GET /reportes/consolidado/:dni`, `GET /asistencias/alumno/:id?anio=` (modal); enlaces con `?anio` a libreta y tesorería |
 | `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar`, `PUT /:id/reactivar`, `PUT /:id/reset-password`; el carné genera un QR real con `codigo_qr` (H55) y la impresión aísla la credencial (H58) |
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
 | `AdminSiagieComponent` | `GET /grados`, `GET /reportes/auditoria-docentes/:id`, `POST /siagie/generar-excel`, `GET /personal/:id`, `POST /notificaciones` |
-| `AdminReportesComponent` | `GET /grados`, `GET /alumnos`, `GET /reportes/cuadro-merito/:id`, `/alumnos-riesgo/:id`, `/libreta/:id`, `/libreta/:id/pdf`; selector de bimestre 1-4 también en libretas (H51); mérito/riesgo se imprimen con vista aislada y libreta descarga PDF de backend (H58) |
+| `AdminReportesComponent` | `GET /grados?anio=`, `GET /alumnos?anio=`, `GET /anios-lectivos` (selector 6.4), `GET /reportes/cuadro-merito/:id?bimestre=&anio=`, `/alumnos-riesgo/:id?bimestre=&anio=`, `/libreta/:id?bimestre=&anio=`, `/libreta/:id/pdf?bimestre=&anio=`; selector de bimestre 1-4 también en libretas (H51); deep link `?anio=&dni=&grado=&bimestre=` abre la libreta; mérito/riesgo se imprimen con vista aislada y libreta descarga PDF de backend (H58) |
 | `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `POST /actas/:id/reabrir`, `GET /actas/:id/pdf`; tarjeta de cierre, badge global, modal de reapertura (H48) |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id`; botones Asistencia/Notas navegan con `id_curso` e `id_grado` (H53) |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53) |
@@ -278,7 +304,7 @@ Cada layout contiene:
 > pendientes y no aparecen en el selector de cobro (solo se ofrecen `PENDIENTE`). El
 > modal de retiro de Admin → Alumnos avisa que se anularán las pensiones y pre-tickets
 > pendientes de meses posteriores al retiro, manteniendo la pensión del mes de retiro.
-| `SecretariaTesoreriaComponent` | `GET /alumnos`, `GET /tesoreria/pensiones/alumno/:id` (N+1), `GET /tesoreria/pre-tickets`, `POST /tesoreria/pagos`, `POST /tesoreria/pensiones/alumno/:id/generar`; abre el cobro si recibe `id_preticket`/`id_alumno` (H54) |
+| `SecretariaTesoreriaComponent` | `GET /alumnos?anio=`, `GET /anios-lectivos` (selector 6.4), `GET /tesoreria/pensiones/alumno/:id?anio=` (N+1), `GET /tesoreria/pre-tickets?anio=`, `GET /tesoreria/conceptos?anio=`, `POST /tesoreria/pagos`, `POST /tesoreria/pensiones/alumno/:id/generar`; abre el cobro si recibe `id_preticket`/`id_alumno` (H54); acepta `?anio=&dni=` desde el histórico y en año no activo oculta cobrar/generar |
 | `SecretariaCajaComponent` | `GET /caja/actual`, `GET /caja/movimientos/:id`, `POST /caja/aperturar`, `POST /caja/egresos`, `POST /caja/cerrar`, `GET /tesoreria/boletas/:id/pdf`; boletas descargan PDF de backend y el reporte de cierre se imprime aislado (H58) |
 
 ## 7. Patrones de implementación

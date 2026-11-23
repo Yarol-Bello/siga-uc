@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto SIAGIE, que usa `multipart/form-data` y responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **127 endpoints** - 68 GET, 37 POST, 17 PUT, 5 DELETE.
+**Total verificado:** **128 endpoints** - 69 GET, 37 POST, 17 PUT, 5 DELETE.
 
 ---
 
@@ -76,9 +76,10 @@ Error:
 | GET | `/api/health` | Público | Health check (`app`, `version`, `environment`, `timestamp`) |
 | GET | `/api/configuracion` | Público | Año lectivo activo (`anio_lectivo`): `anios_lectivos.estado='ACTIVO'` o, si falta, `ANIO_LECTIVO` |
 
-### 2.1 Años lectivos y rollover — `/api/anios-lectivos` (5, solo ADMIN)
+### 2.1 Años lectivos y rollover — `/api/anios-lectivos` (5; lectura ADMIN/SECRETARIA, escritura ADMIN)
 
-Todos exigen `verificarAutenticacion` + `verificarRol("ADMIN")`. Si la base no tiene
+Todos exigen `verificarAutenticacion`. El `GET` acepta ADMIN y SECRETARIA (selector de año
+e históricos); las escrituras exigen `verificarRol("ADMIN")`. Si la base no tiene
 aplicada H49, responden **503** con `errors.codigo = "H49_NO_APLICADO"` (no un 500).
 
 | Método | Ruta | Cuerpo | Descripción |
@@ -501,7 +502,7 @@ alumno no existe y `400` si no está `Matriculado`. Audita `CREAR` en `Tesorerí
 
 ---
 
-## 12. Reportes — `/api/reportes` (7)
+## 12. Reportes — `/api/reportes` (8)
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
@@ -512,6 +513,7 @@ alumno no existe y `400` si no está `Matriculado`. Audita `CREAR` en `Tesorerí
 | 81 | GET | `/api/reportes/libreta/:id_alumno?bimestre=&anio=` | Autenticado | Libreta completa |
 | 82 | GET | `/api/reportes/auditoria-docentes/:id_grado?bimestre=&anio=` | ADMIN | Avance de notas por docente |
 | 83 | GET | `/api/reportes/libreta/:id_alumno/pdf?bimestre=&anio=` | ADMIN/DOCENTE/ESTUDIANTE (propio) | PDF de libreta (`application/pdf`, attachment) |
+| 84 | GET | `/api/reportes/consolidado/:dni` | ADMIN/SECRETARIA | Consolidado histórico por estudiante: una fila por año, agrupada por `id_usuario`/DNI (notas AD/A/B/C, asistencia, pagos, deuda y promoción) |
 
 **Dashboard data:** `total_alumnos`, `total_personal`, `recaudacion_anual`,
 `pre_tickets_pendientes`, `monto_pendiente`, `total_retirados`, `total_grados`, `total_cursos`.
@@ -531,19 +533,35 @@ calificaciones, reportes y horarios) nunca mezclan años.
 **Libreta PDF:** `GET /api/reportes/libreta/:id_alumno/pdf` devuelve `application/pdf` con
 `Content-Disposition: attachment`. Generado con PDFKit; sin Chromium.
 
+**Consolidado histórico (6.4):** `GET /api/reportes/consolidado/:dni` acepta ADMIN y
+SECRETARIA. Devuelve `{ usuario: { id_usuario, dni, nombre_completo }, anios: [...], totales }`.
+Cada fila incluye `anio`, `id_alumno`, `id_grado`, grado/sección, `estado_matricula`,
+`resultado_promocion`, conteos `notas_ad/a/b/c`, `porcentaje_asistencia`, `total_pagado`,
+`deuda_pendiente` (pensiones `PENDIENTE`), `total_pensiones` y `pensiones_pagadas`. La
+identidad se agrupa por `id_usuario`/DNI y **no** se suma por `id_alumno`; las notas,
+asistencia, pagos y pensiones se calculan por la matrícula anual. Un DNI inexistente responde
+`404 ESTUDIANTE_NO_ENCONTRADO`.
+
+**Validación de matrícula anual:** los endpoints históricos de asistencia y calificaciones
+(`/asistencias/alumno/:id_alumno`, `/asistencias/alumno/:id_alumno/resumen`,
+`/calificaciones/alumno/:id_alumno/curso/:id_curso` y
+`/calificaciones/notas-finales/alumno/:id_alumno`) validan que el `id_alumno` pertenezca al
+año solicitado. Si es de otro año responden `404` con
+`errors.codigo = "MATRICULA_NO_ENCONTRADA_EN_ANIO"` (nunca una lista vacía).
+
 ---
 
 ## 13. Auditoría — `/api/auditoria` (8)
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 84 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=&page=&pageSize=` | ADMIN | Bitácora; `page` activa paginación (default 1, máx. 100); sin `page` máx. 200 |
-| 85 | GET | `/api/auditoria/modulos` | ADMIN | Módulos distintos |
-| 86 | GET | `/api/auditoria/estadisticas` | ADMIN | Totales por acción |
-| 87 | GET | `/api/auditoria/actas` | ADMIN | Actas bimestrales |
-| 88 | GET | `/api/auditoria/actas/:id_acta/pdf` | ADMIN | PDF de acta con matriz real de notas (H63) |
-| 89 | GET | `/api/auditoria/:id` | ADMIN | Detalle de registro |
-| 90 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra o crea un acta con hash (H48) |
+| 85 | GET | `/api/auditoria?modulo=&accion=&id_usuario=&desde=&hasta=&search=&page=&pageSize=` | ADMIN | Bitácora; `page` activa paginación (default 1, máx. 100); sin `page` máx. 200 |
+| 86 | GET | `/api/auditoria/modulos` | ADMIN | Módulos distintos |
+| 87 | GET | `/api/auditoria/estadisticas` | ADMIN | Totales por acción |
+| 88 | GET | `/api/auditoria/actas` | ADMIN | Actas bimestrales |
+| 89 | GET | `/api/auditoria/actas/:id_acta/pdf` | ADMIN | PDF de acta con matriz real de notas (H63) |
+| 90 | GET | `/api/auditoria/:id` | ADMIN | Detalle de registro |
+| 91 | POST | `/api/auditoria/actas/cerrar` | ADMIN | Cierra o crea un acta con hash (H48) |
 | 90b | POST | `/api/auditoria/actas/:id/reabrir` | ADMIN | Reabre un acta CERRADA con motivo (H48) |
 
 > El `COUNT(*)` de la bitácora usa los mismos filtros del listado (`módulo`, `acción`,
@@ -575,7 +593,7 @@ Mensaje: **"Acta reabierta correctamente"**.
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 91 | POST | `/api/siagie/generar-excel` | ADMIN | Inyecta notas en plantilla y descarga |
+| 92 | POST | `/api/siagie/generar-excel` | ADMIN | Inyecta notas en plantilla y descarga |
 
 `multipart/form-data`:
 - `plantilla`: `.xlsx`/`.xls`, máx. 10 MB.
@@ -596,14 +614,14 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
-| 92 | GET | `/api/notificaciones?leido=` | Autenticado | Mis notificaciones |
-| 93 | GET | `/api/notificaciones/no-leidas` | Autenticado | Contador para campanita |
-| 94 | GET | `/api/notificaciones/:id` | Autenticado | Detalle propio |
-| 95 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
-| 96 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
-| 97 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
-| 98 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
-| 99 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, PERSONAL, ROL, GRADO o ALUMNO |
+| 93 | GET | `/api/notificaciones?leido=` | Autenticado | Mis notificaciones |
+| 94 | GET | `/api/notificaciones/no-leidas` | Autenticado | Contador para campanita |
+| 95 | GET | `/api/notificaciones/:id` | Autenticado | Detalle propio |
+| 96 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
+| 97 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
+| 98 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
+| 99 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
+| 100 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, PERSONAL, ROL, GRADO o ALUMNO |
 
 **Crear body:** `{ id_usuario_destino, asunto, cuerpo }`.
 
@@ -663,25 +681,26 @@ contraseñas.
 | Calificaciones | 6 |
 | Tesorería | 13 |
 | Caja | 9 |
-| Reportes | 7 |
+| Reportes | 8 |
 | Auditoría | 8 |
 | SIAGIE | 1 |
 | Notificaciones | 8 |
-| **Total** | **127** |
+| **Total** | **128** |
 
 | Verbo | Cantidad |
 |---|---|
-| GET | 68 |
+| GET | 69 |
 | POST | 37 |
 | PUT | 17 |
 | DELETE | 5 |
 
 Acceso: el detalle exacto está en la columna **Acceso** de cada tabla. Con H47 se retiró
 el endpoint abierto `/api/horarios/grado/:id_grado` y se agregaron 12 endpoints de horarios.
-Con 6.2 se agregaron 5 de años lectivos y con 6.3, 8 de promociones.
+Con 6.2 se agregaron 5 de años lectivos, con 6.3, 8 de promociones, y con 6.4, el
+consolidado histórico por DNI.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo vigente es 127 (68 GET, 37 POST, 17 PUT, 5 DELETE).
+> El conteo vigente es 128 (69 GET, 37 POST, 17 PUT, 5 DELETE).
 
 ---
 
