@@ -244,7 +244,7 @@ Es un **wrapper** de `SecretariaCajaComponent`; el flujo es idéntico al de Secr
 > Requiere que existan `notas_finales_area` para que el archivo traiga notas. Si los
 > docentes solo registraron calificaciones por competencia y nadie ejecutó el cálculo de
 > nota final, el Excel sale con celdas de nota vacías (sin inventar datos). Ver
-> `15-HALLAZGOS`.
+> `AGENTS.md` (trampas conocidas).
 
 ### 1.9 Reportes y libretas (`/admin/reportes`)
 

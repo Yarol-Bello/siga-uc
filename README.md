@@ -23,20 +23,20 @@ Digitaliza procesos académicos y administrativos: matrículas, notas por compet
 ## Estructura del proyecto
 
 siga-uc/
-├── database/            # siga_uc_completo.sql (instalación) y migraciones
-├── docs/                # Documentación
-│   ├── INSTALACION.md
-│   ├── GUIA_TESTEO.md
-│   └── CREDENCIALES.md
+├── database/            # esquema, seed de producción, migraciones y dump demo
+├── documentacion/       # documentación técnica vigente (01–21)
+├── docs/                # credenciales y mapeo histórico
 ├── siga-uc-backend/     # API REST (Node + Express)
 ├── siga-uc-frontend/    # SPA (Angular)
+├── AGENTS.md            # resumen operativo para asistentes
+├── HANDOFF_SESSION.md   # estado actual y próxima sesión
 └── README.md
 
 ---
 
 ## Instalación
 
-Ver docs/INSTALACION.md para la guía paso a paso.
+Ver `documentacion/12-CONFIGURACION-INSTALACION-DESPLIEGUE.md` para la guía paso a paso.
 
 Resumen rápido:
 
@@ -60,20 +60,15 @@ Abrir: http://localhost:4200
 
 ## Credenciales de prueba
 
-Ver docs/CREDENCIALES.md.
-
-| Rol | DNI | Contraseña |
-|-----|-----|-----------|
-| Administrador | 74829102 | UC2026* |
-| Secretaría | 40596837 | UC2026* |
-| Docente | 20394812 | UC2026* |
-| Estudiante | 75918234 | UC75918234 |
+Ver `docs/CREDENCIALES.md`. Las contraseñas no se documentan en este README.
+La demo UAT usa las cuentas descritas en `HANDOFF_SESSION.md`.
 
 ---
 
 ## Testeo
 
-Ver docs/GUIA_TESTEO.md para el checklist completo por rol.
+Ver `documentacion/13-OPERACION-MANTENIMIENTO-Y-TESTEO.md` para las suites y el checklist.
+Resumen: smoke 12, integridad 36, E2E 102, setup 5 y `uat:verify` 22.
 
 ---
 

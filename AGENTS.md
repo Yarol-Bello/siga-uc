@@ -421,9 +421,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Instalación y despliegue | `documentacion/12-CONFIGURACION-INSTALACION-DESPLIEGUE.md` |
 | Operación, backup, testeo | `documentacion/13-OPERACION-MANTENIMIENTO-Y-TESTEO.md` |
 | Trazabilidad UI→BD | `documentacion/14-MATRIZ-TRAZABILIDAD.md` |
-| Hallazgos y roadmap | `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` |
+| Estado actual y prompt de la próxima sesión | `HANDOFF_SESSION.md` (raíz) |
 | Guion de demo y checklist | `documentacion/17-GUION-DEMOSTRACION.md` |
-| Auditoría de producción 22/11/2026 | `documentacion/18-AUDITORIA-PRODUCCION-2026-11-22.md` |
 | Diseño multi-año y promoción | `documentacion/19-DISENO-MULTIANIO-Y-PROMOCION.md` |
 | Módulo de configuración (diseño y fases) | `documentacion/20-MODULO-CONFIGURACION.md` |
 | Conclusiones descriptivas y control interno SIAGIE | `documentacion/21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md` |

@@ -309,7 +309,8 @@ algoritmo y permitir verificación; bloquear escrituras si el acta está cerrada
 | R14 | Función SQL vs DAO | Baja | Media | Inconsistencia |
 | R15 | QR no validado | Baja | Media | Suplantación de asistencia |
 
-El detalle y las recomendaciones están en `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`.
+El detalle y las recomendaciones se consolidaron en `AGENTS.md` (trampas conocidas) y
+`HANDOFF_SESSION.md`.
 
 ---
 

@@ -50,11 +50,9 @@ desactualizado** (habla de SMTP; el código usa Resend).
 
 ### 2.2 Variables heredadas (SMTP)
 
-`env.js` todavía exporta `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
-`SMTP_PASSWORD`, `SMTP_FROM_NAME`, pero `emailService.js` **no las usa**. Usa Resend.
+`env.js` ya no usa SMTP; `emailService.js` usa Resend.
 
-> Si ves `SMTP` en `.env.example`, `docs/INSTALACION.md` o `README.md`, es documentación
-> histórica. El servicio real es Resend.
+> El servicio real es Resend. No hay SMTP/Nodemailer en el código actual.
 
 ### 2.3 Ejemplo actualizado
 

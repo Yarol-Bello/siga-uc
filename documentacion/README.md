@@ -34,10 +34,7 @@
 | Instalar, configurar o desplegar | `12-CONFIGURACION-INSTALACION-DESPLIEGUE.md` |
 | Operar, respaldar y probar el sistema | `13-OPERACION-MANTENIMIENTO-Y-TESTEO.md` |
 | Rastrear un caso de uso hasta las tablas | `14-MATRIZ-TRAZABILIDAD.md` |
-| Ver hallazgos, riesgos y mejoras priorizadas | `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` |
-| Consultar el `AGENTS.md` anterior (histórico) | `16-ANEXO-AGENTS-ANTERIOR.md` |
 | Preparar la demo y el checklist de aprobación | `17-GUION-DEMOSTRACION.md` |
-| Auditar la producción del 22/11/2026 | `18-AUDITORIA-PRODUCCION-2026-11-22.md` |
 | Entender el diseño multi-año y promoción | `19-DISENO-MULTIANIO-Y-PROMOCION.md` |
 | Diseñar el módulo de configuración y ajustes | `20-MODULO-CONFIGURACION.md` |
 | Implementar conclusiones descriptivas y código de control SIAGIE | `21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md` |
@@ -74,7 +71,8 @@
 2. **El correo real es `correo_personal`**; el institucional es decorativo. Todo envío usa
    `correo_personal || correo_institucional`.
 3. **Muchos GET solo exigen JWT, no rol ni pertenencia**. La UI oculta módulos, pero la API
-   permite lectura amplia. Ver `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md`.
+   permite lectura amplia. Revisar `AGENTS.md` (trampas conocidas) y
+   `11-SEGURIDAD-AUDITORIA-E-INTEGRIDAD.md`.
 4. **La documentación histórica está desactualizada** en varios puntos: decía 26 tablas, 17
    servicios, 16 DAOs, 14 controladores y Nodemailer/SMTP. El estado real está en estos
    documentos y en el código.
@@ -87,14 +85,13 @@
 
 ## 4. Documentos previos que siguen vigentes
 
-La carpeta `docs/` de la raíz conserva documentación operativa:
+La carpeta `docs/` de la raíz conserva documentación operativa acotada:
 
-- `docs/INSTALACION.md` — instalación local (tiene datos desactualizados de SMTP y “26 tablas”).
-- `docs/GUIA_TESTEO.md` — checklist manual por rol.
-- `docs/CREDENCIALES.md` — credenciales de prueba.
+- `docs/CREDENCIALES.md` — credenciales de prueba y demo UAT.
 - `docs/MAPEO_ENDPOINTS.txt` — mapeo previo de endpoints (histórico; el conteo vigente es 168).
 
-Este conjunto nuevo (`documentacion/`) amplía y corrige ese material.
+La instalación, operación y pruebas están en `documentacion/12` y `documentacion/13`.
+El estado actual y el prompt de la próxima sesión están en `HANDOFF_SESSION.md` (raíz).
 
 ---
 

@@ -150,7 +150,7 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 > **Brecha crítica:** las filas “consultar” de alumnos, personal, calificaciones, tesorería,
 > caja y auditoría son accesibles para **cualquier usuario autenticado**. La UI oculta el
 > módulo, pero un estudiante con token puede consultar datos de otros alumnos, pagos y
-> bitácora llamando la API. Ver `15-HALLAZGOS`.
+> bitácora llamando la API. Ver `AGENTS.md` (trampas conocidas).
 
 ## 5. Matriz de navegación (UI)
 

@@ -64,7 +64,8 @@ Error:
 | **ADMIN/DOCENTE/ESTUDIANTE** | Cualquiera autenticado; la UI restringe |
 
 > **Importante:** “Autenticado” no significa “solo sus datos”. Salvo notificaciones y
-> libretas, la mayoría de GET no valida pertenencia. Ver `15-HALLAZGOS`.
+> libretas, la mayoría de GET no valida pertenencia. Ver `AGENTS.md` (trampas conocidas) y
+> `11-SEGURIDAD-AUDITORIA-E-INTEGRIDAD.md`.
 
 ---
 
