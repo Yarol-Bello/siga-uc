@@ -14,6 +14,7 @@
     "test:setup": "node scripts/test-setup.js",
     "uat:seed": "node scripts/uat-seed.js",
     "uat:verify": "node scripts/uat-verify.js",
+    "demo:reset": "node scripts/demo-reset.js",
     "test:h47-generador": "node scripts/test-h47-generador.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

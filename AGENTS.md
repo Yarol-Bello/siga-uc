@@ -386,7 +386,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   Las notas usan perfiles por alumno: puntajes de mérito 11–39 (4 valores distintos por
   grado) y **28 de 75 alumnos con al menos una C**. Este seed corrige el aspecto artificial
   del seed v1 (todos los pagos el mismo día y todos los alumnos empatados). **Supabase demo
-  sigue con el seed v1** hasta ejecutar el refresh con credenciales.
+  sigue con el seed v1** hasta ejecutar el refresh con credenciales. Para refrescar:
+  `CONFIRM_DEMO_RESET=1 npm run demo:reset` y luego `npm run uat:seed` (requiere
+  `UAT_DATABASE_URL`, `UAT_BASE_URL` y `UAT_ADMIN_PASSWORD`).
 - **Zona horaria (demo v2):** el pooler de Supabase ignora `options`, así que
   `database.js` ejecuta `SET TIME ZONE 'America/Lima'` en cada conexión nueva y
   `/api/health` expone `zona_horaria` y `commit`. En Supabase conviene además

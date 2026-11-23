@@ -218,7 +218,15 @@ Health: `GET http://localhost:3000/api/health`.
 1. **Aprobación de la demo** por la dirección del colegio.
 2. **Refrescar Supabase demo al seed v2** (pendiente de credenciales): la base sigue con
    113 pagos, 38 pensiones pagadas y 10 exoneradas. El seed v2 está validado en local
-   (`siga_uc_h81`): 432 pagos, 357 pagadas, 386 pendientes, 7 exoneradas y S/ 95,625.
+   (`siga_uc_h81` y `siga_uc_reset_test`): 432/423 pagos, 357/347 pagadas, 386 pendientes,
+   7 exoneradas y S/ 95,625. Para refrescar:
+   ```powershell
+   $env:UAT_DATABASE_URL="postgresql://..."; $env:CONFIRM_DEMO_RESET="1"
+   npm run demo:reset
+   $env:UAT_BASE_URL="https://siga-uc-api-prod.onrender.com/api"
+   $env:UAT_ADMIN_PASSWORD="<clave real del admin>"
+   npm run uat:seed
+   ```
    En el mismo paso aplicar `database/migracion_h81_rendimiento_paginacion.sql` y limpiar
    las 4 aperturas/cierres de la verificación UAT. Sin la `DATABASE_URL`/contraseña actual
    no se puede ejecutar el refresh.
@@ -254,6 +262,7 @@ Health: `GET http://localhost:3000/api/health`.
 - `database/demo_h80_conclusiones.sql` — solo demo.
 - `siga-uc-backend/src/config/database.js` — zona horaria, pool y health.
 - `siga-uc-backend/scripts/uat-seed.js` y `uat-verify.js`.
+- `siga-uc-backend/scripts/demo-reset.js` — limpieza demo previa al seed.
 - `siga-uc-backend/scripts/smoke.js` — health, RBAC y desfase horario.
 - `siga-uc-backend/src/dao/tesoreriaDao.js` — `listarPadronPensiones`.
 - `siga-uc-backend/src/dao/personalDao.js` — `listarPaginado`.
@@ -292,9 +301,10 @@ ESTADO
 ÚNICO PENDIENTE
 Refrescar los datos de Supabase al seed v2, aplicar
 database/migracion_h81_rendimiento_paginacion.sql, normalizar los timestamps viejos
-(+5 h) y limpiar las 4 aperturas/cierres de la verificación UAT. Para eso necesitas la
-DATABASE_URL actual de Supabase (session pooler, puerto 5432) o una contraseña temporal
-del ADMIN. Si no tienes credenciales, pídelas y detente; no modifiques datos a ciegas.
+(+5 h) y limpiar las 4 aperturas/cierres de la verificación UAT. El flujo ya está
+probado en local: `CONFIRM_DEMO_RESET=1 npm run demo:reset` y luego `npm run uat:seed`
+(requiere UAT_DATABASE_URL, UAT_BASE_URL y UAT_ADMIN_PASSWORD). Si no tienes la
+DATABASE_URL o la contraseña del ADMIN, pídelas y detente; no modifiques datos a ciegas.
 
 REGLAS
 - No activar 2027 ni confirmar promociones.

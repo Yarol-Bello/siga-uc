@@ -108,6 +108,7 @@ caja, bitácora ni becas.
 | `siga_uc_completo.sql` | **Solo desarrollo/demo**: esquema + datos ficticios + funciones/índices. No usar en producción. |
 | `siga_uc.sql` | **Esquema base** (40 tablas, sin datos); H49/H73/H74/H76/H78 lo llevan a 48. Primer paso de una instalación de producción. |
 | `seed_produccion.sql` | **Catálogos y configuración** para producción + admin inicial. Requiere `-v anio_lectivo=YYYY -v admin_password=...`. |
+| `demo_reset_seed_v2.sql` | **Solo demo**: limpia alumnos, pagos, pensiones, notas y usuarios ESTUDIANTE para volver a ejecutar `npm run uat:seed`. Conserva catálogos, configuración, personal y carga. |
 | `migracion_*.sql` | Parches **idempotentes** para bases existentes. Se aplican en orden después del esquema o de la migración anterior. |
 | `migracion_h32_anulacion_pagos.sql` | Añade campos de anulación en `pagos` y `ANULADO` en `boletas_electronicas`. |
 | `migracion_h10_h38_concurrencia_pagos.sql` | Crea `UNIQUE (serie, numero)` y `ux_pago_pension_activo` si no hay duplicados; avisa y omite el índice si los hay. |
