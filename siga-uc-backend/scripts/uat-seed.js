@@ -458,7 +458,7 @@ async function abrirCaja() {
       body: {
         id_caja: 1,
         monto_inicial: 1000,
-        observaciones: "Apertura UAT con datos simulados",
+        observaciones: "Apertura de caja para la demo",
       },
     },
     "Aperturar caja",
@@ -517,41 +517,114 @@ async function generarPensiones(alumnos) {
   }
 }
 
+const MES_TOPE_PAGOS =
+  new Date().getFullYear() === ANIO
+    ? Math.min(11, new Date().getMonth() + 1)
+    : 11;
+
+/**
+ * Perfil de pago por estudiante. Usa el mismo módulo que las notas para que
+ * los alumnos con mejores resultados también sean los más puntuales.
+ */
+const mesesPagadosPorPerfil = (idAlumno) => {
+  const perfil = idAlumno % 10;
+  if (perfil === 0) return 9; // marzo a noviembre
+  if (perfil === 1) return 8; // marzo a octubre
+  if (perfil <= 5) return 5; // marzo a julio
+  if (perfil <= 8) return 3; // marzo a mayo
+  return 1; // marzo
+};
+
 async function pagarPensiones(alumnos) {
   let pagadas = 0;
-  for (let i = 0; i < alumnos.length; i += 1) {
-    if (i % 2 !== 0) continue;
-    const alumno = alumnos[i];
+  for (const alumno of alumnos) {
+    const limite = mesesPagadosPorPerfil(alumno.id_alumno);
     const pensiones = await sql(
-      `SELECT id_pension, id_concepto, monto_final
+      `SELECT id_pension, id_concepto, monto_final, mes
        FROM pensiones
        WHERE id_alumno = $1 AND anio_lectivo = $2
-         AND estado = 'PENDIENTE'
-       ORDER BY mes LIMIT 1`,
-      [alumno.id_alumno, ANIO],
+         AND estado = 'PENDIENTE' AND mes <= $3
+       ORDER BY mes LIMIT $4`,
+      [alumno.id_alumno, ANIO, MES_TOPE_PAGOS, limite],
     );
-    if (!pensiones[0]) continue;
-    const pension = pensiones[0];
-    const formaPago = pagadas % 7 === 0 ? "Yape" : "Efectivo";
-    await apiOk(
-      "/tesoreria/pagos",
-      {
-        method: "POST",
-        body: {
-          id_alumno: alumno.id_alumno,
-          id_concepto: pension.id_concepto,
-          id_pension: pension.id_pension,
-          monto: Number(pension.monto_final),
-          forma_pago: formaPago,
-          nro_operacion:
-            formaPago === "Yape" ? `YAPE-UAT-${String(pagadas + 1).padStart(4, "0")}` : undefined,
+
+    for (const pension of pensiones) {
+      const formaPago =
+        pagadas % 17 === 0
+          ? "BCP"
+          : pagadas % 9 === 0
+            ? "Yape"
+            : "Efectivo";
+      const referencia =
+        formaPago === "BCP"
+          ? `TRF-UAT-${String(pagadas + 1).padStart(4, "0")}`
+          : formaPago === "Yape"
+            ? `YAPE-UAT-${String(pagadas + 1).padStart(4, "0")}`
+            : undefined;
+
+      await apiOk(
+        "/tesoreria/pagos",
+        {
+          method: "POST",
+          body: {
+            id_alumno: alumno.id_alumno,
+            id_concepto: pension.id_concepto,
+            id_pension: pension.id_pension,
+            monto: Number(pension.monto_final),
+            forma_pago: formaPago,
+            nro_operacion: referencia,
+          },
         },
-      },
-      `Pago pensión ${alumno.dni}`,
-    );
-    resumen.pagos += 1;
-    pagadas += 1;
+        `Pago pensión ${alumno.dni} mes ${pension.mes}`,
+      );
+      resumen.pagos += 1;
+      pagadas += 1;
+    }
   }
+}
+
+/**
+ * Distribuye las fechas de pago en el año escolar. El seed crea los pagos con
+ * NOW(); para la demo se reescriben a la fecha del concepto (matrícula en
+ * marzo, pensión en su mes) y se sincronizan boleta, pre-ticket y movimiento
+ * de caja. Es solo para datos de demostración.
+ */
+async function ajustarFechasPago() {
+  await sql(
+    `UPDATE pagos p
+     SET fecha_pago = make_date($1, m.mes, 5 + (p.id_alumno % 10))
+     FROM pensiones m
+     WHERE m.id_pension = p.id_pension`,
+    [ANIO],
+  );
+
+  await sql(
+    `UPDATE pagos p
+     SET fecha_pago = make_date($1, 3, 1 + (p.id_alumno % 15))
+     WHERE p.id_pension IS NULL AND p.id_preticket IS NOT NULL`,
+    [ANIO],
+  );
+
+  await sql(
+    `UPDATE boletas_electronicas b
+     SET fecha_emision = p.fecha_pago
+     FROM pagos p
+     WHERE p.id_pago = b.id_pago`,
+  );
+
+  await sql(
+    `UPDATE movimientos_caja mc
+     SET fecha_hora = p.fecha_pago
+     FROM pagos p
+     WHERE p.id_pago = mc.id_pago`,
+  );
+
+  await sql(
+    `UPDATE pre_tickets pt
+     SET fecha_pago = p.fecha_pago
+     FROM pagos p
+     WHERE p.id_preticket = pt.id_preticket`,
+  );
 }
 
 async function crearNotasYAsistencia() {
@@ -562,7 +635,15 @@ async function crearNotasYAsistencia() {
      )
      SELECT a.id_alumno, cc.id_curso, comp.id_competencia, cc.id_personal,
             a.id_grado, b.bimestre, $1,
-            (ARRAY['AD','A','B','C'])[1 + ((a.id_alumno + comp.id_competencia + b.bimestre) % 4)]
+            CASE
+              WHEN (a.id_alumno % 10) IN (0, 1) THEN
+                (ARRAY['AD','A'])[1 + ((comp.id_competencia + b.bimestre) % 2)]
+              WHEN (a.id_alumno % 10) IN (2, 3, 4, 5) THEN
+                (ARRAY['A','B'])[1 + ((comp.id_competencia + b.bimestre) % 2)]
+              WHEN (a.id_alumno % 10) IN (6, 7, 8) THEN
+                (ARRAY['B','C'])[1 + ((comp.id_competencia + b.bimestre) % 2)]
+              ELSE 'C'
+            END
      FROM alumnos a
      JOIN carga_curricular cc
        ON cc.id_grado = a.id_grado AND cc.anio_lectivo = a.anio_lectivo
@@ -582,7 +663,15 @@ async function crearNotasYAsistencia() {
        id_alumno, id_curso, bimestre, anio_lectivo, nota_final, calculo_automatico
      )
      SELECT a.id_alumno, cc.id_curso, b.bimestre, $1,
-            (ARRAY['AD','A','B','C'])[1 + ((a.id_alumno + cc.id_curso + b.bimestre) % 4)],
+            CASE
+              WHEN (a.id_alumno % 10) IN (0, 1) THEN
+                (ARRAY['AD','A'])[1 + ((cc.id_curso + b.bimestre) % 2)]
+              WHEN (a.id_alumno % 10) IN (2, 3, 4, 5) THEN
+                (ARRAY['A','B'])[1 + ((cc.id_curso + b.bimestre) % 2)]
+              WHEN (a.id_alumno % 10) IN (6, 7, 8) THEN
+                (ARRAY['B','C'])[1 + ((cc.id_curso + b.bimestre) % 2)]
+              ELSE 'C'
+            END,
             FALSE
      FROM alumnos a
      JOIN carga_curricular cc
@@ -597,7 +686,15 @@ async function crearNotasYAsistencia() {
   await sql(
     `WITH base AS (
        SELECT a.id_alumno, cc.id_curso, cc.id_personal, b.bimestre,
-              (ARRAY['AD','A','B','C'])[1 + ((a.id_alumno + cc.id_curso + b.bimestre) % 4)] AS nivel
+              CASE
+                WHEN (a.id_alumno % 10) IN (0, 1) THEN
+                  (ARRAY['AD','A'])[1 + ((cc.id_curso + b.bimestre) % 2)]
+                WHEN (a.id_alumno % 10) IN (2, 3, 4, 5) THEN
+                  (ARRAY['A','B'])[1 + ((cc.id_curso + b.bimestre) % 2)]
+                WHEN (a.id_alumno % 10) IN (6, 7, 8) THEN
+                  (ARRAY['B','C'])[1 + ((cc.id_curso + b.bimestre) % 2)]
+                ELSE 'C'
+              END AS nivel
        FROM alumnos a
        JOIN carga_curricular cc
          ON cc.id_grado = a.id_grado AND cc.anio_lectivo = a.anio_lectivo
@@ -828,7 +925,7 @@ async function cerrarCaja() {
       method: "POST",
       body: {
         efectivo_fisico: saldo,
-        observaciones: "Cierre UAT con datos simulados",
+        observaciones: "Cierre de caja para la demo",
       },
     },
     "Cerrar caja UAT",
@@ -869,6 +966,7 @@ async function main() {
   console.log(`Pensiones generadas: ${resumen.pensiones}`);
 
   await pagarPensiones(alumnos);
+  await ajustarFechasPago();
   console.log(`Pagos totales: ${resumen.pagos}`);
 
   await crearNotasYAsistencia();
