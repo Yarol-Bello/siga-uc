@@ -6,7 +6,7 @@
  *  - Solo opera sobre una base cuyo nombre contenga "_e2e" (por defecto
  *    siga_uc_e2e). Nunca toca siga_uc ni una base de Supabase.
  *  - Crea la base, carga el dump y las migraciones, arranca el backend en el
- *    puerto 3101, ejecuta 72 flujos y al final detiene el backend y elimina la
+ *    puerto 3101, ejecuta 75 flujos y al final detiene el backend y elimina la
  *    base con dropdb --force.
  *  - Si la limpieza falla, imprime los comandos manuales.
  *
@@ -27,6 +27,7 @@ const path = require("node:path");
 const assert = require("node:assert/strict");
 const { spawn, execFileSync } = require("node:child_process");
 const { Pool } = require("pg");
+const ExcelJS = require("exceljs");
 
 const rutaEnv = path.join(__dirname, "..", ".env");
 if (fs.existsSync(rutaEnv) && typeof process.loadEnvFile === "function") {
@@ -50,6 +51,11 @@ const MIGRACIONES = [
     RAIZ_REPO,
     "database",
     "migracion_h59_observaciones_personal.sql",
+  ),
+  path.join(
+    RAIZ_REPO,
+    "database",
+    "migracion_h71_retirados_historicos.sql",
   ),
 ];
 
@@ -6199,6 +6205,399 @@ async function ejecutarPruebas() {
         "H69: textos de demo, lang y placeholders eliminados",
         "PASS",
         `${archivos.length} archivos sin textos prohibidos; lang=es y modo prueba`,
+      );
+    },
+  );
+
+  // 73. SIAGIE interno: resumen, RBAC y parámetros.
+  await prueba(
+    73,
+    "SIAGIE interno: resumen y permisos ADMIN/DOCENTE",
+    async () => {
+      const grados = await sql(
+        `
+          SELECT cc.id_grado, COUNT(DISTINCT cc.id_curso)::int AS cursos
+          FROM carga_curricular cc
+          INNER JOIN grados g ON g.id_grado = cc.id_grado
+          WHERE cc.anio_lectivo = $1
+            AND g.anio_lectivo = $1
+          GROUP BY cc.id_grado
+          ORDER BY cc.id_grado
+          LIMIT 1
+        `,
+        [ANIO],
+      );
+      assert.ok(grados[0], `No hay grados con carga curricular en ${ANIO}`);
+      const idGrado = grados[0].id_grado;
+      ctx.siagieGrado = idGrado;
+
+      const cursosEsperados = await sql(
+        `
+          SELECT COUNT(*)::int AS total
+          FROM (
+            SELECT cc.id_curso
+            FROM carga_curricular cc
+            WHERE cc.id_grado = $1 AND cc.anio_lectivo = $2
+            UNION
+            SELECT nf.id_curso
+            FROM notas_finales_area nf
+            INNER JOIN alumnos a ON a.id_alumno = nf.id_alumno
+            WHERE a.id_grado = $1 AND nf.anio_lectivo = $2
+          ) q
+        `,
+        [idGrado, ANIO],
+      );
+      const alumnosEsperados = await sql(
+        `
+          SELECT COUNT(*)::int AS total
+          FROM alumnos
+          WHERE id_grado = $1
+            AND anio_lectivo = $2
+            AND estado_matricula IN ('Matriculado', 'PendientePago')
+        `,
+        [idGrado, ANIO],
+      );
+
+      const respuesta = await api(
+        `/siagie/resumen?anio=${ANIO}&bimestre=2&id_grado=${idGrado}`,
+        { token: ctx.adminToken },
+      );
+      const { datos } = await leerJson(respuesta);
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      const resumen = datos?.data || {};
+      assert.equal(resumen.total_cursos, cursosEsperados[0].total);
+      assert.equal(resumen.total_alumnos, alumnosEsperados[0].total);
+      assert.ok(resumen.total_cursos > 4, "H05 sigue limitando los cursos");
+      assert.ok(resumen.total_alumnos > 0, "No hay alumnos para exportar");
+      assert.equal(resumen.exportable, true);
+
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+      const prohibido = await api(
+        `/siagie/resumen?anio=${ANIO}&bimestre=2&id_grado=${idGrado}`,
+        { token: docente.token },
+      );
+      assert.equal(prohibido.status, 403, "DOCENTE no debe exportar SIAGIE");
+
+      const sinToken = await api(
+        `/siagie/resumen?anio=${ANIO}&bimestre=2&id_grado=${idGrado}`,
+      );
+      assert.equal(sinToken.status, 401);
+
+      const bimestreInvalido = await api(
+        `/siagie/resumen?anio=${ANIO}&bimestre=5&id_grado=${idGrado}`,
+        { token: ctx.adminToken },
+      );
+      assert.equal(bimestreInvalido.status, 400);
+
+      const alumno = await sql(
+        `
+          SELECT id_alumno, dni
+          FROM alumnos
+          WHERE id_grado = $1
+            AND anio_lectivo = $2
+            AND estado_matricula IN ('Matriculado', 'PendientePago')
+          ORDER BY id_alumno
+          LIMIT 1
+        `,
+        [idGrado, ANIO],
+      );
+      assert.ok(alumno[0], "No hay alumno para la prueba de exportación");
+      ctx.siagieAlumno = alumno[0];
+
+      const curso = await sql(
+        `
+          SELECT c.id_curso, c.nombre_curso
+          FROM carga_curricular cc
+          INNER JOIN cursos c ON c.id_curso = cc.id_curso
+          WHERE cc.id_grado = $1 AND cc.anio_lectivo = $2
+          ORDER BY c.id_curso
+          LIMIT 1
+        `,
+        [idGrado, ANIO],
+      );
+      assert.ok(curso[0], "No hay curso para la conclusión descriptiva");
+      ctx.siagieCurso = curso[0];
+
+      registrar(
+        73,
+        "SIAGIE interno: resumen y permisos ADMIN/DOCENTE",
+        "PASS",
+        `grado ${idGrado}: ${resumen.total_cursos} cursos, ${resumen.total_alumnos} alumnos; DOCENTE 403`,
+      );
+    },
+  );
+
+  // 74. SIAGIE interno: Excel completo con todos los cursos y columnas.
+  await prueba(
+    74,
+    "SIAGIE interno: Excel con todos los cursos, notas y conclusión",
+    async () => {
+      assert.ok(ctx.siagieGrado, "Falta el grado de la prueba 73");
+      assert.ok(ctx.siagieAlumno, "Falta el alumno de la prueba 73");
+      assert.ok(ctx.siagieCurso, "Falta el curso de la prueba 73");
+
+      const idGrado = ctx.siagieGrado;
+      const alumno = ctx.siagieAlumno;
+      const cursoConclusion = ctx.siagieCurso;
+      const textoConclusion =
+        "Explica con claridad los procesos y justifica sus respuestas.";
+
+      // Notas para todos los cursos de la carga del grado.
+      await sql(
+        `
+          INSERT INTO notas_finales_area
+            (id_alumno, id_curso, bimestre, anio_lectivo, nota_final, calculo_automatico)
+          SELECT $1, cc.id_curso, 2, $2, 'A', false
+          FROM carga_curricular cc
+          WHERE cc.id_grado = $3
+            AND cc.anio_lectivo = $2
+          ON CONFLICT ON CONSTRAINT uq_nota_final
+          DO UPDATE SET nota_final = EXCLUDED.nota_final
+        `,
+        [alumno.id_alumno, ANIO, idGrado],
+      );
+
+      await sql(
+        `
+          INSERT INTO conclusiones_descriptivas
+            (id_alumno, id_curso, bimestre, anio_lectivo, descripcion)
+          VALUES ($1, $2, 2, $3, $4)
+          ON CONFLICT ON CONSTRAINT uq_conclusion
+          DO UPDATE SET descripcion = EXCLUDED.descripcion
+        `,
+        [
+          alumno.id_alumno,
+          cursoConclusion.id_curso,
+          ANIO,
+          textoConclusion,
+        ],
+      );
+
+      const respuesta = await api(
+        `/siagie/exportar?anio=${ANIO}&bimestre=2&id_grado=${idGrado}`,
+        { token: ctx.adminToken },
+      );
+      assert.equal(respuesta.status, 200, `Exportación HTTP ${respuesta.status}`);
+      assert.match(
+        String(respuesta.headers.get("content-type") || ""),
+        /spreadsheetml/i,
+        "Content-Type inesperado para el Excel",
+      );
+      const buffer = Buffer.from(await respuesta.arrayBuffer());
+      assert.equal(buffer.subarray(0, 2).toString("ascii"), "PK");
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      assert.deepEqual(
+        workbook.worksheets.map((hoja) => hoja.name),
+        ["Notas", "Aviso"],
+      );
+
+      const hoja = workbook.getWorksheet("Notas");
+      assert.ok(hoja, "No existe la hoja Notas");
+      const encabezados = hoja.getRow(1).values.slice(1);
+      assert.deepEqual(encabezados, [
+        "DNI",
+        "Alumno",
+        "Grado",
+        "Sección",
+        "Año",
+        "Bimestre",
+        "Curso",
+        "Área",
+        "Nota final",
+        "Conclusión descriptiva",
+      ]);
+
+      const cursosEsperados = await sql(
+        `
+          SELECT DISTINCT c.nombre_curso
+          FROM (
+            SELECT cc.id_curso
+            FROM carga_curricular cc
+            WHERE cc.id_grado = $1 AND cc.anio_lectivo = $2
+            UNION
+            SELECT nf.id_curso
+            FROM notas_finales_area nf
+            INNER JOIN alumnos a ON a.id_alumno = nf.id_alumno
+            WHERE a.id_grado = $1 AND nf.anio_lectivo = $2
+          ) q
+          INNER JOIN cursos c ON c.id_curso = q.id_curso
+          ORDER BY c.nombre_curso
+        `,
+        [idGrado, ANIO],
+      );
+      const alumnosEsperados = await sql(
+        `
+          SELECT COUNT(*)::int AS total
+          FROM alumnos
+          WHERE id_grado = $1
+            AND anio_lectivo = $2
+            AND estado_matricula IN ('Matriculado', 'PendientePago')
+        `,
+        [idGrado, ANIO],
+      );
+      assert.ok(cursosEsperados.length > 4, "El grado debe tener más de 4 cursos");
+      assert.equal(
+        hoja.rowCount - 1,
+        cursosEsperados.length * alumnosEsperados[0].total,
+        "El Excel no tiene una fila por alumno y curso",
+      );
+
+      const filas = [];
+      hoja.eachRow((row, numero) => {
+        if (numero === 1) return;
+        filas.push({
+          dni: String(row.getCell(1).value ?? ""),
+          alumno: String(row.getCell(2).value ?? ""),
+          grado: String(row.getCell(3).value ?? ""),
+          seccion: String(row.getCell(4).value ?? ""),
+          anio: String(row.getCell(5).value ?? ""),
+          bimestre: String(row.getCell(6).value ?? ""),
+          curso: String(row.getCell(7).value ?? ""),
+          area: String(row.getCell(8).value ?? ""),
+          nota: String(row.getCell(9).value ?? ""),
+          conclusion: String(row.getCell(10).value ?? ""),
+        });
+      });
+
+      const cursosEnExcel = new Set(filas.map((fila) => fila.curso));
+      assert.equal(cursosEnExcel.size, cursosEsperados.length);
+      for (const curso of cursosEsperados) {
+        assert.ok(
+          cursosEnExcel.has(curso.nombre_curso),
+          `Falta el curso ${curso.nombre_curso} en el Excel`,
+        );
+      }
+
+      const filasAlumno = filas.filter((fila) => fila.dni === alumno.dni);
+      assert.equal(
+        filasAlumno.length,
+        cursosEsperados.length,
+        "El alumno no tiene una fila por curso",
+      );
+      assert.ok(
+        filasAlumno.every((fila) => fila.nota === "A"),
+        "Las notas del alumno no se volcaron al Excel",
+      );
+      assert.ok(
+        filasAlumno.every(
+          (fila) =>
+            fila.grado &&
+            fila.seccion &&
+            fila.anio === String(ANIO) &&
+            fila.bimestre === "II",
+        ),
+        "Faltan grado, sección, año o bimestre en el Excel",
+      );
+      const filaConclusion = filasAlumno.find(
+        (fila) => fila.curso === cursoConclusion.nombre_curso,
+      );
+      assert.equal(filaConclusion?.conclusion, textoConclusion);
+
+      const aviso = workbook.getWorksheet("Aviso");
+      assert.match(
+        String(aviso.getRow(2).getCell(1).value || ""),
+        /No es una exportación oficial a SIAGIE\/MINEDU/,
+        "El Excel no contiene el aviso de exportación interna",
+      );
+
+      const auditoria = await sql(
+        `
+          SELECT estado, anio_lectivo, bimestre, id_grado
+          FROM exportaciones_siagie
+          WHERE nombre_archivo LIKE 'EXPORTACION_INTERNA_%'
+          ORDER BY id_exportacion DESC
+          LIMIT 1
+        `,
+      );
+      assert.equal(auditoria[0]?.estado, "GENERADO");
+      assert.equal(Number(auditoria[0]?.anio_lectivo), ANIO);
+      assert.equal(Number(auditoria[0]?.bimestre), 2);
+      assert.equal(Number(auditoria[0]?.id_grado), idGrado);
+
+      const endpointViejo = await api("/siagie/generar-excel", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: { id_grado: idGrado, bimestre: 2 },
+      });
+      assert.equal(
+        endpointViejo.status,
+        404,
+        "El endpoint de carga de plantilla debería estar retirado",
+      );
+
+      registrar(
+        74,
+        "SIAGIE interno: Excel con todos los cursos, notas y conclusión",
+        "PASS",
+        `${cursosEsperados.length} cursos, ${alumnosEsperados[0].total} alumnos, aviso y auditoría`,
+      );
+    },
+  );
+
+  // 75. SIAGIE interno: la UI no simula portal ni análisis de plantilla.
+  await prueba(
+    75,
+    "SIAGIE interno: UI sin portal, análisis simulado ni carga de plantilla",
+    async () => {
+      const leer = (rutaRelativa) =>
+        fs.readFileSync(path.join(RAIZ_REPO, rutaRelativa), "utf8");
+
+      const html = leer(
+        "siga-uc-frontend/src/app/features/admin/siagie/admin-siagie.component.html",
+      );
+      const ts = leer(
+        "siga-uc-frontend/src/app/features/admin/siagie/admin-siagie.component.ts",
+      );
+
+      assert.ok(
+        html.includes(
+          "Exportación interna. No es una exportación oficial a SIAGIE/MINEDU.",
+        ),
+        "Falta el aviso de exportación interna en la UI",
+      );
+      assert.ok(html.includes("Exportar Excel interno"));
+      assert.ok(ts.includes("/siagie/exportar"));
+
+      for (const prohibido of [
+        "Abrir Portal",
+        "Análisis Dinámico",
+        "mapeado correctamente",
+        "Plantilla",
+        "plantilla",
+      ]) {
+        assert.ok(
+          !html.includes(prohibido),
+          `La UI todavía contiene "${prohibido}"`,
+        );
+        assert.ok(
+          !ts.includes(prohibido),
+          `El componente todavía contiene "${prohibido}"`,
+        );
+      }
+      for (const prohibido of [
+        "setTimeout",
+        "archivoCargado",
+        "analisisCompletado",
+        "descargarPlantilla",
+        "formData",
+      ]) {
+        assert.ok(
+          !ts.includes(prohibido),
+          `El componente todavía contiene "${prohibido}"`,
+        );
+      }
+
+      registrar(
+        75,
+        "SIAGIE interno: UI sin portal, análisis simulado ni carga de plantilla",
+        "PASS",
+        "aviso interno; sin portal, análisis ni plantilla",
       );
     },
   );
