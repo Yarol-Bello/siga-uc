@@ -203,11 +203,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - El **año activo** se lee de `anios_lectivos.estado='ACTIVO'` al arrancar; `ANIO_LECTIVO`
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
-- **6.1 y 6.2 están desplegadas en Render** (código `f05ecc5`; frontend 6.2 verificado).
-  **H49 no está aplicado en Supabase** (demo con 40 tablas): la pantalla
-  `/admin/anios-lectivos` responde `503 H49_NO_APLICADO` hasta aplicarlo. No aplicar la
-  migración allí sin autorización y backup previo. El rollback H49 es solo para bases
-  desechables. 2026 sigue activo en Supabase.
+- **6.1, 6.2, 6.3 y 6.3.1 están desplegadas en Render** (código `89eba24`).
+  **H49 y H73 están aplicadas en Supabase demo**: 43 tablas, 2026 ACTIVO, 1 política,
+  0 promociones, 0 actas, 145 horarios y 5 docentes. `/admin/anios-lectivos` y
+  `/admin/promociones` ya no responden 503. 2027 no está activo. El rollback H49 es solo
+  para bases desechables.
 - **6.2 no agrega migración**: opera sobre H49 desde `/admin/anios-lectivos`. Si la tabla
   `anios_lectivos` no existe, los endpoints responden `503 H49_NO_APLICADO`, no 500.
 - El rollover clona solo **grados, conceptos, períodos, carga y tutores**. No crea alumnos,
@@ -225,10 +225,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - En local `siga_uc` las 142 h de carga están en el ADMIN y el preview bloquea por
   sobrecapacidad; es correcto. La demo de Supabase tiene 5 docentes con 30/30/30/30/25 h y
   el E2E reequilibra su base desechable.
-- **6.3 no se despliega ni aplica en Supabase sin autorización.** La migración
+- **6.3 está desplegada en Render y H73 aplicada en Supabase demo.** La migración
   `migracion_h73_promociones.sql` requiere H49 y crea `promociones`/`politicas_promocion`
-  (43 tablas base; 44 en local con `horarios_h47_backup`). Si faltan las tablas, los
-  endpoints responden `503 PROMOCIONES_NO_APLICADAS`.
+  (43 tablas base; 44 en local con `horarios_h47_backup`). No confirmar promociones ni
+  activar 2027 en Supabase sin decisión: el flujo completo se prueba en local/E2E. Si
+  faltan las tablas, los endpoints responden `503 PROMOCIONES_NO_APLICADAS`.
 - La promoción es **recomendación + confirmación humana**; no se codifica la norma peruana.
   La política (`politicas_promocion`) define actas, notas, umbral de asistencia, repitencia y
   `permite_override` (default `FALSE`).
@@ -255,8 +256,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   la fila anterior con `id_promocion_reversa`. La promoción **no activa** el año.
 - La pantalla ADMIN es `/admin/promociones`; SECRETARIA puede listar/previsualizar por API,
   pero no confirmar ni anular. DOCENTE/ESTUDIANTE reciben 403.
-- Estado 6.3/6.3.1: implementado y verificado solo en local; H73 aplicada en `siga_uc`,
-  **no** en Supabase. 2026 sigue activo allí y 2027 no se activa.
+- Estado 6.3/6.3.1: implementado, verificado y **desplegado en Render**; H73 aplicada en
+  Supabase demo. 58 E2E, 20 integridad, 2026 activo, 0 promociones y 2027 no se activa.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y

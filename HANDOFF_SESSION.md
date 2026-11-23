@@ -4,29 +4,28 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Actualización 22/11/2026 (Fase 6.3, solo local):** promoción anual con política
-> configurable, preview por alumno y hash, confirmación transaccional e idempotente,
+> **Actualización 22/11/2026 (Fases 6.3 y 6.3.1 desplegadas):** promoción anual con
+> política configurable, preview por alumno y hash, confirmación transaccional e idempotente,
 > egresados/repitentes/retirados/traslados y anulación con reversa. Migración H73
 > (`promociones`, `politicas_promocion`; 43 tablas base), API `/api/promociones` y pantalla
-> ADMIN `/admin/promociones`. **H73 está aplicada en `siga_uc` local, no en Supabase.**
-> `test:e2e` **58 PASS** e integridad **20 PASS** en base nueva. 6.3 **no desplegada** en
-> Render ni aplicada en Supabase; 2026 sigue activo allí. Ver secciones 1.3 y 1.4.
+> ADMIN `/admin/promociones`. **H49 y H73 están aplicadas en Supabase demo**; **6.3/6.3.1
+> desplegadas en Render (`89eba24`)**. `test:e2e` **58 PASS** e integridad **20 PASS** en base
+> nueva. Supabase: 43 tablas, 2026 ACTIVO, 1 política, 0 promociones, 0 actas, 145 horarios y
+> 5 docentes. Ver secciones 1.3 y 1.4.
 >
-> **Próximo bloque de trabajo:** H49 y H73 en Supabase con backup y autorización; desplegar
-> 6.3 con autorización y, después, Fase 6.4 (histórico). No activar 2027 en producción/demo
-> sin aprobación del colegio.
+> **Próximo bloque de trabajo:** Fase 6.4 (histórico). No activar 2027 en Supabase demo sin
+> aprobación del colegio; el flujo completo de promoción se prueba en local/E2E.
 >
 > **Actualización 22/11/2026 (Fase 6.2 desplegada):** rollover anual con preview de solo
 > lectura y hash, clonado transaccional e idempotente de grados, conceptos, períodos, carga
 > y tutores, activación auditada con un solo año ACTIVO y reversión de un rollover vacío.
 > Pantalla ADMIN `/admin/anios-lectivos` y API `/api/anios-lectivos`. Commits `a670c06`
 > (backend), `44bf200` (UI), `9b3ea6f` (tests) y cierre `f05ecc5`; **desplegado en Render**.
-> **No aplicado en Supabase; 2026 sigue activo allí** y la pantalla muestra
-> `503 H49_NO_APLICADO`. `test:e2e` **38 PASS** e integridad **16 PASS** en base nueva.
-> Ver sección 1.2.
+> **H49 aplicada en Supabase; 2026 sigue activo allí.** `test:e2e` **38 PASS** e integridad
+> **16 PASS** en base nueva. Ver sección 1.2.
 >
-> **Próximo bloque de trabajo:** H49 en Supabase con backup y autorización; después, Fase
-> 6.3 (promoción de alumnos). No activar 2027 en producción/demo sin 6.3.
+> **Próximo bloque de trabajo:** Fase 6.4 (histórico). H49/H73 ya están aplicadas en
+> Supabase demo. No activar 2027 en producción/demo sin aprobación.
 > H64 (`/* → /index.html`, 200) sigue como configuración de Render.
 >
 > **Actualización 22/11/2026:** **H50** (caja separa efectivo y digital) y **H63** (PDF de
@@ -231,7 +230,7 @@ En esta fase **no** se prepara el despliegue definitivo.
   bloquea por sobrecapacidad (correcto). El E2E reequilibra su base desechable (4 docentes,
   ≤40 h) para probar el camino feliz. En Supabase el reparto es 30/30/30/30/25 h.
 
-### 1.3 Fase 6.3 — Promoción de alumnos (22/11/2026, solo local)
+### 1.3 Fase 6.3 — Promoción de alumnos (22/11/2026, desplegada)
 
 - **Alcance:** promoción = recomendación + confirmación humana. Crea matrículas del año
   destino, expedientes y pre-tickets; registra egresados, repitentes y retirados. **No**
@@ -270,12 +269,13 @@ En esta fase **no** se prepara el despliegue definitivo.
   `test:h47-generador` **4 PASS**; build Angular OK; `node --check` OK. UI probada en
   navegador con ADMIN: preview 2026→2028, confirm (2 matrículas), historial y override con
   re-previsualización.
-- **Cambios locales de 6.3:** migración `c893e02`, backend `cf8efb3`, UI `8b15041`,
-  tests `7226003` y documentación `5f73049`. Sin push ni despliegue.
-- **Estado:** implementado y verificado solo en local; **no desplegado en Render ni aplicado
-  en Supabase**. Allí siguen 40 tablas, H48 aplicado, 2026 activo y 2027 sin activar.
+- **Commits de 6.3:** migración `c893e02`, backend `cf8efb3`, UI `8b15041`, tests
+  `7226003`, documentación `5f73049`; cierre `8492262`. **Push y despliegue en Render.**
+- **Estado:** implementado, verificado y **desplegado en Render (`89eba24`)**; **H73
+  aplicada en Supabase demo**. Allí hay 43 tablas, 2026 activo, 1 política, 0 promociones y
+  2027 sin activar.
 
-### 1.4 Fase 6.3.1 — cierre de reglas de promoción (22/11/2026, solo local)
+### 1.4 Fase 6.3.1 — cierre de reglas de promoción (22/11/2026, desplegada)
 
 - **Actas/notas:** se validan para PROMOVIDO, REPITENTE y EGRESADO; RETIRADO queda exento.
   Si faltan, el resultado es PENDIENTE con bloqueo; el override permitido + motivo las exime
@@ -292,8 +292,8 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Menores:** 23505/23503 de promociones tienen mensajes de promoción; el catálogo de años
   tolera que `periodos_clase` no exista (H47 no aplicado).
 - **Verificación:** `test:e2e` **58 PASS** (54 previas + 4 nuevas), integridad **20 PASS** en
-  base nueva, smoke 11, H47 4, build Angular y `node --check` OK. Sin Supabase/Render.
-- **Commits:** `f1c5f71` (fix backend/UI/H73), `f9d8d1a` (tests) y este commit de docs.
+  base nueva, smoke 11, H47 4, build Angular y `node --check` OK. Desplegado en Render.
+- **Commits:** `f1c5f71` (fix backend/UI/H73), `f9d8d1a` (tests) y `89eba24` (docs/cierre).
 
 ---
 
@@ -307,11 +307,10 @@ En esta fase **no** se prepara el despliegue definitivo.
   - Frontend: <https://siga-uc-web.onrender.com>
   - Backend: <https://siga-uc-api-prod.onrender.com/api>
   - Ambos **Live** en el commit `9648689`, con servicios **gratuitos**.
-- Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **40 tablas**,
+- Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **43 tablas**,
   H47 desplegado, **H48 aplicado** (4 columnas nuevas + índice
-  `uq_acta_anio_bimestre_grado`, **0 actas**), **10 períodos** y **145 horarios
-  PUBLICADO**. **H49/6.1 no está aplicado allí** y no debe aplicarse sin autorización y
-  backup previo.
+  `uq_acta_anio_bimestre_grado`, **0 actas**), **H49 y H73 aplicadas**, **10 períodos** y
+  **145 horarios PUBLICADO**. 2026 ACTIVO, 1 política de promoción, 0 promociones.
 - Carga 2026 en Supabase: **55 cargas/145 h**, repartidas **30/30/30/30/25 h** entre los
   5 docentes demo (`99000001`–`99000005`), **0 choques**. Auditoría `GENERAR` y `PUBLICAR`
   registrada.
@@ -557,7 +556,7 @@ En esta fase **no** se prepara el despliegue definitivo.
   `PENDIENTE` sin tocar montos ni descuentos. El generador mensual global no cambió.
 - La migración H45 se aplicó dos veces en `siga_uc_h45` (idempotente) y la base se
   eliminó; `siga_uc` no se tocó.
-- H47: Supabase ya tiene **40 tablas** y local **44** (43 base + `horarios_h47_backup`);
+- H47: Supabase ya tiene **43 tablas** y local **44** (43 base + `horarios_h47_backup`);
   H49 está solo en local. Una base creada con `siga_uc_completo.sql` debe aplicar
   `migracion_h47_horarios.sql` y `migracion_h49_multianio_base.sql` a mano; el dump no se
   editó.
@@ -704,37 +703,28 @@ En esta fase **no** se prepara el despliegue definitivo.
   reintento se enlaza con `id_promocion_reversa`. La promoción no activa el año.
 - **6.3:** `SECRETARIA` puede listar políticas, previsualizar y consultar promociones por
   API; confirmar y anular son solo ADMIN. DOCENTE/ESTUDIANTE reciben 403.
-- **Estado 6.3:** implementado y verificado solo en local; H73 aplicada en `siga_uc`, **no**
-  en Supabase. 58 E2E, 20 integridad en base nueva y 18/2 en local. 6.3 no desplegada en
-  Render; 2026 sigue activo en Supabase y 2027 no se activa.
+- **Estado 6.3/6.3.1:** implementado, verificado y **desplegado en Render (`89eba24`)**;
+  H73 aplicada en Supabase demo. 58 E2E, 20 integridad en base nueva y 18/2 en local.
+  Supabase: 43 tablas, 2026 activo, 1 política, 0 promociones; 2027 no se activa.
 - H49: el rollback está probado solo en bases desechables; aborta si detecta varias
   matrículas por persona o promociones con filas. **No ejecutarlo en Supabase.**
 
 ---
 
-## 7. Próximo paso exacto (H49 y H73 en Supabase)
+## 7. Próximo paso exacto (Fase 6.4)
 
-Las Fases 6.1 y 6.2 están desplegadas en Render (`f05ecc5`); la 6.3 está implementada y
-verificada **solo en local**. Supabase sigue sin H49, así que `/admin/anios-lectivos`
-responde `503 H49_NO_APLICADO`. No aplicar H49/H73 sin autorización explícita y backup
-previo.
+H49/H73 ya están aplicadas en Supabase demo (43 tablas, 2026 ACTIVO, 1 política,
+0 promociones, 0 actas, 145 horarios, 5 docentes). 6.3/6.3.1 están desplegadas en Render
+(`89eba24`); `/api/anios-lectivos` y `/api/promociones` existen y responden 401 sin token.
 
-1. Hacer backup de Supabase y verificar que se puede restaurar.
-2. Ejecutar el preflight de duplicados y de grados sin orden.
-3. **Antes** de aplicar H49: editar `_param_anio` a 2026 (demo) y pegar
-   `database/migracion_h49_multianio_base.sql` completo en SQL Editor (no usa `psql` vars).
-4. Verificar 41 tablas tras H49, `anios_lectivos` 2026 ACTIVO, `grados.orden` 1–5, 0 actas,
-   145 horarios PUBLICADO y 5 docentes demo.
-5. Aplicar a mano `database/migracion_h61_dia_semana.sql` si aún no está.
-6. Aplicar a mano `database/migracion_h73_promociones.sql` **después** de H49. Verificar
-   **43 tablas**, `politicas_promocion` con la política estándar y `promociones` vacía.
-7. Reiniciar el backend en Render y verificar `/api/health`, `/api/configuracion` (2026),
-   `/api/anios-lectivos` y `/api/promociones/politicas`.
-8. Mantener 2026 activo; no activar 2027 hasta la aprobación del colegio. El rollback H49/H73
-   **no** se ejecuta en producción.
-9. Tras aplicar H49/H73, probar en Supabase **solo previews** de rollover y promoción (no
-   confirmar, no activar, no anular). El confirm/activación/reversión se validan en una base
-   desechable. La UI muestra las advertencias de alumnos sin matrícula y de actividad.
+1. No volver a aplicar H49/H73 en Supabase.
+2. Mantener 2026 activo. No activar 2027 en el demo.
+3. En Supabase, si se necesita oferta 2027, confirmar el rollover 2026→2027 (solo oferta).
+4. Probar en Supabase **solo previews** de promoción; el confirm/anulación se valida en
+   local/E2E. Con 0 actas, el preview bloqueará por actas: es correcto.
+5. Implementar **Fase 6.4**: selector de año en reportes/padrón/tesorería, históricos
+   read-only y consolidado por DNI/`id_usuario`.
+6. El rollback H49/H73 **no** se ejecuta en Supabase.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
@@ -754,9 +744,9 @@ Nada de esta lista se hace en la fase actual.
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | H47 y H48 ya aplicadas en Supabase. H61 es solo datos y **aún no** está aplicada allí. **H49/6.1 y 6.2 están desplegadas en Render (`f05ecc5`), pero H49 no aplicada en Supabase**: requiere backup y autorización. **H73/6.3 está solo en local**, pendiente de aplicar después de H49 y de desplegar. Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Migraciones** | H47, H48, H49 y H73 ya aplicadas en Supabase demo. H61 es solo datos y **aún no** está aplicada allí. 6.1, 6.2, 6.3 y 6.3.1 desplegadas en Render (`89eba24`). Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
 | **Integridad** | `npm run test:integridad` contra la base definitiva: 20 PASS |
-| **Multi-año** | 6.2 rollover desplegado en Render; **6.3 promoción implementada y verificada solo en local**, pendiente de despliegue y de H73 en Supabase. 6.4 histórico sigue pendiente. 2026 debe seguir activo en Supabase hasta la aprobación |
+| **Multi-año** | 6.2 rollover y 6.3/6.3.1 promoción desplegados en Render; H49/H73 aplicadas en Supabase demo. **6.4 histórico sigue pendiente.** 2026 debe seguir activo en Supabase hasta la aprobación |
 | **Promociones** | 6.3 no crea usuarios ni QR; no copia notas/pagos/pensiones; no activa el año. La política estándar se siembra con el año ACTIVO. Revisar con dirección/UGEL los criterios de repitencia y transición |
 
 ---

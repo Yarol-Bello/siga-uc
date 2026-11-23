@@ -607,7 +607,7 @@ Crear una tarea diaria a las 02:00:
 | `siga-uc-frontend/src/environments/environment.prod.ts` | API producción |
 | `siga-uc-frontend/angular.json` | Build, budgets, fileReplacements |
 | `database/siga_uc_completo.sql` | Demo: esquema + datos ficticios; no usar en producción |
-| `database/siga_uc.sql` | Esquema base para producción (40 tablas, sin datos; H49 lo lleva a 41) |
+| `database/siga_uc.sql` | Esquema base para producción (40 tablas, sin datos; H49 lo lleva a 41 y H73 a 43) |
 | `database/seed_produccion.sql` | Catálogos + admin inicial; requiere `-v anio_lectivo=YYYY -v admin_password=...` |
 | `database/migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` a pensiones y regulariza deuda futura de retirados |
 | `database/migracion_h47_horarios.sql` | Crea `periodos_clase`, reemplaza `horarios` y agrega restricciones/triggers de horarios |
