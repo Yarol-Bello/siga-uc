@@ -1,15 +1,22 @@
 # HANDOFF_SESSION.md — SIGA-UC
 
-> **Actualización 23/11/2026 (despliegue de configuración Fases 1–7 + Supabase).**
+> **Actualización 23/11/2026 (demo cargada en Supabase + Render).**
 > HEAD documental: ver `git log -1`. Código funcional desplegado en Render (backend
-> `siga-uc-api-prod` y frontend `siga-uc-web`): **`bef0861`**. **H74–H79 aplicadas en
+> `siga-uc-api-prod` y frontend `siga-uc-web`): **`f7477c1`**. **H74–H79 aplicadas en
 > Supabase demo (`siga-uc-prod`)**: 48 tablas, 2026 ACTIVO, 2027 no activo, 0 promociones,
-> 0 actas, 145 horarios, 5 docentes, 5 tipos de beca y `setup_completado=true`.
-> `/api/configuracion` de producción ya devuelve la institución y `/api/setup/status`
-> reporta setup completado. Verificación local: **E2E 100 PASS**, **integridad 35 PASS** en
-> base nueva (33/2 local por seed), **`test:setup` 5 PASS**, smoke 12, H47 4 y build
-> Angular OK. El smoke contra producción no autentica con las credenciales locales de
-> `.env` (son de la base local; no es un fallo del sistema). El responsive de
+> **75 alumnos (15 por grado)**, **6 docentes activos**, 1 secretaria, 55 carga, 5 tutores,
+> **145 horarios publicados**, **750 pensiones** (38 pagadas, 10 exoneradas), **113 pagos**,
+> 3300 notas, 8700 calificaciones, 4125 asistencias, 3 becas, 1 acta ABIERTO y
+> `setup_completado=true`. Los 5 docentes demo antiguos quedaron inactivos.
+> `/api/configuracion` devuelve la institución y `/api/setup/status` reporta setup
+> completado. **Verificación de producción: `uat:verify` 21 PASS, 0 FAIL**; navegador
+> probado con DOCENTE, ESTUDIANTE y SECRETARÍA. La pantalla de Tesorería carga las
+> pensiones en lotes de 5 para evitar 500 por saturación en Render/Supabase.
+> El ADMIN de Supabase conserva su contraseña real: el seed usó `UC2026*` temporalmente y
+> lo restauró. El smoke con las credenciales locales de `.env` sigue sin autenticar en
+> producción (son de la base local; no es un fallo del sistema). Verificación local:
+> **E2E 100 PASS**, **integridad 35 PASS** en base nueva (33/2 local por seed),
+> **`test:setup` 5 PASS**, smoke 12, H47 4 y build Angular OK. El responsive de
 > ADMIN/SECRETARÍA/DOCENTE sigue **pausado**.
 >
 > **Fase actual: demostración y aprobación.** SIGA-UC se muestra a la dirección del
@@ -579,16 +586,17 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Demo desplegada (21/11/2026, actualizada 23/11/2026):**
   - Frontend: <https://siga-uc-web.onrender.com>
   - Backend: <https://siga-uc-api-prod.onrender.com/api>
-  - Ambos **Live** en el commit `bef0861`, con servicios **gratuitos**.
+  - Ambos **Live** en el commit `f7477c1`, con servicios **gratuitos**.
 - Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **48 tablas**,
-  H47/H48/H49/H73 y **H74–H79 aplicadas**, **10 períodos** y **145 horarios PUBLICADO**.
-  2026 ACTIVO, 2027 no activo, 1 política de promoción, 0 promociones, 0 actas,
-  5 tipos de beca y `setup_completado=true`.
-- Carga 2026 en Supabase: **55 cargas/145 h**, repartidas **30/30/30/30/25 h** entre los
-  5 docentes demo (`99000001`–`99000005`), **0 choques**. Auditoría `GENERAR` y `PUBLICAR`
-  registrada.
-- Datos de la demo: usuarios, alumnos de prueba y horarios ficticios; noviembre y diciembre
-  del alumno de prueba ya generados. **No hay datos reales.**
+  H47/H48/H49/H73 y **H74–H79 aplicadas**. **75 alumnos** (15 por grado), **6 docentes
+  activos**, 1 secretaria, **55 carga**, **5 tutores**, **145 horarios PUBLICADO**,
+  **750 pensiones**, **113 pagos**, 3300 notas, 8700 calificaciones, 4125 asistencias,
+  3 becas, 1 acta ABIERTO, 0 promociones y `setup_completado=true`. Los 5 docentes demo
+  antiguos (`99000001`–`99000005`) quedaron **INACTIVOS**.
+- Carga 2026 en Supabase: **55 cargas** distribuidas entre los 6 docentes UAT
+  (`73000001`–`73000006`), **0 choques**. Auditoría `GENERAR` y `PUBLICAR` registrada.
+- Datos de la demo: 75 alumnos y docentes ficticios con nombres, DNI, apoderados, notas,
+  asistencia, pensiones y pagos coherentes. **No hay datos reales.**
 - **No hay staging.**
 - Render gratuito puede dormir por inactividad y Supabase gratuito puede pausarse; entrar
   unos minutos antes de la demo para despertar ambos servicios.
@@ -600,10 +608,11 @@ En esta fase **no** se prepara el despliegue definitivo.
 - Datos locales tras la limpieza: **21 alumnos, 29 usuarios, 54 cargas/142 h todas en el
   ADMIN** (ficha personal nueva del ADMIN), **0 usuarios/personal/QR demo** y **0 horarios**.
   El índice `ux_pago_pension_activo` existe.
-- Credenciales de demo: docentes `99000001`–`99000005`, contraseña = DNI; alumno de prueba
-  `99999999` con la contraseña definida por el dueño. La contraseña del ADMIN de producción
-  es la real del dueño y **no** está en `.env`. La clave de PostgreSQL local está en
-  `siga-uc-backend/.env` (`DB_PASSWORD`); no se escribe en este documento.
+- Credenciales de demo en Supabase: docentes `73000001`–`73000006` con `Docente2026*`;
+  secretaria `73000007` con `Secretaria2026*`; estudiantes `72000001`–`72000075` con
+  `UC<DNI>`. El ADMIN conserva su contraseña real de producción y `UC2026*` ya no aplica
+  allí; los docentes `99000001`–`99000005` están inactivos. La clave de PostgreSQL local
+  está en `siga-uc-backend/.env` (`DB_PASSWORD`); no se escribe en este documento.
 - `npm run smoke` existe (`siga-uc-backend/scripts/smoke.js`): 11 pruebas de solo lectura,
   timeout de 10 s por petición. Lee las credenciales de `SMOKE_*` y de
   `siga-uc-backend/.env`; nunca las imprime. Códigos de salida: `0` solo sin FAIL y sin
@@ -1135,44 +1144,27 @@ sin autorización.
     de la Fase 1 (H74, configuración global/año, auditoría y UI general).
 
 ## Estado verificado al cierre (actualizado 23/11/2026)
-- HEAD: ver `git log -1`; código funcional desplegado en Render en `bef0861`.
-- Frontend de Render sirve el build de `bef0861`. API Render: 200, database "ok".
+- HEAD: ver `git log -1`; código funcional desplegado en Render en `f7477c1`.
+- Frontend de Render sirve el build de `f7477c1`. API Render: 200, database "ok".
 - E2E 100 PASS; integridad 35 PASS en base nueva y 33/2 de seed local;
   smoke 12 PASS; H47 4 PASS; build Angular OK.
-- Supabase demo: 48 tablas, 2026 ACTIVO, 2027 no activo, 1 política,
-  0 promociones confirmadas, 0 actas, 1 alumno, 5 tipos de beca y setup completado.
+- **Verificación de producción contra Supabase: `uat:verify` 21 PASS, 0 FAIL**.
+- Supabase demo: 48 tablas, 2026 ACTIVO, 2027 no activo, **75 alumnos** (15 por grado),
+  6 docentes activos, 55 carga, 5 tutores, 145 horarios publicados, 750 pensiones,
+  113 pagos, 3 becas, 1 acta ABIERTO y setup completado.
 - Ya están hechos: SIAGIE interno, H70, H71 local, login responsive, sidebar
-  con scroll en los 4 roles y módulos del ESTUDIANTE responsive.
+  con scroll en los 4 roles, módulos del ESTUDIANTE responsive y datos demo UAT.
 - El responsive de ADMIN/SECRETARÍA/DOCENTE queda PAUSADO.
 
-## Importante: trabajo sin commit
-El árbol de trabajo contiene cambios de Fase 1 que no deben perderse:
-- `database/migracion_h74_configuracion_base.sql`
-- `siga-uc-backend/src/dao/configuracionDao.js`
-- cambios en `configuracionController`, `configuracionRoutes`,
-  `configuracionService`, `auditoriaDao`, `auditoriaService` y tests.
-- `siga-uc-frontend/src/app/core/services/configuracion-admin.service.ts`
-- `siga-uc-frontend/src/app/features/admin/configuracion/`
-- cambios en rutas, sidebar, layout, auditoría y `configuracion.service.ts`.
-Antes de tocar cualquier archivo, muestra `git status` y revisa el diff.
-No asumas que esos cambios están completos ni que están aprobados.
+## Importante: estado del árbol
+El árbol de trabajo está limpio (`git status`). Las fases 1–7 y la demo UAT están
+commiteadas y desplegadas (`f7477c1`); no hay cambios de Fase 1 pendientes.
 
-## Objetivo de esta sesión
-1. Revisar la Fase 0 de `documentacion/20-MODULO-CONFIGURACION.md` contra el
-   código real y confirmar que el diagnóstico sigue vigente.
-2. Auditar los cambios sin commit de la Fase 1:
-   - ¿H74 es idempotente y segura?
-   - ¿El endpoint público solo expone datos seguros?
-   - ¿La configuración admin exige ADMIN/SECRETARÍA y escritura solo ADMIN?
-   - ¿La auditoría guarda valor anterior/nuevo y motivo en la misma transacción?
-   - ¿La UI guarda, recarga y muestra errores sin romper el diseño?
-   - ¿Los tests cubren los criterios de aceptación de la Fase 1?
-3. Reportar brechas, riesgos y archivos que falten.
-4. Proponer el plan para cerrar Fase 1 y luego las fases 2–7, con dependencias,
-   riesgo y esfuerzo. El módulo debe quedar dinámico: tarifas, cursos, jornada,
-   becas y textos sin valores fijos.
-5. No implementar las fases 2–7 hasta que el dueño apruebe el plan. Si la
-   Fase 1 ya está aprobada, terminarla primero y probarla.
+## Próxima sesión
+1. Revisar la demo con la dirección y aprobar el alcance.
+2. Validar `/admin/configuracion`, tesorería, notas, asistencia y reportes con los datos demo.
+3. Mantener 2027 inactivo y no confirmar promociones en Supabase.
+4. No cargar datos reales hasta la aprobación.
 
 ## Qué debe cubrir el módulo (visión completa)
 ### A. Tarifas y conceptos

@@ -35,12 +35,13 @@ en la campanita; el modal muestra el aviso de modo prueba.
 
 | Entorno | Datos | Cuándo usarlo |
 |---|---|---|
-| **Local** (`siga_uc` con `siga_uc_completo.sql`) | 21 alumnos ficticios, usuarios de los 4 roles, pagos y pensiones | **Recomendado** para el guion completo: notas, libreta, reportes y caja |
-| Render + Supabase (demo) | Solo usuarios y alumno de prueba | Para mostrar que está desplegado; insuficiente para libreta/reportes si no se preparan datos |
+| **Local** (`siga_uc_uat`) | 75 alumnos ficticios, 6 docentes, notas, asistencia, horarios, pensiones y pagos | Para ensayar sin depender de Render/Supabase |
+| **Render + Supabase (demo)** | Los mismos 75 alumnos, 6 docentes activos, 55 carga, 145 horarios, 750 pensiones y 113 pagos | **Recomendado** para la demo desplegada: los datos ya están cargados |
 
-La demo completa se ensaya en local. Si se muestra el entorno de Render, preparar antes
-datos ficticios equivalentes (grados con alumnos, cursos con docente, notas y caja) y
-verificar el checklist.
+La demo completa se puede ejecutar en Render/Supabase con los 75 alumnos cargados. El
+entorno local `siga_uc_uat` conserva el mismo dataset para ensayo. El ADMIN de Supabase
+conserva su contraseña real; las cuentas UAT de SECRETARÍA, DOCENTE y ESTUDIANTE usan las
+credenciales entregadas en la sesión.
 
 ### 2.1 Un día antes
 
@@ -50,6 +51,8 @@ verificar el checklist.
 - [ ] Abrir el frontend y hacer login con cada rol que se va a mostrar.
 - [ ] Revisar que las cuentas de demo **no** estén en `requiere_cambio_password`.
 - [ ] Confirmar que hay una caja aperturable y al menos una pensión `PENDIENTE`.
+- [ ] Confirmar en Supabase: **75 alumnos**, **6 docentes activos**, **55 carga**,
+      **145 horarios publicados**, **750 pensiones**, **113 pagos** y **1 acta ABIERTO**.
 - [ ] Generar una libreta PDF de prueba y abrirla.
 - [ ] Enviar una notificación de prueba y verla en la campanita del destinatario.
 - [ ] Revisar la bitácora: deben aparecer `LOGIN`, `CREAR`, `ANULAR`, `ENVIAR` y

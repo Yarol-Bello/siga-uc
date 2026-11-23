@@ -38,6 +38,16 @@ contraseña temporal definida al ejecutar `-v admin_password` y
 `requiere_cambio_password = TRUE`. La contraseña no se documenta aquí; el admin debe
 cambiarla en el primer inicio de sesión.
 
+## Demo Supabase (23/11/2026)
+
+- **75 alumnos** ficticios (15 por grado), 6 docentes activos, 1 secretaria, 55 carga,
+  5 tutores, 145 horarios publicados, 750 pensiones, 113 pagos, 3 becas y 1 acta ABIERTO.
+- Cuentas UAT: secretaria `73000007`, docente `73000001`, estudiante `72000001`.
+  Las contraseñas se entregaron en la sesión y **no se documentan aquí**.
+- El ADMIN de Supabase conserva la contraseña real del dueño; `UC2026*` solo se usó de
+  forma temporal durante la carga y se restauró. Los docentes `99000001`–`99000005`
+  quedaron inactivos.
+
 ## Smoke test
 
 `npm run smoke` obtiene las credenciales de `siga-uc-backend/.env`; en una terminal nueva

@@ -3,7 +3,7 @@
 **SIGA-UC — I.E.P. Unión Científica**
 **Fases 0–7:** diagnóstico, diseño, configuración y primera instalación
 **Fecha:** 23/11/2026
-**Commit base:** `bef0861` (Fase 0: `fe5f273`; Fase 1: `3a0d20b`)
+**Commit base:** `f7477c1` (Fase 0: `fe5f273`; Fase 1: `3a0d20b`)
 **Estado:** Fases 1–7 implementadas, aplicadas en local y **desplegadas en Render**;
 H74–H79 aplicadas en Supabase demo el 23/11/2026, con `setup_completado=true`.
 
@@ -489,10 +489,18 @@ base desechable E2E. Idempotente. Crea:
 - UI probada a 768 y 1366 px; a 390 px el componente se adapta, pero el sidebar fijo del
   ADMIN (responsive pausado) limita el ancho. No se modificó el layout por indicación.
 
-**Desplegado (23/11/2026):** backend y frontend en Render con `bef0861`; H74–H79
+**Desplegado (23/11/2026):** backend y frontend en Render con `f7477c1`; H74–H79
 aplicadas en Supabase demo. Allí hay 48 tablas, 2026 ACTIVO, 2027 no activo, 0 promociones
 y `setup_completado=true`. `/api/configuracion` devuelve la institución y
 `/api/setup/status` reporta el setup completado.
+
+**Datos demo cargados (23/11/2026):** 75 alumnos (15 por grado), 6 docentes activos,
+1 secretaria, 55 carga, 5 tutores, 145 horarios publicados, 750 pensiones (38 pagadas y
+10 exoneradas), 113 pagos, 3300 notas, 8700 calificaciones, 4125 asistencias, 3 becas y
+1 acta ABIERTO. La pantalla de Tesorería carga las pensiones en lotes de 5 para evitar
+500 por saturación en Render/Supabase. `uat:verify` pasó **21/21** contra Supabase. El
+seed usó `UC2026*` de forma temporal para el ADMIN y restauró su contraseña real al
+terminar.
 
 ---
 
@@ -622,7 +630,7 @@ redirección al login. El login ahora usa el nombre institucional y el título d
 - Integridad: **35 invariantes** (se agregó “setup pendiente con admin existente”).
 
 **Desplegado (23/11/2026):** H79 aplicada en Supabase demo; `setup_completado=true` y
-Render sirviendo `bef0861`. No se activó 2027 ni se confirmaron promociones.
+Render sirviendo `f7477c1`. No se activó 2027 ni se confirmaron promociones.
 
 ---
 
@@ -635,3 +643,4 @@ Render sirviendo `bef0861`. No se activó 2027 ni se confirmaron promociones.
 | 23/11/2026 | Fases 2–6: H75 tarifas, H76 académico, H77 jornada, H78 becas y textos/PDF/correo configurables; E2E 100. | Sesión de código |
 | 23/11/2026 | Fase 7: H79, asistente `/setup`, token de instalación, admin inicial y `test:setup`. | Sesión de código |
 | 23/11/2026 | Despliegue: Render `bef0861` (backend y frontend) y H74–H79 en Supabase demo; 48 tablas y setup completado. | Sesión de código |
+| 23/11/2026 | Demo UAT en Supabase: 75 alumnos, 6 docentes activos, 750 pensiones, 113 pagos, 3 becas, 1 acta ABIERTO; Tesorería carga pensiones por lotes. | Sesión de código |

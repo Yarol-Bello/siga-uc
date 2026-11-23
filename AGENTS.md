@@ -16,8 +16,8 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 
 - Repo: `https://github.com/Yarol-Bello/siga-uc.git` (rama `main`)
 - Ruta local: `C:\Users\yarol\Documents\Proyectos\siga-uc`
-- Estado: funcional y desplegado en Render (demo); Supabase demo con H74–H79 aplicadas.
-  Pendiente documentación final, aprobación del colegio y mejoras.
+- Estado: funcional y desplegado en Render (demo); Supabase demo con H74–H79 aplicadas
+  y 75 alumnos UAT cargados. Pendiente documentación final, aprobación del colegio y mejoras.
 
 ---
 
@@ -217,11 +217,12 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
 - **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas y desplegadas en Render**
-  (código actual `bef0861`). **H49, H73 y H74–H79 están aplicadas en Supabase demo**:
-  48 tablas, 2026 ACTIVO, 1 política, 0 promociones, 0 actas, 145 horarios, 5 docentes y
-  `setup_completado=true`. `/admin/anios-lectivos`, `/admin/promociones` y
-  `/admin/historico` están operativos. 2027 no está activo. El rollback H49 es solo para
-  bases desechables.
+  (código actual `f7477c1`). **H49, H73 y H74–H79 están aplicadas en Supabase demo**:
+  48 tablas, 2026 ACTIVO, 2027 no activo, 75 alumnos (15 por grado), 6 docentes activos,
+  55 carga, 5 tutores, 145 horarios publicados, 750 pensiones, 113 pagos, 3 becas,
+  1 acta ABIERTO, 0 promociones y `setup_completado=true`.
+  `/admin/anios-lectivos`, `/admin/promociones` y `/admin/historico` están operativos.
+  El rollback H49 es solo para bases desechables.
 - **6.2 no agrega migración**: opera sobre H49 desde `/admin/anios-lectivos`. Si la tabla
   `anios_lectivos` no existe, los endpoints responden `503 H49_NO_APLICADO`, no 500.
 - El rollover clona solo **grados, conceptos, períodos, carga y tutores**. No crea alumnos,
@@ -348,8 +349,15 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   UI `/admin/configuracion` con pestañas General, Tarifas, Académico, Horarios y Becas.
   **Solo ADMIN escribe**; SECRETARÍA lee tarifas, académico, horarios y becas.
   **H74–H79 están aplicadas en Supabase demo** desde el 23/11/2026; `setup_completado=true`.
-  Render sirve backend y frontend con `bef0861`. 48 tablas base (49 en local con
+  Render sirve backend y frontend con `f7477c1`. 48 tablas base (49 en local con
   `horarios_h47_backup`).
+- **Datos demo en Supabase (23/11/2026):** 75 alumnos (15 por grado), 6 docentes activos,
+  1 secretaria, 55 carga, 5 tutores, 145 horarios publicados, 750 pensiones (38 pagadas,
+  10 exoneradas), 113 pagos, 3300 notas, 8700 calificaciones, 4125 asistencias, 3 becas y
+  1 acta ABIERTO. Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron
+  **INACTIVOS**. El ADMIN de Supabase conserva su contraseña real; el seed UAT usó
+  `UC2026*` solo de forma temporal y lo restauró. Las credenciales UAT de SECRETARIA,
+  DOCENTE y ESTUDIANTE están en el reporte de la sesión.
 - **Becas (H78):** el catálogo `tipos_beca` define alcance, modalidad, tope, combinación,
   grupo de exclusividad, prioridad, evidencia y aprobación. Una beca aprobada se aplica a
   cargos `PENDIENTE`/`EXONERADO`; una beca del 100% deja el cargo `EXONERADO` en 0. Los
@@ -372,8 +380,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   `/cambiar-password`.
 - Sí hay suites automatizadas: `npm run smoke` (12), `npm run test:integridad` (35),
   `npm run test:e2e` (100, base desechable), `npm run test:setup` (5, base vacía) y
-  `npm run uat:seed`/`uat:verify` (75 alumnos, 21 comprobaciones, base local `siga_uc_uat`);
-  el resto del testeo es manual.
+  `npm run uat:seed`/`uat:verify` (75 alumnos, 21 comprobaciones; aceptan
+  `UAT_BASE_URL`/`UAT_DATABASE_URL` para una demo remota); el resto del testeo es manual.
 
 ---
 

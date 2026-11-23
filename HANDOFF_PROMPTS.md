@@ -24,7 +24,7 @@
 
 | Elemento | Estado |
 |---|---|
-| Código desplegado en Render | `bef0861` (Fases 6.1–6.4 + configuración 1–7 + UAT y textos) |
+| Código desplegado en Render | `f7477c1` (Fases 6.1–6.4 + configuración 1–7 + UAT y textos + tesorería por lotes) |
 | 6.4 histórico | Implementado, verificado y **desplegado**; sin migración |
 | Fase 7 (pulido) | Desplegada en Render (`e1c3ada`); H59 aplicada en Supabase; **H70 y H71 cerrados** en el cierre de demo |
 | Login responsive | Desplegado en Render (`e1c3ada`): móviles, tabletas, plegables, laptops y modal adaptativo |
@@ -32,11 +32,11 @@
 | Estudiante responsive | Desplegado en Render (`df1f384`): drawer móvil, header compacto, dashboard, asistencia y horario adaptados; tablas con scroll interno |
 | SIAGIE | **Exportación interna** (decisión cerrada): sin portal MINEDU, sin plantilla y sin análisis simulado; todos los cursos del grado |
 | Último commit de documentación | Ver `git log -1` (cierre de configuración/UAT) |
-| Backend / Frontend | Live en Render (`bef0861`); backend sin commit expuesto en `/health` |
+| Backend / Frontend | Live en Render (`f7477c1`); backend sin commit expuesto en `/health` |
 | `/api/health` | OK, `database: "ok"` |
-| Supabase demo | **48 tablas**, H49/H73/H74–H79 aplicadas, **0 actas**, 2026 activo, 1 política, 0 promociones, `setup_completado=true` |
-| Horarios en Supabase | **145 PUBLICADO**, 5 docentes demo (`99000001`–`99000005`) |
-| Carga en Supabase | 55 cargas, 30/30/30/30/25 h; 0 choques |
+| Supabase demo | **48 tablas**, H49/H73/H74–H79 aplicadas, **75 alumnos**, **6 docentes activos**, 1 secretaria, **750 pensiones**, **113 pagos**, 3 becas, **1 acta ABIERTO**, 2026 activo, 0 promociones, `setup_completado=true` |
+| Horarios en Supabase | **145 PUBLICADO**; 6 docentes UAT (`73000001`–`73000006`); los 5 demo antiguos quedaron inactivos |
+| Carga en Supabase | 55 cargas entre 6 docentes UAT; 5 tutores; 0 choques |
 | Local `siga_uc` | 49 tablas (48 base + `horarios_h47_backup`), H49/H73/H74–H79 aplicados, 54 cargas en ADMIN, 0 horarios, 10 períodos, 2026 activo |
 | Fase 6.1 (multi-año base) | Desplegada en Render (`3007dbe`); H49 aplicada en Supabase |
 | Fase 6.2 (rollover) | Desplegada en Render (`f05ecc5`); H49 aplicada en Supabase |
@@ -47,7 +47,7 @@
 | Integridad (base de producción desechable) | **35 PASS**; local 33 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 12 PASS / 4 PASS |
 | Setup inicial (`npm run test:setup`) | **5 PASS** sobre base vacía |
-| Módulo de configuración | **Fases 1–7 implementadas, desplegadas en Render (`bef0861`) y aplicadas en Supabase demo**: H74–H79, tarifas, académico, jornada, becas, textos/PDF/correo y `/setup`; `setup_completado=true` |
+| Módulo de configuración | **Fases 1–7 implementadas, desplegadas en Render (`f7477c1`) y aplicadas en Supabase demo**: H74–H79, tarifas, académico, jornada, becas, textos/PDF/correo y `/setup`; `setup_completado=true` |
 
 > Recordatorio: un push que solo toca `database/` o `documentacion/` **no despliega**.
 > Las migraciones se aplican a mano en Supabase.
@@ -96,7 +96,7 @@ La **Fase 6.2 (rollover)** quedó implementada, verificada y **desplegada en Ren
 
 La **Fase 6.3 (promoción)** quedó implementada, verificada y **desplegada en Render**:
 
-- Migración H73 (`promociones`, `politicas_promocion`); 43 tablas base, 44 en local.
+- Migración H73 (`promociones`, `politicas_promocion`); 48 tablas base, 49 en local.
 - API `/api/promociones` (políticas, preview, confirm, listado, detalle y anulación).
   SECRETARIA puede leer/previsualizar; ADMIN confirma y anula.
 - Pantalla ADMIN `/admin/promociones` con políticas, filtros, preview por alumno, override
@@ -215,7 +215,9 @@ git status --short
 curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 ```
 
-- Supabase: **48 tablas**, 0 actas, 145 horarios, 5 docentes demo. **H49/H73/H74–H79 aplicadas; 2026 activo; 1 política; 0 promociones; setup completado.**
+- Supabase: **48 tablas**, **75 alumnos**, **6 docentes activos**, 55 carga, 5 tutores,
+  145 horarios, 750 pensiones, 113 pagos, 3 becas, 1 acta ABIERTO. **H49/H73/H74–H79
+  aplicadas; 2026 activo; 1 política; 0 promociones; setup completado.**
 - Local: `npm run test:e2e` (100 PASS), `npm run test:integridad` (35 PASS en base de
   producción desechable; 33/2 de seed en local), `npm run test:h47-generador` (4 PASS) y
   `npm run smoke` (12 PASS).
@@ -232,13 +234,14 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 ## 10. Próximo paso exacto
 
 1. H49/H73/H59/H74–H79 ya están aplicadas en Supabase demo: 48 tablas, 2026 activo,
-   1 política, 0 promociones, 0 actas, 145 horarios, 5 docentes y setup completado.
-   **No volver a aplicarlas.**
+   75 alumnos, 6 docentes activos, 55 carga, 5 tutores, 145 horarios, 750 pensiones,
+   113 pagos, 3 becas, 1 acta ABIERTO y setup completado. **No volver a aplicarlas.**
 2. 6.2, 6.3, 6.3.1, 6.4, el cierre de demo, el login responsive, el sidebar, los módulos
-   del estudiante responsive y la configuración 1–7 ya están desplegados en Render
-   (`bef0861`).
+   del estudiante responsive, la configuración 1–7 y la tesorería por lotes ya están
+   desplegados en Render (`f7477c1`).
 3. Probar en Supabase **solo previews** de rollover y promoción. **No confirmar, no activar
-   2027 y no anular** en la demo. Con 0 actas, el preview de promoción bloqueará: es correcto.
+   2027 y no anular** en la demo. Con 1 acta ABIERTO, el preview puede continuar; no
+   confirmar promociones.
 4. La **Fase 6.4 (histórico)** no requiere migración ni tocar Supabase.
 5. El **cierre de demo** ya está implementado y probado en local: SIAGIE interno, H70
    cerrado, H71 aplicado en local, UAT de los 4 roles, guion, backup y reinicio. H71 no se
@@ -264,12 +267,12 @@ No implementas código, no tocas Supabase ni Render.
 4. HANDOFF_SESSION.md (estado de la sesión de código).
 
 ## Estado
-- Código desplegado: `bef0861` (Fases 6.1-6.4 + configuración 1-7 + UAT y textos).
-- Fases 1-7 y 6.1-6.4 desplegadas en Render; configuración y `/setup` incluidos. E2E 100 PASS en local.
+- Código desplegado: `f7477c1` (Fases 6.1-6.4 + configuración 1-7 + UAT y textos + tesorería por lotes).
+- Fases 1-7 y 6.1-6.4 desplegadas en Render; configuración y `/setup` incluidos. E2E 100 PASS en local; `uat:verify` 21 PASS contra Supabase.
 - Login probado de 320×568 a 1920×1080; sidebar con menú desplazable; módulos del estudiante probados en móvil, tableta, laptop y escritorio.
-- **H49, H73 y H74-H79 aplicadas en Supabase demo**: 48 tablas, 2026 activo, 1 política,
-  0 promociones, 0 actas, 145 horarios, 5 docentes y setup completado.
+- **H49, H73 y H74-H79 aplicadas en Supabase demo**: 48 tablas, 2026 activo, 75 alumnos, 6 docentes activos, 55 carga, 5 tutores, 145 horarios, 750 pensiones, 113 pagos, 3 becas, 1 acta ABIERTO y setup completado.
 - **H59 aplicada en Supabase**: columna `personal.observaciones` existente.
+- El ADMIN de Supabase conserva su contraseña real; `UC2026*` solo se usó temporalmente en el seed y se restauró.
 - No activar 2027 en el demo.
 
 ## Tarea de esta sesión
