@@ -234,39 +234,71 @@ export class SecretariaTesoreriaComponent implements OnInit {
   }
 
   /**
-   * Cargar pensiones de cada alumno
+   * Cargar pensiones de cada alumno en lotes para no saturar la API.
+   * En producción (Render/Supabase) 75 peticiones simultáneas provocaban 500.
    */
-  cargarPensiones(alumnosData: any[], anio: number): void {
-    const promesas = alumnosData.map((alumno) =>
-      this.http
-        .get<any>(
-          `${environment.apiUrl}/tesoreria/pensiones/alumno/${alumno.id_alumno}?anio=${anio}`,
-        )
-        .toPromise()
-        .then((res) => ({
-          ...alumno,
-          pensiones: res?.data || [],
-          estado_general: this.calcularEstadoGeneral(
-            res?.data || [],
-            alumno.estado_matricula,
-          ),
-        })),
-    );
+  async cargarPensiones(alumnosData: any[], anio: number): Promise<void> {
+    const limite = 5;
+    const resultados: any[] = [];
+    let fallos = 0;
 
-    Promise.all(promesas)
-      .then((alumnosConPensiones) => {
-        this.alumnos.set(alumnosConPensiones);
-        this.alumnosListos = true;
-        this.cargando.set(false);
-        this.abrirPreticketDesdeQuery();
-      })
-      .catch((err) => {
-        console.error('Error al cargar pensiones:', err);
-        this.alumnosListos = true;
+    try {
+      for (let i = 0; i < alumnosData.length; i += limite) {
+        const lote = alumnosData.slice(i, i + limite);
+        const parte = await Promise.all(
+          lote.map(async (alumno) => {
+            try {
+              const res = await this.http
+                .get<any>(
+                  `${environment.apiUrl}/tesoreria/pensiones/alumno/${alumno.id_alumno}?anio=${anio}`,
+                )
+                .toPromise();
+              const pensiones = res?.data || [];
+              return {
+                ...alumno,
+                pensiones,
+                estado_general: this.calcularEstadoGeneral(
+                  pensiones,
+                  alumno.estado_matricula,
+                ),
+              };
+            } catch (err) {
+              fallos += 1;
+              console.warn(
+                `No se pudieron cargar las pensiones de ${alumno.dni || alumno.id_alumno}`,
+                err,
+              );
+              return {
+                ...alumno,
+                pensiones: [],
+                estado_general: alumno.estado_matricula || 'Sin datos',
+              };
+            }
+          }),
+        );
+        resultados.push(...parte);
+      }
+
+      this.alumnos.set(resultados);
+      this.alumnosListos = true;
+      this.cargando.set(false);
+
+      if (fallos === alumnosData.length && alumnosData.length > 0) {
         this.error.set('No se pudieron cargar las pensiones');
-        this.cargando.set(false);
-        this.abrirPreticketDesdeQuery();
-      });
+      } else if (fallos > 0) {
+        console.warn(
+          `Pensiones incompletas: ${fallos} de ${alumnosData.length} alumnos`,
+        );
+      }
+
+      this.abrirPreticketDesdeQuery();
+    } catch (err) {
+      console.error('Error al cargar pensiones:', err);
+      this.alumnosListos = true;
+      this.error.set('No se pudieron cargar las pensiones');
+      this.cargando.set(false);
+      this.abrirPreticketDesdeQuery();
+    }
   }
 
   /**

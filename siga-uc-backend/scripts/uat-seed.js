@@ -8,6 +8,11 @@
  *  - admin 74829102 / UC2026* con requiere_cambio_password=false
  *
  * Uso: node scripts/uat-seed.js
+ *
+ * Para una base remota (solo demo; nunca producción real):
+ *  - UAT_BASE_URL=https://.../api
+ *  - UAT_DATABASE_URL=postgresql://...
+ *  - UAT_DB_NAME=postgres (solo para el log)
  */
 
 "use strict";
@@ -21,20 +26,27 @@ if (fs.existsSync(rutaEnv) && typeof process.loadEnvFile === "function") {
   process.loadEnvFile(rutaEnv);
 }
 
-const BASE = "http://127.0.0.1:3000/api";
+const BASE = process.env.UAT_BASE_URL || "http://127.0.0.1:3000/api";
 const DB_NAME = process.env.UAT_DB_NAME || "siga_uc_uat";
 const ANIO = 2026;
 const ADMIN_DNI = "74829102";
 const ADMIN_PASSWORD = process.env.UAT_ADMIN_PASSWORD || "UC2026*";
 
-const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: Number(process.env.DB_PORT || 5432),
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD,
-  database: DB_NAME,
-  max: 6,
-});
+const pool = process.env.UAT_DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.UAT_DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      options: "-c search_path=public,extensions",
+      max: 6,
+    })
+  : new Pool({
+      host: process.env.DB_HOST || "localhost",
+      port: Number(process.env.DB_PORT || 5432),
+      user: process.env.DB_USER || "postgres",
+      password: process.env.DB_PASSWORD,
+      database: DB_NAME,
+      max: 6,
+    });
 
 let token = null;
 const resumen = {
