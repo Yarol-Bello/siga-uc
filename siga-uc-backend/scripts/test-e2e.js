@@ -6,7 +6,7 @@
  *  - Solo opera sobre una base cuyo nombre contenga "_e2e" (por defecto
  *    siga_uc_e2e). Nunca toca siga_uc ni una base de Supabase.
  *  - Crea la base, carga el dump y las migraciones, arranca el backend en el
- *    puerto 3101, ejecuta 58 flujos y al final detiene el backend y elimina la
+ *    puerto 3101, ejecuta 65 flujos y al final detiene el backend y elimina la
  *    base con dropdb --force.
  *  - Si la limpieza falla, imprime los comandos manuales.
  *
@@ -3036,7 +3036,7 @@ async function ejecutarPruebas() {
   // 37. RBAC del módulo.
   await prueba(
     37,
-    "RBAC: DOCENTE/SECRETARIA 403 y ADMIN 200 en años lectivos",
+    "RBAC: ADMIN/SECRETARIA 200 en lectura y escritura solo ADMIN",
     async () => {
       const admin = await api("/anios-lectivos", { token: ctx.adminToken });
       const datosAdmin = await leerJson(admin);
@@ -3077,7 +3077,22 @@ async function ejecutarPruebas() {
         const respuestaSecre = await api("/anios-lectivos", {
           token: sesion.token,
         });
-        assert.equal(respuestaSecre.status, 403);
+        assert.equal(
+          respuestaSecre.status,
+          200,
+          "SECRETARIA debe leer el catálogo de años (6.4)",
+        );
+
+        const escrituraSecre = await api("/anios-lectivos/preview", {
+          method: "POST",
+          token: sesion.token,
+          body: { anio_origen: ANIO, anio_destino: ANIO_DESTINO },
+        });
+        assert.equal(
+          escrituraSecre.status,
+          403,
+          "SECRETARIA no debe ejecutar escrituras de años",
+        );
       } finally {
         await sql(`DELETE FROM usuarios WHERE id_usuario = $1`, [
           secre[0].id_usuario,
@@ -3089,9 +3104,9 @@ async function ejecutarPruebas() {
 
       registrar(
         37,
-        "RBAC: DOCENTE/SECRETARIA 403 y ADMIN 200 en años lectivos",
+        "RBAC: ADMIN/SECRETARIA 200 en lectura y escritura solo ADMIN",
         "PASS",
-        "ADMIN 200, DOCENTE 403, SECRETARIA 403, sin token 401",
+        "ADMIN 200, DOCENTE 403, SECRETARIA 200/403, sin token 401",
       );
     },
   );
@@ -5066,6 +5081,708 @@ async function ejecutarPruebas() {
         "Promoción: PENDIENTE no se confirma ni crea fila CONFIRMADA",
         "PASS",
         `PENDIENTE 422, reintento PROMOVIDO`,
+      );
+    },
+  );
+
+  // ============================================================
+  // FASE 6.4 — HISTÓRICO POR AÑO Y CONSOLIDADO POR ESTUDIANTE
+  // ============================================================
+  const ANIO_HIST_1 = ANIO - 1; // 2025
+  const ANIO_HIST_2 = ANIO; // 2026
+  const ANIO_HIST_3 = ANIO + 1; // 2027
+  const DNI_HIST = "99999201";
+  const DNI_HIST_OTRO = "99999202";
+
+  let historico = null;
+
+  const insertarMatriculaAnual = async ({
+    idUsuario,
+    dni,
+    nombres,
+    apellidos,
+    idGrado,
+    anio,
+    codigo,
+    estado = "Matriculado",
+  }) => {
+    const filas = await sql(
+      `INSERT INTO alumnos (
+         id_usuario, dni, nombres, apellidos, fecha_nacimiento,
+         id_apoderado, id_grado, condicion, estado_matricula,
+         codigo_estudiante, anio_lectivo
+       )
+       VALUES ($1, $2, $3, $4, '2012-05-10', NULL, $5, 'Regular', $6, $7, $8)
+       RETURNING *`,
+      [
+        idUsuario,
+        dni,
+        nombres,
+        apellidos,
+        idGrado,
+        estado,
+        codigo,
+        anio,
+      ],
+    );
+    return filas[0];
+  };
+
+  const prepararHistorico = async () => {
+    if (historico) return historico;
+
+    await crearOfertaPromocion(ANIO_HIST_1);
+    await crearOfertaPromocion(ANIO_HIST_3);
+
+    const grado1 = await gradoOrden(ANIO_HIST_1, 1);
+    const grado2 = await gradoOrden(ANIO_HIST_2, 2);
+    const grado3 = await gradoOrden(ANIO_HIST_3, 2);
+    assert.ok(grado1, "No existe 1ro en el año histórico 1");
+    assert.ok(grado2, "No existe 2do en el año histórico 2");
+    assert.ok(grado3, "No existe 2do en el año histórico 3");
+
+    const fila1 = await crearAlumnoPromocionAux({
+      dni: DNI_HIST,
+      nombres: "Histórico",
+      apellidos: "E2E",
+      idGrado: grado1.id_grado,
+      anio: ANIO_HIST_1,
+    });
+
+    const fila2 = await insertarMatriculaAnual({
+      idUsuario: fila1.id_usuario,
+      dni: DNI_HIST,
+      nombres: "Histórico",
+      apellidos: "E2E",
+      idGrado: grado2.id_grado,
+      anio: ANIO_HIST_2,
+      codigo: "HIST-9201-2",
+    });
+
+    const fila3 = await insertarMatriculaAnual({
+      idUsuario: fila1.id_usuario,
+      dni: DNI_HIST,
+      nombres: "Histórico",
+      apellidos: "E2E",
+      idGrado: grado3.id_grado,
+      anio: ANIO_HIST_3,
+      codigo: "HIST-9201-3",
+    });
+
+    const filaOtro = await crearAlumnoPromocionAux({
+      dni: DNI_HIST_OTRO,
+      nombres: "Otro",
+      apellidos: "Año",
+      idGrado: grado3.id_grado,
+      anio: ANIO_HIST_3,
+    });
+
+    const cursos = await sql(
+      `SELECT id_curso FROM cursos ORDER BY id_curso LIMIT 5`,
+    );
+    assert.ok(cursos.length >= 3, "No hay cursos suficientes para el E2E");
+
+    for (const [indice, nota] of ["AD", "AD", "A"].entries()) {
+      await sql(
+        `INSERT INTO notas_finales_area
+           (id_alumno, id_curso, bimestre, anio_lectivo, nota_final, calculo_automatico)
+         VALUES ($1, $2, 1, $3, $4, false)
+         ON CONFLICT (id_alumno, id_curso, bimestre, anio_lectivo)
+         DO UPDATE SET nota_final = EXCLUDED.nota_final`,
+        [fila2.id_alumno, cursos[indice].id_curso, ANIO_HIST_2, nota],
+      );
+    }
+
+    for (const [indice, nota] of ["B", "C"].entries()) {
+      await sql(
+        `INSERT INTO notas_finales_area
+           (id_alumno, id_curso, bimestre, anio_lectivo, nota_final, calculo_automatico)
+         VALUES ($1, $2, 1, $3, $4, false)
+         ON CONFLICT (id_alumno, id_curso, bimestre, anio_lectivo)
+         DO UPDATE SET nota_final = EXCLUDED.nota_final`,
+        [fila3.id_alumno, cursos[indice + 1].id_curso, ANIO_HIST_3, nota],
+      );
+    }
+
+    for (const [fecha, estado] of [
+      [`${ANIO_HIST_2}-05-04`, "P"],
+      [`${ANIO_HIST_2}-05-05`, "P"],
+      [`${ANIO_HIST_2}-05-06`, "F"],
+    ]) {
+      await sql(
+        `INSERT INTO asistencia_alumnos
+           (id_alumno, id_curso, id_grado, fecha, dia_semana, estado)
+         VALUES ($1, $2, $3, $4, 'Lunes', $5)`,
+        [fila2.id_alumno, cursos[0].id_curso, grado2.id_grado, fecha, estado],
+      );
+    }
+
+    for (const [fecha, estado] of [
+      [`${ANIO_HIST_3}-05-04`, "P"],
+      [`${ANIO_HIST_3}-05-05`, "T"],
+    ]) {
+      await sql(
+        `INSERT INTO asistencia_alumnos
+           (id_alumno, id_curso, id_grado, fecha, dia_semana, estado)
+         VALUES ($1, $2, $3, $4, 'Martes', $5)`,
+        [fila3.id_alumno, cursos[1].id_curso, grado3.id_grado, fecha, estado],
+      );
+    }
+
+    await sql(
+      `INSERT INTO pensiones
+         (id_alumno, anio_lectivo, mes, monto_base, descuento, monto_final, estado)
+       VALUES
+         ($1, $2, 3, 100.00, 0, 100.00, 'PAGADO'),
+         ($1, $2, 4, 150.00, 0, 150.00, 'PENDIENTE')`,
+      [fila2.id_alumno, ANIO_HIST_2],
+    );
+
+    await sql(
+      `INSERT INTO pensiones
+         (id_alumno, anio_lectivo, mes, monto_base, descuento, monto_final, estado)
+       VALUES ($1, $2, 3, 200.00, 0, 200.00, 'PENDIENTE')`,
+      [fila3.id_alumno, ANIO_HIST_3],
+    );
+
+    const concepto = await sql(
+      `SELECT id_concepto FROM conceptos_pago
+       WHERE anio_lectivo = $1 AND tipo = 'MATRICULA'
+       ORDER BY id_concepto
+       LIMIT 1`,
+      [ANIO_HIST_2],
+    );
+    assert.ok(concepto[0], "No hay concepto MATRICULA para el año histórico");
+
+    await sql(
+      `INSERT INTO pagos
+         (id_alumno, id_concepto, monto, forma_pago, nro_operacion, estado)
+       VALUES ($1, $2, 100.00, 'Efectivo', 'HIST-9201', 'PAGADO')`,
+      [fila2.id_alumno, concepto[0].id_concepto],
+    );
+
+    historico = {
+      fila1,
+      fila2,
+      fila3,
+      filaOtro,
+      cursos,
+      grado2,
+      grado3,
+    };
+    return historico;
+  };
+
+  // 59. Listados por año no mezclan matrículas.
+  await prueba(
+    59,
+    "Histórico: /alumnos?anio=2026 y 2027 no mezclan filas",
+    async () => {
+      const h = await prepararHistorico();
+
+      const respuesta2026 = await api(
+        `/alumnos?anio=${ANIO_HIST_2}&search=${DNI_HIST}`,
+        { token: ctx.adminToken },
+      );
+      const datos2026 = await leerJson(respuesta2026);
+      assert.equal(respuesta2026.status, 200, detalleHttp(respuesta2026, datos2026));
+      const filas2026 = datos2026.datos?.data || [];
+      assert.equal(filas2026.length, 1, "2026 debe devolver una sola matrícula");
+      assert.equal(Number(filas2026[0].id_alumno), Number(h.fila2.id_alumno));
+      assert.ok(
+        filas2026.every((fila) => Number(fila.anio_lectivo) === ANIO_HIST_2),
+        "El listado 2026 mezcló otro año",
+      );
+
+      const respuesta2027 = await api(
+        `/alumnos?anio=${ANIO_HIST_3}&search=9999920`,
+        { token: ctx.adminToken },
+      );
+      const datos2027 = await leerJson(respuesta2027);
+      assert.equal(respuesta2027.status, 200, detalleHttp(respuesta2027, datos2027));
+      const filas2027 = datos2027.datos?.data || [];
+      assert.equal(filas2027.length, 2, "2027 debe devolver dos matrículas E2E");
+      assert.ok(
+        filas2027.every((fila) => Number(fila.anio_lectivo) === ANIO_HIST_3),
+        "El listado 2027 mezcló otro año",
+      );
+
+      const ids2026 = new Set(filas2026.map((fila) => Number(fila.id_alumno)));
+      assert.ok(
+        filas2027.every((fila) => !ids2026.has(Number(fila.id_alumno))),
+        "Los listados de 2026 y 2027 comparten id_alumno",
+      );
+
+      registrar(
+        59,
+        "Histórico: /alumnos?anio=2026 y 2027 no mezclan filas",
+        "PASS",
+        `2026=${filas2026.length}, 2027=${filas2027.length}, ids distintos`,
+      );
+    },
+  );
+
+  // 60. /alumnos/dni/:dni?anio devuelve la matrícula correcta.
+  await prueba(
+    60,
+    "Histórico: /alumnos/dni devuelve la matrícula del año pedido",
+    async () => {
+      const h = await prepararHistorico();
+
+      const casos = [
+        [ANIO_HIST_1, h.fila1.id_alumno],
+        [ANIO_HIST_2, h.fila2.id_alumno],
+        [ANIO_HIST_3, h.fila3.id_alumno],
+      ];
+
+      for (const [anio, idEsperado] of casos) {
+        const respuesta = await api(
+          `/alumnos/dni/${DNI_HIST}?anio=${anio}`,
+          { token: ctx.adminToken },
+        );
+        const datos = await leerJson(respuesta);
+        assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+        assert.equal(Number(datos.datos?.data?.id_alumno), Number(idEsperado));
+        assert.equal(Number(datos.datos?.data?.anio_lectivo), anio);
+      }
+
+      const inexistente = await api(
+        `/alumnos/dni/${DNI_HIST}?anio=${ANIO_HIST_3 + 1}`,
+        { token: ctx.adminToken },
+      );
+      const datosInexistente = await leerJson(inexistente);
+      assert.equal(
+        inexistente.status,
+        404,
+        detalleHttp(inexistente, datosInexistente),
+      );
+      assert.equal(
+        datosInexistente.datos?.errors?.codigo,
+        "MATRICULA_NO_ENCONTRADA_EN_ANIO",
+      );
+
+      const activo = await sql(
+        `SELECT anio FROM anios_lectivos WHERE estado = 'ACTIVO' LIMIT 1`,
+      );
+      const anioActivo = Number(activo[0]?.anio);
+      const porDefecto = await api(`/alumnos/dni/${DNI_HIST}`, {
+        token: ctx.adminToken,
+      });
+      const datosPorDefecto = await leerJson(porDefecto);
+      const aniosHistoricos = [ANIO_HIST_1, ANIO_HIST_2, ANIO_HIST_3];
+      if (aniosHistoricos.includes(anioActivo)) {
+        assert.equal(porDefecto.status, 200, detalleHttp(porDefecto, datosPorDefecto));
+        assert.equal(
+          Number(datosPorDefecto.datos?.data?.anio_lectivo),
+          anioActivo,
+        );
+      } else {
+        assert.equal(
+          porDefecto.status,
+          404,
+          "Sin ?anio debe usar el año activo y no devolver un histórico",
+        );
+      }
+
+      registrar(
+        60,
+        "Histórico: /alumnos/dni devuelve la matrícula del año pedido",
+        "PASS",
+        `2025/2026/2027 OK, ${ANIO_HIST_3 + 1} 404, default=${anioActivo}`,
+      );
+    },
+  );
+
+  // 61. Libreta, asistencia y pensiones de un año no incluyen otro.
+  await prueba(
+    61,
+    "Histórico: libreta, asistencia y pensiones no mezclan años",
+    async () => {
+      const h = await prepararHistorico();
+
+      const libreta2026 = await api(
+        `/reportes/libreta/${h.fila2.id_alumno}?bimestre=1&anio=${ANIO_HIST_2}`,
+        { token: ctx.adminToken },
+      );
+      const datosLibreta2026 = await leerJson(libreta2026);
+      assert.equal(
+        libreta2026.status,
+        200,
+        detalleHttp(libreta2026, datosLibreta2026),
+      );
+      const notas2026 = (datosLibreta2026.datos?.data?.notas || []).filter(
+        (nota) => !!nota.nota_final,
+      );
+      assert.equal(notas2026.length, 3, "La libreta 2026 no tiene 3 notas");
+      assert.equal(Number(datosLibreta2026.datos?.data?.anio_lectivo), ANIO_HIST_2);
+
+      const libreta2025 = await api(
+        `/reportes/libreta/${h.fila1.id_alumno}?bimestre=1&anio=${ANIO_HIST_1}`,
+        { token: ctx.adminToken },
+      );
+      const datosLibreta2025 = await leerJson(libreta2025);
+      assert.equal(libreta2025.status, 200, detalleHttp(libreta2025, datosLibreta2025));
+      const notas2025 = (datosLibreta2025.datos?.data?.notas || []).filter(
+        (nota) => !!nota.nota_final,
+      );
+      assert.equal(
+        notas2025.length,
+        0,
+        "La libreta 2025 incluyó notas de otro año",
+      );
+
+      const asistencia2026 = await api(
+        `/asistencias/alumno/${h.fila2.id_alumno}?anio=${ANIO_HIST_2}`,
+        { token: ctx.adminToken },
+      );
+      const datosAsistencia2026 = await leerJson(asistencia2026);
+      assert.equal(
+        asistencia2026.status,
+        200,
+        detalleHttp(asistencia2026, datosAsistencia2026),
+      );
+      const filasAsistencia2026 = datosAsistencia2026.datos?.data || [];
+      assert.equal(filasAsistencia2026.length, 3);
+      assert.ok(
+        filasAsistencia2026.every(
+          (fila) => Number(String(fila.fecha).slice(0, 4)) === ANIO_HIST_2,
+        ),
+        "La asistencia 2026 incluyó fechas de otro año",
+      );
+
+      const asistencia2027 = await api(
+        `/asistencias/alumno/${h.fila3.id_alumno}?anio=${ANIO_HIST_3}`,
+        { token: ctx.adminToken },
+      );
+      const datosAsistencia2027 = await leerJson(asistencia2027);
+      assert.equal(asistencia2027.status, 200, detalleHttp(asistencia2027, datosAsistencia2027));
+      const filasAsistencia2027 = datosAsistencia2027.datos?.data || [];
+      assert.equal(filasAsistencia2027.length, 2);
+      assert.ok(
+        filasAsistencia2027.every(
+          (fila) => Number(String(fila.fecha).slice(0, 4)) === ANIO_HIST_3,
+        ),
+        "La asistencia 2027 incluyó fechas de otro año",
+      );
+
+      const pensiones2026 = await api(
+        `/tesoreria/pensiones/alumno/${h.fila2.id_alumno}?anio=${ANIO_HIST_2}`,
+        { token: ctx.adminToken },
+      );
+      const datosPensiones2026 = await leerJson(pensiones2026);
+      assert.equal(
+        pensiones2026.status,
+        200,
+        detalleHttp(pensiones2026, datosPensiones2026),
+      );
+      const filasPensiones2026 = datosPensiones2026.datos?.data || [];
+      assert.equal(filasPensiones2026.length, 2);
+      assert.equal(Number(filasPensiones2026[0].monto_final), 100);
+
+      const pensionesCruzadas = await api(
+        `/tesoreria/pensiones/alumno/${h.fila2.id_alumno}?anio=${ANIO_HIST_3}`,
+        { token: ctx.adminToken },
+      );
+      const datosPensionesCruzadas = await leerJson(pensionesCruzadas);
+      assert.equal(
+        pensionesCruzadas.status,
+        404,
+        detalleHttp(pensionesCruzadas, datosPensionesCruzadas),
+      );
+      assert.equal(
+        datosPensionesCruzadas.datos?.errors?.codigo,
+        "MATRICULA_NO_ENCONTRADA_EN_ANIO",
+      );
+
+      registrar(
+        61,
+        "Histórico: libreta, asistencia y pensiones no mezclan años",
+        "PASS",
+        "2025 sin notas, 2026=3 asistencias, 2027=2, pensiones cruzadas 404",
+      );
+    },
+  );
+
+  // 62. id_alumno de otro año en asistencia/calificaciones → 404.
+  await prueba(
+    62,
+    "Histórico: id_alumno de otro año responde 404 en asistencia y notas",
+    async () => {
+      const h = await prepararHistorico();
+
+      const rutas = [
+        `/asistencias/alumno/${h.fila3.id_alumno}?anio=${ANIO_HIST_2}`,
+        `/asistencias/alumno/${h.fila3.id_alumno}/resumen?anio=${ANIO_HIST_2}`,
+        `/calificaciones/notas-finales/alumno/${h.fila3.id_alumno}?anio=${ANIO_HIST_2}`,
+        `/calificaciones/alumno/${h.fila3.id_alumno}/curso/${h.cursos[0].id_curso}?anio=${ANIO_HIST_2}`,
+        `/reportes/libreta/${h.fila3.id_alumno}?bimestre=1&anio=${ANIO_HIST_2}`,
+      ];
+
+      for (const ruta of rutas) {
+        const respuesta = await api(ruta, { token: ctx.adminToken });
+        const datos = await leerJson(respuesta);
+        assert.equal(respuesta.status, 404, `${ruta} ${detalleHttp(respuesta, datos)}`);
+        assert.equal(
+          datos.datos?.errors?.codigo,
+          "MATRICULA_NO_ENCONTRADA_EN_ANIO",
+          `${ruta} no devolvió MATRICULA_NO_ENCONTRADA_EN_ANIO`,
+        );
+      }
+
+      registrar(
+        62,
+        "Histórico: id_alumno de otro año responde 404 en asistencia y notas",
+        "PASS",
+        `${rutas.length} endpoints con 404 MATRICULA_NO_ENCONTRADA_EN_ANIO`,
+      );
+    },
+  );
+
+  // 63. Consolidado por DNI: una fila por año agrupada por usuario.
+  await prueba(
+    63,
+    "Histórico: consolidado por DNI agrupa por usuario y separa años",
+    async () => {
+      const h = await prepararHistorico();
+
+      const respuesta = await api(`/reportes/consolidado/${DNI_HIST}`, {
+        token: ctx.adminToken,
+      });
+      const datos = await leerJson(respuesta);
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+
+      const consolidado = datos.datos?.data;
+      assert.ok(consolidado?.usuario, "El consolidado no devolvió usuario");
+      assert.equal(consolidado.usuario.dni, DNI_HIST);
+      assert.equal(
+        Number(consolidado.usuario.id_usuario),
+        Number(h.fila1.id_usuario),
+      );
+      assert.equal(consolidado.anios.length, 3, "Debe devolver 3 años");
+
+      const porAnio = new Map(
+        consolidado.anios.map((fila) => [Number(fila.anio), fila]),
+      );
+      assert.deepEqual(
+        [...porAnio.keys()].sort(),
+        [ANIO_HIST_1, ANIO_HIST_2, ANIO_HIST_3].sort(),
+      );
+      assert.equal(
+        new Set(consolidado.anios.map((fila) => Number(fila.id_usuario))).size,
+        1,
+        "El consolidado no está agrupado por id_usuario",
+      );
+      assert.equal(
+        new Set(consolidado.anios.map((fila) => Number(fila.id_alumno))).size,
+        3,
+        "Cada año debe tener su propio id_alumno",
+      );
+
+      const fila2026 = porAnio.get(ANIO_HIST_2);
+      assert.equal(Number(fila2026.notas_ad), 2);
+      assert.equal(Number(fila2026.notas_a), 1);
+      assert.equal(Number(fila2026.notas_c), 0);
+      assert.equal(Number(fila2026.total_notas), 3);
+      assert.equal(Number(fila2026.total_asistencias), 3);
+      assert.equal(Number(fila2026.total_faltas), 1);
+      assert.ok(
+        Math.abs(Number(fila2026.porcentaje_asistencia) - 66.67) < 0.01,
+        `Asistencia 2026 inesperada: ${fila2026.porcentaje_asistencia}`,
+      );
+      assert.equal(Number(fila2026.total_pagado), 100);
+      assert.equal(Number(fila2026.deuda_pendiente), 150);
+      assert.equal(Number(fila2026.total_pensiones), 2);
+      assert.equal(Number(fila2026.pensiones_pagadas), 1);
+
+      const fila2027 = porAnio.get(ANIO_HIST_3);
+      assert.equal(Number(fila2027.notas_b), 1);
+      assert.equal(Number(fila2027.notas_c), 1);
+      assert.equal(Number(fila2027.total_notas), 2);
+      assert.equal(Number(fila2027.total_asistencias), 2);
+      assert.equal(Number(fila2027.porcentaje_asistencia), 50);
+      assert.equal(Number(fila2027.total_pagado), 0);
+      assert.equal(Number(fila2027.deuda_pendiente), 200);
+      assert.equal(Number(fila2027.total_pensiones), 1);
+
+      const fila2025 = porAnio.get(ANIO_HIST_1);
+      assert.equal(Number(fila2025.total_notas), 0);
+      assert.equal(Number(fila2025.total_pagado), 0);
+      assert.equal(Number(fila2025.deuda_pendiente), 0);
+
+      assert.equal(Number(consolidado.totales.anios), 3);
+      assert.equal(Number(consolidado.totales.total_pagado), 100);
+      assert.equal(Number(consolidado.totales.deuda_pendiente), 350);
+      assert.equal(Number(consolidado.totales.total_notas), 5);
+
+      registrar(
+        63,
+        "Histórico: consolidado por DNI agrupa por usuario y separa años",
+        "PASS",
+        `3 años, pagado=100, deuda=350, notas=AD2/A1/B1/C1`,
+      );
+    },
+  );
+
+  // 64. RBAC del consolidado y del catálogo de años.
+  await prueba(
+    64,
+    "Histórico: ADMIN/SECRETARIA leen; DOCENTE/ESTUDIANTE reciben 403",
+    async () => {
+      await prepararHistorico();
+
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+      const estudiante = await iniciarSesion(
+        "ESTUDIANTE",
+        credenciales.ESTUDIANTE[0],
+        credenciales.ESTUDIANTE[1],
+      );
+      const secretaria = await iniciarSesion(
+        "SECRETARIA",
+        process.env.SMOKE_SECRETARIA_DNI || "40596837",
+        process.env.SMOKE_SECRETARIA_PASSWORD ||
+          process.env.SMOKE_ADMIN_PASSWORD,
+      );
+
+      const adminConsolidado = await api(`/reportes/consolidado/${DNI_HIST}`, {
+        token: ctx.adminToken,
+      });
+      assert.equal(adminConsolidado.status, 200);
+
+      const secretariaConsolidado = await api(
+        `/reportes/consolidado/${DNI_HIST}`,
+        { token: secretaria.token },
+      );
+      assert.equal(
+        secretariaConsolidado.status,
+        200,
+        "SECRETARIA debe leer el consolidado",
+      );
+
+      for (const [rol, token] of [
+        ["DOCENTE", docente.token],
+        ["ESTUDIANTE", estudiante.token],
+      ]) {
+        const respuesta = await api(`/reportes/consolidado/${DNI_HIST}`, {
+          token,
+        });
+        assert.equal(
+          respuesta.status,
+          403,
+          `${rol} no debe leer el consolidado`,
+        );
+      }
+
+      const aniosSecretaria = await api("/anios-lectivos", {
+        token: secretaria.token,
+      });
+      assert.equal(
+        aniosSecretaria.status,
+        200,
+        "SECRETARIA debe leer el catálogo de años",
+      );
+
+      const aniosDocente = await api("/anios-lectivos", {
+        token: docente.token,
+      });
+      assert.equal(aniosDocente.status, 403);
+
+      const escrituraSecretaria = await api("/anios-lectivos/preview", {
+        method: "POST",
+        token: secretaria.token,
+        body: { anio_origen: ANIO_HIST_2, anio_destino: ANIO_HIST_3 },
+      });
+      assert.equal(
+        escrituraSecretaria.status,
+        403,
+        "SECRETARIA no debe ejecutar el preview de rollover",
+      );
+
+      const activarSecretaria = await api(
+        `/anios-lectivos/${ANIO_HIST_3 + 1}/activar`,
+        {
+          method: "PUT",
+          token: secretaria.token,
+          body: { confirmar: true },
+        },
+      );
+      assert.equal(
+        activarSecretaria.status,
+        403,
+        "SECRETARIA no debe activar años",
+      );
+
+      registrar(
+        64,
+        "Histórico: ADMIN/SECRETARIA leen; DOCENTE/ESTUDIANTE reciben 403",
+        "PASS",
+        "consolidado y años OK, escritura de años 403",
+      );
+    },
+  );
+
+  // 65. Contrato de UI: selector de año, modo histórico y enlaces.
+  await prueba(
+    65,
+    "Histórico: UI tiene selector, modo read-only y enlaces con ?anio",
+    async () => {
+      const leer = (rutaRelativa) =>
+        fs.readFileSync(path.join(RAIZ_REPO, rutaRelativa), "utf8");
+
+      const selector = leer(
+        "siga-uc-frontend/src/app/shared/components/selector-anio/selector-anio.component.ts",
+      );
+      assert.ok(selector.includes("Histórico"), "El selector no marca histórico");
+      assert.ok(selector.includes("anioChange"), "El selector no emite cambios");
+
+      const alumnosHtml = leer(
+        "siga-uc-frontend/src/app/features/admin/alumnos/admin-alumnos.component.html",
+      );
+      assert.ok(alumnosHtml.includes("app-selector-anio"));
+      assert.ok(alumnosHtml.includes("esHistorico()"));
+      assert.ok(alumnosHtml.includes("Nueva Matrícula"));
+
+      const alumnosTs = leer(
+        "siga-uc-frontend/src/app/features/admin/alumnos/admin-alumnos.component.ts",
+      );
+      assert.ok(alumnosTs.includes("esHistorico"));
+      assert.ok(alumnosTs.includes("solo lectura"));
+
+      const reportesHtml = leer(
+        "siga-uc-frontend/src/app/features/admin/reportes/admin-reportes.component.html",
+      );
+      assert.ok(reportesHtml.includes("app-selector-anio"));
+
+      const tesoreriaHtml = leer(
+        "siga-uc-frontend/src/app/features/secretaria/tesoreria/secretaria-tesoreria.component.html",
+      );
+      assert.ok(tesoreriaHtml.includes("app-selector-anio"));
+      assert.ok(tesoreriaHtml.includes("esHistorico()"));
+
+      const historicoHtml = leer(
+        "siga-uc-frontend/src/app/features/admin/historico/admin-historico.component.html",
+      );
+      assert.ok(historicoHtml.includes("queryParams"));
+      assert.ok(historicoHtml.includes("anio: fila.anio"));
+      assert.ok(historicoHtml.includes("/admin/reportes"));
+      assert.ok(historicoHtml.includes("/admin/tesoreria"));
+
+      const rutas = leer("siga-uc-frontend/src/app/app.routes.ts");
+      assert.ok(rutas.includes("'historico'"));
+
+      const sidebar = leer(
+        "siga-uc-frontend/src/app/shared/components/sidebar/sidebar.component.ts",
+      );
+      assert.ok(sidebar.includes("/admin/historico"));
+
+      registrar(
+        65,
+        "Histórico: UI tiene selector, modo read-only y enlaces con ?anio",
+        "PASS",
+        "selector, badge, acciones ocultas y deep links verificados",
       );
     },
   );
