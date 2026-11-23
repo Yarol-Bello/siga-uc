@@ -281,6 +281,22 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
 
 ---
 
+### 3.10 Rendimiento y paginación (H81)
+
+- Aplicar `database/migracion_h81_rendimiento_paginacion.sql` después de H80. Solo crea
+  índices; no cambia datos ni el número de tablas.
+- **Tesorería:** `GET /api/tesoreria/pensiones/padron?anio=&page=&pageSize=&search=&estado=`
+  devuelve alumnos, pensiones y estado general en una sola consulta. El frontend carga
+  **25 alumnos por página** y ya no hace una petición por alumno.
+- **Personal:** `GET /api/personal?page=&pageSize=` devuelve `{ data, pagination }`.
+  Sin `page` conserva el arreglo para los consumidores existentes.
+- **Caja:** `GET /api/tesoreria/pagos?limit=50` limita el historial; la respuesta sigue
+  siendo un arreglo.
+- Si una pantalla vuelve a cargar lento, revisar primero si está pidiendo el listado
+  completo sin `page`/`limit` o si hace N+1 por alumno.
+
+---
+
 ## 4. Testeo
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con cuatro suites

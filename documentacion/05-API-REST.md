@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto la exportación interna SIAGIE, que responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **168 endpoints** - 83 GET, 46 POST, 31 PUT, 8 DELETE.
+**Total verificado:** **169 endpoints** - 84 GET, 46 POST, 31 PUT, 8 DELETE.
 
 ---
 
@@ -524,6 +524,7 @@ tiene prioridad. `asistencia_alumnos` no tiene columna `anio_lectivo`: el año s
 | 62 | GET | `/api/tesoreria/pensiones/alumno/:id_alumno?anio=` | Autenticado | Pensiones del alumno |
 | 63 | POST | `/api/tesoreria/pensiones/generar` | ADMIN/SECRETARIA | Genera un mes para todos los alumnos |
 | 63b | POST | `/api/tesoreria/pensiones/alumno/:id_alumno/generar` | ADMIN/SECRETARIA | Genera el cronograma de un alumno (H44) |
+| 63c | GET | `/api/tesoreria/pensiones/padron?anio=&page=&pageSize=&search=&estado=` | ADMIN/SECRETARIA | Padrón paginado con pensiones y estado general (H81) |
 | 64 | GET | `/api/tesoreria/becas?activo=&anio=` | Autenticado | Lista becas del año |
 | 65 | POST | `/api/tesoreria/becas` | ADMIN | Aplica beca |
 | 66 | GET | `/api/tesoreria/estadisticas?anio=&mes=` | Autenticado | Recaudación del mes y deuda pendiente (pre-tickets + pensiones) |
@@ -533,6 +534,12 @@ tiene prioridad. `asistencia_alumnos` no tiene columna `anio_lectivo`: el año s
 `monto_pretickets`, `total_pensiones`, `monto_pensiones`, `alumnos_con_deuda`,
 `total_pendientes` y `monto_pendiente`. `monto_pendiente` es la suma de pre-tickets y
 pensiones; el dashboard de Secretaría usa ese total y no solo los pre-tickets.
+
+**Paginación (H81):** `GET /api/personal?page=&pageSize=` responde
+`{ data, pagination }` solo cuando se envía `page`; sin `page` conserva el arreglo
+histórico. `GET /api/tesoreria/pensiones/padron` responde `{ alumnos, paginacion }` y
+reemplaza las 75 peticiones por alumno. `GET /api/tesoreria/pagos?limit=50` limita el
+historial de caja sin cambiar el formato de la respuesta.
 
 **Anulación de pago:** `PUT /api/tesoreria/pagos/:id/anular` con `{ motivo }` (mínimo 10
 caracteres). Solo aplica a pagos `PAGADO`; doble anulación → 409. En una transacción marca el
@@ -829,7 +836,7 @@ agregaron 3: `GET` de conclusiones, `PUT` de conclusión y `GET` de verificació
 de control interno.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo vigente es 168 (83 GET, 46 POST, 31 PUT, 8 DELETE), tras H75–H80.
+> El conteo vigente es 169 (84 GET, 46 POST, 31 PUT, 8 DELETE), tras H75–H81.
 
 ---
 

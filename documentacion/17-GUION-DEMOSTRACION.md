@@ -371,6 +371,8 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
       debe mostrar S/ 0.00 si la tabla marca “Moroso”.
 - [ ] Responsive: probar 375, 768 y 1280 px. El menú debe abrir como drawer, cerrar al
       navegar y las tablas deben hacer scroll interno sin desbordar la página.
+- [ ] Rendimiento: Tesorería debe cargar 25 alumnos por página en una sola petición;
+      Personal debe mostrar paginador y Caja solo los últimos 50 pagos.
 - [ ] Grado con notas finales cargadas para que la exportación interna no salga vacía.
 - [ ] Carga equilibrada o consciente: en local las 142 h están en el ADMIN y el docente no
       ve cursos; para la demo docente, reasignar cargas a docentes o usar una base de ensayo.

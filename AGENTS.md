@@ -35,7 +35,7 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | Suites manuales (`smoke`, integridad, E2E); sin CI ni Docker |
 
-**Conteos actuales:** 48 tablas base (49 en local con `horarios_h47_backup`) · 168 endpoints ·
+**Conteos actuales:** 48 tablas base (49 en local con `horarios_h47_backup`) · 169 endpoints ·
 4 roles · 18 routers · 18 controladores · 31 servicios · 27 DAOs · 104 archivos JS backend ·
 169 archivos frontend (72 TS).
 
@@ -100,6 +100,7 @@ psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
 psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
 psql -U postgres -d siga_uc -f database/migracion_h80_conclusiones_estructuradas.sql
+psql -U postgres -d siga_uc -f database/migracion_h81_rendimiento_paginacion.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
@@ -123,6 +124,7 @@ psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
 psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
 psql -U postgres -d siga_uc -f database/migracion_h80_conclusiones_estructuradas.sql
+psql -U postgres -d siga_uc -f database/migracion_h81_rendimiento_paginacion.sql
 ```
 
 > **H49:** antes de ejecutar `migracion_h49_multianio_base.sql`, editar `_param_anio` al año
@@ -229,7 +231,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
 - **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas y desplegadas en Render**
-  (código funcional `e010362`; el bloque de demo v2 se documenta al final de esta sección).
+  (código funcional `e1d6655`; el bloque de demo v2 se documenta al final de esta sección).
   **H49, H73 y H74–H80 están aplicadas en Supabase demo**:
   48 tablas, 2026 ACTIVO, 2027 no activo, 75 alumnos (15 por grado), 6 docentes activos,
   55 carga, 5 tutores, 145 horarios publicados, 750 pensiones, 113 pagos (seed v1), 3 becas,
@@ -368,7 +370,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   UI `/admin/configuracion` con pestañas General, Tarifas, Académico, Horarios y Becas.
   **Solo ADMIN escribe**; SECRETARÍA lee tarifas, académico, horarios y becas.
   **H74–H80 están aplicadas en Supabase demo** desde el 23/11/2026; `setup_completado=true`.
-  Render sirve backend y frontend con `e010362`. 48 tablas base (49 en local con
+  Render sirve backend y frontend con `e1d6655`. 48 tablas base (49 en local con
   `horarios_h47_backup`).
 - **Datos demo en Supabase (seed v1, 23/11/2026):** 75 alumnos (15 por grado), 6 docentes
   activos, 1 secretaria, 55 carga, 5 tutores, 145 horarios publicados, 750 pensiones
@@ -399,11 +401,17 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - **Responsive:** ADMIN, SECRETARÍA y DOCENTE usan drawer lateral por debajo de 900 px,
   overlay, cierre con Escape/navegación y cabeceras dinámicas por ruta. La matriz de
   pensiones es compacta y fija DNI/Estudiante; a 1280 px ya muestra los 12 meses.
+- **Rendimiento (H81):** `GET /api/tesoreria/pensiones/padron?anio=&page=&pageSize=&search=&estado=`
+  devuelve alumnos + pensiones + estado general en **una sola consulta** (25 por página por
+  defecto). El frontend ya no hace 75 peticiones. `GET /api/personal?page=` pagina el
+  personal y `GET /api/tesoreria/pagos?limit=50` limita la caja. La migración
+  `migracion_h81_rendimiento_paginacion.sql` agrega índices idempotentes.
 - **Cierre 23/11/2026:** Render quedó verificado con `d9b24fe` (health OK,
-  `zona_horaria: America/Lima`), el frontend responsive está desplegado y las suites
+  `zona_horaria: America/Lima`); el código H81 `e1d6655` se despliega con el push de
+  `main`. El frontend responsive y el padrón paginado están desplegados. Las suites
   smoke 12, integridad 36, E2E 102 y uat:verify 22 están verdes. **La próxima sesión no
   debe re-revisar la demo ni repetir esas suites**: solo falta refrescar los datos de
-  Supabase al seed v2, normalizar los timestamps viejos y limpiar las 4 cajas UAT.
+  Supabase al seed v2, aplicar H81, normalizar timestamps y limpiar las 4 cajas UAT.
 - **Becas (H78):** el catálogo `tipos_beca` define alcance, modalidad, tope, combinación,
   grupo de exclusividad, prioridad, evidencia y aprobación. Una beca aprobada se aplica a
   cargos `PENDIENTE`/`EXONERADO`; una beca del 100% deja el cargo `EXONERADO` en 0. Los
@@ -439,7 +447,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 48 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 168 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 169 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |
