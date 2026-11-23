@@ -401,7 +401,9 @@ Debe estar `Running`.
    - `TZ=America/Lima` como variable del proceso
    - `RESEND_API_KEY`
    - `EMAIL_FROM`
-6. Health check: `/api/health` (consulta `SELECT 1` con timeout de 2 s).
+6. Health check: `/api/health` (consulta `SELECT 1` con timeout de 2 s). Devuelve
+   `zona_horaria` (`America/Lima` cuando el pool aplicó el `SET TIME ZONE`) y `commit`
+   (`RENDER_GIT_COMMIT` en Render) para verificar el despliegue.
 7. El servidor escucha en `0.0.0.0` y usa `process.env.PORT`.
 
 **CORS:** `app.js` permite `localhost:4200`, `localhost:3000` y `process.env.FRONTEND_URL`.

@@ -307,6 +307,9 @@ Script: `siga-uc-backend/scripts/smoke.js` → `npm run smoke`.
   `ultimo_login` y registra el LOGIN en la bitácora); el resto son GET.
 - Timeout de **10 s por petición** (`AbortSignal.timeout`).
 - Nunca imprime tokens ni contraseñas.
+- La prueba ADMIN compara `ultimo_login` con el header `Date` y falla si el desfase supera
+  **3 minutos**; así se detecta una sesión PostgreSQL en UTC (el pooler de Supabase ignora
+  `options` y el backend refuerza con `SET TIME ZONE 'America/Lima'`).
 - Si faltan credenciales de un rol, las pruebas dependientes se marcan **SKIP**, nunca FAIL.
 - Códigos de salida: `0` solo si no hay FAIL ni SKIP; `1` si hay al menos un FAIL; `2` si
   hay SKIP y no se definió `SMOKE_ALLOW_SKIP=1`. Con SKIP se imprime una advertencia de
@@ -333,10 +336,10 @@ cd siga-uc-backend
 npm run smoke
 ```
 
-Las 11 pruebas cubren: health + `database: "ok"`, configuración con año numérico, 401 sin
-token, login/perfil ADMIN, alumnos página 1, bitácora con paginación, pagos, libreta PDF
-del primer alumno (Content-Type y firma `%PDF`), RBAC del ESTUDIANTE (403 en `/alumnos`),
-login/perfil DOCENTE y libreta propia del ESTUDIANTE.
+Las 12 pruebas cubren: health + `database: "ok"` + `zona_horaria`, configuración con año
+numérico, 401 sin token, login/perfil ADMIN con hora consistente, alumnos página 1, bitácora
+con paginación, pagos, libreta PDF del primer alumno (Content-Type y firma `%PDF`), RBAC del
+ESTUDIANTE (403 en `/alumnos`), login/perfil DOCENTE y libreta propia del ESTUDIANTE.
 
 Resultado esperado en local con las tres cuentas: **12 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 La prueba 12 tolera una base sin H74 y la marca `SKIP` con `CONFIG_NO_APLICADA`.

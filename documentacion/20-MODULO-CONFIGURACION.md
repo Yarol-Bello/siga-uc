@@ -487,7 +487,8 @@ base desechable E2E. Idempotente. Crea:
 - Build Angular: OK (solo advertencia de presupuesto).
 - `node --check`: OK.
 - UI probada a 768 y 1366 px; a 390 px el componente se adapta, pero el sidebar fijo del
-  ADMIN (responsive pausado) limita el ancho. No se modificó el layout por indicación.
+  ADMIN (responsive implementado el 23/11/2026) limita el ancho. No se modificó el layout
+  por indicación hasta esa fecha.
 
 **Desplegado (23/11/2026):** backend y frontend en Render con `f7477c1`; H74–H79
 aplicadas en Supabase demo. Allí hay 48 tablas, 2026 ACTIVO, 2027 no activo, 0 promociones
@@ -501,6 +502,11 @@ y `setup_completado=true`. `/api/configuracion` devuelve la institución y
 500 por saturación en Render/Supabase. `uat:verify` pasó **21/21** contra Supabase. El
 seed usó `UC2026*` de forma temporal para el ADMIN y restauró su contraseña real al
 terminar.
+
+> **Demo v2 (local, 23/11/2026):** el seed se amplió a 432 pagos repartidos de marzo a
+> noviembre, notas por perfil y 7 pensiones exoneradas; ver `AGENTS.md`. El responsive de
+> ADMIN, SECRETARÍA y DOCENTE ya está implementado. Supabase demo conserva el seed v1
+> hasta ejecutar el refresh con credenciales.
 
 ---
 

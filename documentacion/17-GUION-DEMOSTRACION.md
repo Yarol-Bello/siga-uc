@@ -47,12 +47,14 @@ credenciales entregadas en la sesión.
 
 - [ ] Confirmar que el commit desplegado es el esperado (`git log -1 --oneline`).
 - [ ] Verificar `GET https://siga-uc-api-prod.onrender.com/api/health` → `success: true`,
-      `database: "ok"`.
+      `database: "ok"`, `zona_horaria: "America/Lima"` y el `commit` desplegado.
 - [ ] Abrir el frontend y hacer login con cada rol que se va a mostrar.
 - [ ] Revisar que las cuentas de demo **no** estén en `requiere_cambio_password`.
 - [ ] Confirmar que hay una caja aperturable y al menos una pensión `PENDIENTE`.
-- [ ] Confirmar en Supabase: **75 alumnos**, **6 docentes activos**, **55 carga**,
+- [ ] Confirmar en Supabase (seed v1): **75 alumnos**, **6 docentes activos**, **55 carga**,
       **145 horarios publicados**, **750 pensiones**, **113 pagos** y **1 acta ABIERTO**.
+      Si se refrescó al seed v2: **432 pagos**, **S/ 95,625 pendientes**, **7 exoneradas**.
+- [ ] Revisar que el dashboard de Secretaría muestre la deuda de pensiones (no S/ 0.00).
 - [ ] Generar una libreta PDF de prueba y abrirla.
 - [ ] Enviar una notificación de prueba y verla en la campanita del destinatario.
 - [ ] Revisar la bitácora: deben aparecer `LOGIN`, `CREAR`, `ANULAR`, `ENVIAR` y
@@ -74,9 +76,9 @@ credenciales entregadas en la sesión.
 
 ```powershell
 cd siga-uc-backend
-npm run smoke              # 11 PASS, 0 FAIL, 0 SKIP (exit 0)
-npm run test:integridad    # 21 invariantes; en local se esperan 19 PASS y 2 FAIL de seed
-npm run test:e2e           # 75 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
+npm run smoke              # 12 PASS, 0 FAIL, 0 SKIP (exit 0)
+npm run test:integridad    # 36 invariantes
+npm run test:e2e           # 102 PASS, 0 FAIL (exit 0); elimina siga_uc_e2e
 npm run test:h47-generador # 4 PASS; no toca la BD
 ```
 
@@ -89,7 +91,7 @@ variable y `dotenv` carga la key real.
 
 **Resultado del ensayo local (22/11/2026, cierre de demo):**
 
-- `npm run smoke`: **11 PASS, 0 FAIL, 0 SKIP** (exit 0), con la contraseña del ADMIN local
+- `npm run smoke`: **12 PASS, 0 FAIL, 0 SKIP** (exit 0), con la contraseña del ADMIN local
   alineada a `SMOKE_ADMIN_PASSWORD` de `.env`.
 - `npm run test:integridad`: **19 PASS, 2 FAIL** esperados por el seed de demo
   (pagos sin INGRESO y pensiones `PAGADO` sin pago). En una base nueva: **21 PASS**.
@@ -338,10 +340,10 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 
 - [ ] Frontend y backend responden; health check en `ok`.
 - [ ] Commit desplegado identificado y documentado.
-- [ ] 43 tablas base y migraciones H32, H10/H38, H07, H45, H47, H48, H61, H49, H73, H59 y
-      H71 aplicadas (44 en local si existe `horarios_h47_backup`).
+- [ ] 48 tablas base y migraciones H32, H10/H38, H07, H45, H47, H48, H61, H49, H73, H59,
+      H71 y H74–H80 aplicadas (49 en local si existe `horarios_h47_backup`).
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
-- [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
+- [ ] `npm run smoke` local: **12 PASS, 0 FAIL, 0 SKIP** (exit 0).
 - [ ] `npm run test:e2e` local: **102 PASS, 0 FAIL** (exit 0).
 - [ ] `npm run test:h47-generador`: **4 PASS**.
 - [ ] `npm run test:integridad` revisado; **36 PASS** en base nueva (UAT) y los fallos
@@ -365,6 +367,10 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 - [ ] Notificación de prueba visible en la campanita.
 - [ ] Dashboard: “Estudiantes matriculados”, “Plana Docente” y “Personal activo” con cifras
       coherentes; panel “Cobranza y expedientes” sin badge de filtro falso.
+- [ ] Dashboard de Secretaría: “Pendiente por Cobrar” incluye pensiones y pre-tickets; no
+      debe mostrar S/ 0.00 si la tabla marca “Moroso”.
+- [ ] Responsive: probar 375, 768 y 1280 px. El menú debe abrir como drawer, cerrar al
+      navegar y las tablas deben hacer scroll interno sin desbordar la página.
 - [ ] Grado con notas finales cargadas para que la exportación interna no salga vacía.
 - [ ] Carga equilibrada o consciente: en local las 142 h están en el ADMIN y el docente no
       ve cursos; para la demo docente, reasignar cargas a docentes o usar una base de ensayo.

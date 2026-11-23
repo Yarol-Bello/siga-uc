@@ -229,9 +229,10 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
 - **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas y desplegadas en Render**
-  (código actual `85da710`). **H49, H73 y H74–H80 están aplicadas en Supabase demo**:
+  (código funcional `e010362`; el bloque de demo v2 se documenta al final de esta sección).
+  **H49, H73 y H74–H80 están aplicadas en Supabase demo**:
   48 tablas, 2026 ACTIVO, 2027 no activo, 75 alumnos (15 por grado), 6 docentes activos,
-  55 carga, 5 tutores, 145 horarios publicados, 750 pensiones, 113 pagos, 3 becas,
+  55 carga, 5 tutores, 145 horarios publicados, 750 pensiones, 113 pagos (seed v1), 3 becas,
   3,300 conclusiones estructuradas, 1 acta ABIERTO, 0 promociones y `setup_completado=true`.
   `/admin/anios-lectivos`, `/admin/promociones` y `/admin/historico` están operativos.
   El rollback H49 es solo para bases desechables.
@@ -367,15 +368,37 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   UI `/admin/configuracion` con pestañas General, Tarifas, Académico, Horarios y Becas.
   **Solo ADMIN escribe**; SECRETARÍA lee tarifas, académico, horarios y becas.
   **H74–H80 están aplicadas en Supabase demo** desde el 23/11/2026; `setup_completado=true`.
-  Render sirve backend y frontend con `85da710`. 48 tablas base (49 en local con
+  Render sirve backend y frontend con `e010362`. 48 tablas base (49 en local con
   `horarios_h47_backup`).
-- **Datos demo en Supabase (23/11/2026):** 75 alumnos (15 por grado), 6 docentes activos,
-  1 secretaria, 55 carga, 5 tutores, 145 horarios publicados, 750 pensiones (38 pagadas,
-  10 exoneradas), 113 pagos, 3300 notas, 8700 calificaciones, 4125 asistencias, 3 becas y
-  1 acta ABIERTO. Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron
+- **Datos demo en Supabase (seed v1, 23/11/2026):** 75 alumnos (15 por grado), 6 docentes
+  activos, 1 secretaria, 55 carga, 5 tutores, 145 horarios publicados, 750 pensiones
+  (38 pagadas, 10 exoneradas), 113 pagos, 3300 notas, 8700 calificaciones, 4125 asistencias,
+  3 becas y 1 acta ABIERTO. Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron
   **INACTIVOS**. El ADMIN de Supabase conserva su contraseña real; el seed UAT usó
   `UC2026*` solo de forma temporal y lo restauró. Las credenciales UAT de SECRETARIA,
   DOCENTE y ESTUDIANTE están en el reporte de la sesión.
+- **Seed demo v2 (local `siga_uc_h81`):** mismos 75 alumnos, 6 docentes, 55 carga, 145
+  horarios, 3300 notas y 3300 conclusiones, pero con **432 pagos** distribuidos de marzo a
+  noviembre (7 pagos en noviembre, S/ 1,750 recaudados), **750 pensiones** (357 pagadas,
+  386 pendientes y 7 exoneradas), **S/ 95,625 pendientes** y **74 alumnos con deuda**.
+  Las notas usan perfiles por alumno: puntajes de mérito 11–39 (4 valores distintos por
+  grado) y **28 de 75 alumnos con al menos una C**. Este seed corrige el aspecto artificial
+  del seed v1 (todos los pagos el mismo día y todos los alumnos empatados). **Supabase demo
+  sigue con el seed v1** hasta ejecutar el refresh con credenciales.
+- **Zona horaria (demo v2):** el pooler de Supabase ignora `options`, así que
+  `database.js` ejecuta `SET TIME ZONE 'America/Lima'` en cada conexión nueva y
+  `/api/health` expone `zona_horaria` y `commit`. En Supabase conviene además
+  `ALTER DATABASE postgres SET timezone = 'America/Lima';` para que el ajuste sobreviva a
+  un pooler transaccional. Los `timestamp without time zone` guardados antes del fix
+  tienen +5 h; para corregirlos hay que normalizar o refrescar el seed. El smoke test
+  compara `ultimo_login` con el header `Date` y falla si hay desfase.
+- **KPI de tesorería:** `GET /api/tesoreria/estadisticas` devuelve
+  `pendiente.monto_pretickets`, `monto_pensiones`, `alumnos_con_deuda` y
+  `monto_pendiente` (suma). El dashboard de SECRETARÍA usa el total; no volver a mostrar
+  solo pre-tickets como “Pendiente por Cobrar”.
+- **Responsive:** ADMIN, SECRETARÍA y DOCENTE usan drawer lateral por debajo de 900 px,
+  overlay, cierre con Escape/navegación y cabeceras dinámicas por ruta. La matriz de
+  pensiones es compacta y fija DNI/Estudiante; a 1280 px ya muestra los 12 meses.
 - **Becas (H78):** el catálogo `tipos_beca` define alcance, modalidad, tope, combinación,
   grupo de exclusividad, prioridad, evidencia y aprobación. Una beca aprobada se aplica a
   cargos `PENDIENTE`/`EXONERADO`; una beca del 100% deja el cargo `EXONERADO` en 0. Los

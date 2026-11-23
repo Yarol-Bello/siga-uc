@@ -236,6 +236,11 @@ Cada layout contiene:
 > y botón de menú en el header; dashboard, asistencia y horario ajustan banner, KPIs,
 > filtros y tablas. El horario conserva la columna de horas fija y las tablas hacen scroll
 > interno. El header muestra el título de la sección activa.
+>
+> **ADMIN / SECRETARÍA / DOCENTE responsive (23/11/2026):** el mismo patrón de drawer se
+> aplicó a sus sidebars. El layout reduce el padding, las cabeceras cambian por ruta y la
+> matriz de pensiones usa columnas compactas con DNI/Estudiante fijos. A 1280 px se ven los
+> 12 meses sin scroll horizontal.
 
 #### ESTUDIANTE
 | Ítem | Ruta |
@@ -411,9 +416,11 @@ del rol original; el backend debe permitir ambos roles.
 - **Formularios:** validación local + mensajes inline; muchos usan `alert()`/`confirm()`.
 - **Impresión:** el carné usa `window.print()`; libretas, boletas y actas se descargan como PDF
   real desde el backend (PDFKit) y muestran error inline si fallan.
-- **Responsive:** Bootstrap; se intentó un sidebar drawer y se revirtió
-  (`Revert "feat(frontend): sidebar responsive..."`). En móvil la navegación puede ser
-  incómoda.
+- **Responsive:** desde el 23/11/2026, ESTUDIANTE, ADMIN, SECRETARÍA y DOCENTE usan
+  drawer lateral por debajo de **900 px** (overlay, botón de menú en el header, cierre al
+  navegar y bloqueo del scroll del body). Las cabeceras muestran el título y subtítulo de
+  la ruta activa. Las tablas anchas conservan scroll horizontal; la matriz de pensiones es
+  compacta y fija DNI/Estudiante para que los 12 meses entren a 1280 px.
 - **Accesibilidad:** no se declaran `aria-label`/roles en la mayoría de controles.
 
 ## 9. Estilos
@@ -447,5 +454,5 @@ del rol original; el backend debe permitir ambos roles.
 6. Evitar N+1 en tesorería (cargar pensiones en un endpoint agregado).
 7. ~~Parametrizar año lectivo y conceptos (hoy hardcodeados).~~ ✅ (H12: `ANIO_LECTIVO` + `GET /api/configuracion`).
 8. ~~Añadir “Cerrar acta” con bloqueo real.~~ ✅ (H48: tarjeta de cierre, reapertura, acta global y bloqueo). Nota final automática desde H04.
-9. Mejorar responsive del sidebar.
+9. ~~Mejorar responsive del sidebar.~~ ✅ (23/11/2026: drawer en los cuatro roles y cabeceras dinámicas).
 10. ~~Cambiar el título de `index.html` a “SIGA-UC”.~~ ✅ (H69: `lang="es"` y título del colegio).

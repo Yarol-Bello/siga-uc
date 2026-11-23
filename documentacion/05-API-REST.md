@@ -526,8 +526,13 @@ tiene prioridad. `asistencia_alumnos` no tiene columna `anio_lectivo`: el año s
 | 63b | POST | `/api/tesoreria/pensiones/alumno/:id_alumno/generar` | ADMIN/SECRETARIA | Genera el cronograma de un alumno (H44) |
 | 64 | GET | `/api/tesoreria/becas?activo=&anio=` | Autenticado | Lista becas del año |
 | 65 | POST | `/api/tesoreria/becas` | ADMIN | Aplica beca |
-| 66 | GET | `/api/tesoreria/estadisticas?anio=&mes=` | Autenticado | Recaudación y pendientes |
+| 66 | GET | `/api/tesoreria/estadisticas?anio=&mes=` | Autenticado | Recaudación del mes y deuda pendiente (pre-tickets + pensiones) |
 | 67 | GET | `/api/tesoreria/boletas/:id_pago/pdf` | ADMIN/SECRETARIA | PDF de boleta de pago |
+
+**Estadísticas de tesorería:** `pendiente` devuelve `total_pretickets`,
+`monto_pretickets`, `total_pensiones`, `monto_pensiones`, `alumnos_con_deuda`,
+`total_pendientes` y `monto_pendiente`. `monto_pendiente` es la suma de pre-tickets y
+pensiones; el dashboard de Secretaría usa ese total y no solo los pre-tickets.
 
 **Anulación de pago:** `PUT /api/tesoreria/pagos/:id/anular` con `{ motivo }` (mínimo 10
 caracteres). Solo aplica a pagos `PAGADO`; doble anulación → 409. En una transacción marca el
