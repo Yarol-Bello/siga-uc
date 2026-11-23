@@ -4,7 +4,7 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Cierre de sesión 22/11/2026:** HEAD `9a29122`; frontend/API desplegados en Render con
+> **Cierre de sesión 22/11/2026:** HEAD `893238f`; frontend/API desplegados en Render con
 > el código `df1f384` (login, sidebar y módulos del ESTUDIANTE responsive). E2E **75 PASS**,
 > integridad **21 PASS** en base nueva (19/2 local), smoke **11**, H47 **4**, build OK.
 > Supabase intacto: 43 tablas, 2026 ACTIVO, 2027 no activo, 1 política, 0 promociones,
@@ -513,9 +513,9 @@ En esta fase **no** se prepara el despliegue definitivo.
 
 ### 1.11 Estado final de la sesión (22/11/2026)
 
-- **HEAD:** `9a29122` (`docs(estudiante): registrar diseno responsive df1f384`).
+- **HEAD:** `893238f` (`docs(handoff): cerrar sesion y preparar responsive de admin y docentes`).
 - **Código desplegado:** `df1f384` en Render (frontend y API). La documentación posterior
-  (`9a29122`) no cambia el código.
+  (`9a29122` y `893238f`) no cambia el código.
 - **Trabajo cerrado:** SIAGIE interno, H70, H71 local, login responsive, sidebar corregido
   en los cuatro roles y módulos del ESTUDIANTE responsive.
 - **Suites:** E2E **75 PASS**; integridad **21 PASS** en base nueva y **19/2** de seed local;
@@ -1083,7 +1083,7 @@ SECRETARÍA y DOCENTE, sin romper funcionalidades ni cambiar el stack.
 8. Revisar el código real antes de modificar: layouts, sidebars, header y módulos.
 
 ## Estado verificado al cierre (22/11/2026)
-- HEAD local: 9a29122. Código desplegado en Render: df1f384.
+- HEAD local: 893238f. Código desplegado en Render: df1f384.
 - Frontend de Render sirve main-SCTCECV3.js (build de df1f384).
 - API Render: 200, database "ok".
 - E2E 75 PASS; integridad 21 PASS en base nueva y 19/2 de seed local;
