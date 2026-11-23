@@ -11,6 +11,7 @@ const crypto = require("crypto");
 const promocionDao = require("../dao/promocionDao");
 const anioLectivoDao = require("../dao/anioLectivoDao");
 const politicaPromocionService = require("./politicaPromocionService");
+const configuracionService = require("./configuracionService");
 const becaCalculator = require("./becaCalculator");
 const { getClient } = require("../config/database");
 
@@ -253,6 +254,8 @@ const calcularPreview = async (
 ) => {
   const anioO = parseAnio(anioOrigen, "año origen");
   const anioD = parseAnio(anioDestino, "año destino");
+  const institucion = await configuracionService.obtenerInstitucionDocumentos();
+  const simbolo = institucion.simbolo_moneda || "S/";
   if (anioO >= anioD) {
     throw crearError(
       "El año destino debe ser posterior al año origen.",
@@ -701,7 +704,7 @@ const calcularPreview = async (
     if (montoDeuda > 0) {
       agregarAdvertencia(
         "DEUDA_PENDIENTE",
-        `Deuda pendiente de S/ ${montoDeuda.toFixed(2)}. No bloquea la promoción.`,
+        `Deuda pendiente de ${simbolo} ${montoDeuda.toFixed(2)}. No bloquea la promoción.`,
       );
     }
     if (becasAlumno.length > 0) {

@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const usuarioDao = require("../dao/usuarioDao");
 const recuperacionDao = require("../dao/recuperacionDao");
 const emailService = require("./emailService");
+const configuracionService = require("./configuracionService");
 const env = require("../config/env");
 
 /**
@@ -45,6 +46,18 @@ const solicitarRecuperacion = async (identificador) => {
   // 5. Enviar correo
   const urlBase = process.env.FRONTEND_URL || "http://localhost:4200";
   const enlace = `${urlBase}/reset-password?token=${token}`;
+  const institucion = await configuracionService.obtenerInstitucionDocumentos();
+  const nombreInstitucion = institucion.nombre_institucion || "SIGA-UC";
+  const ubicacion = [
+    institucion.distrito,
+    institucion.provincia,
+    institucion.departamento,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const pie =
+    String(institucion.texto_pie || "").trim() ||
+    `© ${new Date().getFullYear()} ${nombreInstitucion}${ubicacion ? ` - ${ubicacion}` : ""}`;
 
   const html = `
     <!DOCTYPE html>
@@ -68,7 +81,7 @@ const solicitarRecuperacion = async (identificador) => {
     <body>
       <div class="container">
         <div class="header">
-          <h1>I.E.P. Unión Científica</h1>
+          <h1>${nombreInstitucion}</h1>
           <p>Sistema Integrado de Gestión Académica — SIGA-UC</p>
         </div>
         <div class="body">
@@ -84,7 +97,7 @@ const solicitarRecuperacion = async (identificador) => {
           </div>
         </div>
         <div class="footer">
-          <p>© 2026 I.E.P. Unión Científica — Huancayo, Junín</p>
+          <p>${pie}</p>
           <p>Este es un correo automático, por favor no responder.</p>
         </div>
       </div>

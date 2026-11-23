@@ -337,10 +337,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   tabla de pensiones aún muestra 12 meses fijos y el mensaje “hasta diciembre”. El módulo
   de configuración reemplazará esos supuestos por tarifas y calendarios administrables.
 - **Módulo de configuración:** Fase 0 documentada en
-  `documentacion/20-MODULO-CONFIGURACION.md`. **Fases 1–5 implementadas y aplicadas en local**:
+  `documentacion/20-MODULO-CONFIGURACION.md`. **Fases 1–6 implementadas y aplicadas en local**:
   H74 (general/institucional), H75 (tarifas por nivel/grado con vigencia), H76 (áreas,
-  cursos, competencias y carga activables), H77 (jornada, días y límites) y H78 (becas,
-  `tipos_beca`, `aplicaciones_beca` y `EXONERADO`).
+  cursos, competencias y carga activables), H77 (jornada, días y límites), H78 (becas,
+  `tipos_beca`, `aplicaciones_beca` y `EXONERADO`) y Fase 6 (textos, moneda y pie en PDFs y
+  correos, sin migración).
   UI `/admin/configuracion` con pestañas General, Tarifas, Académico, Horarios y Becas.
   **Solo ADMIN escribe**; SECRETARÍA lee tarifas, académico, horarios y becas.
   H74–H78 no se aplicaron en Supabase. 48 tablas base (49 en local con
@@ -352,10 +353,14 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   los pendientes vuelven a `PENDIENTE`. La promoción copia los campos nuevos y aplica la
   beca de matrícula al pre-ticket destino. `POST /api/tesoreria/becas` se conserva como
   adaptador del servicio nuevo.
+- **Fase 6 (textos/PDF/correo):** sin migración. `configuracionService.obtenerInstitucionDocumentos()`
+  alimenta boleta, libreta, acta, notificaciones y recuperación con nombre, ubicación,
+  moneda, zona horaria, locale y textos de H74. `pdfCommon` ya no fija “I.E.P. UNIÓN
+  CIENTÍFICA” ni “S/”; el remitente real sigue en `EMAIL_FROM`/Resend.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
 - Sí hay suites automatizadas: `npm run smoke` (12), `npm run test:integridad` (34) y
-  `npm run test:e2e` (99, base desechable); el resto del testeo es manual.
+  `npm run test:e2e` (100, base desechable); el resto del testeo es manual.
 
 ---
 

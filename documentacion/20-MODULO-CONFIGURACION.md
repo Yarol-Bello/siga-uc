@@ -290,7 +290,7 @@ CHECK (descuento <= monto_base);
 | **H76** | `areas_academicas`; `activo`/orden/timestamps en cursos, competencias y carga. | H74 |
 | **H77** | Días/jornada/límites; CHECK de días si se aprueba sábado. | H47, H74 |
 | **H78** | `tipos_beca`, columnas de `becas`, `aplicaciones_beca`, descuento en pre-ticket. | H74, H49 |
-| **H79** | `parametros_sistema` y textos/formatos. | H74 |
+| **H79** | No necesaria: la Fase 6 usa `configuracion_institucional` (nombre, moneda, zona, textos y pie). | H74 |
 
 Todas idempotentes, con `BEGIN/COMMIT`, `to_regclass` y preflight que aborta con mensaje
 claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de instalación y
@@ -339,7 +339,7 @@ claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de insta
 | 3 | Cursos, áreas, competencias, carga, rollover. ✅ Implementada y E2E. | 1 | Medio-alto | 5–7 días |
 | 4 | Jornada, días, límites, generador. ✅ Implementada y E2E. | 1, 3 | Medio | 5–7 días |
 | 5 | Becas, aprobación, aplicación, combinación. ✅ Implementada y E2E. | 1, 2 | Alto | 10–14 días |
-| 6 | Textos, PDF, correo. | 1 | Bajo-medio | 3–4 días |
+| 6 | Textos, PDF, correo. ✅ Implementada y E2E (sin migración). | 1 | Bajo-medio | 3–4 días |
 | 7 | Pruebas, documentación y despliegue. | Todas | Medio | 4–6 días |
 
 **MVP recomendado:** fases 0–2 + 7.
@@ -401,6 +401,7 @@ claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de insta
 - PDFs/correos usan nombre, moneda, zona horaria y textos configurados.
 - Sin “I.E.P. UNIÓN CIENTÍFICA”, “S/” ni “© 2026” fijos en servicios.
 - Correo real sigue en entorno.
+- Implementada sin migración nueva: usa las columnas de `configuracion_institucional` de H74.
 
 ### Fase 7
 
@@ -486,7 +487,7 @@ base desechable E2E. Idempotente. Crea:
 - UI probada a 768 y 1366 px; a 390 px el componente se adapta, pero el sidebar fijo del
   ADMIN (responsive pausado) limita el ancho. No se modificó el layout por indicación.
 
-**Pendiente:** fases 6–7 (textos/PDF, endurecimiento y despliegue). H74–H78 no se
+**Pendiente:** fase 7 (endurecimiento, documentación final y despliegue). H74–H78 no se
 aplicaron en Supabase; no se activó 2027.
 
 ---
@@ -541,9 +542,44 @@ alta/edición, aprobación/rechazo/anulación con motivo y aviso de año histór
 
 ---
 
-## 15. Registro de cambios
+## 15. Estado de implementación (Fase 6)
+
+**Sin migración nueva.** La Fase 6 reutiliza `configuracion_institucional` (H74):
+`nombre_institucion`, `distrito/provincia/departamento`, `simbolo_moneda`, `zona_horaria`,
+`locale`, `nombre_remitente`, `texto_boleta`, `texto_libreta`, `texto_acta` y `texto_pie`.
+No se crea `parametros_sistema`; los textos ya estaban previstos en H74.
+
+**Backend:**
+
+- `configuracionService.obtenerInstitucionDocumentos()` entrega la institución completa con
+  fallback neutro (`SIGA-UC`, `PEN`, `es-PE`, `America/Lima`) si H74 falta.
+- `pdfCommon` recibe `institucion` en `drawInstitutionalHeader`, `addFooters`,
+  `formatDate`, `formatDateTime` y `formatGeneratedAt`; `formatCurrency` usa el símbolo
+  configurado.
+- Boleta, libreta y acta usan el nombre, la ubicación, los textos y el pie configurados.
+  Se eliminaron `I.E.P. UNIÓN CIENTÍFICA` y `S/` fijos de los servicios.
+- `emailService` y `recuperacionService` usan nombre, remitente, ubicación y pie; el año del
+  copyright es dinámico. El remitente real sigue en `EMAIL_FROM`/Resend.
+- `promocionService` y `tesoreriaService` usan `simbolo_moneda` en advertencias y errores de
+  cobro.
+- `GET /api/configuracion` no expone textos ni datos internos.
+
+**Frontend:** `/admin/configuracion` ya permite editar nombre, moneda, símbolo, zona
+horaria, locale y los cuatro textos; no se requieren campos nuevos.
+
+**Verificación (23/11/2026):**
+
+- E2E: **100 PASS, 0 FAIL** (99 previos + configuración de moneda/textos en boleta y cobro).
+- Integridad: **34 PASS, 0 FAIL** en base nueva; local 32/2 de seed.
+- Smoke: **12 PASS, 0 FAIL**; H47: **4 PASS**.
+- Build Angular y `node --check`: OK.
+
+---
+
+## 16. Registro de cambios
 
 | Fecha | Cambio | Autor |
 |---|---|---|
 | 23/11/2026 | Fase 0: documento de diseño, decisiones, línea base y plan de fases. | Sesión de código |
 | 23/11/2026 | Fase 1: H74, backend de configuración, UI general, auditoría con motivo y pruebas. | Sesión de código |
+| 23/11/2026 | Fases 2–6: H75 tarifas, H76 académico, H77 jornada, H78 becas y textos/PDF/correo configurables; E2E 100. | Sesión de código |

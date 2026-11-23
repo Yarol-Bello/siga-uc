@@ -15,6 +15,7 @@ const {
   addFooters,
   drawWatermark,
 } = require("../utils/pdfCommon");
+const configuracionService = require("./configuracionService");
 
 const MARGIN = 40;
 
@@ -35,8 +36,9 @@ const drawLabelValue = (doc, label, value, x, y, width) => {
     });
 };
 
-const generarBoletaPdf = (pago) =>
-  new Promise((resolve, reject) => {
+const generarBoletaPdf = async (pago) => {
+  const institucion = await configuracionService.obtenerInstitucionDocumentos();
+  return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
         size: "A4",
@@ -48,7 +50,7 @@ const generarBoletaPdf = (pago) =>
         },
         info: {
           Title: `Boleta ${safeText(pago.numero_boleta, pago.id_pago)}`,
-          Author: "SIGA-UC - I.E.P. Unión Científica",
+          Author: `SIGA-UC - ${institucion.nombre_institucion}`,
           Subject: `Boleta de pago ${safeText(pago.numero_boleta)}`,
         },
       });
@@ -66,9 +68,11 @@ const generarBoletaPdf = (pago) =>
       let y = drawInstitutionalHeader(doc, {
         margin: MARGIN,
         title: "BOLETA DE PAGO",
-        subtitle: "Comprobante interno de tesorería",
+        subtitle:
+          institucion.texto_boleta || "Comprobante interno de tesorería",
         rightTitle: safeText(pago.numero_boleta, "SIN NÚMERO"),
         rightSubtitle: `Estado SUNAT: ${estadoSunat}`,
+        institucion,
       });
 
       // Datos del alumno y del pago
@@ -110,7 +114,7 @@ const generarBoletaPdf = (pago) =>
       drawLabelValue(
         doc,
         "Fecha pago:",
-        formatDateTime(pago.fecha_pago),
+        formatDateTime(pago.fecha_pago, institucion),
         rightX,
         y + 25,
         colWidth,
@@ -187,7 +191,7 @@ const generarBoletaPdf = (pago) =>
         .font("Helvetica-Bold")
         .fontSize(10)
         .fillColor(COLORS.guindo)
-        .text(formatCurrency(monto), MARGIN + conceptWidth, y + 12, {
+        .text(formatCurrency(monto, institucion.simbolo_moneda), MARGIN + conceptWidth, y + 12, {
           width: amountWidth - 6,
           align: "right",
         });
@@ -212,7 +216,7 @@ const generarBoletaPdf = (pago) =>
         .font("Helvetica-Bold")
         .fontSize(14)
         .fillColor(COLORS.white)
-        .text(formatCurrency(monto), MARGIN + contentWidth - 208, y + 20, {
+        .text(formatCurrency(monto, institucion.simbolo_moneda), MARGIN + contentWidth - 208, y + 20, {
           width: 196,
           align: "right",
           lineBreak: false,
@@ -227,7 +231,7 @@ const generarBoletaPdf = (pago) =>
 
       const details = [
         ["Serie / Número", safeText(pago.numero_boleta)],
-        ["Fecha de emisión", formatDateTime(pago.fecha_emision)],
+        ["Fecha de emisión", formatDateTime(pago.fecha_emision, institucion)],
         ["Forma de pago", safeText(pago.forma_pago)],
         ["N° operación", safeText(pago.nro_operacion)],
         ["Estado del pago", estadoPago],
@@ -302,12 +306,13 @@ const generarBoletaPdf = (pago) =>
         drawWatermark(doc, "ANULADA");
       }
 
-      addFooters(doc, MARGIN);
+      addFooters(doc, MARGIN, institucion);
       doc.end();
     } catch (error) {
       reject(error);
     }
   });
+};
 
 module.exports = {
   generarBoletaPdf,

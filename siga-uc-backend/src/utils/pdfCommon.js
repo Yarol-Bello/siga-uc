@@ -25,35 +25,36 @@ const toNumber = (value) => {
   return Number.isFinite(number) ? number : 0;
 };
 
-const formatDate = (value) => {
+const formatDate = (value, institucion = null) => {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString("es-PE", {
-    timeZone: "America/Lima",
+  return date.toLocaleDateString(institucion?.locale || "es-PE", {
+    timeZone: institucion?.zona_horaria || "America/Lima",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   });
 };
 
-const formatDateTime = (value) => {
+const formatDateTime = (value, institucion = null) => {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleString("es-PE", {
-    timeZone: "America/Lima",
+  return date.toLocaleString(institucion?.locale || "es-PE", {
+    timeZone: institucion?.zona_horaria || "America/Lima",
     dateStyle: "short",
     timeStyle: "short",
   });
 };
 
-const formatCurrency = (value) => `S/ ${toNumber(value).toFixed(2)}`;
+const formatCurrency = (value, simbolo = "S/") =>
+  `${simbolo} ${toNumber(value).toFixed(2)}`;
 
-const formatGeneratedAt = () => {
+const formatGeneratedAt = (institucion = null) => {
   try {
-    return new Date().toLocaleString("es-PE", {
-      timeZone: "America/Lima",
+    return new Date().toLocaleString(institucion?.locale || "es-PE", {
+      timeZone: institucion?.zona_horaria || "America/Lima",
       dateStyle: "short",
       timeStyle: "short",
     });
@@ -74,16 +75,18 @@ const drawInstitutionalHeader = (
     subtitle,
     rightTitle = "",
     rightSubtitle = "",
+    institucion = null,
   },
 ) => {
   const contentWidth = doc.page.width - margin * 2;
   const top = margin;
+  const nombre = safeText(institucion?.nombre_institucion, "SIGA-UC");
 
   doc
     .font("Helvetica-Bold")
     .fontSize(15)
     .fillColor(COLORS.guindo)
-    .text("I.E.P. UNIÓN CIENTÍFICA", margin, top, {
+    .text(nombre, margin, top, {
       width: contentWidth - 180,
       lineBreak: false,
     });
@@ -150,10 +153,14 @@ const drawInstitutionalHeader = (
 /**
  * Pie de página con fecha y numeración.
  */
-const addFooters = (doc, margin) => {
+const addFooters = (doc, margin, institucion = null) => {
   const range = doc.bufferedPageRange();
   const contentWidth = doc.page.width - margin * 2;
-  const generatedAt = formatGeneratedAt();
+  const generatedAt = formatGeneratedAt(institucion);
+  const pie = String(institucion?.texto_pie || "").trim();
+  const leftText = pie
+    ? `${pie} · ${generatedAt}`
+    : `Generado el ${generatedAt}`;
 
   for (let i = range.start; i < range.start + range.count; i += 1) {
     doc.switchToPage(i);
@@ -165,7 +172,7 @@ const addFooters = (doc, margin) => {
       .font("Helvetica")
       .fontSize(6.8)
       .fillColor(COLORS.slate)
-      .text(`Generado el ${generatedAt}`, margin, doc.page.height - 24, {
+      .text(leftText, margin, doc.page.height - 24, {
         width: contentWidth / 2,
         lineBreak: false,
       });

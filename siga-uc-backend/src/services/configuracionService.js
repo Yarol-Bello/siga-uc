@@ -300,6 +300,45 @@ const institucionPublica = (fila) => ({
   locale: fila.locale,
 });
 
+const INSTITUCION_DOCUMENTOS_DEFAULT = {
+  nombre_institucion: "SIGA-UC",
+  nombre_corto: "SIGA-UC",
+  logo_url: null,
+  distrito: null,
+  provincia: null,
+  departamento: null,
+  moneda: "PEN",
+  simbolo_moneda: "S/",
+  zona_horaria: "America/Lima",
+  locale: "es-PE",
+  nombre_remitente: "SIGA-UC",
+  texto_boleta: null,
+  texto_libreta: null,
+  texto_acta: null,
+  texto_pie: null,
+};
+
+/**
+ * Datos institucionales para documentos y correos. A diferencia de la
+ * configuración pública, incluye textos y ubicación. Si H74 no está
+ * aplicada, devuelve valores neutros para no imprimir datos fijos del
+ * colegio en una instalación distinta.
+ */
+const obtenerInstitucionDocumentos = async () => {
+  try {
+    const institucion = await configuracionDao.obtenerInstitucion();
+    return { ...INSTITUCION_DOCUMENTOS_DEFAULT, ...(institucion || {}) };
+  } catch (error) {
+    if (!esTablaNoAplicada(error)) {
+      console.warn(
+        "⚠️ No se pudo leer la institución para documentos:",
+        error.message,
+      );
+    }
+    return { ...INSTITUCION_DOCUMENTOS_DEFAULT };
+  }
+};
+
 /**
  * Configuración pública que consume el frontend.
  * Si H74 no está aplicada, mantiene el año y devuelve institución nula.
@@ -456,5 +495,6 @@ const actualizarInstitucion = async (data = {}, usuario = null, ip = null) => {
 module.exports = {
   obtenerConfiguracionPublica,
   obtenerConfiguracionAdmin,
+  obtenerInstitucionDocumentos,
   actualizarInstitucion,
 };

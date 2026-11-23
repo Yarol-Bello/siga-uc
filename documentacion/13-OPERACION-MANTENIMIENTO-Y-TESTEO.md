@@ -285,10 +285,10 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(34 invariantes de datos, solo lectura) y **E2E** (99 flujos sobre una base desechable,
+(34 invariantes de datos, solo lectura) y **E2E** (100 flujos sobre una base desechable,
 incluidos los de multi-año H49, rollover 6.2, promociones 6.3, histórico 6.4, pulido
-H59/H62/H65–H69, exportación interna SIAGIE, H71 y configuración H74–H78). El resto de la
-estrategia sigue siendo manual y por rol.
+H59/H62/H65–H69, exportación interna SIAGIE, H71 y configuración H74–H78 + textos/PDF). El
+resto de la estrategia sigue siendo manual y por rol.
 
 ### 4.1 Preparación
 
@@ -524,8 +524,9 @@ npm run test:e2e
   auditoría `exportaciones_siagie`, endpoint viejo 404 y UI sin portal/análisis simulado) y
   configuración H74 (público con institución, RBAC ADMIN/SECRETARIA, validaciones, update
   auditado con motivo, idempotencia sin cambios y reflejo en el endpoint público), tarifas
-  H75, académico H76, jornada H77 y becas H78 (tipos, asignación, aplicación, combinación,
-  tope, pagos intactos, anulación y matrícula exonerada).
+  H75, académico H76, jornada H77, becas H78 (tipos, asignación, aplicación, combinación,
+  tope, pagos intactos, anulación y matrícula exonerada) y Fase 6 (textos/moneda en boleta y
+  mensajes de cobro).
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -533,7 +534,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **99 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **100 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -662,7 +663,7 @@ WHERE m.id_movimiento IS NULL;
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
 | ~~Integridad de datos~~ ✅ | 34 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 99 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~E2E de flujos críticos~~ ✅ | 100 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

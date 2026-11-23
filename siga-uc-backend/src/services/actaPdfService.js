@@ -14,11 +14,12 @@ const {
   addFooters,
   drawWatermark,
 } = require("../utils/pdfCommon");
+const configuracionService = require("./configuracionService");
 
 const MARGIN = 30;
 const WATERMARK_TEXT = "BORRADOR - NO VÁLIDO PARA TRÁMITE";
 
-const drawMetadata = (doc, acta, startY, contentWidth) => {
+const drawMetadata = (doc, acta, startY, contentWidth, institucion = null) => {
   const boxHeight = 46;
   const columns = 4;
   const cellWidth = contentWidth / columns;
@@ -27,7 +28,7 @@ const drawMetadata = (doc, acta, startY, contentWidth) => {
     ["AÑO LECTIVO", safeText(acta.anio_lectivo)],
     ["GRADO", safeText(acta.nombre_grado, "Todos los grados")],
     ["ESTADO", safeText(acta.estado)],
-    ["FECHA DE CIERRE", formatDateTime(acta.fecha_cierre)],
+    ["FECHA DE CIERRE", formatDateTime(acta.fecha_cierre, institucion)],
     ["CERRADO POR", safeText(acta.cerrado_por_nombre)],
     ["ACTA N°", safeText(acta.id_acta)],
     ["SECCIÓN", safeText(acta.seccion)],
@@ -197,8 +198,9 @@ const drawStudentRow = (
   return startY + rowHeight;
 };
 
-const generarActaPdf = (acta) =>
-  new Promise((resolve, reject) => {
+const generarActaPdf = async (acta) => {
+  const institucion = await configuracionService.obtenerInstitucionDocumentos();
+  return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
         size: "A4",
@@ -212,7 +214,7 @@ const generarActaPdf = (acta) =>
         bufferPages: true,
         info: {
           Title: `Acta ${safeText(acta.id_acta)} - ${safeText(acta.periodo)} ${safeText(acta.anio_lectivo)}`,
-          Author: "SIGA-UC - I.E.P. Unión Científica",
+          Author: `SIGA-UC - ${institucion.nombre_institucion}`,
           Subject: `Acta de cierre bimestral ${safeText(acta.periodo)} ${safeText(acta.anio_lectivo)}`,
         },
       });
@@ -235,9 +237,10 @@ const generarActaPdf = (acta) =>
         y = drawInstitutionalHeader(doc, {
           margin: MARGIN,
           title: "ACTA DE CIERRE BIMESTRAL",
-          subtitle: `Año lectivo ${safeText(acta.anio_lectivo)} — ${safeText(acta.nombre_grado, "Todos los grados")}`,
+          subtitle: `Año lectivo ${safeText(acta.anio_lectivo)} - ${safeText(acta.nombre_grado, "Todos los grados")}`,
           rightTitle: `ACTA N° ${safeText(acta.id_acta)}`,
           rightSubtitle: safeText(acta.estado),
+          institucion,
         });
       };
 
@@ -245,24 +248,26 @@ const generarActaPdf = (acta) =>
       y = drawInstitutionalHeader(doc, {
         margin: MARGIN,
         title: "ACTA DE CIERRE BIMESTRAL",
-        subtitle: `Año lectivo ${safeText(acta.anio_lectivo)} — ${safeText(acta.nombre_grado, "Todos los grados")}`,
+        subtitle: `Año lectivo ${safeText(acta.anio_lectivo)} - ${safeText(acta.nombre_grado, "Todos los grados")}`,
         rightTitle: `ACTA N° ${safeText(acta.id_acta)}`,
         rightSubtitle: safeText(acta.estado),
+        institucion,
       });
 
-      y = drawMetadata(doc, acta, y, contentWidth);
+      y = drawMetadata(doc, acta, y, contentWidth, institucion);
 
       const estadoTexto =
         String(acta.estado).toUpperCase() === "CERRADO"
           ? "El acta se encuentra CERRADA. Las calificaciones quedaron congeladas y bloqueadas para edición."
           : "El acta se encuentra ABIERTA y pendiente de cierre. Este documento es un borrador.";
 
+      const textoActa = String(institucion.texto_acta || "").trim();
       doc
         .font("Helvetica")
         .fontSize(7.2)
         .fillColor(COLORS.dark)
         .text(
-          `La presente acta certifica el cierre y bloqueo de las calificaciones del ${safeText(acta.periodo)} del año lectivo ${safeText(acta.anio_lectivo)} para ${safeText(acta.nombre_grado, "todos los grados")}. ${estadoTexto}`,
+          `La presente acta certifica el cierre y bloqueo de las calificaciones del ${safeText(acta.periodo)} del año lectivo ${safeText(acta.anio_lectivo)} para ${safeText(acta.nombre_grado, "todos los grados")}. ${estadoTexto}${textoActa ? ` ${textoActa}` : ""}`,
           MARGIN,
           y,
           { width: contentWidth, align: "justify" },
@@ -339,19 +344,20 @@ const generarActaPdf = (acta) =>
           .fontSize(6.5)
           .fillColor("#92400E")
           .text(
-            `Acta cerrada por: ${safeText(acta.cerrado_por_nombre)} · ${formatDateTime(acta.fecha_cierre)}`,
+            `Acta cerrada por: ${safeText(acta.cerrado_por_nombre)} · ${formatDateTime(acta.fecha_cierre, institucion)}`,
             MARGIN + 8,
             y + 23,
             { width: contentWidth - 16 },
           );
       }
 
-      addFooters(doc, MARGIN);
+      addFooters(doc, MARGIN, institucion);
       doc.end();
     } catch (error) {
       reject(error);
     }
   });
+};
 
 module.exports = {
   generarActaPdf,

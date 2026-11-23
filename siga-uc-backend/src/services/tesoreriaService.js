@@ -8,6 +8,7 @@ const cajaDao = require("../dao/cajaDao");
 const alumnoDao = require("../dao/alumnoDao");
 const conceptoPagoDao = require("../dao/conceptoPagoDao");
 const becaService = require("./becaService");
+const configuracionService = require("./configuracionService");
 const { getAnioLectivo } = require("../config/academico");
 
 const listarConceptos = async (anioLectivo) => {
@@ -73,10 +74,15 @@ const redondearMonto = (valor) =>
 
 const formatearMonto = (valor) => redondearMonto(valor).toFixed(2);
 
-const validarMontoEsperado = (montoEsperado, montoRecibido, mensaje) => {
+const validarMontoEsperado = (
+  montoEsperado,
+  montoRecibido,
+  mensaje,
+  simbolo = "S/",
+) => {
   if (redondearMonto(montoEsperado) !== redondearMonto(montoRecibido)) {
     const error = new Error(
-      `${mensaje} S/ ${formatearMonto(montoEsperado)}`,
+      `${mensaje} ${simbolo} ${formatearMonto(montoEsperado)}`,
     );
     error.statusCode = 400;
     throw error;
@@ -96,6 +102,9 @@ const registrarPago = async (data) => {
   if (typeof data.nro_operacion === "string") {
     data.nro_operacion = data.nro_operacion.trim();
   }
+
+  const institucion = await configuracionService.obtenerInstitucionDocumentos();
+  const simbolo = institucion.simbolo_moneda || "S/";
 
   if (data.forma_pago !== "Efectivo" && !data.nro_operacion) {
     const error = new Error(
@@ -274,6 +283,7 @@ const registrarPago = async (data) => {
       pension.monto_final,
       data.monto,
       "El monto de la pensión es",
+      simbolo,
     );
   } else {
     const preticket =
@@ -293,6 +303,7 @@ const registrarPago = async (data) => {
       preticketPendiente?.monto ?? concepto.monto_base,
       data.monto,
       "El monto del concepto es",
+      simbolo,
     );
   }
 

@@ -7,6 +7,7 @@
  */
 
 const PDFDocument = require("pdfkit");
+const configuracionService = require("./configuracionService");
 
 const MARGIN = 40;
 const FOOTER_SPACE = 30;
@@ -31,10 +32,10 @@ const safeText = (value, fallback = "—") => {
   return String(value);
 };
 
-const formatGeneratedAt = () => {
+const formatGeneratedAt = (institucion = null) => {
   try {
-    return new Date().toLocaleString("es-PE", {
-      timeZone: "America/Lima",
+    return new Date().toLocaleString(institucion?.locale || "es-PE", {
+      timeZone: institucion?.zona_horaria || "America/Lima",
       dateStyle: "short",
       timeStyle: "short",
     });
@@ -43,15 +44,25 @@ const formatGeneratedAt = () => {
   }
 };
 
-const drawHeader = (doc, data) => {
+const drawHeader = (doc, data, institucion = null) => {
   const contentWidth = doc.page.width - MARGIN * 2;
   const top = MARGIN;
+  const nombre = safeText(institucion?.nombre_institucion, "SIGA-UC");
+  const ubicacion = [
+    institucion?.distrito,
+    institucion?.provincia,
+    institucion?.departamento,
+  ]
+    .filter(Boolean)
+    .join(" - ")
+    .toUpperCase();
+  const subtitulo = `${institucion?.texto_libreta || "Boletín Informativo"} - Año Lectivo ${safeText(data.anio_lectivo, "")}`;
 
   doc
     .font("Helvetica-Bold")
     .fontSize(15)
     .fillColor(COLORS.guindo)
-    .text("I.E.P. UNIÓN CIENTÍFICA", MARGIN, top, {
+    .text(nombre, MARGIN, top, {
       width: contentWidth - 150,
       lineBreak: false,
     });
@@ -60,22 +71,22 @@ const drawHeader = (doc, data) => {
     .font("Helvetica")
     .fontSize(8.5)
     .fillColor(COLORS.slate)
-    .text(
-      `Boletín Informativo — Año Lectivo ${safeText(data.anio_lectivo, "")}`,
-      MARGIN,
-      top + 21,
-      { width: contentWidth - 150, lineBreak: false },
-    );
-
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(8)
-    .fillColor(COLORS.guindo)
-    .text("HUANCAYO — JUNÍN", MARGIN, top + 3, {
-      width: contentWidth,
-      align: "right",
+    .text(subtitulo, MARGIN, top + 21, {
+      width: contentWidth - 150,
       lineBreak: false,
     });
+
+  if (ubicacion) {
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(8)
+      .fillColor(COLORS.guindo)
+      .text(ubicacion, MARGIN, top + 3, {
+        width: contentWidth,
+        align: "right",
+        lineBreak: false,
+      });
+  }
 
   doc
     .moveTo(MARGIN, top + 39)
@@ -334,15 +345,18 @@ const drawAttendance = (doc, data, startY) => {
   return startY + boxHeight + 10;
 };
 
-const addFooters = (doc) => {
+const addFooters = (doc, institucion = null) => {
   const range = doc.bufferedPageRange();
   const contentWidth = doc.page.width - MARGIN * 2;
-  const generatedAt = formatGeneratedAt();
+  const generatedAt = formatGeneratedAt(institucion);
+  const pie = String(institucion?.texto_pie || "").trim();
+  const leftText = pie
+    ? `${pie} · ${generatedAt}`
+    : `Generado el ${generatedAt}`;
 
   for (let i = range.start; i < range.start + range.count; i += 1) {
     doc.switchToPage(i);
 
-    // Evitar que PDFKit agregue páginas al dibujar el pie fuera del margen.
     const previousBottomMargin = doc.page.margins.bottom;
     doc.page.margins.bottom = 0;
 
@@ -350,7 +364,7 @@ const addFooters = (doc) => {
       .font("Helvetica")
       .fontSize(6.8)
       .fillColor(COLORS.slate)
-      .text(`Generado el ${generatedAt}`, MARGIN, doc.page.height - 27, {
+      .text(leftText, MARGIN, doc.page.height - 27, {
         width: contentWidth / 2,
         lineBreak: false,
       });
@@ -375,8 +389,9 @@ const addFooters = (doc) => {
  * @param {object} data
  * @returns {Promise<Buffer>}
  */
-const generarLibretaPdf = (data) =>
-  new Promise((resolve, reject) => {
+const generarLibretaPdf = async (data) => {
+  const institucion = await configuracionService.obtenerInstitucionDocumentos();
+  return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
         size: "A4",
@@ -389,7 +404,7 @@ const generarLibretaPdf = (data) =>
         bufferPages: true,
         info: {
           Title: `Libreta - ${safeText(data.alumno?.nombre_completo, "")}`,
-          Author: "SIGA-UC - I.E.P. Unión Científica",
+          Author: `SIGA-UC - ${institucion.nombre_institucion}`,
           Subject: `Libreta ${safeText(data.bimestre)}° Bimestre ${safeText(data.anio_lectivo)}`,
         },
       });
@@ -400,7 +415,7 @@ const generarLibretaPdf = (data) =>
       doc.on("error", reject);
 
       const contentBottom = doc.page.height - MARGIN - FOOTER_SPACE;
-      let y = drawHeader(doc, data);
+      let y = drawHeader(doc, data, institucion);
       y = drawInfo(doc, data, y);
 
       const drawTable = () => {
@@ -443,7 +458,7 @@ const generarLibretaPdf = (data) =>
 
           if (y + estimatedHeight > contentBottom) {
             doc.addPage();
-            y = drawHeader(doc, data);
+            y = drawHeader(doc, data, institucion);
             y = drawTableHeader(doc, y);
           }
 
@@ -453,16 +468,17 @@ const generarLibretaPdf = (data) =>
 
       if (y + 48 > contentBottom) {
         doc.addPage();
-        y = drawHeader(doc, data);
+        y = drawHeader(doc, data, institucion);
       }
 
       drawAttendance(doc, data, y + 8);
-      addFooters(doc);
+      addFooters(doc, institucion);
       doc.end();
     } catch (error) {
       reject(error);
     }
   });
+};
 
 module.exports = {
   generarLibretaPdf,

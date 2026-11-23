@@ -78,7 +78,7 @@
    servicios, 16 DAOs, 14 controladores y Nodemailer/SMTP. El estado real está en estos
    documentos y en el código.
 5. **Sí existen suites automatizadas locales**: `npm run smoke` (12), `npm run
-   test:integridad` (34 en base nueva), `npm run test:e2e` (99, base desechable) y
+   test:integridad` (34 en base nueva), `npm run test:e2e` (100, base desechable) y
    `npm run test:h47-generador` (4). No hay CI/CD ni Docker.
 
 ---

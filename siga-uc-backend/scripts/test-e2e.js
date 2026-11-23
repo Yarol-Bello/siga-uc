@@ -8819,6 +8819,117 @@ async function ejecutarPruebas() {
       );
     },
   );
+
+  // 100. Textos/moneda configurados en PDF y mensajes de cobro.
+  await prueba(
+    100,
+    "Configuración: moneda/textos alimentan la boleta y los mensajes de cobro",
+    async () => {
+      const config = await api("/configuracion/admin", {
+        token: ctx.adminToken,
+      });
+      const configDatos = await leerJson(config);
+      assert.equal(config.status, 200, detalleHttp(config, configDatos.datos));
+      const original = configDatos.datos.data.institucion;
+
+      const nombre = `Colegio E2E ${Date.now()}`;
+      const actualizar = async (payload, motivo) =>
+        await api("/configuracion/institucional", {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: { ...payload, motivo },
+        });
+
+      try {
+        const cambio = await actualizar(
+          {
+            nombre_institucion: nombre,
+            simbolo_moneda: "USD",
+            texto_boleta: "Comprobante E2E configurable",
+            texto_pie: "Pie E2E configurable",
+          },
+          "Prueba E2E de textos y moneda configurables",
+        );
+        const cambioDatos = await leerJson(cambio);
+        assert.equal(cambio.status, 200, detalleHttp(cambio, cambioDatos.datos));
+        assert.equal(cambioDatos.datos.data.institucion.simbolo_moneda, "USD");
+
+        const publica = await api("/configuracion");
+        const publicaDatos = await leerJson(publica);
+        assert.equal(
+          publicaDatos.datos.data.institucion.nombre_institucion,
+          nombre,
+        );
+
+        await resetCajaParaPrueba();
+        await abrirCajaPrueba(100);
+
+        const pendiente = await sql(
+          `SELECT p.id_pension, p.id_concepto, p.monto_final
+           FROM pensiones p
+           WHERE p.estado = 'PENDIENTE' AND p.anio_lectivo = $1
+             AND p.id_concepto IS NOT NULL
+           ORDER BY p.id_pension DESC LIMIT 1`,
+          [ctx.anioTarifas],
+        );
+        assert.ok(pendiente[0], "No hay pensión pendiente para probar moneda");
+        const pagoIncorrecto = await api("/tesoreria/pagos", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: {
+            id_alumno: (
+              await sql(
+                `SELECT id_alumno FROM pensiones WHERE id_pension = $1`,
+                [pendiente[0].id_pension],
+              )
+            )[0].id_alumno,
+            id_concepto: pendiente[0].id_concepto,
+            id_pension: pendiente[0].id_pension,
+            monto: Number(pendiente[0].monto_final) + 1,
+            forma_pago: "Efectivo",
+          },
+        });
+        const pagoIncorrectoDatos = await leerJson(pagoIncorrecto);
+        assert.equal(pagoIncorrecto.status, 400);
+        assert.ok(
+          String(pagoIncorrectoDatos.datos?.message || "").includes("USD"),
+          "El mensaje de cobro no usa el símbolo configurado",
+        );
+
+        const pago = await sql(
+          `SELECT id_pago FROM pagos ORDER BY id_pago LIMIT 1`,
+        );
+        assert.ok(pago[0], "No hay pago para generar la boleta");
+        const boleta = await api(`/tesoreria/boletas/${pago[0].id_pago}/pdf`, {
+          token: ctx.adminToken,
+          accept: "application/pdf",
+        });
+        const tipo = boleta.headers.get("content-type") || "";
+        const buffer = Buffer.from(await boleta.arrayBuffer());
+        assert.equal(boleta.status, 200);
+        assert.ok(tipo.includes("application/pdf"));
+        assert.equal(buffer.subarray(0, 4).toString(), "%PDF");
+
+        registrar(
+          100,
+          "Configuración: moneda/textos alimentan la boleta y los mensajes de cobro",
+          "PASS",
+          `moneda=USD, boleta ${buffer.length} bytes; configuración restaurada`,
+        );
+      } finally {
+        const restaurado = await actualizar(
+          {
+            nombre_institucion: original.nombre_institucion,
+            simbolo_moneda: original.simbolo_moneda,
+            texto_boleta: original.texto_boleta,
+            texto_pie: original.texto_pie,
+          },
+          "Reversión de la prueba E2E de textos y moneda",
+        );
+        assert.equal(restaurado.status, 200);
+      }
+    },
+  );
 }
 
 async function main() {

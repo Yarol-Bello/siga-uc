@@ -8,6 +8,7 @@
 
 const { Resend } = require("resend");
 const env = require("../config/env");
+const configuracionService = require("./configuracionService");
 
 // Inicializar cliente de Resend solo si hay clave.
 // El correo es opcional: la API debe arrancar aunque RESEND_API_KEY no exista.
@@ -71,7 +72,24 @@ const enviarCorreo = async ({ to, subject, html, text }) => {
 /**
  * Plantilla HTML para notificaciones generales (se mantiene igual)
  */
-const plantillaNotificacion = (destinatario, asunto, cuerpo, remitente) => {
+const plantillaNotificacion = (
+  destinatario,
+  asunto,
+  cuerpo,
+  remitente,
+  institucion = null,
+) => {
+  const nombre = institucion?.nombre_institucion || "SIGA-UC";
+  const ubicacion = [
+    institucion?.distrito,
+    institucion?.provincia,
+    institucion?.departamento,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const pie =
+    String(institucion?.texto_pie || "").trim() ||
+    `© ${new Date().getFullYear()} ${nombre}${ubicacion ? ` - ${ubicacion}` : ""}`;
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -93,7 +111,7 @@ const plantillaNotificacion = (destinatario, asunto, cuerpo, remitente) => {
 <body>
   <div class="container">
     <div class="header">
-      <h1>I.E.P. Unión Científica</h1>
+      <h1>${nombre}</h1>
       <p>Sistema Integrado de Gestión Académica — SIGA-UC</p>
     </div>
     <div class="body">
@@ -106,8 +124,8 @@ const plantillaNotificacion = (destinatario, asunto, cuerpo, remitente) => {
       </p>
     </div>
     <div class="footer">
-      <p>Enviado por: <strong>${remitente}</strong></p>
-      <p>© 2026 I.E.P. Unión Científica — Huancayo, Junín</p>
+      <p>Enviado por: <strong>${remitente || institucion?.nombre_remitente || nombre}</strong></p>
+      <p>${pie}</p>
     </div>
   </div>
 </body>
@@ -125,7 +143,14 @@ const enviarNotificacion = async ({
   cuerpo,
   remitente,
 }) => {
-  const html = plantillaNotificacion(destinatario, asunto, cuerpo, remitente);
+  const institucion = await configuracionService.obtenerInstitucionDocumentos();
+  const html = plantillaNotificacion(
+    destinatario,
+    asunto,
+    cuerpo,
+    remitente,
+    institucion,
+  );
   return await enviarCorreo({ to, subject: `[SIGA-UC] ${asunto}`, html });
 };
 
