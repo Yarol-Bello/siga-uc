@@ -41,14 +41,9 @@ const obtenerPorCursoFecha = async (
 };
 
 const obtenerPorAlumno = async (id_alumno, filtros = {}, idPersonal = null) => {
-  const alumno = await alumnoDao.findById(id_alumno);
-  if (!alumno) {
-    const error = new Error("Alumno no encontrado");
-    error.statusCode = 404;
-    throw error;
-  }
-
   const anioLectivo = parseAnioLectivo(filtros.anio);
+  await alumnoDao.validarMatriculaAnual(id_alumno, anioLectivo);
+
   return await asistenciaDao.obtenerPorAlumno(
     id_alumno,
     { ...filtros, anio: anioLectivo },
@@ -61,14 +56,9 @@ const obtenerResumenPorAlumno = async (
   anioLectivo,
   idPersonal = null,
 ) => {
-  const alumno = await alumnoDao.findById(id_alumno);
-  if (!alumno) {
-    const error = new Error("Alumno no encontrado");
-    error.statusCode = 404;
-    throw error;
-  }
-
   const anio = parseAnioLectivo(anioLectivo);
+  const alumno = await alumnoDao.validarMatriculaAnual(id_alumno, anio);
+
   const resumen = await asistenciaDao.obtenerResumenPorAlumno(
     id_alumno,
     anio,

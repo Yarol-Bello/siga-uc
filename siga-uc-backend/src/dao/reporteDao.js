@@ -270,6 +270,171 @@ const getAuditoriaDocentes = async (id_grado, bimestre, anioLectivo = getAnioLec
   return result.rows;
 };
 
+/**
+ * Consolidado histórico de un estudiante por DNI (H49 / Fase 6.4).
+ *
+ * Agrupa por `id_usuario`/DNI, no por `id_alumno`: cada año lectivo tiene su
+ * propia matrícula, notas, asistencia, pagos y pensiones. No se suman años
+ * dentro de una misma fila; el llamador recibe una fila por año.
+ */
+const getConsolidadoPorDni = async (dni) => {
+  const personaResult = await query(
+    `SELECT id_usuario, dni, nombres, apellidos,
+            nombres || ' ' || apellidos AS nombre_completo
+     FROM usuarios
+     WHERE dni = $1
+     LIMIT 1`,
+    [String(dni || "").trim()],
+  );
+  const persona = personaResult.rows[0] || null;
+  if (!persona) return null;
+
+  const tienePromociones = await query(
+    `SELECT to_regclass('public.promociones') AS tabla`,
+  );
+  const joinPromocion = tienePromociones.rows[0]?.tabla
+    ? `LEFT JOIN LATERAL (
+         SELECT p.resultado, p.anio_destino
+         FROM promociones p
+         WHERE p.id_alumno_origen = a.id_alumno
+           AND p.estado = 'CONFIRMADA'
+         ORDER BY p.fecha_confirmacion DESC NULLS LAST, p.id_promocion DESC
+         LIMIT 1
+       ) pr ON TRUE`
+    : "";
+  const campoResultado = tienePromociones.rows[0]?.tabla
+    ? "pr.resultado"
+    : "NULL::varchar";
+  const campoAnioDestino = tienePromociones.rows[0]?.tabla
+    ? "pr.anio_destino"
+    : "NULL::integer";
+
+  const sql = `
+    SELECT
+      a.anio_lectivo AS anio,
+      a.id_alumno,
+      a.id_usuario,
+      a.dni,
+      a.nombres || ' ' || a.apellidos AS nombre_completo,
+      a.codigo_estudiante,
+      a.condicion,
+      a.estado_matricula,
+      g.nombre_grado AS grado,
+      g.seccion,
+      a.id_grado,
+      ${campoResultado} AS resultado_promocion,
+      ${campoAnioDestino} AS anio_destino_promocion,
+      COALESCE(nf.notas_ad, 0)::int AS notas_ad,
+      COALESCE(nf.notas_a, 0)::int AS notas_a,
+      COALESCE(nf.notas_b, 0)::int AS notas_b,
+      COALESCE(nf.notas_c, 0)::int AS notas_c,
+      COALESCE(nf.total_notas, 0)::int AS total_notas,
+      COALESCE(asis.total_asistencias, 0)::int AS total_asistencias,
+      COALESCE(asis.total_faltas, 0)::int AS total_faltas,
+      asis.porcentaje_asistencia,
+      COALESCE(pg.total_pagado, 0) AS total_pagado,
+      COALESCE(pe.deuda_pendiente, 0) AS deuda_pendiente,
+      COALESCE(pe.total_pensiones, 0)::int AS total_pensiones,
+      COALESCE(pe.pensiones_pagadas, 0)::int AS pensiones_pagadas
+    FROM alumnos a
+    LEFT JOIN grados g ON g.id_grado = a.id_grado
+    ${joinPromocion}
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*) FILTER (WHERE nf.nota_final = 'AD') AS notas_ad,
+        COUNT(*) FILTER (WHERE nf.nota_final = 'A') AS notas_a,
+        COUNT(*) FILTER (WHERE nf.nota_final = 'B') AS notas_b,
+        COUNT(*) FILTER (WHERE nf.nota_final = 'C') AS notas_c,
+        COUNT(*) AS total_notas
+      FROM notas_finales_area nf
+      WHERE nf.id_alumno = a.id_alumno
+        AND nf.anio_lectivo = a.anio_lectivo
+    ) nf ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*) AS total_asistencias,
+        COUNT(*) FILTER (WHERE asis.estado = 'F') AS total_faltas,
+        ROUND(
+          (COUNT(*) FILTER (WHERE asis.estado = 'P')::decimal
+            / NULLIF(COUNT(*), 0) * 100),
+          2
+        ) AS porcentaje_asistencia
+      FROM asistencia_alumnos asis
+      WHERE asis.id_alumno = a.id_alumno
+        AND EXTRACT(YEAR FROM asis.fecha) = a.anio_lectivo
+    ) asis ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(SUM(p.monto), 0) AS total_pagado
+      FROM pagos p
+      WHERE p.id_alumno = a.id_alumno
+        AND p.estado = 'PAGADO'
+    ) pg ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(pe.monto_final) FILTER (WHERE pe.estado = 'PENDIENTE'), 0)
+          AS deuda_pendiente,
+        COUNT(*) AS total_pensiones,
+        COUNT(*) FILTER (WHERE pe.estado = 'PAGADO') AS pensiones_pagadas
+      FROM pensiones pe
+      WHERE pe.id_alumno = a.id_alumno
+        AND pe.anio_lectivo = a.anio_lectivo
+    ) pe ON TRUE
+    WHERE a.id_usuario = $1
+    ORDER BY a.anio_lectivo DESC
+  `;
+
+  const result = await query(sql, [persona.id_usuario]);
+
+  const anios = result.rows.map((fila) => ({
+    ...fila,
+    anio: Number(fila.anio),
+    id_alumno: Number(fila.id_alumno),
+    id_usuario: Number(fila.id_usuario),
+    id_grado: fila.id_grado === null ? null : Number(fila.id_grado),
+    notas_ad: Number(fila.notas_ad) || 0,
+    notas_a: Number(fila.notas_a) || 0,
+    notas_b: Number(fila.notas_b) || 0,
+    notas_c: Number(fila.notas_c) || 0,
+    total_notas: Number(fila.total_notas) || 0,
+    total_asistencias: Number(fila.total_asistencias) || 0,
+    total_faltas: Number(fila.total_faltas) || 0,
+    porcentaje_asistencia:
+      fila.porcentaje_asistencia === null
+        ? null
+        : Number(fila.porcentaje_asistencia),
+    total_pagado: Number(fila.total_pagado) || 0,
+    deuda_pendiente: Number(fila.deuda_pendiente) || 0,
+    total_pensiones: Number(fila.total_pensiones) || 0,
+    pensiones_pagadas: Number(fila.pensiones_pagadas) || 0,
+    anio_destino_promocion:
+      fila.anio_destino_promocion === null
+        ? null
+        : Number(fila.anio_destino_promocion),
+  }));
+
+  return {
+    usuario: {
+      id_usuario: Number(persona.id_usuario),
+      dni: persona.dni,
+      nombre_completo: persona.nombre_completo,
+    },
+    anios,
+    totales: {
+      anios: anios.length,
+      total_pagado: anios.reduce((suma, fila) => suma + fila.total_pagado, 0),
+      deuda_pendiente: anios.reduce(
+        (suma, fila) => suma + fila.deuda_pendiente,
+        0,
+      ),
+      total_notas: anios.reduce((suma, fila) => suma + fila.total_notas, 0),
+      total_pensiones: anios.reduce(
+        (suma, fila) => suma + fila.total_pensiones,
+        0,
+      ),
+    },
+  };
+};
+
 module.exports = {
   getDashboardEjecutivo,
   getAlumnosRiesgo,
@@ -277,4 +442,5 @@ module.exports = {
   getLibretaAlumno,
   getResumenAsistenciaGrado,
   getAuditoriaDocentes,
+  getConsolidadoPorDni,
 };

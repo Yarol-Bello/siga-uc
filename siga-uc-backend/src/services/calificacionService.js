@@ -76,12 +76,7 @@ const obtenerPorAlumnoCurso = async (
   anioLectivo,
   idPersonal = null,
 ) => {
-  const alumno = await alumnoDao.findById(id_alumno);
-  if (!alumno) {
-    const error = new Error("Alumno no encontrado");
-    error.statusCode = 404;
-    throw error;
-  }
+  await alumnoDao.validarMatriculaAnual(id_alumno, anioLectivo);
   const curso = await cursoDao.findById(id_curso);
   if (!curso) {
     const error = new Error("Curso no encontrado");
@@ -255,12 +250,10 @@ const obtenerNotasFinales = async (
   anioLectivo,
   idPersonal = null,
 ) => {
-  const alumno = await alumnoDao.findById(id_alumno);
-  if (!alumno) {
-    const error = new Error("Alumno no encontrado");
-    error.statusCode = 404;
-    throw error;
-  }
+  const alumno = await alumnoDao.validarMatriculaAnual(
+    id_alumno,
+    anioLectivo,
+  );
 
   const notas = await calificacionDao.obtenerNotasFinales(
     id_alumno,

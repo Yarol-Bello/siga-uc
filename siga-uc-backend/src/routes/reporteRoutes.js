@@ -46,6 +46,13 @@ router.get(
   reporteController.getResumenAsistencia,
 );
 
+// Consolidado histórico por DNI (ADMIN y SECRETARIA, Fase 6.4)
+router.get(
+  "/consolidado/:dni",
+  checkRole(["ADMIN", "SECRETARIA"]),
+  reporteController.getConsolidado,
+);
+
 // Libreta (ADMIN, DOCENTE o el propio ESTUDIANTE)
 router.get(
   "/libreta/:id_alumno/pdf",

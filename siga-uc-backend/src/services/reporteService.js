@@ -65,6 +65,29 @@ const getAuditoriaDocentes = async (id_grado, bimestre, anioLectivo) => {
   return await reporteDao.getAuditoriaDocentes(id_grado, bimestre, anioLectivo);
 };
 
+/**
+ * Consolidado histórico por DNI (Fase 6.4).
+ * Una fila por año lectivo, agrupada por id_usuario/DNI.
+ */
+const getConsolidadoPorDni = async (dni) => {
+  const documento = String(dni || "").trim();
+  if (!/^\d{8}$/.test(documento)) {
+    const error = new Error("El DNI debe tener 8 dígitos.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const data = await reporteDao.getConsolidadoPorDni(documento);
+  if (!data) {
+    const error = new Error("No se encontró un usuario con ese DNI.");
+    error.statusCode = 404;
+    error.details = { codigo: "ESTUDIANTE_NO_ENCONTRADO" };
+    throw error;
+  }
+
+  return data;
+};
+
 module.exports = {
   getDashboard,
   getAlumnosRiesgo,
@@ -72,4 +95,5 @@ module.exports = {
   getLibreta,
   getResumenAsistencia,
   getAuditoriaDocentes,
+  getConsolidadoPorDni,
 };

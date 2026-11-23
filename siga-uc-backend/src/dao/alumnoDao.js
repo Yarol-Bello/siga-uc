@@ -159,6 +159,47 @@ const findByDni = async (dni, anioLectivo) => {
 };
 
 /**
+ * Validar que un id_alumno pertenezca al año lectivo solicitado (H49 / 6.4).
+ * Lanza 404 MATRICULA_NO_ENCONTRADA_EN_ANIO cuando la matrícula es de otro
+ * año o no existe. Los endpoints históricos deben usarlo en lugar de
+ * devolver una lista vacía.
+ */
+const validarMatriculaAnual = async (id_alumno, anioLectivo) => {
+  const id = Number.parseInt(String(id_alumno), 10);
+  const anio = Number.parseInt(String(anioLectivo), 10);
+
+  if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) {
+    const error = new Error("El año lectivo debe estar entre 2000 y 2100.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const sql = `
+    SELECT
+      a.id_alumno, a.id_usuario, a.dni, a.nombres, a.apellidos,
+      a.nombres || ' ' || a.apellidos AS nombre_completo,
+      a.anio_lectivo, a.id_grado, a.estado_matricula, a.codigo_estudiante,
+      g.nombre_grado, g.seccion
+    FROM alumnos a
+    LEFT JOIN grados g ON g.id_grado = a.id_grado
+    WHERE a.id_alumno = $1
+      AND a.anio_lectivo = $2
+  `;
+  const result = await query(sql, [id, anio]);
+
+  if (result.rows.length === 0) {
+    const error = new Error(
+      "La matrícula no pertenece al año lectivo solicitado.",
+    );
+    error.statusCode = 404;
+    error.details = { codigo: "MATRICULA_NO_ENCONTRADA_EN_ANIO" };
+    throw error;
+  }
+
+  return result.rows[0];
+};
+
+/**
  * Buscar una persona por DNI sin filtrar año.
  * Solo para el alta de primera matrícula y para detectar continuidad.
  */
@@ -614,6 +655,7 @@ module.exports = {
   findById,
   findByDni,
   findByDniGlobal,
+  validarMatriculaAnual,
   crear,
   actualizar,
   retirar,

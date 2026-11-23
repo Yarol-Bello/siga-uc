@@ -21,7 +21,12 @@ const obtenerPorAlumnoCurso = async (req, res) => {
     );
     return response.success(res, 200, "Calificaciones obtenidas", data);
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 
@@ -113,7 +118,12 @@ const obtenerNotasFinales = async (req, res) => {
     );
     return response.success(res, 200, "Notas finales del alumno", data);
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 

@@ -159,6 +159,24 @@ const getAuditoriaDocentes = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/reportes/consolidado/:dni
+ * Consolidado histórico por estudiante (una fila por año).
+ */
+const getConsolidado = async (req, res) => {
+  try {
+    const data = await reporteService.getConsolidadoPorDni(req.params.dni);
+    return response.success(res, 200, "Consolidado histórico del estudiante", data);
+  } catch (error) {
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
+  }
+};
+
 module.exports = {
   getDashboard,
   getAlumnosRiesgo,
@@ -167,4 +185,5 @@ module.exports = {
   getLibretaPdf,
   getResumenAsistencia,
   getAuditoriaDocentes,
+  getConsolidado,
 };

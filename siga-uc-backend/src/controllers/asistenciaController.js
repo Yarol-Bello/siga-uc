@@ -51,7 +51,12 @@ const obtenerPorAlumno = async (req, res) => {
       data,
     );
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 
@@ -66,7 +71,12 @@ const obtenerResumenPorAlumno = async (req, res) => {
     );
     return response.success(res, 200, "Resumen de asistencia", data);
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 
