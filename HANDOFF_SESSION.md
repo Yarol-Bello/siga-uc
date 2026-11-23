@@ -1,7 +1,7 @@
 # HANDOFF_SESSION.md — SIGA-UC
 
 > **Actualización 23/11/2026 (despliegue de configuración Fases 1–7 + Supabase).**
-> HEAD documental: **`db960e2`**. Código funcional desplegado en Render (backend
+> HEAD documental: ver `git log -1`. Código funcional desplegado en Render (backend
 > `siga-uc-api-prod` y frontend `siga-uc-web`): **`bef0861`**. **H74–H79 aplicadas en
 > Supabase demo (`siga-uc-prod`)**: 48 tablas, 2026 ACTIVO, 2027 no activo, 0 promociones,
 > 0 actas, 145 horarios, 5 docentes, 5 tipos de beca y `setup_completado=true`.
@@ -1135,7 +1135,7 @@ sin autorización.
     de la Fase 1 (H74, configuración global/año, auditoría y UI general).
 
 ## Estado verificado al cierre (actualizado 23/11/2026)
-- HEAD documental: `db960e2`; código funcional desplegado en Render en `bef0861`.
+- HEAD: ver `git log -1`; código funcional desplegado en Render en `bef0861`.
 - Frontend de Render sirve el build de `bef0861`. API Render: 200, database "ok".
 - E2E 100 PASS; integridad 35 PASS en base nueva y 33/2 de seed local;
   smoke 12 PASS; H47 4 PASS; build Angular OK.
