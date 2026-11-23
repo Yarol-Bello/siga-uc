@@ -24,7 +24,7 @@
 
 | Elemento | Estado |
 |---|---|
-| Código desplegado en Render | `f7477c1` (Fases 6.1–6.4 + configuración 1–7 + UAT y textos + tesorería por lotes) |
+| Código desplegado en Render | `85da710` (Fases 6.1–6.4 + configuración 1–7 + UAT y textos + tesorería por lotes) |
 | 6.4 histórico | Implementado, verificado y **desplegado**; sin migración |
 | Fase 7 (pulido) | Desplegada en Render (`e1c3ada`); H59 aplicada en Supabase; **H70 y H71 cerrados** en el cierre de demo |
 | Login responsive | Desplegado en Render (`e1c3ada`): móviles, tabletas, plegables, laptops y modal adaptativo |
@@ -32,7 +32,7 @@
 | Estudiante responsive | Desplegado en Render (`df1f384`): drawer móvil, header compacto, dashboard, asistencia y horario adaptados; tablas con scroll interno |
 | SIAGIE | **Exportación interna** (decisión cerrada): sin portal MINEDU, sin plantilla y sin análisis simulado; todos los cursos del grado |
 | Último commit de documentación | Ver `git log -1` (cierre de configuración/UAT) |
-| Backend / Frontend | Live en Render (`f7477c1`); backend sin commit expuesto en `/health` |
+| Backend / Frontend | Live en Render (`85da710`); backend sin commit expuesto en `/health` |
 | `/api/health` | OK, `database: "ok"` |
 | Supabase demo | **48 tablas**, H49/H73/H74–H80 aplicadas, **75 alumnos**, **6 docentes activos**, 1 secretaria, **750 pensiones**, **113 pagos**, 3 becas, **3,300 conclusiones estructuradas**, **1 acta ABIERTO**, 2026 activo, 0 promociones, `setup_completado=true` |
 | Horarios en Supabase | **145 PUBLICADO**; 6 docentes UAT (`73000001`–`73000006`); los 5 demo antiguos quedaron inactivos |
@@ -47,7 +47,7 @@
 | Integridad (base de producción desechable) | **36 PASS**; local 33 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 12 PASS / 4 PASS |
 | Setup inicial (`npm run test:setup`) | **5 PASS** sobre base vacía |
-| Módulo de configuración | **Fases 1–7 implementadas, desplegadas en Render (`f7477c1`) y aplicadas en Supabase demo**: H74–H79, tarifas, académico, jornada, becas, textos/PDF/correo y `/setup`; `setup_completado=true` |
+| Módulo de configuración | **Fases 1–7 implementadas, desplegadas en Render (`85da710`) y aplicadas en Supabase demo**: H74–H79, tarifas, académico, jornada, becas, textos/PDF/correo y `/setup`; `setup_completado=true` |
 | Conclusiones descriptivas (H80) | Nivel de logro + avance + dificultad + sugerencia; pantalla `/docente/conclusiones`; código/hash interno verificable en el Excel SIAGIE; 3,300 conclusiones demo |
 
 > Recordatorio: un push que solo toca `database/` o `documentacion/` **no despliega**.
@@ -239,7 +239,7 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
    113 pagos, 3 becas, 1 acta ABIERTO y setup completado. **No volver a aplicarlas.**
 2. 6.2, 6.3, 6.3.1, 6.4, el cierre de demo, el login responsive, el sidebar, los módulos
    del estudiante responsive, la configuración 1–7 y la tesorería por lotes ya están
-   desplegados en Render (`f7477c1`).
+   desplegados en Render (`85da710`).
 3. Probar en Supabase **solo previews** de rollover y promoción. **No confirmar, no activar
    2027 y no anular** en la demo. Con 1 acta ABIERTO, el preview puede continuar; no
    confirmar promociones.
@@ -268,7 +268,7 @@ No implementas código, no tocas Supabase ni Render.
 4. HANDOFF_SESSION.md (estado de la sesión de código).
 
 ## Estado
-- Código desplegado: `f7477c1` (Fases 6.1-6.4 + configuración 1-7 + UAT y textos + tesorería por lotes).
+- Código desplegado: `85da710` (Fases 6.1-6.4 + configuración 1-7 + UAT y textos + tesorería por lotes).
 - Fases 1-7 y 6.1-6.4 desplegadas en Render; configuración y `/setup` incluidos. E2E 102 PASS en local; `uat:verify` 22 PASS contra Supabase.
 - Login probado de 320×568 a 1920×1080; sidebar con menú desplazable; módulos del estudiante probados en móvil, tableta, laptop y escritorio.
 - **H49, H73 y H74-H80 aplicadas en Supabase demo**: 48 tablas, 2026 activo, 75 alumnos, 6 docentes activos, 55 carga, 5 tutores, 145 horarios, 750 pensiones, 113 pagos, 3 becas, 1 acta ABIERTO y setup completado.

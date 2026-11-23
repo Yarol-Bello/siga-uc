@@ -229,7 +229,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
 - **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas y desplegadas en Render**
-  (código actual `f7477c1`). **H49, H73 y H74–H80 están aplicadas en Supabase demo**:
+  (código actual `85da710`). **H49, H73 y H74–H80 están aplicadas en Supabase demo**:
   48 tablas, 2026 ACTIVO, 2027 no activo, 75 alumnos (15 por grado), 6 docentes activos,
   55 carga, 5 tutores, 145 horarios publicados, 750 pensiones, 113 pagos, 3 becas,
   3,300 conclusiones estructuradas, 1 acta ABIERTO, 0 promociones y `setup_completado=true`.
@@ -367,7 +367,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   UI `/admin/configuracion` con pestañas General, Tarifas, Académico, Horarios y Becas.
   **Solo ADMIN escribe**; SECRETARÍA lee tarifas, académico, horarios y becas.
   **H74–H80 están aplicadas en Supabase demo** desde el 23/11/2026; `setup_completado=true`.
-  Render sirve backend y frontend con `f7477c1`. 48 tablas base (49 en local con
+  Render sirve backend y frontend con `85da710`. 48 tablas base (49 en local con
   `horarios_h47_backup`).
 - **Datos demo en Supabase (23/11/2026):** 75 alumnos (15 por grado), 6 docentes activos,
   1 secretaria, 55 carga, 5 tutores, 145 horarios publicados, 750 pensiones (38 pagadas,
