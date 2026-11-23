@@ -1,13 +1,15 @@
 # HANDOFF_SESSION.md — SIGA-UC
 
-> **Actualización 23/11/2026 (módulo de configuración Fases 1–7 + primera instalación).**
-> HEAD de esta sesión: ver `git log -1`. **Fases 1–7 implementadas y probadas en local**:
-> H74 configuración institucional, H75 tarifas, H76 académico, H77 jornada, H78 becas,
-> Fase 6 textos/PDF/correo y **H79 primera configuración (`/setup` + `SETUP_TOKEN`)**.
-> Verificación: **E2E 100 PASS**, **integridad 35 PASS** en base nueva (33/2 local por seed),
-> **`test:setup` 5 PASS**, smoke 12, H47 4 y build Angular OK. **No se desplegó**; Supabase
-> demo intacto (43 tablas, 2026 activo, 2027 no activo, H74–H79 no aplicadas). El responsive
-> de ADMIN/SECRETARÍA/DOCENTE sigue **pausado**.
+> **Actualización 23/11/2026 (despliegue de configuración Fases 1–7 + Supabase).**
+> HEAD y código desplegado en Render (backend `siga-uc-api-prod` y frontend
+> `siga-uc-web`): **`bef0861`**. **H74–H79 aplicadas en Supabase demo (`siga-uc-prod`)**:
+> 48 tablas, 2026 ACTIVO, 2027 no activo, 0 promociones, 0 actas, 145 horarios,
+> 5 docentes, 5 tipos de beca y `setup_completado=true`. `/api/configuracion` de
+> producción ya devuelve la institución y `/api/setup/status` reporta setup completado.
+> Verificación local: **E2E 100 PASS**, **integridad 35 PASS** en base nueva (33/2 local
+> por seed), **`test:setup` 5 PASS**, smoke 12, H47 4 y build Angular OK. El smoke contra
+> producción no autentica con las credenciales locales de `.env` (son de la base local;
+> no es un fallo del sistema). El responsive de ADMIN/SECRETARÍA/DOCENTE sigue **pausado**.
 >
 > **Fase actual: demostración y aprobación.** SIGA-UC se muestra a la dirección del
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
@@ -573,14 +575,14 @@ En esta fase **no** se prepara el despliegue definitivo.
   - Backend: `http://localhost:3000`
   - Frontend: `http://localhost:4200`
   - PostgreSQL 18 local, base `siga_uc`.
-- **Demo desplegada (21/11/2026, actualizada 22/11/2026):**
+- **Demo desplegada (21/11/2026, actualizada 23/11/2026):**
   - Frontend: <https://siga-uc-web.onrender.com>
   - Backend: <https://siga-uc-api-prod.onrender.com/api>
-  - Ambos **Live** en el commit `9648689`, con servicios **gratuitos**.
-- Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **43 tablas**,
-  H47 desplegado, **H48 aplicado** (4 columnas nuevas + índice
-  `uq_acta_anio_bimestre_grado`, **0 actas**), **H49 y H73 aplicadas**, **10 períodos** y
-  **145 horarios PUBLICADO**. 2026 ACTIVO, 1 política de promoción, 0 promociones.
+  - Ambos **Live** en el commit `bef0861`, con servicios **gratuitos**.
+- Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **48 tablas**,
+  H47/H48/H49/H73 y **H74–H79 aplicadas**, **10 períodos** y **145 horarios PUBLICADO**.
+  2026 ACTIVO, 2027 no activo, 1 política de promoción, 0 promociones, 0 actas,
+  5 tipos de beca y `setup_completado=true`.
 - Carga 2026 en Supabase: **55 cargas/145 h**, repartidas **30/30/30/30/25 h** entre los
   5 docentes demo (`99000001`–`99000005`), **0 choques**. Auditoría `GENERAR` y `PUBLICAR`
   registrada.
@@ -589,10 +591,11 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **No hay staging.**
 - Render gratuito puede dormir por inactividad y Supabase gratuito puede pausarse; entrar
   unos minutos antes de la demo para despertar ambos servicios.
-- La BD local `siga_uc` tiene **H47, H49 y H73 aplicados**: **44 tablas** (43 base +
-  `horarios_h47_backup`), **10 períodos**, **0 horarios** tras la limpieza y **13 filas**
-  en el backup. `anios_lectivos` tiene 2026 `ACTIVO`; `grados.orden` 1..5.
+- La BD local `siga_uc` tiene **H47, H49, H73 y H74–H79 aplicados**: **49 tablas**
+  (48 base + `horarios_h47_backup`), **10 períodos**, **0 horarios** tras la limpieza y
+  **13 filas** en el backup. `anios_lectivos` tiene 2026 `ACTIVO`; `grados.orden` 1..5.
   `politicas_promocion` tiene la "Política estándar" de 2026 y `promociones` está vacía.
+  `configuracion_institucional.setup_completado=true`.
 - Datos locales tras la limpieza: **21 alumnos, 29 usuarios, 54 cargas/142 h todas en el
   ADMIN** (ficha personal nueva del ADMIN), **0 usuarios/personal/QR demo** y **0 horarios**.
   El índice `ux_pago_pension_activo` existe.
@@ -1130,16 +1133,13 @@ sin autorización.
 13. Revisar el código real y `git status`/`git diff`: hay cambios sin commit
     de la Fase 1 (H74, configuración global/año, auditoría y UI general).
 
-## Estado verificado al cierre
-- HEAD: verificar con `git log -1`; al preparar este handoff la Fase 0 quedó en
-  `fe5f273` y el cierre documental en `4aabac4`.
-- Código desplegado en Render: df1f384. La documentación y los cambios de
-  configuración posteriores NO están desplegados.
-- Frontend de Render sirve main-SCTCECV3.js. API Render: 200, database "ok".
-- E2E 75 PASS; integridad 21 PASS en base nueva y 19/2 de seed local;
-  smoke 11 PASS; H47 4 PASS; build Angular OK.
-- Supabase demo: 43 tablas, 2026 ACTIVO, 2027 NO activo, 1 política,
-  0 promociones confirmadas, 0 actas, 1 alumno. No tocar sin autorización.
+## Estado verificado al cierre (actualizado 23/11/2026)
+- HEAD: `bef0861`; código desplegado en Render (backend y frontend) en `bef0861`.
+- Frontend de Render sirve el build de `bef0861`. API Render: 200, database "ok".
+- E2E 100 PASS; integridad 35 PASS en base nueva y 33/2 de seed local;
+  smoke 12 PASS; H47 4 PASS; build Angular OK.
+- Supabase demo: 48 tablas, 2026 ACTIVO, 2027 no activo, 1 política,
+  0 promociones confirmadas, 0 actas, 1 alumno, 5 tipos de beca y setup completado.
 - Ya están hechos: SIAGIE interno, H70, H71 local, login responsive, sidebar
   con scroll en los 4 roles y módulos del ESTUDIANTE responsive.
 - El responsive de ADMIN/SECRETARÍA/DOCENTE queda PAUSADO.

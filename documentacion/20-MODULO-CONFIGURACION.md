@@ -1,10 +1,11 @@
 # 20 — Módulo de Configuración y Ajustes
 
 **SIGA-UC — I.E.P. Unión Científica**
-**Fases 0 y 1:** diagnóstico, diseño y núcleo de configuración
+**Fases 0–7:** diagnóstico, diseño, configuración y primera instalación
 **Fecha:** 23/11/2026
-**Commit base:** `3b7240d` (Fase 0: `fe5f273`; Fase 1: `3a0d20b`)
-**Estado:** Fase 0 cerrada; Fase 1 implementada, aplicada en local y verificada. H74 no se aplicó en Supabase.
+**Commit base:** `bef0861` (Fase 0: `fe5f273`; Fase 1: `3a0d20b`)
+**Estado:** Fases 1–7 implementadas, aplicadas en local y **desplegadas en Render**;
+H74–H79 aplicadas en Supabase demo el 23/11/2026, con `setup_completado=true`.
 
 > Este documento es la referencia de implementación del módulo de configuración.
 > Si una regla de negocio no está confirmada por el colegio, se marca como
@@ -488,9 +489,10 @@ base desechable E2E. Idempotente. Crea:
 - UI probada a 768 y 1366 px; a 390 px el componente se adapta, pero el sidebar fijo del
   ADMIN (responsive pausado) limita el ancho. No se modificó el layout por indicación.
 
-**Pendiente:** despliegue en Render/Supabase, que requiere autorización expresa. Las fases
-funcionales 1–7 están implementadas y probadas en local. H74–H79 no se aplicaron en
-Supabase; no se activó 2027.
+**Desplegado (23/11/2026):** backend y frontend en Render con `bef0861`; H74–H79
+aplicadas en Supabase demo. Allí hay 48 tablas, 2026 ACTIVO, 2027 no activo, 0 promociones
+y `setup_completado=true`. `/api/configuracion` devuelve la institución y
+`/api/setup/status` reporta el setup completado.
 
 ---
 
@@ -619,7 +621,8 @@ redirección al login. El login ahora usa el nombre institucional y el título d
 - Build Angular y `node --check`: OK.
 - Integridad: **35 invariantes** (se agregó “setup pendiente con admin existente”).
 
-**Pendiente:** aplicar H79 y desplegar solo con autorización. No se tocó Supabase ni Render.
+**Desplegado (23/11/2026):** H79 aplicada en Supabase demo; `setup_completado=true` y
+Render sirviendo `bef0861`. No se activó 2027 ni se confirmaron promociones.
 
 ---
 
@@ -631,3 +634,4 @@ redirección al login. El login ahora usa el nombre institucional y el título d
 | 23/11/2026 | Fase 1: H74, backend de configuración, UI general, auditoría con motivo y pruebas. | Sesión de código |
 | 23/11/2026 | Fases 2–6: H75 tarifas, H76 académico, H77 jornada, H78 becas y textos/PDF/correo configurables; E2E 100. | Sesión de código |
 | 23/11/2026 | Fase 7: H79, asistente `/setup`, token de instalación, admin inicial y `test:setup`. | Sesión de código |
+| 23/11/2026 | Despliegue: Render `bef0861` (backend y frontend) y H74–H79 en Supabase demo; 48 tablas y setup completado. | Sesión de código |

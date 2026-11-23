@@ -16,7 +16,8 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 
 - Repo: `https://github.com/Yarol-Bello/siga-uc.git` (rama `main`)
 - Ruta local: `C:\Users\yarol\Documents\Proyectos\siga-uc`
-- Estado: funcional; pendiente documentación final, despliegue y mejoras.
+- Estado: funcional y desplegado en Render (demo); Supabase demo con H74–H79 aplicadas.
+  Pendiente documentación final, aprobación del colegio y mejoras.
 
 ---
 
@@ -205,7 +206,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - `siga_uc_completo.sql` es **solo demo**: 21 alumnos ficticios y más de 140 pensiones
   `PAGADO` sin pago. Producción se instala con `siga_uc.sql` + `seed_produccion.sql`.
   No cargar ambos escenarios en la misma base.
-- La documentación antigua decía 26 tablas; son **41 base** (42 en local con
+- La documentación antigua decía 26 tablas; son **48 base** (49 en local con
   `horarios_h47_backup`).
 - El correo es **Resend**, no SMTP/Nodemailer.
 - **`alumnos` es matrícula anual**, no identidad: `usuarios` es único por DNI; `alumnos` es
@@ -216,10 +217,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
 - **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas y desplegadas en Render**
-  (código `cdc129e`). **H49 y H73 están aplicadas en Supabase demo**: 43 tablas, 2026
-  ACTIVO, 1 política, 0 promociones, 0 actas, 145 horarios y 5 docentes.
-  `/admin/anios-lectivos`, `/admin/promociones` y `/admin/historico` están operativos.
-  2027 no está activo. El rollback H49 es solo para bases desechables.
+  (código actual `bef0861`). **H49, H73 y H74–H79 están aplicadas en Supabase demo**:
+  48 tablas, 2026 ACTIVO, 1 política, 0 promociones, 0 actas, 145 horarios, 5 docentes y
+  `setup_completado=true`. `/admin/anios-lectivos`, `/admin/promociones` y
+  `/admin/historico` están operativos. 2027 no está activo. El rollback H49 es solo para
+  bases desechables.
 - **6.2 no agrega migración**: opera sobre H49 desde `/admin/anios-lectivos`. Si la tabla
   `anios_lectivos` no existe, los endpoints responden `503 H49_NO_APLICADO`, no 500.
 - El rollover clona solo **grados, conceptos, períodos, carga y tutores**. No crea alumnos,
@@ -239,7 +241,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   el E2E reequilibra su base desechable.
 - **6.3 está desplegada en Render y H73 aplicada en Supabase demo.** La migración
   `migracion_h73_promociones.sql` requiere H49 y crea `promociones`/`politicas_promocion`
-  (43 tablas base; 44 en local con `horarios_h47_backup`). No confirmar promociones ni
+  (48 tablas base; 49 en local con `horarios_h47_backup`). No confirmar promociones ni
   activar 2027 en Supabase sin decisión: el flujo completo se prueba en local/E2E. Si
   faltan las tablas, los endpoints responden `503 PROMOCIONES_NO_APLICADAS`.
 - La promoción es **recomendación + confirmación humana**; no se codifica la norma peruana.
@@ -290,7 +292,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   sidebar con scroll y los módulos del estudiante adaptados a móvil/tableta).
   `POST /api/notificaciones` es ADMIN/SECRETARIA;
   DOCENTE recibe 403. `personal.observaciones` se agregó con **H59** y **ya está aplicada
-  en Supabase demo** (43 tablas, 2026 ACTIVO, 0 promociones). `total_docentes` se separa de
+  en Supabase demo** (hoy 48 tablas, 2026 ACTIVO, 0 promociones). `total_docentes` se separa de
   `total_personal` en el dashboard. No tocar `/en-construccion`: fue eliminado.
 - **H59:** cese con `observaciones` (texto opcional) las persiste y la ficha las muestra;
   la reactivación limpia fecha, motivo y observación. El apoderado con correo pero sin
@@ -345,7 +347,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   correos) y H79 (primera configuración).
   UI `/admin/configuracion` con pestañas General, Tarifas, Académico, Horarios y Becas.
   **Solo ADMIN escribe**; SECRETARÍA lee tarifas, académico, horarios y becas.
-  H74–H78 no se aplicaron en Supabase. 48 tablas base (49 en local con
+  **H74–H79 están aplicadas en Supabase demo** desde el 23/11/2026; `setup_completado=true`.
+  Render sirve backend y frontend con `bef0861`. 48 tablas base (49 en local con
   `horarios_h47_backup`).
 - **Becas (H78):** el catálogo `tipos_beca` define alcance, modalidad, tope, combinación,
   grupo de exclusividad, prioridad, evidencia y aprobación. Una beca aprobada se aplica a
@@ -368,8 +371,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
 - Sí hay suites automatizadas: `npm run smoke` (12), `npm run test:integridad` (35),
-  `npm run test:e2e` (100, base desechable) y `npm run test:setup` (5, base vacía); el resto
-  del testeo es manual.
+  `npm run test:e2e` (100, base desechable), `npm run test:setup` (5, base vacía) y
+  `npm run uat:seed`/`uat:verify` (75 alumnos, 21 comprobaciones, base local `siga_uc_uat`);
+  el resto del testeo es manual.
 
 ---
 

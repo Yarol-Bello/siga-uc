@@ -24,20 +24,20 @@
 
 | Elemento | Estado |
 |---|---|
-| Código desplegado en Render | `df1f384` (Fases 6.1–6.4 + Fase 7 + cierre de demo + login responsive + sidebar + módulos del estudiante responsive) |
+| Código desplegado en Render | `bef0861` (Fases 6.1–6.4 + configuración 1–7 + UAT y textos) |
 | 6.4 histórico | Implementado, verificado y **desplegado**; sin migración |
 | Fase 7 (pulido) | Desplegada en Render (`e1c3ada`); H59 aplicada en Supabase; **H70 y H71 cerrados** en el cierre de demo |
 | Login responsive | Desplegado en Render (`e1c3ada`): móviles, tabletas, plegables, laptops y modal adaptativo |
 | Sidebar | Desplegado en Render (`c098f02`): menú con scroll propio, marca fija y usuario/logout siempre visible; compacto en pantallas bajas |
 | Estudiante responsive | Desplegado en Render (`df1f384`): drawer móvil, header compacto, dashboard, asistencia y horario adaptados; tablas con scroll interno |
 | SIAGIE | **Exportación interna** (decisión cerrada): sin portal MINEDU, sin plantilla y sin análisis simulado; todos los cursos del grado |
-| Último commit de documentación | `2371b5b` (cierre Fase 7) |
-| Backend / Frontend | Live en Render (6.4 + Fase 7); backend sin commit expuesto en `/health` |
+| Último commit de documentación | Ver `git log -1` (cierre de configuración/UAT) |
+| Backend / Frontend | Live en Render (`bef0861`); backend sin commit expuesto en `/health` |
 | `/api/health` | OK, `database: "ok"` |
-| Supabase demo | **43 tablas**, H49/H73 aplicadas, **0 actas**, 2026 activo, 1 política, 0 promociones |
+| Supabase demo | **48 tablas**, H49/H73/H74–H79 aplicadas, **0 actas**, 2026 activo, 1 política, 0 promociones, `setup_completado=true` |
 | Horarios en Supabase | **145 PUBLICADO**, 5 docentes demo (`99000001`–`99000005`) |
 | Carga en Supabase | 55 cargas, 30/30/30/30/25 h; 0 choques |
-| Local `siga_uc` | 44 tablas (43 base + `horarios_h47_backup`), H49 y H73 aplicados, 54 cargas en ADMIN, 0 horarios, 10 períodos, 2026 activo |
+| Local `siga_uc` | 49 tablas (48 base + `horarios_h47_backup`), H49/H73/H74–H79 aplicados, 54 cargas en ADMIN, 0 horarios, 10 períodos, 2026 activo |
 | Fase 6.1 (multi-año base) | Desplegada en Render (`3007dbe`); H49 aplicada en Supabase |
 | Fase 6.2 (rollover) | Desplegada en Render (`f05ecc5`); H49 aplicada en Supabase |
 | Fase 6.3 + 6.3.1 (promoción) | Desplegadas en Render (`89eba24`); H73 aplicada en Supabase, 0 promociones |
@@ -47,7 +47,7 @@
 | Integridad (base de producción desechable) | **35 PASS**; local 33 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 12 PASS / 4 PASS |
 | Setup inicial (`npm run test:setup`) | **5 PASS** sobre base vacía |
-| Módulo de configuración | **Fases 1–7 implementadas y probadas en local**: H74–H79, tarifas, académico, jornada, becas, textos/PDF/correo y `/setup`; **no desplegado**; H74–H79 no aplicadas en Supabase |
+| Módulo de configuración | **Fases 1–7 implementadas, desplegadas en Render (`bef0861`) y aplicadas en Supabase demo**: H74–H79, tarifas, académico, jornada, becas, textos/PDF/correo y `/setup`; `setup_completado=true` |
 
 > Recordatorio: un push que solo toca `database/` o `documentacion/` **no despliega**.
 > Las migraciones se aplican a mano en Supabase.
@@ -215,9 +215,9 @@ git status --short
 curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 ```
 
-- Supabase: **43 tablas**, 0 actas, 145 horarios, 5 docentes demo. **H49/H73 aplicadas; 2026 activo; 1 política; 0 promociones.**
-- Local: `npm run test:e2e` (80 PASS), `npm run test:integridad` (24 PASS en base de
-  producción desechable; 22/2 de seed en local), `npm run test:h47-generador` (4 PASS) y
+- Supabase: **48 tablas**, 0 actas, 145 horarios, 5 docentes demo. **H49/H73/H74–H79 aplicadas; 2026 activo; 1 política; 0 promociones; setup completado.**
+- Local: `npm run test:e2e` (100 PASS), `npm run test:integridad` (35 PASS en base de
+  producción desechable; 33/2 de seed en local), `npm run test:h47-generador` (4 PASS) y
   `npm run smoke` (12 PASS).
 - Deep links: `/login`, `/admin`, `/docente/asistencia` → 200.
 - UI 6.2: `/admin/anios-lectivos` probada con ADMIN (preview, confirm, activación y modal de
@@ -231,9 +231,12 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 
 ## 10. Próximo paso exacto
 
-1. H49/H73/H59 ya están aplicadas en Supabase demo: 43 tablas, 2026 activo, 1 política,
-   0 promociones, 0 actas, 145 horarios y 5 docentes. **No volver a aplicarlas.**
-2. 6.2, 6.3, 6.3.1, 6.4, el cierre de demo, el login responsive, el sidebar y los módulos del estudiante responsive ya están desplegados en Render (`df1f384`).
+1. H49/H73/H59/H74–H79 ya están aplicadas en Supabase demo: 48 tablas, 2026 activo,
+   1 política, 0 promociones, 0 actas, 145 horarios, 5 docentes y setup completado.
+   **No volver a aplicarlas.**
+2. 6.2, 6.3, 6.3.1, 6.4, el cierre de demo, el login responsive, el sidebar, los módulos
+   del estudiante responsive y la configuración 1–7 ya están desplegados en Render
+   (`bef0861`).
 3. Probar en Supabase **solo previews** de rollover y promoción. **No confirmar, no activar
    2027 y no anular** en la demo. Con 0 actas, el preview de promoción bloqueará: es correcto.
 4. La **Fase 6.4 (histórico)** no requiere migración ni tocar Supabase.
@@ -241,11 +244,9 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
    cerrado, H71 aplicado en local, UAT de los 4 roles, guion, backup y reinicio. H71 no se
    aplicó en Supabase porque no hay retirados.
 6. No empezar Fase 8 ni integración oficial con MINEDU sin pedido explícito.
-7. **Siguiente bloque de código:** Fase 0 cerrada y Fase 1 implementada en local (H74:
-   configuración general/año, auditoría y UI). El siguiente paso es la **Fase 2**
-   (tarifas y conceptos). Después siguen cursos, jornada y becas por fases. El responsive
-   de ADMIN/SECRETARÍA/DOCENTE sigue pausado. El diseño y las fases están en
-   `documentacion/20-MODULO-CONFIGURACION.md`.
+7. **Siguiente bloque:** revisión de la demo con la dirección y aprobación. La configuración
+   1–7 ya está desplegada; el responsive de ADMIN/SECRETARÍA/DOCENTE sigue pausado. El
+   diseño y las fases están en `documentacion/20-MODULO-CONFIGURACION.md`.
 
 ---
 
@@ -263,12 +264,12 @@ No implementas código, no tocas Supabase ni Render.
 4. HANDOFF_SESSION.md (estado de la sesión de código).
 
 ## Estado
-- Código desplegado: `df1f384` (Fases 6.1-6.4 + Fase 7 + cierre de demo + login responsive + sidebar + estudiante responsive).
-- Fases 1-4 y 6.1-6.4 desplegadas; Fase 7 y cierre de demo desplegados en Render (`df1f384`). E2E 80 PASS en local; Fase 1 de configuración aún no desplegada.
+- Código desplegado: `bef0861` (Fases 6.1-6.4 + configuración 1-7 + UAT y textos).
+- Fases 1-7 y 6.1-6.4 desplegadas en Render; configuración y `/setup` incluidos. E2E 100 PASS en local.
 - Login probado de 320×568 a 1920×1080; sidebar con menú desplazable; módulos del estudiante probados en móvil, tableta, laptop y escritorio.
-- **H49 y H73 aplicadas en Supabase demo**: 43 tablas, 2026 activo, 1 política,
-  0 promociones, 0 actas, 145 horarios y 5 docentes.
-- **H59 aplicada en Supabase**: columna `personal.observaciones` existente; 43 tablas.
+- **H49, H73 y H74-H79 aplicadas en Supabase demo**: 48 tablas, 2026 activo, 1 política,
+  0 promociones, 0 actas, 145 horarios, 5 docentes y setup completado.
+- **H59 aplicada en Supabase**: columna `personal.observaciones` existente.
 - No activar 2027 en el demo.
 
 ## Tarea de esta sesión
@@ -277,12 +278,11 @@ No implementas código, no tocas Supabase ni Render.
 3. Revisa el cierre de Fase 7: H62 (DOCENTE 403), H59 (observaciones de cese), H65
    (docentes vs personal), H66/H67/H68/H69 (textos y credibilidad).
 4. Verifica el cierre de demo: SIAGIE interno, H70/H71, UAT de los 4 roles y límites.
-5. Revisa la Fase 0 (`documentacion/20-MODULO-CONFIGURACION.md`) y los cambios sin
-   commit de Fase 1; no asumas que están aprobados. El responsive de
-   ADMIN/SECRETARÍA/DOCENTE queda pausado. Usa el prompt de `HANDOFF_SESSION.md`,
-   sección 10.
+5. Revisa el despliegue de configuración: `/admin/configuracion`, `/setup`, H74–H79 en
+   Supabase y `/api/configuracion`. El responsive de ADMIN/SECRETARÍA/DOCENTE queda
+   pausado. Usa `documentacion/20-MODULO-CONFIGURACION.md`.
 6. No implementes código; no toques Supabase/Render sin confirmación.
-6. No confirmes promociones, no actives 2027 y no anules en Supabase en esta fase.
+7. No confirmes promociones, no actives 2027 y no anules en Supabase en esta fase.
 
 ## Reglas
 - Prompts en español, con archivos y criterios de aceptación.
