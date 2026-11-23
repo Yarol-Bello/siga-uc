@@ -205,11 +205,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - El **año activo** se lee de `anios_lectivos.estado='ACTIVO'` al arrancar; `ANIO_LECTIVO`
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
-- **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas**; 6.1–6.3.1 desplegadas en Render
-  (código `89eba24`). **H49 y H73 están aplicadas en Supabase demo**: 43 tablas, 2026
+- **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas y desplegadas en Render**
+  (código `cdc129e`). **H49 y H73 están aplicadas en Supabase demo**: 43 tablas, 2026
   ACTIVO, 1 política, 0 promociones, 0 actas, 145 horarios y 5 docentes.
-  `/admin/anios-lectivos` y `/admin/promociones` ya no responden 503. 2027 no está activo.
-  El rollback H49 es solo para bases desechables.
+  `/admin/anios-lectivos`, `/admin/promociones` y `/admin/historico` están operativos.
+  2027 no está activo. El rollback H49 es solo para bases desechables.
 - **6.2 no agrega migración**: opera sobre H49 desde `/admin/anios-lectivos`. Si la tabla
   `anios_lectivos` no existe, los endpoints responden `503 H49_NO_APLICADO`, no 500.
 - El rollover clona solo **grados, conceptos, períodos, carga y tutores**. No crea alumnos,
@@ -272,9 +272,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - **6.4 — UI:** año no activo = badge **Histórico** y solo lectura en padrón y tesorería
   (se ocultan nueva matrícula, editar, retirar, reset, cobrar y generar pensiones).
   `/admin/historico` enlaza a libreta/asistencia/tesorería con `?anio`.
-- Estado 6.4: implementado y verificado en local/E2E; **65 E2E**, 20 integridad en base nueva
-  (18/2 de seed local), smoke 11, H47 4 y build Angular OK. Desplegable en Render sin
-  migración.
+- Estado 6.4: implementado, verificado y **desplegado en Render** (`cdc129e`); **65 E2E**,
+  20 integridad en base nueva (18/2 de seed local), smoke 11, H47 4 y build Angular OK.
+  Sin migración y sin cambios en Supabase.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y

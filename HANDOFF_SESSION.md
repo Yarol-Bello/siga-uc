@@ -4,15 +4,15 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Actualización 22/11/2026 (Fase 6.4 implementada, pendiente de push):** histórico por año
-> con selector en reportes, padrón y tesorería; modo de solo lectura en años no activos;
-> consolidado por DNI/`id_usuario` con notas, asistencia, pagos, deuda y promoción; pantalla
-> ADMIN `/admin/historico` y validación `404 MATRICULA_NO_ENCONTRADA_EN_ANIO` en endpoints
+> **Actualización 22/11/2026 (Fase 6.4 desplegada):** histórico por año con selector en
+> reportes, padrón y tesorería; modo de solo lectura en años no activos; consolidado por
+> DNI/`id_usuario` con notas, asistencia, pagos, deuda y promoción; pantalla ADMIN
+> `/admin/historico` y validación `404 MATRICULA_NO_ENCONTRADA_EN_ANIO` en endpoints
 > históricos. **Sin migración y sin cambios en Supabase.** `test:e2e` **65 PASS**, integridad
-> **20 PASS** en base nueva. Ver sección 1.5.
+> **20 PASS** en base nueva. Desplegada en Render (`cdc129e`). Ver sección 1.5.
 >
-> **Próximo bloque:** push/despliegue de 6.4 en Render (seguro: no hay migración). No iniciar
-> Fase 5/7/8 ni activar 2027 en Supabase sin aprobación.
+> **Próximo bloque:** Fase 7 seleccionada (H59, H62, H65–H69) y cierre de demo. No activar
+> 2027 en Supabase sin aprobación.
 >
 > **Actualización 22/11/2026 (Fases 6.3 y 6.3.1 desplegadas):** promoción anual con
 > política configurable, preview por alumno y hash, confirmación transaccional e idempotente,
@@ -306,7 +306,7 @@ En esta fase **no** se prepara el despliegue definitivo.
   base nueva, smoke 11, H47 4, build Angular y `node --check` OK. Desplegado en Render.
 - **Commits:** `f1c5f71` (fix backend/UI/H73), `f9d8d1a` (tests) y `89eba24` (docs/cierre).
 
-### 1.5 Fase 6.4 — Histórico por año y consolidado por estudiante (22/11/2026)
+### 1.5 Fase 6.4 - Histórico por año y consolidado por estudiante (22/11/2026, desplegada)
 
 - **Alcance:** consultar años históricos sin mezclar matrículas; selector de año en pantallas
   operativas, modo lectura en años no activos y consolidado por `id_usuario`/DNI. **No agrega
@@ -753,8 +753,8 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **6.4 UI:** selector de año con default activo; años no activos muestran **Histórico** y
   ocultan escrituras en padrón y tesorería. `/admin/historico` enlaza con `?anio`. La ficha
   docente se mantiene en el año activo.
-- **Estado 6.4:** implementado y verificado en local/E2E (65 E2E, 20 integridad, smoke 11,
-  H47 4, build OK); pendiente de push/despliegue. Supabase no se modificó.
+- **Estado 6.4:** implementado, verificado y **desplegado en Render (`cdc129e`)**; 65 E2E,
+  20 integridad, smoke 11, H47 4, build OK. Supabase no se modificó (sin migración).
 - H49: el rollback está probado solo en bases desechables; aborta si detecta varias
   matrículas por persona o promociones con filas. **No ejecutarlo en Supabase.**
 
@@ -764,14 +764,13 @@ En esta fase **no** se prepara el despliegue definitivo.
 
 H49/H73 ya están aplicadas en Supabase demo (43 tablas, 2026 ACTIVO, 1 política,
 0 promociones, 0 actas, 145 horarios, 5 docentes). 6.3/6.3.1 están desplegadas en Render
-(`89eba24`); `/api/anios-lectivos` y `/api/promociones` existen y responden 401 sin token.
-**6.4 está implementada y verificada en local; no tiene migración.**
+(`cdc129e`); `/api/anios-lectivos`, `/api/promociones` y `/api/reportes/consolidado/:dni`
+existen y responden 401 sin token. **6.4 está desplegada y no tiene migración.**
 
-1. Revisar `git status` y crear los cuatro commits de 6.4 (backend, UI, tests, docs).
-2. Push a Render. El despliegue de 6.4 es seguro porque **no hay migración**.
-3. No volver a aplicar H49/H73 en Supabase.
-4. Mantener 2026 activo. No activar 2027 en el demo.
-5. En Supabase, si se necesita oferta 2027, confirmar el rollover 2026→2027 (solo oferta).
+1. No volver a aplicar H49/H73 en Supabase.
+2. Mantener 2026 activo. No activar 2027 en el demo.
+3. En Supabase, si se necesita oferta 2027, confirmar el rollover 2026→2027 (solo oferta).
+4. Implementar la Fase 7 seleccionada (H59, H62, H65–H69) y el cierre de demo.
 6. Probar en Supabase **solo previews** de promoción; el confirm/anulación se valida en
    local/E2E. Con 0 actas, el preview bloqueará por actas: es correcto.
 7. No iniciar Fase 5/7/8 sin pedido explícito.
@@ -797,7 +796,7 @@ Nada de esta lista se hace en la fase actual.
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
 | **Migraciones** | H47, H48, H49 y H73 ya aplicadas en Supabase demo. H61 es solo datos y **aún no** está aplicada allí. 6.1, 6.2, 6.3 y 6.3.1 desplegadas en Render (`89eba24`). Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
 | **Integridad** | `npm run test:integridad` contra la base definitiva: 20 PASS |
-| **Multi-año** | 6.2 rollover, 6.3/6.3.1 promoción y 6.4 histórico implementados; H49/H73 aplicadas en Supabase demo. **6.4 sin migración**, pendiente de push/despliegue. 2026 debe seguir activo en Supabase hasta la aprobación |
+| **Multi-año** | 6.2 rollover, 6.3/6.3.1 promoción y 6.4 histórico implementados y desplegados en Render (`cdc129e`); H49/H73 aplicadas en Supabase demo. 6.4 no tiene migración. 2026 debe seguir activo en Supabase hasta la aprobación |
 | **Promociones** | 6.3 no crea usuarios ni QR; no copia notas/pagos/pensiones; no activa el año. La política estándar se siembra con el año ACTIVO. Revisar con dirección/UGEL los criterios de repitencia y transición |
 
 ---
