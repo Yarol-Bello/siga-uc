@@ -192,7 +192,7 @@
           </small>
         </div>
         <div class="form-group">
-          <label>Correo Institucional (Decorativo)</label>
+          <label>Correo Institucional (referencia)</label>
           <input type="email" [(ngModel)]="formNuevo.correo_institucional"
             placeholder="usuario@unioncientifica.edu.pe" />
           <small style="color: #64748B; font-size: 0.72rem;">
@@ -285,7 +285,7 @@
           </small>
         </div>
         <div class="form-group full-width">
-          <label>Correo Institucional (Decorativo)</label>
+          <label>Correo Institucional (referencia)</label>
           <input type="email" [(ngModel)]="formEditar.correo_institucional" />
         </div>
         @if (+formEditar.id_rol === 2) {
@@ -299,6 +299,22 @@
           <input type="text" [(ngModel)]="formEditar.cargo" />
         </div>
       </div>
+
+      @if (personalEditando()!.fecha_cese) {
+      <div class="info-box" style="background: #f8fafc; border-color: #e2e8f0; color: #334155;">
+        <i class="fa-solid fa-user-xmark"></i>
+        <div>
+          <p>
+            <strong>Cese:</strong>
+            {{ personalEditando()!.fecha_cese | date:'dd/MM/yyyy' }} —
+            {{ personalEditando()!.motivo_cese || 'Sin motivo registrado' }}
+          </p>
+          @if (personalEditando()!.observaciones) {
+          <p><strong>Observaciones:</strong> {{ personalEditando()!.observaciones }}</p>
+          }
+        </div>
+      </div>
+      }
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="cerrarModalEditar()">Cancelar</button>
@@ -356,7 +372,8 @@
         </div>
         <div class="form-group full-width">
           <label>Observaciones</label>
-          <textarea rows="2" placeholder="Sustento o entrega de cargo..."></textarea>
+          <textarea rows="2" maxlength="1000" [(ngModel)]="observacionesCese"
+            placeholder="Sustento o entrega de cargo..."></textarea>
         </div>
       </div>
     </div>

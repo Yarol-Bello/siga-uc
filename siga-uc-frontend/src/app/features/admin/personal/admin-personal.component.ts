@@ -24,6 +24,7 @@ interface Personal {
   fecha_ingreso: string;
   fecha_cese: string;
   motivo_cese: string;
+  observaciones?: string | null;
   codigo_qr?: string | null;
   tipo_credencial?: string | null;
 }
@@ -98,6 +99,7 @@ export class AdminPersonalComponent implements OnInit {
   procesandoCese = signal(false);
   motivoCese = signal('');
   fechaCese = signal('');
+  observacionesCese = signal('');
 
   // Modal: Reset Password
   modalPassword = signal(false);
@@ -308,6 +310,7 @@ export class AdminPersonalComponent implements OnInit {
     this.personalCese.set(p);
     this.motivoCese.set('');
     this.fechaCese.set(fechaLocalISO());
+    this.observacionesCese.set('');
     this.modalCese.set(true);
   }
 
@@ -330,6 +333,7 @@ export class AdminPersonalComponent implements OnInit {
       .put<any>(`${environment.apiUrl}/personal/${p.id_personal}/cesar`, {
         motivo_cese: this.motivoCese(),
         fecha_cese: this.fechaCese(),
+        observaciones: this.observacionesCese().trim() || null,
       })
       .subscribe({
         next: (res) => {

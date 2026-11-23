@@ -110,7 +110,11 @@ const cesar = async (req, res) => {
       accion: "CESAR",
       descripcion: `Cese de personal DNI ${data.dni} - motivo: ${req.body.motivo_cese}`,
       anterior: { estado: anterior.estado },
-      nuevo: { estado: "CESADO", motivo: req.body.motivo_cese },
+      nuevo: {
+        estado: "CESADO",
+        motivo: req.body.motivo_cese,
+        observaciones: data.observaciones || null,
+      },
     });
 
     return response.success(res, 200, "Cese registrado exitosamente", data);

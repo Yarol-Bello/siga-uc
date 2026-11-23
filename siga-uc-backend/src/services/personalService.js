@@ -83,6 +83,16 @@ const cesar = async (id, data) => {
     error.statusCode = 400;
     throw error;
   }
+  if (
+    data.observaciones &&
+    String(data.observaciones).trim().length > 1000
+  ) {
+    const error = new Error(
+      "Las observaciones no pueden superar los 1000 caracteres.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
   return await personalDao.cesar(id, data);
 };
 

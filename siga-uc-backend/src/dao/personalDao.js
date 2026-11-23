@@ -44,6 +44,7 @@ const listar = async (filtros = {}) => {
       p.fecha_ingreso,
       p.fecha_cese,
       p.motivo_cese,
+      p.observaciones,
       u.id_usuario,
       u.dni,
       u.nombres,
@@ -263,10 +264,16 @@ const cesar = async (id_personal, data) => {
       `
       UPDATE personal SET
         fecha_cese = $1,
-        motivo_cese = $2
-      WHERE id_personal = $3
+        motivo_cese = $2,
+        observaciones = $3
+      WHERE id_personal = $4
     `,
-      [data.fecha_cese || new Date(), data.motivo_cese, id_personal],
+      [
+        data.fecha_cese || new Date(),
+        data.motivo_cese,
+        data.observaciones ? String(data.observaciones).trim() : null,
+        id_personal,
+      ],
     );
 
     await client.query(
@@ -301,7 +308,8 @@ const reactivar = async (id_personal) => {
 
   await query(
     `
-    UPDATE personal SET fecha_cese = NULL, motivo_cese = NULL
+    UPDATE personal SET fecha_cese = NULL, motivo_cese = NULL,
+      observaciones = NULL
     WHERE id_personal = $1
   `,
     [id_personal],
