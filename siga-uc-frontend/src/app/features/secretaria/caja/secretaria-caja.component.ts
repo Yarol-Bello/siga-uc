@@ -152,10 +152,10 @@ export class SecretariaCajaComponent implements OnInit {
   cargarPagos(): void {
     this.cargandoPagos.set(true);
 
-    this.http.get<any>(`${environment.apiUrl}/tesoreria/pagos`).subscribe({
+    this.http.get<any>(`${environment.apiUrl}/tesoreria/pagos?limit=50`).subscribe({
       next: (res) => {
         if (res.success) {
-          this.pagos.set((res.data || []).slice(0, 50));
+          this.pagos.set(res.data || []);
         }
         this.cargandoPagos.set(false);
       },

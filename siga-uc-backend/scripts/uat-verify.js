@@ -158,9 +158,19 @@ async function main() {
   });
 
   await check("ADMIN · personal y tutores", async () => {
-    const { respuesta, datos } = await api("/personal", { token: admin.token });
+    const [{ respuesta, datos }, paginado] = await Promise.all([
+      api("/personal", { token: admin.token }),
+      api("/personal?page=1&pageSize=5", { token: admin.token }),
+    ]);
     ok(respuesta, datos, "personal");
+    ok(paginado.respuesta, paginado.datos, "personal paginado");
     if (datos.data.length < 7) throw new Error(`Solo ${datos.data.length} personas`);
+    if (paginado.datos.data.data.length > 5) {
+      throw new Error("La paginación de personal devolvió más de 5 filas");
+    }
+    if (paginado.datos.data.pagination.total < 7) {
+      throw new Error("La paginación de personal no reporta el total");
+    }
     const tutores = await sql(
       `SELECT COUNT(*)::int AS total FROM tutores_grado WHERE anio_lectivo = $1`,
       [ANIO],
@@ -219,12 +229,29 @@ async function main() {
   });
 
   await check("ADMIN · tesorería y becas aplicadas", async () => {
-    const [pagos, stats] = await Promise.all([
+    const [pagos, stats, padron] = await Promise.all([
       api("/tesoreria/pagos", { token: admin.token }),
       api(`/tesoreria/estadisticas?anio=${ANIO}`, { token: admin.token }),
+      api(`/tesoreria/pensiones/padron?anio=${ANIO}&page=1&pageSize=25`, {
+        token: admin.token,
+      }),
     ]);
     ok(pagos.respuesta, pagos.datos, "pagos");
     ok(stats.respuesta, stats.datos, "estadísticas");
+    ok(padron.respuesta, padron.datos, "padrón de pensiones");
+    if (padron.datos.data.alumnos.length > 25) {
+      throw new Error("El padrón de pensiones no respeta pageSize");
+    }
+    if (padron.datos.data.paginacion.total < 75) {
+      throw new Error("El padrón de pensiones no reporta los 75 alumnos");
+    }
+    if (
+      padron.datos.data.alumnos.some(
+        (alumno) => !Array.isArray(alumno.pensiones),
+      )
+    ) {
+      throw new Error("El padrón no incluye las pensiones por alumno");
+    }
     const [pensiones, exoneradas] = await Promise.all([
       sql(`SELECT COUNT(*)::int AS total FROM pensiones WHERE anio_lectivo=$1`, [ANIO]),
       sql(`SELECT COUNT(*)::int AS total FROM pensiones WHERE anio_lectivo=$1 AND estado='EXONERADO'`, [ANIO]),

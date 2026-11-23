@@ -9,6 +9,10 @@ const listar = async (filtros) => {
   return await personalDao.listar(filtros);
 };
 
+const listarPaginado = async (filtros) => {
+  return await personalDao.listarPaginado(filtros);
+};
+
 const obtener = async (id) => {
   const personal = await personalDao.findById(id);
   if (!personal) {
@@ -129,6 +133,7 @@ const resetPassword = async (id) => {
 
 module.exports = {
   listar,
+  listarPaginado,
   obtener,
   listarRoles,
   crear,

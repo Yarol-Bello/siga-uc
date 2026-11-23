@@ -8,6 +8,7 @@ import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
 import { AnioLectivoService } from '../../../core/services/anio-lectivo.service';
 import { SelectorAnioComponent } from '../../../shared/components/selector-anio/selector-anio.component';
+import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 interface Pension {
   id_pension: number;
@@ -76,7 +77,7 @@ interface PreTicket {
 @Component({
   selector: 'app-secretaria-tesoreria',
   standalone: true,
-  imports: [CommonModule, FormsModule, SelectorAnioComponent],
+  imports: [CommonModule, FormsModule, SelectorAnioComponent, PaginationComponent],
   templateUrl: './secretaria-tesoreria.component.html',
   styleUrl: './secretaria-tesoreria.component.scss',
 })
@@ -98,7 +99,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
   // Preselección desde el dashboard de Secretaría (H54)
   private preticketQueryProcesado = false;
   private preticketsListos = false;
-  private alumnosListos = false;
+  private temporizadorBusqueda?: ReturnType<typeof setTimeout>;
 
   // Estado principal
   cargando = signal(true);
@@ -106,6 +107,12 @@ export class SecretariaTesoreriaComponent implements OnInit {
   alumnos = signal<AlumnoConPensiones[]>([]);
   preTickets = signal<PreTicket[]>([]);
   conceptosPago = signal<ConceptoPago[]>([]);
+
+  // Paginación server-side
+  readonly pageSize = 25;
+  pagina = signal(1);
+  totalRegistros = signal(0);
+  totalPaginas = signal(1);
 
   // Filtros
   busqueda = signal('');
@@ -159,7 +166,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
       // El selector conserva el año activo como respaldo.
     });
 
-    this.cargarDatos();
+    this.cargarDatos(1, true);
   }
 
   /**
@@ -173,132 +180,103 @@ export class SecretariaTesoreriaComponent implements OnInit {
     this.filtroEstado.set('');
     this.cerrarModalCobro();
     this.preticketQueryProcesado = true;
-    this.cargarDatos();
+    this.cargarDatos(1, true);
   }
 
   /**
-   * Cargar alumnos y pre-tickets
+   * Cargar el padrón paginado (una sola petición) y los auxiliares del año.
    */
-  cargarDatos(): void {
+  cargarDatos(pagina = this.pagina(), incluirAuxiliares = false): void {
     this.cargando.set(true);
     this.error.set(null);
 
     const anio = this.anioSeleccionado();
+    const params: Record<string, string | number> = {
+      anio,
+      page: pagina,
+      pageSize: this.pageSize,
+    };
+    const busqueda = this.busqueda().trim();
+    if (busqueda) params['search'] = busqueda;
+    if (this.filtroEstado()) params['estado'] = this.filtroEstado();
 
-    // Cargar alumnos
-    this.http.get<any>(`${environment.apiUrl}/alumnos?anio=${anio}`).subscribe({
-      next: (res) => {
-        if (res.success) {
-          const alumnosData = res.data;
-          // Cargar pensiones de cada alumno
-          this.cargarPensiones(alumnosData, anio);
-        } else {
-          this.error.set('No se pudieron cargar los alumnos');
-          this.cargando.set(false);
-        }
-      },
-      error: (err) => {
-        console.error('Error alumnos:', err);
-        this.error.set('No se pudieron cargar los alumnos');
-        this.cargando.set(false);
-      },
-    });
-
-    // Cargar pre-tickets
+    // Una sola consulta trae alumnos + pensiones + estado general.
     this.http
-      .get<any>(
-        `${environment.apiUrl}/tesoreria/pre-tickets?estado=PENDIENTE&anio=${anio}`,
-      )
-      .subscribe({
-      next: (res) => {
-        if (res.success) this.preTickets.set(res.data);
-        this.preticketsListos = true;
-        this.abrirPreticketDesdeQuery();
-      },
-      error: (err) => {
-        console.error('Error pre-tickets:', err);
-        this.preticketsListos = true;
-        this.abrirPreticketDesdeQuery();
-      },
-    });
-
-    // Cargar conceptos del año lectivo activo
-    this.http
-      .get<any>(`${environment.apiUrl}/tesoreria/conceptos?anio=${anio}`)
+      .get<any>(`${environment.apiUrl}/tesoreria/pensiones/padron`, { params })
       .subscribe({
         next: (res) => {
-          if (res.success) this.conceptosPago.set(res.data);
+          if (!res.success) {
+            this.error.set('No se pudo cargar el padrón de pensiones');
+            this.cargando.set(false);
+            return;
+          }
+
+          const paginacion = res.data?.paginacion || {};
+          this.alumnos.set(res.data?.alumnos || []);
+          this.pagina.set(Number(paginacion.page) || pagina);
+          this.totalRegistros.set(Number(paginacion.total) || 0);
+          this.totalPaginas.set(Number(paginacion.totalPages) || 0);
+          this.cargando.set(false);
+          this.abrirPreticketDesdeQuery();
         },
-        error: (err) => console.error('Error conceptos:', err),
+        error: (err) => {
+          console.error('Error padrón de pensiones:', err);
+          this.error.set('No se pudo cargar el padrón de pensiones');
+          this.cargando.set(false);
+        },
       });
+
+    // Auxiliares pequeños: solo al entrar, cambiar de año o cobrar.
+    if (incluirAuxiliares) {
+      this.http
+        .get<any>(
+          `${environment.apiUrl}/tesoreria/pre-tickets?estado=PENDIENTE&anio=${anio}`,
+        )
+        .subscribe({
+          next: (res) => {
+            if (res.success) this.preTickets.set(res.data);
+            this.preticketsListos = true;
+            this.abrirPreticketDesdeQuery();
+          },
+          error: (err) => {
+            console.error('Error pre-tickets:', err);
+            this.preticketsListos = true;
+            this.abrirPreticketDesdeQuery();
+          },
+        });
+
+      this.http
+        .get<any>(`${environment.apiUrl}/tesoreria/conceptos?anio=${anio}`)
+        .subscribe({
+          next: (res) => {
+            if (res.success) this.conceptosPago.set(res.data);
+          },
+          error: (err) => console.error('Error conceptos:', err),
+        });
+    }
   }
 
   /**
-   * Cargar pensiones de cada alumno en lotes para no saturar la API.
-   * En producción (Render/Supabase) 75 peticiones simultáneas provocaban 500.
+   * Búsqueda con debounce: vuelve a la página 1.
    */
-  async cargarPensiones(alumnosData: any[], anio: number): Promise<void> {
-    const limite = 5;
-    const resultados: any[] = [];
-    let fallos = 0;
-
-    try {
-      for (let i = 0; i < alumnosData.length; i += limite) {
-        const lote = alumnosData.slice(i, i + limite);
-        const parte = await Promise.all(
-          lote.map(async (alumno) => {
-            try {
-              const res = await this.http
-                .get<any>(
-                  `${environment.apiUrl}/tesoreria/pensiones/alumno/${alumno.id_alumno}?anio=${anio}`,
-                )
-                .toPromise();
-              const pensiones = res?.data || [];
-              return {
-                ...alumno,
-                pensiones,
-                estado_general: this.calcularEstadoGeneral(
-                  pensiones,
-                  alumno.estado_matricula,
-                ),
-              };
-            } catch (err) {
-              fallos += 1;
-              console.warn(
-                `No se pudieron cargar las pensiones de ${alumno.dni || alumno.id_alumno}`,
-                err,
-              );
-              return {
-                ...alumno,
-                pensiones: [],
-                estado_general: alumno.estado_matricula || 'Sin datos',
-              };
-            }
-          }),
-        );
-        resultados.push(...parte);
-      }
-
-      this.alumnos.set(resultados);
-      this.alumnosListos = true;
-      this.cargando.set(false);
-
-      if (fallos === alumnosData.length && alumnosData.length > 0) {
-        this.error.set('No se pudieron cargar las pensiones');
-      } else if (fallos > 0) {
-        console.warn(
-          `Pensiones incompletas: ${fallos} de ${alumnosData.length} alumnos`,
-        );
-      }
-
-      this.abrirPreticketDesdeQuery();
-    } catch (err) {
-      console.error('Error al cargar pensiones:', err);
-      this.alumnosListos = true;
-      this.error.set('No se pudieron cargar las pensiones');
-      this.cargando.set(false);
-      this.abrirPreticketDesdeQuery();
+  onBusqueda(valor: string): void {
+    this.busqueda.set(valor);
+    if (this.temporizadorBusqueda) {
+      clearTimeout(this.temporizadorBusqueda);
     }
+    this.temporizadorBusqueda = setTimeout(() => {
+      this.cargarDatos(1);
+    }, 350);
+  }
+
+  cambiarFiltroEstado(valor: string): void {
+    this.filtroEstado.set(valor);
+    this.cargarDatos(1);
+  }
+
+  irPagina(pagina: number): void {
+    if (pagina < 1 || pagina > this.totalPaginas()) return;
+    this.cargarDatos(pagina);
   }
 
   /**
@@ -307,7 +285,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
    */
   private abrirPreticketDesdeQuery(): void {
     if (this.preticketQueryProcesado) return;
-    if (!this.preticketsListos || !this.alumnosListos) return;
+    if (!this.preticketsListos) return;
 
     this.preticketQueryProcesado = true;
 
@@ -316,24 +294,12 @@ export class SecretariaTesoreriaComponent implements OnInit {
     );
     if (!idPreticket) return;
 
-    const idAlumnoQuery = Number(
-      this.route.snapshot.queryParamMap.get('id_alumno'),
-    );
     const preTicket = this.preTickets().find(
       (pt) => pt.id_preticket === idPreticket,
     );
 
     if (!preTicket) {
       this.error.set('El pre-ticket ya no está pendiente o no existe.');
-      return;
-    }
-
-    const alumno = this.alumnos().find(
-      (a) => a.id_alumno === (preTicket.id_alumno || idAlumnoQuery),
-    );
-
-    if (!alumno) {
-      this.error.set('No se encontró el alumno del pre-ticket.');
       return;
     }
 
@@ -587,7 +553,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
           if (res.success) {
             this.generandoPensiones.set(false);
             this.cerrarModalCobro();
-            this.cargarDatos();
+            this.cargarDatos(this.pagina(), true);
           }
         },
         error: (err) => {
@@ -662,7 +628,7 @@ export class SecretariaTesoreriaComponent implements OnInit {
                 `Boleta: ${res.data.boleta.numero_boleta}`,
             );
             this.cerrarModalCobro();
-            this.cargarDatos();
+            this.cargarDatos(this.pagina(), true);
           }
         },
         error: (err) => {
@@ -676,24 +642,8 @@ export class SecretariaTesoreriaComponent implements OnInit {
    * Filtrar alumnos
    */
   get alumnosFiltrados(): AlumnoConPensiones[] {
-    let resultado = this.alumnos();
-    const busq = this.busqueda().toLowerCase().trim();
-
-    if (busq) {
-      resultado = resultado.filter(
-        (a) =>
-          a.nombre_completo.toLowerCase().includes(busq) ||
-          a.dni.includes(busq) ||
-          a.codigo_estudiante?.toLowerCase().includes(busq),
-      );
-    }
-
-    const estado = this.filtroEstado();
-    if (estado) {
-      resultado = resultado.filter((a) => a.estado_general === estado);
-    }
-
-    return resultado;
+    // El backend aplica búsqueda y estado antes de paginar.
+    return this.alumnos();
   }
 
   /**
@@ -731,8 +681,44 @@ export class SecretariaTesoreriaComponent implements OnInit {
         preTicket.id_concepto,
         preTicket.concepto_tipo,
       );
-    } else {
-      alert('No se encontró el alumno en el padrón');
+      return;
     }
+
+    // El alumno puede no estar en la página visible: se consulta por ID.
+    this.http
+      .get<any>(`${environment.apiUrl}/alumnos/${preTicket.id_alumno}`, {
+        params: { anio: this.anioSeleccionado() },
+      })
+      .subscribe({
+        next: (res) => {
+          if (!res.success || !res.data) {
+            alert('No se encontró el alumno del pre-ticket');
+            return;
+          }
+          const data = res.data;
+          const alumnoFallback: AlumnoConPensiones = {
+            ...data,
+            nombre_completo:
+              data.nombre_completo ||
+              `${data.nombres || ''} ${data.apellidos || ''}`.trim(),
+            pensiones: data.pensiones || [],
+            estado_general:
+              data.estado_general ||
+              data.estado_matricula ||
+              'Sin datos',
+          };
+          this.abrirCobro(
+            alumnoFallback,
+            preTicket.concepto_nombre,
+            parseFloat(preTicket.monto),
+            preTicket.id_concepto,
+            preTicket.concepto_tipo,
+          );
+        },
+        error: (err) => {
+          console.error('Error al buscar alumno del pre-ticket:', err);
+          alert('No se encontró el alumno del pre-ticket');
+        },
+      });
   }
 }

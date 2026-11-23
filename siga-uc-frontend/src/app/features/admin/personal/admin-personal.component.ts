@@ -6,6 +6,7 @@ import * as QRCode from 'qrcode';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
 import { fechaLocalISO } from '../../../core/utils/fecha.util';
+import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 interface Personal {
   id_personal: number;
@@ -43,7 +44,7 @@ interface Rol {
 @Component({
   selector: 'app-admin-personal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PaginationComponent],
   templateUrl: './admin-personal.component.html',
   styleUrl: './admin-personal.component.scss',
 })
@@ -57,6 +58,12 @@ export class AdminPersonalComponent implements OnInit {
   error = signal<string | null>(null);
   personal = signal<Personal[]>([]);
   roles = signal<Rol[]>([]);
+
+  // Paginación server-side
+  readonly pageSize = 20;
+  pagina = signal(1);
+  totalRegistros = signal(0);
+  totalPaginas = signal(1);
 
   // Filtros
   filtroRol = signal<string>('');
@@ -121,18 +128,34 @@ export class AdminPersonalComponent implements OnInit {
     this.cargarRoles();
   }
 
-  cargarPersonal(): void {
+  cargarPersonal(pagina = this.pagina()): void {
     this.cargando.set(true);
     this.error.set(null);
 
-    const params: any = {};
+    const params: any = {
+      page: pagina,
+      pageSize: this.pageSize,
+    };
     if (this.filtroRol()) params.id_rol = this.filtroRol();
     if (this.filtroEstado()) params.estado = this.filtroEstado();
     if (this.busqueda()) params.search = this.busqueda();
 
     this.http.get<any>(`${environment.apiUrl}/personal`, { params }).subscribe({
       next: (res) => {
-        if (res.success) this.personal.set(res.data);
+        if (res.success) {
+          const payload = res.data;
+          const datos = Array.isArray(payload) ? payload : payload?.data || [];
+          this.personal.set(datos);
+          if (!Array.isArray(payload)) {
+            const paginacion = payload?.pagination || {};
+            this.pagina.set(Number(paginacion.page) || pagina);
+            this.totalRegistros.set(Number(paginacion.total) || datos.length);
+            this.totalPaginas.set(Number(paginacion.totalPages) || 1);
+          } else {
+            this.totalRegistros.set(datos.length);
+            this.totalPaginas.set(1);
+          }
+        }
         this.cargando.set(false);
       },
       error: (err) => {
@@ -141,6 +164,11 @@ export class AdminPersonalComponent implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  irPagina(pagina: number): void {
+    if (pagina < 1 || pagina > this.totalPaginas()) return;
+    this.cargarPersonal(pagina);
   }
 
   cargarRoles(): void {
@@ -172,14 +200,14 @@ export class AdminPersonalComponent implements OnInit {
   }
 
   aplicarFiltros(): void {
-    this.cargarPersonal();
+    this.cargarPersonal(1);
   }
 
   limpiarFiltros(): void {
     this.filtroRol.set('');
     this.filtroEstado.set('');
     this.busqueda.set('');
-    this.cargarPersonal();
+    this.cargarPersonal(1);
   }
 
   // ============================================================

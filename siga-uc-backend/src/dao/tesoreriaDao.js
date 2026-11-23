@@ -177,6 +177,15 @@ const listarPagos = async (filtros = {}) => {
   const where =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+  let limitClause = "";
+  if (filtros.limit !== undefined && filtros.limit !== null) {
+    const limite = Number.parseInt(String(filtros.limit), 10);
+    if (Number.isInteger(limite) && limite > 0) {
+      limitClause = `LIMIT $${idx++}`;
+      params.push(Math.min(limite, 200));
+    }
+  }
+
   const sql = `
     SELECT 
       p.id_pago,
@@ -203,6 +212,7 @@ const listarPagos = async (filtros = {}) => {
     LEFT JOIN boletas_electronicas b ON b.id_pago = p.id_pago
     ${where}
     ORDER BY p.fecha_pago DESC
+    ${limitClause}
   `;
   const result = await query(sql, params);
   return result.rows;
@@ -624,6 +634,182 @@ const registrarPago = async (data) => {
 // ============================================================
 // PENSIONES
 // ============================================================
+/**
+ * Padrón de pensiones paginado: una sola consulta para la tabla de Tesorería.
+ * Evita que el frontend haga una petición por alumno (N+1).
+ */
+const listarPadronPensiones = async ({
+  anioLectivo,
+  page = 1,
+  pageSize = 25,
+  search = null,
+  estado = null,
+} = {}) => {
+  const limite = Math.min(Math.max(Number(pageSize) || 25, 1), 100);
+  const pagina = Math.max(Number(page) || 1, 1);
+  const offset = (pagina - 1) * limite;
+  const patron = search ? `%${String(search).trim()}%` : null;
+  const estadoFiltro = estado || null;
+
+  const sql = `
+    WITH base AS (
+      SELECT
+        a.id_alumno,
+        a.dni,
+        a.nombres,
+        a.apellidos,
+        a.nombres || ' ' || a.apellidos AS nombre_completo,
+        a.codigo_estudiante,
+        a.estado_matricula,
+        a.id_grado,
+        g.nombre_grado,
+        g.nivel,
+        g.seccion,
+        COALESCE(px.total, 0)::int AS total_pensiones,
+        COALESCE(px.pendientes, 0)::int AS pendientes,
+        CASE
+          WHEN a.estado_matricula = 'Retirado' THEN 'Retirado'
+          WHEN a.estado_matricula = 'PendientePago' THEN 'Pendiente de Pago'
+          WHEN COALESCE(px.total, 0) = 0 THEN 'Sin datos'
+          WHEN COALESCE(px.pendientes, 0) = 0 THEN 'Al Día'
+          WHEN COALESCE(px.pendientes, 0) >= 3 THEN 'Moroso'
+          ELSE 'Con Deuda'
+        END AS estado_general
+      FROM alumnos a
+      INNER JOIN grados g ON g.id_grado = a.id_grado
+      LEFT JOIN (
+        SELECT
+          id_alumno,
+          COUNT(*) AS total,
+          COUNT(*) FILTER (WHERE estado = 'PENDIENTE') AS pendientes
+        FROM pensiones
+        WHERE anio_lectivo = $1
+        GROUP BY id_alumno
+      ) px ON px.id_alumno = a.id_alumno
+      WHERE a.anio_lectivo = $1
+        AND (
+          $2::text IS NULL
+          OR a.dni LIKE $2
+          OR LOWER(a.nombres || ' ' || a.apellidos) LIKE LOWER($2)
+          OR LOWER(COALESCE(a.codigo_estudiante, '')) LIKE LOWER($2)
+        )
+    ),
+    filtrados AS (
+      SELECT *
+      FROM base
+      WHERE $3::text IS NULL OR estado_general = $3
+    )
+    SELECT *, COUNT(*) OVER() AS total_registros
+    FROM filtrados
+    ORDER BY apellidos, nombres
+    LIMIT $4 OFFSET $5
+  `;
+
+  const result = await query(sql, [
+    anioLectivo,
+    patron,
+    estadoFiltro,
+    limite,
+    offset,
+  ]);
+
+  const total = result.rows.length > 0 ? Number(result.rows[0].total_registros) || 0 : 0;
+  // `total_registros` se calcula con COUNT(*) OVER() para no duplicar el WHERE.
+  // Si la versión de PostgreSQL no lo devuelve, se usa un count separado.
+  const totalRegistros = total || (await contarPadronPensiones(anioLectivo, patron, estadoFiltro));
+
+  const alumnos = result.rows.map((fila) => {
+    const { total_registros, ...alumno } = fila;
+    return alumno;
+  });
+
+  if (alumnos.length === 0) {
+    return {
+      alumnos: [],
+      paginacion: {
+        page: pagina,
+        pageSize: limite,
+        total: totalRegistros,
+        totalPages:
+          totalRegistros > 0 ? Math.ceil(totalRegistros / limite) : 0,
+      },
+    };
+  }
+
+  const ids = alumnos.map((alumno) => alumno.id_alumno);
+  const pensionesResult = await query(
+    `SELECT
+       p.id_alumno, p.id_pension, p.mes, p.monto_base, p.descuento,
+       p.monto_final, p.estado, c.id_concepto,
+       c.nombre AS concepto_nombre
+     FROM pensiones p
+     LEFT JOIN conceptos_pago c ON c.id_concepto = p.id_concepto
+     WHERE p.anio_lectivo = $1 AND p.id_alumno = ANY($2::int[])
+     ORDER BY p.id_alumno, p.mes`,
+    [anioLectivo, ids],
+  );
+
+  const porAlumno = new Map();
+  for (const pension of pensionesResult.rows) {
+    if (!porAlumno.has(pension.id_alumno)) {
+      porAlumno.set(pension.id_alumno, []);
+    }
+    porAlumno.get(pension.id_alumno).push(pension);
+  }
+
+  return {
+    alumnos: alumnos.map((alumno) => ({
+      ...alumno,
+      pensiones: porAlumno.get(alumno.id_alumno) || [],
+    })),
+    paginacion: {
+      page: pagina,
+      pageSize: limite,
+      total: totalRegistros,
+      totalPages: totalRegistros > 0 ? Math.ceil(totalRegistros / limite) : 0,
+    },
+  };
+};
+
+const contarPadronPensiones = async (anioLectivo, patron, estado) => {
+  const sql = `
+    WITH base AS (
+      SELECT
+        a.id_alumno,
+        CASE
+          WHEN a.estado_matricula = 'Retirado' THEN 'Retirado'
+          WHEN a.estado_matricula = 'PendientePago' THEN 'Pendiente de Pago'
+          WHEN COALESCE(px.total, 0) = 0 THEN 'Sin datos'
+          WHEN COALESCE(px.pendientes, 0) = 0 THEN 'Al Día'
+          WHEN COALESCE(px.pendientes, 0) >= 3 THEN 'Moroso'
+          ELSE 'Con Deuda'
+        END AS estado_general
+      FROM alumnos a
+      LEFT JOIN (
+        SELECT
+          id_alumno,
+          COUNT(*) AS total,
+          COUNT(*) FILTER (WHERE estado = 'PENDIENTE') AS pendientes
+        FROM pensiones
+        WHERE anio_lectivo = $1
+        GROUP BY id_alumno
+      ) px ON px.id_alumno = a.id_alumno
+      WHERE a.anio_lectivo = $1
+        AND (
+          $2::text IS NULL
+          OR a.dni LIKE $2
+          OR LOWER(a.nombres || ' ' || a.apellidos) LIKE LOWER($2)
+          OR LOWER(COALESCE(a.codigo_estudiante, '')) LIKE LOWER($2)
+        )
+    )
+    SELECT COUNT(*)::int AS total
+    FROM base
+    WHERE $3::text IS NULL OR estado_general = $3
+  `;
+  const result = await query(sql, [anioLectivo, patron, estado]);
+  return Number(result.rows[0]?.total) || 0;
+};
+
 const listarPensionesAlumno = async (id_alumno, anioLectivo = getAnioLectivo()) => {
   const sql = `
     SELECT 
@@ -831,6 +1017,7 @@ module.exports = {
   registrarPago,
   // Pensiones
   listarPensionesAlumno,
+  listarPadronPensiones,
   findPensionById,
   findPensionPorAlumnoMes,
   generarPensionesMensuales,

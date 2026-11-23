@@ -14,6 +14,32 @@ const listar = async (req, res) => {
       estado: req.query.estado || null,
       search: req.query.search || null,
     };
+
+    if (req.query.page !== undefined) {
+      const resultado = await personalService.listarPaginado({
+        ...filtros,
+        page: req.query.page,
+        pageSize: req.query.pageSize || 20,
+      });
+      return response.success(
+        res,
+        200,
+        `Se encontraron ${resultado.total} trabajadores`,
+        {
+          data: resultado.data,
+          pagination: {
+            page: resultado.page,
+            pageSize: resultado.pageSize,
+            total: resultado.total,
+            totalPages:
+              resultado.total > 0
+                ? Math.ceil(resultado.total / resultado.pageSize)
+                : 0,
+          },
+        },
+      );
+    }
+
     const data = await personalService.listar(filtros);
     return response.success(
       res,

@@ -8,7 +8,40 @@ const { query, getClient } = require("../config/database");
 /**
  * Listar todo el personal con su usuario y rol
  */
-const listar = async (filtros = {}) => {
+const SELECT_PERSONAL = `
+  SELECT 
+    p.id_personal,
+    p.especialidad,
+    p.cargo,
+    p.fecha_ingreso,
+    p.fecha_cese,
+    p.motivo_cese,
+    to_jsonb(p)->>'observaciones' AS observaciones,
+    u.id_usuario,
+    u.dni,
+    u.nombres,
+    u.apellidos,
+    u.nombres || ' ' || u.apellidos AS nombre_completo,
+    u.correo_institucional,
+    u.correo_personal,
+    u.telefono,
+    u.estado,
+    u.ultimo_login,
+    r.id_rol,
+    r.nombre_rol,
+    r.descripcion AS rol_descripcion,
+    cq.id_credencial,
+    cq.codigo_qr,
+    cq.tipo AS tipo_credencial
+  FROM personal p
+  INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+  INNER JOIN roles r ON r.id_rol = u.id_rol
+  LEFT JOIN credenciales_qr cq
+    ON cq.id_usuario = u.id_usuario
+    AND cq.activo = TRUE
+`;
+
+const construirFiltrosPersonal = (filtros = {}) => {
   const conditions = [];
   const params = [];
   let idx = 1;
@@ -33,46 +66,61 @@ const listar = async (filtros = {}) => {
     idx++;
   }
 
-  const where =
-    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  return {
+    where: conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "",
+    params,
+  };
+};
 
+/**
+ * Listar todo el personal con su usuario y rol (sin paginar).
+ */
+const listar = async (filtros = {}) => {
+  const { where, params } = construirFiltrosPersonal(filtros);
   const sql = `
-    SELECT 
-      p.id_personal,
-      p.especialidad,
-      p.cargo,
-      p.fecha_ingreso,
-      p.fecha_cese,
-      p.motivo_cese,
-      to_jsonb(p)->>'observaciones' AS observaciones,
-      u.id_usuario,
-      u.dni,
-      u.nombres,
-      u.apellidos,
-      u.nombres || ' ' || u.apellidos AS nombre_completo,
-      u.correo_institucional,
-      u.correo_personal,
-      u.telefono,
-      u.estado,
-      u.ultimo_login,
-      r.id_rol,
-      r.nombre_rol,
-      r.descripcion AS rol_descripcion,
-      cq.id_credencial,
-      cq.codigo_qr,
-      cq.tipo AS tipo_credencial
-    FROM personal p
-    INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
-    INNER JOIN roles r ON r.id_rol = u.id_rol
-    LEFT JOIN credenciales_qr cq
-      ON cq.id_usuario = u.id_usuario
-      AND cq.activo = TRUE
+    ${SELECT_PERSONAL}
     ${where}
     ORDER BY u.apellidos, u.nombres
   `;
 
   const result = await query(sql, params);
   return result.rows;
+};
+
+/**
+ * Listar personal paginado para la tabla ADMIN.
+ */
+const listarPaginado = async (filtros = {}) => {
+  const { where, params } = construirFiltrosPersonal(filtros);
+  const page = Math.max(Number.parseInt(String(filtros.page ?? ""), 10) || 1, 1);
+  const pageSize = Math.min(
+    Math.max(Number.parseInt(String(filtros.pageSize ?? ""), 10) || 20, 1),
+    100,
+  );
+  const offset = (page - 1) * pageSize;
+
+  const countSql = `
+    SELECT COUNT(*)::int AS total
+    FROM personal p
+    INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+    ${where}
+  `;
+  const countResult = await query(countSql, params);
+
+  const dataSql = `
+    ${SELECT_PERSONAL}
+    ${where}
+    ORDER BY u.apellidos, u.nombres
+    LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+  `;
+  const dataResult = await query(dataSql, [...params, pageSize, offset]);
+
+  return {
+    data: dataResult.rows,
+    total: Number(countResult.rows[0]?.total) || 0,
+    page,
+    pageSize,
+  };
 };
 
 /**
@@ -384,6 +432,7 @@ const resetPassword = async (id_usuario, dni) => {
 
 module.exports = {
   listar,
+  listarPaginado,
   findById,
   listarRoles,
   crear,

@@ -312,6 +312,10 @@ const registrarPago = async (data) => {
   return await tesoreriaDao.registrarPago(data);
 };
 
+const listarPadronPensiones = async (filtros) => {
+  return await tesoreriaDao.listarPadronPensiones(filtros);
+};
+
 const listarPensionesAlumno = async (id_alumno, anioLectivo) => {
   const alumno = await alumnoDao.findById(id_alumno);
   if (!alumno) {
@@ -473,6 +477,7 @@ module.exports = {
   anularPago,
   registrarPago,
   listarPensionesAlumno,
+  listarPadronPensiones,
   generarPensionesAlumno,
   generarPensionesMes,
   listarBecas,

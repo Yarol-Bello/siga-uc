@@ -72,6 +72,7 @@ const listarPagos = async (req, res) => {
       anio_lectivo: req.query.anio
         ? parseInt(req.query.anio, 10)
         : getAnioLectivo(),
+      limit: req.query.limit ? parseInt(req.query.limit, 10) : null,
     };
     const data = await tesoreriaService.listarPagos(filtros);
     return response.success(res, 200, `${data.length} pagos encontrados`, data);
@@ -185,6 +186,33 @@ const registrarPago = async (req, res) => {
     return response.success(res, 201, "Pago registrado y boleta emitida", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);
+  }
+};
+
+const listarPadronPensiones = async (req, res) => {
+  try {
+    const data = await tesoreriaService.listarPadronPensiones({
+      anioLectivo: req.query.anio
+        ? parseInt(req.query.anio, 10)
+        : getAnioLectivo(),
+      page: req.query.page ? parseInt(req.query.page, 10) : 1,
+      pageSize: req.query.pageSize ? parseInt(req.query.pageSize, 10) : 25,
+      search: req.query.search || req.query.q || null,
+      estado: req.query.estado || null,
+    });
+    return response.success(
+      res,
+      200,
+      `Padrón de pensiones: ${data.paginacion.total} estudiantes`,
+      data,
+    );
+  } catch (error) {
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 
@@ -316,6 +344,7 @@ module.exports = {
   getBoletaPdf,
   registrarPago,
   listarPensionesAlumno,
+  listarPadronPensiones,
   generarPensionesMes,
   listarBecas,
   aplicarBeca,

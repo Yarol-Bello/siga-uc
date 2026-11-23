@@ -47,6 +47,10 @@ router.post(
 // PENSIONES
 // ============================================================
 router.get(
+  "/pensiones/padron",
+  tesoreriaController.listarPadronPensiones,
+);
+router.get(
   "/pensiones/alumno/:id_alumno",
   tesoreriaController.listarPensionesAlumno,
 );
