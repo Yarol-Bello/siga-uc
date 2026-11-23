@@ -11,7 +11,7 @@
  * Conexión: usa DATABASE_URL si existe; si no, DB_HOST/DB_PORT/DB_USER/
  * DB_PASSWORD/DB_NAME. Las credenciales nunca se imprimen.
  *
- * Códigos de salida: 0 si las 20 invariantes pasan; 1 si hay algún FAIL.
+ * Códigos de salida: 0 si las 21 invariantes pasan; 1 si hay algún FAIL.
  */
 
 "use strict";
@@ -609,6 +609,41 @@ async function main() {
         HAVING COUNT(*) > 1
       ) q
       ORDER BY q.anio_origen, q.nombre
+      LIMIT 5
+    `,
+  );
+
+  // 21. H71: un retirado tiene expediente congelado y, si no conserva otra
+  //     matrícula vigente, su usuario está INACTIVO.
+  await verificarInvariante(
+    21,
+    "Retirado con expediente sin congelar o usuario activo sin otra matrícula",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT a.id_alumno, a.anio_lectivo, a.dni,
+               a.id_usuario, u.estado AS estado_usuario,
+               e.id_expediente, e.congelado
+        FROM alumnos a
+        INNER JOIN usuarios u ON u.id_usuario = a.id_usuario
+        LEFT JOIN expediente_alumno e ON e.id_alumno = a.id_alumno
+        WHERE a.estado_matricula = 'Retirado'
+          AND (
+            e.id_expediente IS NULL
+            OR e.congelado IS DISTINCT FROM TRUE
+            OR (
+              u.id_rol = 4
+              AND u.estado IS DISTINCT FROM 'INACTIVO'
+              AND NOT EXISTS (
+                SELECT 1
+                FROM alumnos a2
+                WHERE a2.id_usuario = a.id_usuario
+                  AND a2.estado_matricula <> 'Retirado'
+              )
+            )
+          )
+      ) q
+      ORDER BY q.id_alumno
       LIMIT 5
     `,
   );
