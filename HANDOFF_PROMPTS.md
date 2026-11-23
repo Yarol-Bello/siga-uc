@@ -34,20 +34,21 @@
 | Último commit de documentación | Ver `git log -1` (cierre de configuración/UAT) |
 | Backend / Frontend | Live en Render (`f7477c1`); backend sin commit expuesto en `/health` |
 | `/api/health` | OK, `database: "ok"` |
-| Supabase demo | **48 tablas**, H49/H73/H74–H79 aplicadas, **75 alumnos**, **6 docentes activos**, 1 secretaria, **750 pensiones**, **113 pagos**, 3 becas, **1 acta ABIERTO**, 2026 activo, 0 promociones, `setup_completado=true` |
+| Supabase demo | **48 tablas**, H49/H73/H74–H80 aplicadas, **75 alumnos**, **6 docentes activos**, 1 secretaria, **750 pensiones**, **113 pagos**, 3 becas, **3,300 conclusiones estructuradas**, **1 acta ABIERTO**, 2026 activo, 0 promociones, `setup_completado=true` |
 | Horarios en Supabase | **145 PUBLICADO**; 6 docentes UAT (`73000001`–`73000006`); los 5 demo antiguos quedaron inactivos |
 | Carga en Supabase | 55 cargas entre 6 docentes UAT; 5 tutores; 0 choques |
-| Local `siga_uc` | 49 tablas (48 base + `horarios_h47_backup`), H49/H73/H74–H79 aplicados, 54 cargas en ADMIN, 0 horarios, 10 períodos, 2026 activo |
+| Local `siga_uc` | 49 tablas (48 base + `horarios_h47_backup`), H49/H73/H74–H80 aplicados, 54 cargas en ADMIN, 0 horarios, 10 períodos, 2026 activo |
 | Fase 6.1 (multi-año base) | Desplegada en Render (`3007dbe`); H49 aplicada en Supabase |
 | Fase 6.2 (rollover) | Desplegada en Render (`f05ecc5`); H49 aplicada en Supabase |
 | Fase 6.3 + 6.3.1 (promoción) | Desplegadas en Render (`89eba24`); H73 aplicada en Supabase, 0 promociones |
 | Fase 6.4 (histórico) | Desplegada en Render (`cdc129e`); sin migración; Supabase sin cambios |
 | Fase 7 (pulido) | Desplegada en Render (`df1f384`); H59 aplicada en Supabase (columna `personal.observaciones`); H70 y H71 cerrados en el cierre de demo |
-| E2E | **100 PASS** |
-| Integridad (base de producción desechable) | **35 PASS**; local 33 PASS / 2 FAIL de seed |
+| E2E | **102 PASS** |
+| Integridad (base de producción desechable) | **36 PASS**; local 33 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 12 PASS / 4 PASS |
 | Setup inicial (`npm run test:setup`) | **5 PASS** sobre base vacía |
 | Módulo de configuración | **Fases 1–7 implementadas, desplegadas en Render (`f7477c1`) y aplicadas en Supabase demo**: H74–H79, tarifas, académico, jornada, becas, textos/PDF/correo y `/setup`; `setup_completado=true` |
+| Conclusiones descriptivas (H80) | Nivel de logro + avance + dificultad + sugerencia; pantalla `/docente/conclusiones`; código/hash interno verificable en el Excel SIAGIE; 3,300 conclusiones demo |
 
 > Recordatorio: un push que solo toca `database/` o `documentacion/` **no despliega**.
 > Las migraciones se aplican a mano en Supabase.
@@ -218,7 +219,7 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 - Supabase: **48 tablas**, **75 alumnos**, **6 docentes activos**, 55 carga, 5 tutores,
   145 horarios, 750 pensiones, 113 pagos, 3 becas, 1 acta ABIERTO. **H49/H73/H74–H79
   aplicadas; 2026 activo; 1 política; 0 promociones; setup completado.**
-- Local: `npm run test:e2e` (100 PASS), `npm run test:integridad` (35 PASS en base de
+- Local: `npm run test:e2e` (102 PASS), `npm run test:integridad` (36 PASS en base de
   producción desechable; 33/2 de seed en local), `npm run test:h47-generador` (4 PASS) y
   `npm run smoke` (12 PASS).
 - Deep links: `/login`, `/admin`, `/docente/asistencia` → 200.
@@ -268,9 +269,9 @@ No implementas código, no tocas Supabase ni Render.
 
 ## Estado
 - Código desplegado: `f7477c1` (Fases 6.1-6.4 + configuración 1-7 + UAT y textos + tesorería por lotes).
-- Fases 1-7 y 6.1-6.4 desplegadas en Render; configuración y `/setup` incluidos. E2E 100 PASS en local; `uat:verify` 21 PASS contra Supabase.
+- Fases 1-7 y 6.1-6.4 desplegadas en Render; configuración y `/setup` incluidos. E2E 102 PASS en local; `uat:verify` 22 PASS contra Supabase.
 - Login probado de 320×568 a 1920×1080; sidebar con menú desplazable; módulos del estudiante probados en móvil, tableta, laptop y escritorio.
-- **H49, H73 y H74-H79 aplicadas en Supabase demo**: 48 tablas, 2026 activo, 75 alumnos, 6 docentes activos, 55 carga, 5 tutores, 145 horarios, 750 pensiones, 113 pagos, 3 becas, 1 acta ABIERTO y setup completado.
+- **H49, H73 y H74-H80 aplicadas en Supabase demo**: 48 tablas, 2026 activo, 75 alumnos, 6 docentes activos, 55 carga, 5 tutores, 145 horarios, 750 pensiones, 113 pagos, 3 becas, 1 acta ABIERTO y setup completado.
 - **H59 aplicada en Supabase**: columna `personal.observaciones` existente.
 - El ADMIN de Supabase conserva su contraseña real; `UC2026*` solo se usó temporalmente en el seed y se restauró.
 - No activar 2027 en el demo.

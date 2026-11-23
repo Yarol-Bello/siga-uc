@@ -53,6 +53,7 @@ index.html
 | `docente` | `DocenteLayoutComponent` | `authGuard`, `roleGuard(['DOCENTE'])` | Docente |
 | `docente/horario` | `DocenteHorarioComponent` | hereda | Docente |
 | `docente/notas` | `DocenteNotasComponent` | hereda | Docente |
+| `docente/conclusiones` | `DocenteConclusionesComponent` | hereda | Docente |
 | `docente/asistencia` | `DocenteAsistenciaComponent` | hereda | Docente |
 | `docente/ficha-estudiante` | `DocenteFichaComponent` | hereda | Docente |
 | `docente/reportes` | `DocenteReportesComponent` | hereda | Docente |
@@ -227,6 +228,7 @@ Cada layout contiene:
 | Mi Horario | `/docente/horario` |
 | Control de Asistencia | `/docente/asistencia` |
 | Registro de Notas | `/docente/notas` |
+| Conclusiones Descriptivas | `/docente/conclusiones` |
 | Ficha del Estudiante | `/docente/ficha-estudiante` |
 | Reportes de Aula | `/docente/reportes` |
 
@@ -291,7 +293,7 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 | `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar` (con `observaciones` H59), `PUT /:id/reactivar`, `PUT /:id/reset-password`; el carné genera un QR real con `codigo_qr` (H55) y la impresión aísla la credencial (H58); la ficha muestra el cese y su observación |
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
-| `AdminSiagieComponent` | `GET /anios-lectivos` (selector), `GET /grados?anio=`, `GET /reportes/auditoria-docentes/:id?bimestre=&anio=`, `GET /siagie/resumen`, `GET /siagie/exportar`, `GET /personal/:id`, `POST /notificaciones`. Exportación interna: sin portal, plantilla ni archivo subido; aviso visible y Excel con todos los cursos |
+| `AdminSiagieComponent` | `GET /anios-lectivos` (selector), `GET /grados?anio=`, `GET /reportes/auditoria-docentes/:id?bimestre=&anio=`, `GET /siagie/resumen`, `GET /siagie/exportar`, `GET /siagie/exportaciones/:codigo/verificar`, `GET /personal/:id`, `POST /notificaciones`. Exportación interna con columnas estructuradas, código/hash de control interno, tarjeta de verificación y aviso “no oficial” |
 | `AdminReportesComponent` | `GET /grados?anio=`, `GET /alumnos?anio=`, `GET /anios-lectivos` (selector 6.4), `GET /reportes/cuadro-merito/:id?bimestre=&anio=`, `/alumnos-riesgo/:id?bimestre=&anio=`, `/libreta/:id?bimestre=&anio=`, `/libreta/:id/pdf?bimestre=&anio=`; selector de bimestre 1-4 también en libretas (H51); deep link `?anio=&dni=&grado=&bimestre=` abre la libreta; mérito/riesgo se imprimen con vista aislada y libreta descarga PDF de backend (H58) |
 | `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `POST /actas/:id/reabrir`, `GET /actas/:id/pdf`; tarjeta de cierre, badge global, modal de reapertura (H48); muestra el `motivo` de configuración |
 | `AdminConfiguracionComponent` | `GET /configuracion/admin`, `PUT /configuracion/institucional`; formulario general con confirmación y motivo; tabla de años en solo lectura (H74/Fase 1) |
@@ -302,6 +304,7 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 | `SetupComponent` | `GET /setup/status`, `POST /setup/inicializar`; asistente de 3 pasos con token, institución, año, niveles y primer admin (H79) |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id`; botones Asistencia/Notas navegan con `id_curso` e `id_grado` (H53) |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53) |
+| `DocenteConclusionesComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id/conclusiones?bimestre=&anio=`, `PUT /calificaciones/conclusiones`; nivel desde la nota final, tres textos, contador 350, plantilla de sugerencia, borrador/publicado y bloqueo por acta cerrada (H80) |
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53), usa `parseFechaLocal`/`diaSemanaLocal` y muestra el día en español (H61); bloquea observación sin P/T/F con error inline (H60) |
 | `DocenteFichaComponent` | `GET /alumnos/dni/:dni`, `GET /asistencias/alumno/:id?anio=`, `/resumen?anio=`, `GET /calificaciones/notas-finales/alumno/:id?anio=`; el historial muestra el día en español que devuelve el backend (H61) y solo el año lectivo elegido (H56) |
 | `DocenteReportesComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `GET /notificaciones`, `PUT /notificaciones/:id/leer`, `PUT /leer-todas`; el consolidado se imprime con vista aislada (H58) |

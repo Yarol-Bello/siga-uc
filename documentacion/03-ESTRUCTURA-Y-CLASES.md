@@ -49,12 +49,12 @@
 | `personalController.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | Roles excluyen ESTUDIANTE |
 | `cargaCurricularController.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `crear`, `actualizar`, `eliminar`, `asignarTutor`, `getTutor` | `listarPorDocente` usa el año lectivo configurado |
 | `asistenciaController.js` | `obtenerPorCursoFecha`, `obtenerPorAlumno`, `obtenerResumenPorAlumno`, `registrar`, `registrarMasivo`, `listarAsistenciaPersonal`, `buscarPersonalPorDni`, `registrarAsistenciaPersonal`, `obtenerResumenAsistenciaPersonal` | Personal y alumnos separados |
-| `calificacionController.js` | `obtenerPorAlumnoCurso`, `obtenerPorCursoGrado`, `registrar`, `registrarMasivo`, `calcularNotaFinal`, `obtenerNotasFinales` | `calcularNotaFinal` expone el cálculo |
+| `calificacionController.js` | `obtenerPorAlumnoCurso`, `obtenerPorCursoGrado`, `registrar`, `registrarMasivo`, `calcularNotaFinal`, `obtenerNotasFinales`, `obtenerConclusionesCursoGrado`, `guardarConclusion` | `calcularNotaFinal` expone el cálculo; H80 agrega conclusiones estructuradas |
 | `tesoreriaController.js` | `listarConceptos`, `listarPreTickets`, `obtenerPreTicket`, `crearPreTicket`, `listarPagos`, `obtenerPago`, `getBoletaPdf`, `registrarPago`, `listarPensionesAlumno`, `generarPensionesMes`, `listarBecas`, `aplicarBeca`, `getEstadisticas` | Inyecta `id_usuario` del token; PDF de boleta |
 | `cajaController.js` | `obtenerCajaAbierta`, `listarCajas`, `listarAperturas`, `obtenerApertura`, `aperturar`, `listarMovimientos`, `registrarEgreso`, `cerrar`, `listarCierres` | Inyecta usuario de apertura/egreso/cierre |
 | `reporteController.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getLibretaPdf`, `getResumenAsistencia`, `getAuditoriaDocentes` | KPIs, reportes y PDF de libreta |
 | `auditoriaController.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `getActaPdf`, `cerrarActa`, `reabrirActa`, `getEstadisticas` | Inyecta `cerrado_por`; PDF de acta; cierre/reapertura auditados; paginación con `page`/`pageSize` |
-| `siagieController.js` | `obtenerResumen`, `exportarInterno` | Valida año/grado/bimestre, audita y descarga el Excel interno |
+| `siagieController.js` | `obtenerResumen`, `exportarInterno`, `verificarExportacion` | Valida año/grado/bimestre, audita, descarga el Excel interno y verifica el código de control |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
 ### 1.4 Servicios (31)
@@ -76,7 +76,7 @@
 | `personalService.js` | `listar`, `obtener`, `listarRoles`, `crear`, `actualizar`, `cesar`, `reactivar`, `resetPassword` | DNI de 8, cese con motivo, no cesar dos veces |
 | `cargaCurricularService.js` | `listar`, `obtener`, `listarPorGrado`, `listarPorDocente`, `getTutor`, `crear`, `actualizar`, `eliminar`, `asignarTutor` | Campos obligatorios y 404 |
 | `asistenciaService.js` | `obtenerPorCursoFecha`, `obtenerPorAlumno`, `obtenerResumenPorAlumno`, `registrar`, `registrarMasivo`, `listarAsistenciaPersonal`, `buscarPersonalPorDni`, `registrarAsistenciaPersonal`, `obtenerResumenAsistenciaPersonal` | Estados `P/T/F`, personal activo |
-| `calificacionService.js` | `obtenerPorAlumnoCurso`, `obtenerPorCursoGrado`, `registrar`, `registrarMasivo`, `calcularYGuardarNotaFinal`, `obtenerNotasFinales` | `AD/A/B/C`, bimestre 1–4, agrupa notas/conclusiones |
+| `calificacionService.js` | `obtenerPorAlumnoCurso`, `obtenerPorCursoGrado`, `registrar`, `registrarMasivo`, `calcularYGuardarNotaFinal`, `obtenerNotasFinales`, `listarConclusionesCursoGrado`, `guardarConclusion` | `AD/A/B/C`, bimestre 1-4, agrupa notas/conclusiones; H80 valida nivel, 350 caracteres, acta y auditoría |
 | `tesoreriaService.js` | `listarConceptos`, `listarPreTickets`, `obtenerPreTicket`, `crearPreTicket`, `listarPagos`, `obtenerPago`, `registrarPago`, `listarPensionesAlumno`, `generarPensionesMes`, `listarBecas`, `aplicarBeca`, `getEstadisticas` | Alumno/concepto existen, mes 1–12, tipo de concepto |
 | `cajaService.js` | `obtenerCajaAbierta`, `listarCajas`, `listarAperturas`, `obtenerApertura`, `aperturar`, `listarMovimientos`, `registrarEgreso`, `cerrar`, `listarCierres` | Montos no negativos, caja abierta |
 | `reporteService.js` | `getDashboard`, `getAlumnosRiesgo`, `getCuadroMerito`, `getLibreta`, `getResumenAsistencia`, `getAuditoriaDocentes` | Parámetros obligatorios |
@@ -84,7 +84,7 @@
 | `boletaPdfService.js` | `generarBoletaPdf` | PDFKit, comprobante de pago y datos SUNAT/hash |
 | `actaPdfService.js` | `generarActaPdf` | PDFKit, acta landscape, matriz real, watermark para borrador |
 | `auditoriaService.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `reabrirActa`, `getEstadisticas` | Valida bimestre/año/grado; periodo canónico; 404/409; motivo de reapertura |
-| `siagieService.js` | `obtenerResumen`, `generarExcelInterno` | Cursos de la carga, notas/conclusiones, workbook con aviso interno y auditoría |
+| `siagieService.js` | `obtenerResumen`, `generarExcelInterno`, `verificarExportacion` | Cursos de la carga, notas/conclusiones estructuradas, workbook con aviso interno, código/hash y auditoría |
 | `notificacionService.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Correo no bloqueante, propiedad del destinatario; el masivo resuelve TODOS/GRADO/ALUMNO y cuenta correos enviados/fallidos |
 | `recuperacionService.js` | `solicitarRecuperacion`, `validarToken`, `restablecerPassword` | Token 32 bytes, 2 h, un uso, no revelar existencia |
 | `emailService.js` | `verificarConexion`, `enviarCorreo`, `enviarNotificacion` | Resend; plantilla guindo/dorado |
@@ -107,13 +107,13 @@
 | `cursoDao.js` | `cursos`, `competencias`, `escala_calificacion` | Listado con conteo de competencias, escala |
 | `cargaCurricularDao.js` | `carga_curricular`, `tutores_grado` | Listados por grado/docente, asignación de tutor transaccional |
 | `asistenciaDao.js` | `asistencia_alumnos`, `asistencia_personal` | Matriz por curso/fecha, historial, resumen, upserts |
-| `calificacionDao.js` | `calificaciones`, `notas_finales_area`, `conclusiones_descriptivas` | Matriz competencia×alumno, upsert, nota final, conclusiones |
+| `calificacionDao.js` | `calificaciones`, `notas_finales_area`, `conclusiones_descriptivas` | Matriz competencia×alumno, upsert, nota final, conclusiones; H80 agrega listar/guardar conclusión estructurada |
 | `tesoreriaDao.js` | `conceptos_pago`, `pre_tickets`, `pagos`, `boletas_electronicas`, `pensiones`, `becas` | Pago transaccional, numeración de boleta, generación de pensiones |
 | `cajaDao.js` | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` | Caja abierta, apertura/egreso/cierre con arqueo |
 | `reporteDao.js` | Múltiples tablas | Dashboard, mérito, riesgo, libreta, asistencia, auditoría docente |
 | `auditoriaDao.js` | `bitacora_auditoria`, `actas_bimestrales` | Bitácora filtrada con `COUNT` y `LIMIT/OFFSET` (sin `page` máx. 200); actas con `INSERT ... ON CONFLICT`, reapertura y `actaEstaCerrada` con bloqueo global |
 | `notificacionDao.js` | `notificaciones`, `usuarios`, `alumnos`, `grados` | Listar/contar/marcar/eliminar por destinatario; `listarDestinatarios` por TODOS/GRADO/ALUMNO e inserción masiva con `unnest` |
-| `siagieDao.js` | `alumnos`, `cursos`, `carga_curricular`, `notas_finales_area`, `conclusiones_descriptivas`, `grados`, `exportaciones_siagie` | Cursos del grado/año, alumnos vigentes, notas, conclusiones y registro de exportación |
+| `siagieDao.js` | `alumnos`, `cursos`, `carga_curricular`, `notas_finales_area`, `conclusiones_descriptivas`, `grados`, `exportaciones_siagie` | Cursos del grado/año, alumnos vigentes, notas, conclusiones estructuradas, registro de exportación y búsqueda por código |
 | `recuperacionDao.js` | `recuperacion_password`, `usuarios` | Crear token (expira en PostgreSQL), validar, marcar usado |
 
 ### 1.6 Servicios transversales
@@ -172,6 +172,7 @@
 | Admin | `AdminConfiguracionComponent` | `/admin/configuracion` | ts/html/scss |
 | Docente | `DocenteDashboardComponent` | `/docente` | ts/html/scss |
 | Docente | `DocenteNotasComponent` | `/docente/notas` | ts/html/scss |
+| Docente | `DocenteConclusionesComponent` | `/docente/conclusiones` | ts/html/scss |
 | Docente | `DocenteHorarioComponent` | `/docente/horario` | ts/html/scss |
 | Docente | `DocenteAsistenciaComponent` | `/docente/asistencia` | ts/html/scss |
 | Docente | `DocenteFichaComponent` | `/docente/ficha-estudiante` | ts/html/scss |

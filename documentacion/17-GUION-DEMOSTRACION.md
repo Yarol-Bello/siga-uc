@@ -174,7 +174,7 @@ transacción”.
 
 ### Paso 7 — Nota y libreta (4 min)
 
-1. Cerrar sesión y entrar como **DOCENTE** (`20394812`).
+1. Cerrar sesión y entrar como **DOCENTE** (`73000001` / `Docente2026*` en la UAT).
 2. Ir a **Notas**, elegir curso, grado y bimestre.
 3. Registrar `AD`, `A`, `B` o `C` por competencia y **Guardar Cambios**.
 4. Mostrar que la nota final se calcula al guardar.
@@ -187,6 +187,25 @@ veces”.
 
 > Si la libreta sale vacía, faltan `notas_finales_area`. Guardar notas del bimestre antes
 > de la demo y verificarlo.
+
+### Paso 7a — Conclusiones descriptivas y código de control (3 min)
+
+1. En **DOCENTE** → **Conclusiones Descriptivas**, elegir un curso y bimestre.
+2. Abrir un estudiante. Mostrar que el **nivel de logro** se toma de la nota final y que
+   los campos son **Avance**, **Dificultad** y **Sugerencia**.
+3. Pulsar **Generar sugerencia**, editar brevemente y mostrar el contador `x/350`.
+4. **Publicar** y ver el estado “Publicada”.
+5. En **ADMIN** → **Exportación interna**, exportar el Excel del grado/bimestre.
+6. Mostrar la hoja **Aviso**: código de control interno y hash SHA-256. Pegar el código en
+   la tarjeta **Verificar código de control interno** y mostrar “Código válido”.
+7. Recalcar: el código es **interno**; no es el código oficial de SIAGIE/MINEDU. Para una
+   carga oficial se necesita la plantilla oficial de SIAGIE.
+
+**Mensaje:** “La conclusión ya no es un texto suelto: tiene nivel, avance, dificultad y
+sugerencia, y el Excel interno se puede verificar”.
+
+> Si el acta está cerrada, la pantalla se vuelve de solo lectura. Es el comportamiento
+> esperado.
 
 ### Paso 7b — Horario publicado (3 min)
 
@@ -323,12 +342,14 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
       H71 aplicadas (44 en local si existe `horarios_h47_backup`).
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
 - [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
-- [ ] `npm run test:e2e` local: **75 PASS, 0 FAIL** (exit 0).
+- [ ] `npm run test:e2e` local: **102 PASS, 0 FAIL** (exit 0).
 - [ ] `npm run test:h47-generador`: **4 PASS**.
-- [ ] `npm run test:integridad` revisado; **21 PASS** en base nueva y **19/2** de seed
-      local explicados.
-- [ ] SIAGIE interno sin portal ni plantilla; el Excel incluye todos los cursos y el aviso
-      de exportación interna.
+- [ ] `npm run test:integridad` revisado; **36 PASS** en base nueva (UAT) y los fallos
+      de seed local explicados.
+- [ ] SIAGIE interno sin portal ni plantilla; el Excel incluye todos los cursos, columnas
+      estructuradas y el aviso de exportación interna.
+- [ ] Conclusiones descriptivas: 3,300 estructuradas en la demo; código de control interno
+      visible y verificable (no es el código oficial de SIAGIE).
 - [ ] Selector de año visible en Reportes, Padrón y Tesorería; un año no activo muestra
       **Histórico** y oculta las escrituras.
 - [ ] `/admin/historico` responde por DNI y los enlaces abren libreta/asistencia/tesorería

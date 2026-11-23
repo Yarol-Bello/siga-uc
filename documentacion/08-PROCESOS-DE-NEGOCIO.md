@@ -539,7 +539,7 @@ si no      → C
 |---|---|
 | Disparador | Admin elige año, grado y bimestre |
 | Actores | ADMIN |
-| Endpoints | `GET /api/siagie/resumen`, `GET /api/siagie/exportar` |
+| Endpoints | `GET /api/siagie/resumen`, `GET /api/siagie/exportar`, `GET /api/siagie/exportaciones/:codigo/verificar` |
 | Archivo | `EXPORTACION_INTERNA_<grado>_BIM<n>_<año>.xlsx` |
 
 **Precondiciones**
@@ -559,21 +559,27 @@ si no      → C
    - alumnos del grado/año (`Matriculado`/`PendientePago`);
    - notas finales del bimestre;
    - conclusiones descriptivas del bimestre.
-4. Calcula el resumen: cursos, alumnos, notas, conclusiones y advertencias.
+4. Calcula el resumen: cursos, alumnos, notas, conclusiones publicadas/borrador y
+   advertencias.
 5. Construye un workbook ExcelJS:
    - hoja `Notas`: una fila por alumno-curso con DNI, alumno, grado, sección, año,
-     bimestre, curso, área, nota final y conclusión descriptiva;
+     bimestre, curso, área, nota final, nivel de logro, avance, dificultad, sugerencia,
+     conclusión descriptiva y estado;
    - hoja `Aviso`: “Exportación interna. No es una exportación oficial a
-     SIAGIE/MINEDU.” y metadatos.
-6. Registra en `exportaciones_siagie` (`GENERADO`) y audita `SIAGIE`/`EXPORTAR`.
+     SIAGIE/MINEDU.”, metadatos, **código de control interno** y hash SHA-256.
+6. Registra en `exportaciones_siagie` (`GENERADO`, código, hash, origen y detalle) y
+   audita `SIAGIE`/`EXPORTAR`.
 7. Responde el archivo como descarga; no escribe temporales.
+8. El ADMIN puede verificar el código en `/admin/siagie`: el service recalcula el hash con
+   los datos actuales y devuelve `coincide=true/false`.
 
 **Limitaciones**
 
 - No tiene validez oficial ante SIAGIE/MINEDU.
 - Sin `notas_finales_area`, las celdas de nota salen vacías.
 - No procesa competencias individuales: usa la nota final por curso.
-- Si no hay notas finales, responde 404.
+- Si no hay cursos o alumnos, responde `422`; sin notas finales, exporta celdas vacías con
+  advertencia.
 - El nombre de curso se compara por primeros 5 caracteres; nombres similares pueden
   confundirse.
 

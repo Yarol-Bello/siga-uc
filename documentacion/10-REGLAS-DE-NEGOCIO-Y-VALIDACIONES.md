@@ -260,6 +260,20 @@ top = 10
 | RN-113 | Sin notas finales: celdas vacías y advertencia | Service/UI | No inventa notas |
 | RN-114 | Registra exportación y auditoría | DAO | `GENERADO` + `EXPORTAR` |
 | RN-115 | Borra el temporal | Controller | — |
+| RN-116 | El código de control es interno, no oficial | Metadata/UI | `codigo_control` + SHA-256; nunca llamarlo código SIAGIE |
+
+### 12.1 Conclusiones descriptivas (H80)
+
+- Nivel de logro obligatorio: `AD`, `A`, `B` o `C`.
+- Si existe nota final del curso/bimestre, el nivel debe coincidir con ella
+  (`400 NIVEL_NO_COINCIDE`).
+- El texto compuesto no puede superar **350 caracteres** (`400 CONCLUSION_LARGA`).
+- `PUBLICADO` exige avance, dificultad y sugerencia; `BORRADOR` permite guardado parcial.
+- El acta cerrada bloquea la edición (`409`).
+- El docente solo escribe en cursos de su `carga_curricular`; ADMIN puede corregir;
+  SECRETARÍA y ESTUDIANTE son solo lectura.
+- La conclusión es por alumno/curso/bimestre/año (Opción A). La integración oficial por
+  competencia y plantilla SIAGIE queda como fase posterior.
 
 ## 13. Notificaciones
 

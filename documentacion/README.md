@@ -24,7 +24,7 @@
 | Entender capas, patrones y ciclo de una petición | `02-ARQUITECTURA-Y-PATRONES.md` |
 | Ubicar archivos, controladores, servicios y DAOs | `03-ESTRUCTURA-Y-CLASES.md` |
 | Conocer las 48 tablas, relaciones, triggers y seeds | `04-BASE-DE-DATOS.md` |
-| Consumir o auditar la API (165 endpoints) | `05-API-REST.md` |
+| Consumir o auditar la API (168 endpoints) | `05-API-REST.md` |
 | Ver roles, usuarios semilla y matriz de permisos | `06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Reproducir el recorrido completo de cada rol | `07-FLUJOS-POR-ROL.md` |
 | Entender un proceso de negocio de inicio a fin | `08-PROCESOS-DE-NEGOCIO.md` |
@@ -40,6 +40,7 @@
 | Auditar la producción del 22/11/2026 | `18-AUDITORIA-PRODUCCION-2026-11-22.md` |
 | Entender el diseño multi-año y promoción | `19-DISENO-MULTIANIO-Y-PROMOCION.md` |
 | Diseñar el módulo de configuración y ajustes | `20-MODULO-CONFIGURACION.md` |
+| Implementar conclusiones descriptivas y código de control SIAGIE | `21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md` |
 
 ---
 
@@ -51,7 +52,7 @@
 | Paneles frontend | 4 + autenticación |
 | Tablas PostgreSQL | 48 base (49 en local con `horarios_h47_backup`) |
 | Funciones + triggers | 11 objetos en el esquema base; H47/H48/H74/H75/H77 agregan triggers |
-| Endpoints REST | 165 (81 GET, 46 POST, 30 PUT, 8 DELETE) |
+| Endpoints REST | 168 (83 GET, 46 POST, 31 PUT, 8 DELETE) |
 | Routers backend | 18 |
 | Controladores backend | 18 |
 | Servicios backend | 31 |
@@ -78,7 +79,7 @@
    servicios, 16 DAOs, 14 controladores y Nodemailer/SMTP. El estado real está en estos
    documentos y en el código.
 5. **Sí existen suites automatizadas locales**: `npm run smoke` (12), `npm run
-   test:integridad` (35 en base nueva), `npm run test:e2e` (100, base desechable),
+   test:integridad` (36 en base nueva), `npm run test:e2e` (102, base desechable),
    `npm run test:setup` (5, base vacía) y `npm run test:h47-generador` (4). No hay CI/CD ni
    Docker.
 
@@ -91,7 +92,7 @@ La carpeta `docs/` de la raíz conserva documentación operativa:
 - `docs/INSTALACION.md` — instalación local (tiene datos desactualizados de SMTP y “26 tablas”).
 - `docs/GUIA_TESTEO.md` — checklist manual por rol.
 - `docs/CREDENCIALES.md` — credenciales de prueba.
-- `docs/MAPEO_ENDPOINTS.txt` — mapeo previo de endpoints (histórico; el conteo vigente es 102).
+- `docs/MAPEO_ENDPOINTS.txt` — mapeo previo de endpoints (histórico; el conteo vigente es 168).
 
 Este conjunto nuevo (`documentacion/`) amplía y corrige ese material.
 

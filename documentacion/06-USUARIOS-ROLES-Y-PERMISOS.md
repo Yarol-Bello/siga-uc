@@ -128,6 +128,7 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 | Calificaciones: consultar | ✅ | ✅ | ✅ | ✅ |
 | Calificaciones: registrar / masivo | ✅ | ❌ | ✅ | ❌ |
 | Nota final: calcular | ✅ | ❌ | ✅ | ❌ |
+| Conclusiones descriptivas: consultar / guardar | ✅ | ✅ (sus cursos) | ❌ | ❌ |
 | Tesorería: consultar | ✅ | ✅ | ✅ | ✅ |
 | Tesorería: pre-ticket / pago / generar pensiones | ✅ | ✅ | ❌ | ❌ |
 | Becas: aplicar / aprobar / anular | ✅ | ❌ | ❌ | ❌ |
@@ -178,6 +179,7 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 | `/docente` | Mis cursos | ❌ | ❌ | ✅ | ❌ |
 | `/docente/horario` | Mi horario | ❌ | ❌ | ✅ | ❌ |
 | `/docente/notas` | Notas | ❌ | ❌ | ✅ | ❌ |
+| `/docente/conclusiones` | Conclusiones descriptivas | ❌ | ❌ | ✅ | ❌ |
 | `/docente/asistencia` | Asistencia | ❌ | ❌ | ✅ | ❌ |
 | `/docente/ficha-estudiante` | Ficha | ❌ | ❌ | ✅ | ❌ |
 | `/docente/reportes` | Reportes de aula | ❌ | ❌ | ✅ | ❌ |

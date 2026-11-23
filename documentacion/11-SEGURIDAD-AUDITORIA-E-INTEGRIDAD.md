@@ -180,6 +180,7 @@ sequenceDiagram
 | Descargas de libreta/boleta/acta | ✅ | `DESCARGAR` (`Reportes` / `Tesorería`) |
 | Cierre de acta | ✅ | `CERRAR` (`Evaluaciones`) + `cerrado_por` y hash |
 | SIAGIE interno | ✅ | `EXPORTAR` (`SIAGIE`) |
+| Conclusiones descriptivas (H80) | ✅ | `CREAR` / `MODIFICAR` / `PUBLICAR` (`Calificaciones`) con anterior/nuevo |
 | Horarios: crear/editar/eliminar | ✅ | `CREAR` / `MODIFICAR` / `ELIMINAR` (`Horarios`) |
 | Horarios: publicar/despublicar/generar | ✅ | `PUBLICAR` / `DESPUBLICAR` / `GENERAR` (`Horarios`) |
 | Configuración, tarifas, académico y jornada | ✅ | `CREAR` / `MODIFICAR` / `ELIMINAR` (`Configuración`) con `motivo` y antes/después |

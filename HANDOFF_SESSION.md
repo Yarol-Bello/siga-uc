@@ -1,21 +1,22 @@
 # HANDOFF_SESSION.md — SIGA-UC
 
-> **Actualización 23/11/2026 (demo cargada en Supabase + Render).**
+> **Actualización 23/11/2026 (conclusiones descriptivas H80 + demo en Supabase).**
 > HEAD documental: ver `git log -1`. Código funcional desplegado en Render (backend
-> `siga-uc-api-prod` y frontend `siga-uc-web`): **`f7477c1`**. **H74–H79 aplicadas en
-> Supabase demo (`siga-uc-prod`)**: 48 tablas, 2026 ACTIVO, 2027 no activo, 0 promociones,
-> **75 alumnos (15 por grado)**, **6 docentes activos**, 1 secretaria, 55 carga, 5 tutores,
-> **145 horarios publicados**, **750 pensiones** (38 pagadas, 10 exoneradas), **113 pagos**,
-> 3300 notas, 8700 calificaciones, 4125 asistencias, 3 becas, 1 acta ABIERTO y
+> `siga-uc-api-prod` y frontend `siga-uc-web`): el HEAD de esta sesión, con **H80**.
+> **H74–H80 aplicadas en Supabase demo (`siga-uc-prod`)**: 48 tablas, 2026 ACTIVO,
+> 2027 no activo, 0 promociones, **75 alumnos (15 por grado)**, **6 docentes activos**,
+> 1 secretaria, 55 carga, 5 tutores, **145 horarios publicados**, **750 pensiones**
+> (38 pagadas, 10 exoneradas), **113 pagos**, 3300 notas, 8700 calificaciones,
+> 4125 asistencias, 3 becas, **3,300 conclusiones estructuradas**, 1 acta ABIERTO y
 > `setup_completado=true`. Los 5 docentes demo antiguos quedaron inactivos.
 > `/api/configuracion` devuelve la institución y `/api/setup/status` reporta setup
-> completado. **Verificación de producción: `uat:verify` 21 PASS, 0 FAIL**; navegador
-> probado con DOCENTE, ESTUDIANTE y SECRETARÍA. La pantalla de Tesorería carga las
-> pensiones en lotes de 5 para evitar 500 por saturación en Render/Supabase.
+> completado. **Verificación de producción: `uat:verify` 22 PASS, 0 FAIL**; navegador
+> probado con DOCENTE (conclusiones), ESTUDIANTE y SECRETARÍA. La pantalla de Tesorería
+> carga las pensiones en lotes de 5 para evitar 500 por saturación en Render/Supabase.
 > El ADMIN de Supabase conserva su contraseña real: el seed usó `UC2026*` temporalmente y
 > lo restauró. El smoke con las credenciales locales de `.env` sigue sin autenticar en
 > producción (son de la base local; no es un fallo del sistema). Verificación local:
-> **E2E 100 PASS**, **integridad 35 PASS** en base nueva (33/2 local por seed),
+> **E2E 102 PASS**, **integridad 36 PASS** en base nueva (33/2 local por seed),
 > **`test:setup` 5 PASS**, smoke 12, H47 4 y build Angular OK. El responsive de
 > ADMIN/SECRETARÍA/DOCENTE sigue **pausado**.
 >
@@ -586,13 +587,14 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Demo desplegada (21/11/2026, actualizada 23/11/2026):**
   - Frontend: <https://siga-uc-web.onrender.com>
   - Backend: <https://siga-uc-api-prod.onrender.com/api>
-  - Ambos **Live** en el commit `f7477c1`, con servicios **gratuitos**.
+  - Ambos **Live** con el código de esta sesión (H80), con servicios **gratuitos**.
 - Base de demo: Supabase `siga-uc-prod` (us-west-2), plan gratuito, **48 tablas**,
-  H47/H48/H49/H73 y **H74–H79 aplicadas**. **75 alumnos** (15 por grado), **6 docentes
+  H47/H48/H49/H73 y **H74–H80 aplicadas**. **75 alumnos** (15 por grado), **6 docentes
   activos**, 1 secretaria, **55 carga**, **5 tutores**, **145 horarios PUBLICADO**,
   **750 pensiones**, **113 pagos**, 3300 notas, 8700 calificaciones, 4125 asistencias,
-  3 becas, 1 acta ABIERTO, 0 promociones y `setup_completado=true`. Los 5 docentes demo
-  antiguos (`99000001`–`99000005`) quedaron **INACTIVOS**.
+  **3,300 conclusiones estructuradas**, 3 becas, 1 acta ABIERTO, 0 promociones y
+  `setup_completado=true`. Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron
+  **INACTIVOS**.
 - Carga 2026 en Supabase: **55 cargas** distribuidas entre los 6 docentes UAT
   (`73000001`–`73000006`), **0 choques**. Auditoría `GENERAR` y `PUBLICAR` registrada.
 - Datos de la demo: 75 alumnos y docentes ficticios con nombres, DNI, apoderados, notas,
@@ -600,7 +602,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **No hay staging.**
 - Render gratuito puede dormir por inactividad y Supabase gratuito puede pausarse; entrar
   unos minutos antes de la demo para despertar ambos servicios.
-- La BD local `siga_uc` tiene **H47, H49, H73 y H74–H79 aplicados**: **49 tablas**
+- La BD local `siga_uc` tiene **H47, H49, H73 y H74–H80 aplicados**: **49 tablas**
   (48 base + `horarios_h47_backup`), **10 períodos**, **0 horarios** tras la limpieza y
   **13 filas** en el backup. `anios_lectivos` tiene 2026 `ACTIVO`; `grados.orden` 1..5.
   `politicas_promocion` tiene la "Política estándar" de 2026 y `promociones` está vacía.
@@ -1144,21 +1146,22 @@ sin autorización.
     de la Fase 1 (H74, configuración global/año, auditoría y UI general).
 
 ## Estado verificado al cierre (actualizado 23/11/2026)
-- HEAD: ver `git log -1`; código funcional desplegado en Render en `f7477c1`.
-- Frontend de Render sirve el build de `f7477c1`. API Render: 200, database "ok".
-- E2E 100 PASS; integridad 35 PASS en base nueva y 33/2 de seed local;
+- HEAD: ver `git log -1`; código funcional con H80 desplegado en Render.
+- Frontend de Render sirve el build de esta sesión. API Render: 200, database "ok".
+- E2E 102 PASS; integridad 36 PASS en base nueva y 33/2 de seed local;
   smoke 12 PASS; H47 4 PASS; build Angular OK.
-- **Verificación de producción contra Supabase: `uat:verify` 21 PASS, 0 FAIL**.
+- **Verificación de producción contra Supabase: `uat:verify` 22 PASS, 0 FAIL**.
 - Supabase demo: 48 tablas, 2026 ACTIVO, 2027 no activo, **75 alumnos** (15 por grado),
   6 docentes activos, 55 carga, 5 tutores, 145 horarios publicados, 750 pensiones,
-  113 pagos, 3 becas, 1 acta ABIERTO y setup completado.
-- Ya están hechos: SIAGIE interno, H70, H71 local, login responsive, sidebar
-  con scroll en los 4 roles, módulos del ESTUDIANTE responsive y datos demo UAT.
+  113 pagos, 3 becas, **3,300 conclusiones estructuradas**, 1 acta ABIERTO y setup completado.
+- Ya están hechos: SIAGIE interno con código de control, conclusiones H80, H70, H71 local,
+  login responsive, sidebar con scroll en los 4 roles, módulos del ESTUDIANTE responsive y
+  datos demo UAT.
 - El responsive de ADMIN/SECRETARÍA/DOCENTE queda PAUSADO.
 
 ## Importante: estado del árbol
-El árbol de trabajo está limpio (`git status`). Las fases 1–7 y la demo UAT están
-commiteadas y desplegadas (`f7477c1`); no hay cambios de Fase 1 pendientes.
+El árbol de trabajo está limpio (`git status`). Las fases 1–7, H80 y la demo UAT están
+commiteadas y desplegadas; no hay cambios de Fase 1 pendientes.
 
 ## Próxima sesión
 1. Revisar la demo con la dirección y aprobar el alcance.

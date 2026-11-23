@@ -16,7 +16,7 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 
 - Repo: `https://github.com/Yarol-Bello/siga-uc.git` (rama `main`)
 - Ruta local: `C:\Users\yarol\Documents\Proyectos\siga-uc`
-- Estado: funcional y desplegado en Render (demo); Supabase demo con H74–H79 aplicadas
+- Estado: funcional y desplegado en Render (demo); Supabase demo con H74–H80 aplicadas
   y 75 alumnos UAT cargados. Pendiente documentación final, aprobación del colegio y mejoras.
 
 ---
@@ -35,7 +35,7 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | Suites manuales (`smoke`, integridad, E2E); sin CI ni Docker |
 
-**Conteos actuales:** 48 tablas base (49 en local con `horarios_h47_backup`) · 165 endpoints ·
+**Conteos actuales:** 48 tablas base (49 en local con `horarios_h47_backup`) · 168 endpoints ·
 4 roles · 18 routers · 18 controladores · 31 servicios · 27 DAOs · 104 archivos JS backend ·
 169 archivos frontend (72 TS).
 
@@ -94,6 +94,12 @@ psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h75_tarifas.sql
+psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
+psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
+psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
+psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
+psql -U postgres -d siga_uc -f database/migracion_h80_conclusiones_estructuradas.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
@@ -111,6 +117,12 @@ psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h75_tarifas.sql
+psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
+psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
+psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
+psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
+psql -U postgres -d siga_uc -f database/migracion_h80_conclusiones_estructuradas.sql
 ```
 
 > **H49:** antes de ejecutar `migracion_h49_multianio_base.sql`, editar `_param_anio` al año
@@ -217,10 +229,10 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
 - **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas y desplegadas en Render**
-  (código actual `f7477c1`). **H49, H73 y H74–H79 están aplicadas en Supabase demo**:
+  (código actual `f7477c1`). **H49, H73 y H74–H80 están aplicadas en Supabase demo**:
   48 tablas, 2026 ACTIVO, 2027 no activo, 75 alumnos (15 por grado), 6 docentes activos,
   55 carga, 5 tutores, 145 horarios publicados, 750 pensiones, 113 pagos, 3 becas,
-  1 acta ABIERTO, 0 promociones y `setup_completado=true`.
+  3,300 conclusiones estructuradas, 1 acta ABIERTO, 0 promociones y `setup_completado=true`.
   `/admin/anios-lectivos`, `/admin/promociones` y `/admin/historico` están operativos.
   El rollback H49 es solo para bases desechables.
 - **6.2 no agrega migración**: opera sobre H49 desde `/admin/anios-lectivos`. Si la tabla
@@ -337,6 +349,12 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   de la carga curricular del grado/año, notas finales y conclusión descriptiva. No hay
   portal MINEDU, plantilla oficial ni carga de archivos. El aviso visible es
   "Exportación interna. No es una exportación oficial a SIAGIE/MINEDU."
+- **Conclusiones descriptivas (H80):** se guardan por alumno/curso/bimestre con nivel
+  de logro, avance, dificultad, sugerencia y texto compuesto (máx. 350). El nivel debe
+  coincidir con la nota final; el acta cerrada bloquea la edición. El docente las edita en
+  `/docente/conclusiones`; ADMIN puede revisar. El Excel interno lleva código/hash de
+  control **interno** (no es el código oficial de SIAGIE) y una tarjeta de verificación en
+  `/admin/siagie`.
 - Los **IDs de conceptos** de tesorería ya se resuelven por tipo y por pre-ticket; la
   tabla de pensiones aún muestra 12 meses fijos y el mensaje “hasta diciembre”. El módulo
   de configuración reemplazará esos supuestos por tarifas y calendarios administrables.
@@ -348,7 +366,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   correos) y H79 (primera configuración).
   UI `/admin/configuracion` con pestañas General, Tarifas, Académico, Horarios y Becas.
   **Solo ADMIN escribe**; SECRETARÍA lee tarifas, académico, horarios y becas.
-  **H74–H79 están aplicadas en Supabase demo** desde el 23/11/2026; `setup_completado=true`.
+  **H74–H80 están aplicadas en Supabase demo** desde el 23/11/2026; `setup_completado=true`.
   Render sirve backend y frontend con `f7477c1`. 48 tablas base (49 en local con
   `horarios_h47_backup`).
 - **Datos demo en Supabase (23/11/2026):** 75 alumnos (15 por grado), 6 docentes activos,
@@ -378,9 +396,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   `npm run test:setup` verifica el flujo en una base vacía.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
-- Sí hay suites automatizadas: `npm run smoke` (12), `npm run test:integridad` (35),
-  `npm run test:e2e` (100, base desechable), `npm run test:setup` (5, base vacía) y
-  `npm run uat:seed`/`uat:verify` (75 alumnos, 21 comprobaciones; aceptan
+- Sí hay suites automatizadas: `npm run smoke` (12), `npm run test:integridad` (36),
+  `npm run test:e2e` (102, base desechable), `npm run test:setup` (5, base vacía) y
+  `npm run uat:seed`/`uat:verify` (75 alumnos, 22 comprobaciones; aceptan
   `UAT_BASE_URL`/`UAT_DATABASE_URL` para una demo remota); el resto del testeo es manual.
 
 ---
@@ -393,7 +411,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
 | 48 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 165 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 168 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |
@@ -408,6 +426,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Auditoría de producción 22/11/2026 | `documentacion/18-AUDITORIA-PRODUCCION-2026-11-22.md` |
 | Diseño multi-año y promoción | `documentacion/19-DISENO-MULTIANIO-Y-PROMOCION.md` |
 | Módulo de configuración (diseño y fases) | `documentacion/20-MODULO-CONFIGURACION.md` |
+| Conclusiones descriptivas y control interno SIAGIE | `documentacion/21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md` |
 
 ---
 

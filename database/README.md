@@ -8,7 +8,7 @@ I.E.P. Unión Científica.
 ### A. Desarrollo / demostración
 
 `siga_uc_completo.sql` es un **dump completo**: crea el esquema (40 tablas) y, tras aplicar
-las migraciones H49, H73, H74, H76 y H78, queda en **48 tablas base** (49 en local con
+las migraciones H49, H73 y H74–H80, queda en **48 tablas base** (49 en local con
 `horarios_h47_backup`), funciones, triggers, índices y carga los **datos ficticios de
 demostración** (21 alumnos, apoderados, pagos y pensiones de ejemplo). **Nunca debe usarse
 como base de producción.**
@@ -33,6 +33,7 @@ psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
 psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
 psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
+psql -U postgres -d siga_uc -f database/migracion_h80_conclusiones_estructuradas.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -61,6 +62,7 @@ psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
 psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
 psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
+psql -U postgres -d siga_uc -f database/migracion_h80_conclusiones_estructuradas.sql
 ```
 
 > **H49:** antes de ejecutar la migración, editar `_param_anio` en

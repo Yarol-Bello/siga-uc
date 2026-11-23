@@ -130,6 +130,7 @@ psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
 psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
 psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
+psql -U postgres -d siga_uc -f database/migracion_h80_conclusiones_estructuradas.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -157,6 +158,7 @@ psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
 psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
 psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 psql -U postgres -d siga_uc -f database/migracion_h79_setup_inicial.sql
+psql -U postgres -d siga_uc -f database/migracion_h80_conclusiones_estructuradas.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -667,6 +669,7 @@ Crear una tarea diaria a las 02:00:
 | `database/migracion_h77_horario_jornada.sql` | Días lunes–domingo, jornada y duración mínima; requiere H47/H74 |
 | `database/migracion_h78_becas.sql` | Tipos de beca, aplicaciones, descuento y `EXONERADO`; requiere H74/H75 |
 | `database/migracion_h79_setup_inicial.sql` | Primera configuración, `setup_completado` y token de instalación; requiere H74/H49 |
+| `database/migracion_h80_conclusiones_estructuradas.sql` | Nivel, avance, dificultad, sugerencia y estado en conclusiones; código/hash interno en exportaciones SIAGIE |
 | `database/rollback_h59_observaciones_personal.sql` | Solo bases desechables: elimina `personal.observaciones` y sus datos |
 | `database/rollback_h73_promociones.sql` | Solo bases desechables: elimina las tablas de promoción |
 | `database/preparar_anio_lectivo.sql` | Utilidad histórica y parcial (conceptos + períodos); la UI de 6.2 la reemplaza |

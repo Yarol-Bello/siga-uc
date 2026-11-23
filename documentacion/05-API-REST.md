@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto la exportación interna SIAGIE, que responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **165 endpoints** - 81 GET, 46 POST, 30 PUT, 8 DELETE.
+**Total verificado:** **168 endpoints** - 83 GET, 46 POST, 31 PUT, 8 DELETE.
 
 ---
 
@@ -475,7 +475,7 @@ tiene prioridad. `asistencia_alumnos` no tiene columna `anio_lectivo`: el año s
 
 ---
 
-## 9. Calificaciones — `/api/calificaciones` (6)
+## 9. Calificaciones — `/api/calificaciones` (8)
 
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
@@ -485,10 +485,14 @@ tiene prioridad. `asistencia_alumnos` no tiene columna `anio_lectivo`: el año s
 | 51 | POST | `/api/calificaciones` | ADMIN/DOCENTE | Registra/actualiza una nota |
 | 52 | POST | `/api/calificaciones/masivo` | ADMIN/DOCENTE | Upsert masivo |
 | 53 | POST | `/api/calificaciones/notas-finales` | ADMIN/DOCENTE | Calcula y guarda nota final |
+| 54 | GET | `/api/calificaciones/curso/:id_curso/grado/:id_grado/conclusiones?bimestre=&anio=` | ADMIN/DOCENTE | Alumnos, nota final y conclusión estructurada; devuelve `acta_cerrada` |
+| 55 | PUT | `/api/calificaciones/conclusiones` | ADMIN/DOCENTE | Guarda borrador o publica una conclusión (nivel + avance + dificultad + sugerencia) |
 
 **POST body:** `{ id_alumno, id_curso, id_competencia, id_personal, id_grado, bimestre, anio_lectivo, calificacion, modificado_por?, justificacion_modificacion? }`.
 
 **Nota final body:** `{ id_alumno, id_curso, bimestre, anio }`.
+
+**Conclusión body (PUT 55):** `{ id_alumno, id_curso, id_grado, bimestre, anio_lectivo, nivel_logro, avance, dificultad, sugerencia, estado }`. El nivel debe coincidir con la nota final; el texto compuesto no puede superar 350 caracteres; `PUBLICADO` exige los tres textos. Si el acta está cerrada responde `409`.
 
 **Respuesta matriz (GET 49):**
 
@@ -683,7 +687,7 @@ Mensaje: **"Acta reabierta correctamente"**.
 
 ---
 
-## 14. SIAGIE interno - `/api/siagie` (2)
+## 14. SIAGIE interno - `/api/siagie` (3)
 
 > **Exportación interna, no oficial.** No hay integración con el portal del MINEDU, no se
 > sube ni se descarga una plantilla oficial y no se simula un análisis de archivo. El
@@ -693,6 +697,7 @@ Mensaje: **"Acta reabierta correctamente"**.
 |---|---|---|---|---|
 | 92 | GET | `/api/siagie/resumen?anio=&bimestre=&id_grado=` | ADMIN | Conteos y advertencias de la exportación |
 | 93 | GET | `/api/siagie/exportar?anio=&bimestre=&id_grado=` | ADMIN | Descarga el Excel interno |
+| 94 | GET | `/api/siagie/exportaciones/:codigo/verificar` | ADMIN | Verifica el código/hash de control interno contra los datos actuales |
 
 Parámetros (query string):
 - `anio`: año lectivo (default año activo). También se acepta `anio_lectivo`.
@@ -700,14 +705,21 @@ Parámetros (query string):
 - `id_grado`: entero del año solicitado.
 
 **Resumen:** devuelve `total_cursos`, `total_alumnos`, `total_notas`,
-`total_conclusiones`, `total_combinaciones`, `exportable` y `advertencias`.
+`total_conclusiones`, `total_conclusiones_publicadas`, `total_conclusiones_borrador`,
+`total_combinaciones`, `exportable` y `advertencias`.
 
 **Exportación:** responde
 `EXPORTACION_INTERNA_<grado>_BIM<n>_<año>.xlsx` con dos hojas:
 - `Notas`: una fila por alumno y curso con DNI, alumno, grado, sección, año, bimestre,
-  curso, área, nota final y conclusión descriptiva.
+  curso, área, nota final, nivel de logro, avance, dificultad, sugerencia, conclusión
+  descriptiva y estado.
 - `Aviso`: "Exportación interna. No es una exportación oficial a SIAGIE/MINEDU." y
-  metadatos del archivo.
+  metadatos del archivo, incluido un **código de control interno** y su hash SHA-256.
+
+**Código de control:** se envía en los headers `X-Codigo-Control` y `X-Hash-Integridad` y
+se guarda en `exportaciones_siagie`. **No es el código oficial de SIAGIE**; sirve para
+comprobar que los datos no cambiaron desde la exportación. La verificación recalcula el
+hash con los datos actuales y devuelve `coincide=true/false`.
 
 **Cursos:** se obtienen de `carga_curricular` del grado y año, más los cursos con notas
 finales registradas. No se filtra por prefijos (H05). **Alumnos:** matrículas
@@ -786,30 +798,32 @@ contraseñas.
 | Carga curricular | 9 |
 | Horarios (H47) | 12 |
 | Asistencias | 9 |
-| Calificaciones | 6 |
+| Calificaciones | 8 |
 | Tesorería | 13 |
 | Caja | 9 |
 | Reportes | 8 |
 | Auditoría | 8 |
-| SIAGIE interno | 2 |
+| SIAGIE interno | 3 |
 | Notificaciones | 8 |
-| **Total** | **165** |
+| **Total** | **168** |
 
 | Verbo | Cantidad |
 |---|---|
-| GET | 81 |
+| GET | 83 |
 | POST | 46 |
-| PUT | 30 |
+| PUT | 31 |
 | DELETE | 8 |
 
 Acceso: el detalle exacto está en la columna **Acceso** de cada tabla. Con H47 se retiró
 el endpoint abierto `/api/horarios/grado/:id_grado` y se agregaron 12 endpoints de horarios.
 Con 6.2 se agregaron 5 de años lectivos, con 6.3, 8 de promociones, y con 6.4, el
 consolidado histórico por DNI. En el cierre de demo, SIAGIE pasó de un `POST`
-`multipart/form-data` (plantilla) a dos `GET`: `resumen` y `exportar` interno.
+`multipart/form-data` (plantilla) a dos `GET`: `resumen` y `exportar` interno. Con H80 se
+agregaron 3: `GET` de conclusiones, `PUT` de conclusión y `GET` de verificación del código
+de control interno.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo vigente es 165 (81 GET, 46 POST, 30 PUT, 8 DELETE), tras H75–H79.
+> El conteo vigente es 168 (83 GET, 46 POST, 31 PUT, 8 DELETE), tras H75–H80.
 
 ---
 

@@ -285,7 +285,7 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con cuatro suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(35 invariantes de datos, solo lectura), **E2E** (100 flujos sobre una base desechable,
+(36 invariantes de datos, solo lectura), **E2E** (102 flujos sobre una base desechable,
 incluidos los de multi-año H49, rollover 6.2, promociones 6.3, histórico 6.4, pulido
 H59/H62/H65–H69, exportación interna SIAGIE, H71, configuración H74–H78 y textos/PDF) y
 **setup** (5 flujos sobre una base vacía con H79). El resto de la estrategia sigue siendo
@@ -469,7 +469,7 @@ cd siga-uc-backend
 npm run test:integridad
 ```
 
-- Verifica **35 invariantes**: 48 tablas base, índices críticos de pagos/boletas, multi-año
+- Verifica **36 invariantes**: 48 tablas base, índices críticos de pagos/boletas, multi-año
   y promociones (`uq_alumno_*_anio`, `uq_anio_activo`, `uq_promocion_*`,
   `uq_politica_*`), pagos/pensiones/boletas coherentes, movimientos de caja, usuarios
   activos asociados, escala AD/A/B/C, alumnos matriculados con usuario activo, matrículas
@@ -491,7 +491,7 @@ npm run test:integridad
 > a ESTUDIANTE/DOCENTE; ADMIN y SECRETARIA están exentos. No son fallos de la suite: deben
 > revisarse antes de cargar datos reales. La base local da **33 PASS / 2 FAIL**; una base de
 > producción sembrada con `siga_uc.sql` + `seed_produccion.sql` + migraciones (incluidas H49,
-> H73, H59, H71, H74–H79) da **35 PASS**.
+> H73, H59, H71, H74-H80) da **36 PASS**.
 
 #### `test:e2e` — base desechable
 
@@ -502,7 +502,7 @@ npm run test:e2e
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
   (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`, `h59`, `h71`, `h74`,
-  `h75`, `h76`, `h77`, `h78`), arranca el backend en `http://localhost:3101` y ejecuta **99 flujos**: alta/retiro de alumno, matrícula, pensión,
+  `h75`, `h76`, `h77`, `h78`, `h79`, `h80`), arranca el backend en `http://localhost:3101` y ejecuta **102 flujos**: alta/retiro de alumno, matrícula, pensión,
   doble pago, anulación, doble anulación, calificaciones, guardado masivo, PDFs, RBAC,
   auditoría, cierre/reapertura real de actas, bloqueo global, caja con efectivo/Yape (con y
   sin anulación), PDF de acta ADMIN-only, multi-año (48 tablas, uniques por año, apoderado
@@ -536,7 +536,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **100 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **102 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -547,7 +547,7 @@ cd siga-uc-backend
 npm run test:setup
 ```
 
-- Crea `siga_uc_setup_e2e` con `siga_uc.sql` + migraciones H32…H79, **sin** admin ni datos
+- Crea `siga_uc_setup_e2e` con `siga_uc.sql` + migraciones H32…H80, **sin** admin ni datos
   demo.
 - Arranca el backend en `3102` con `SETUP_TOKEN`.
 - Verifica estado pendiente, token inválido `401`, creación transaccional del admin,
@@ -679,8 +679,8 @@ WHERE m.id_movimiento IS NULL;
 | Mejora | Beneficio |
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
-| ~~Integridad de datos~~ ✅ | 35 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 100 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~Integridad de datos~~ ✅ | 36 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
+| ~~E2E de flujos críticos~~ ✅ | 102 flujos sobre base desechable (`npm run test:e2e`) |
 | ~~Setup de instalación nueva~~ ✅ | 5 flujos sobre base vacía (`npm run test:setup`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |

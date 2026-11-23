@@ -294,8 +294,13 @@ DELETE SET NULL · `justificacion_modificacion` text · UNIQUE (`id_alumno`, `id
 
 #### `conclusiones_descriptivas`
 `id_conclusion` PK · `id_alumno` FK · `id_curso` FK · `bimestre` · `anio_lectivo` ·
-`descripcion` text · `id_personal` FK → `personal` ON DELETE SET NULL · UNIQUE (`id_alumno`,
-`id_curso`, `bimestre`, `anio_lectivo`).
+`descripcion` text (texto compuesto, máximo 350) · `nivel_logro` varchar(2) CHECK
+`AD/A/B/C` · `avance`, `dificultad`, `sugerencia` text · `estado` CHECK
+`BORRADOR/PUBLICADO` · `actualizado_por`/`publicado_por` FK → `usuarios` ON DELETE SET
+NULL · `actualizado_en`/`publicado_en` · `id_personal` FK → `personal` ON DELETE SET NULL ·
+UNIQUE (`id_alumno`, `id_curso`, `bimestre`, `anio_lectivo`). H80 agrega los campos
+estructurados y el estado; el nivel se backfillea desde `notas_finales_area` cuando
+existe. El acta cerrada bloquea la edición.
 
 #### `actas_bimestrales`
 `id_acta` PK · `periodo` varchar(30) · `anio_lectivo` · `bimestre` NOT NULL CHECK 1-4 ·
@@ -392,7 +397,9 @@ DELETE SET NULL · `fecha_cierre` · `estado` CHECK `CUADRADO/SOBRANTE/FALTANTE`
 #### `exportaciones_siagie`
 `id_exportacion` PK · `id_grado` FK → `grados` ON DELETE CASCADE · `bimestre` · `anio_lectivo` ·
 `nombre_archivo` · `fecha_generacion` · `id_usuario` FK → `usuarios` ON DELETE SET NULL ·
-`estado`.
+`estado` · `codigo_control` varchar(24) UNIQUE · `hash_integridad` varchar(64) ·
+`origen` CHECK `INTERNO/SIAGIE` (default `INTERNO`) · `detalle` jsonb. H80 agrega el
+código/hash de control interno; **no es el código oficial de SIAGIE**.
 
 #### `estado_carga_docentes` (estructura, calculada al vuelo)
 `id_estado_carga` PK · `id_personal` FK · `id_curso` FK · `id_grado` FK · `bimestre` ·
