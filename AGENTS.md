@@ -302,7 +302,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   `test:integridad` incluye el invariante 21.
 - **Responsive:** login, sidebar (4 roles) y módulos del ESTUDIANTE ya están adaptados a
   móvil/tableta. **Pausado:** ADMIN, SECRETARÍA y DOCENTE. **Siguiente bloque:** módulo de
-  configuración (tarifas, cursos, horarios, becas, parámetros y auditoría). No cambiar
+  configuración. La Fase 0 está documentada en `documentacion/20-MODULO-CONFIGURACION.md`;
+  la Fase 1 tiene cambios sin commit que deben auditarse antes de continuar. No cambiar
   rutas, servicios, permisos ni lógica al adaptar el diseño.
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.

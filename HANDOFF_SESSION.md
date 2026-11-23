@@ -4,13 +4,14 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
-> **Cierre de sesión 22/11/2026:** HEAD de referencia `9c6ac97` (verificar con
+> **Cierre de sesión 22/11/2026:** HEAD de referencia `fe5f273` (verificar con
 > `git log -1`); frontend/API desplegados en Render con
 > el código `df1f384` (login, sidebar y módulos del ESTUDIANTE responsive). E2E **75 PASS**,
 > integridad **21 PASS** en base nueva (19/2 local), smoke **11**, H47 **4**, build OK.
 > Supabase intacto: 43 tablas, 2026 ACTIVO, 2027 no activo, 1 política, 0 promociones,
-> 0 actas, 1 alumno. **Siguiente bloque:** análisis y diseño del **módulo de
-> configuración** (tarifas, cursos, horarios, becas y auditoría). El responsive de
+> 0 actas, 1 alumno. **Fase 0 del módulo de configuración documentada** en
+> `documentacion/20-MODULO-CONFIGURACION.md`; hay cambios sin commit de **Fase 1**
+> (H74, configuración global/año, auditoría y UI). El responsive de
 > ADMIN/SECRETARÍA/DOCENTE queda **pausado**. Prompt de arranque en la sección 10.
 >
 > **Actualización 22/11/2026 (despliegue `df1f384`):** módulos del **ESTUDIANTE**
@@ -525,9 +526,9 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Supabase:** sin cambios en esta sesión. 43 tablas, 2026 ACTIVO, 2027 no activo,
   1 política, 0 promociones confirmadas, 0 actas, 1 alumno. H71 sigue pendiente allí porque
   no hay retirados en la demo.
-- **Pendiente inmediato:** analizar y diseñar el **módulo de configuración** (tarifas,
-  cursos, horarios, becas, parámetros y auditoría). El responsive de ADMIN, SECRETARÍA y
-  DOCENTE queda pausado. No iniciar Fase 8.
+- **Pendiente inmediato:** revisar la **Fase 0** de `documentacion/20-MODULO-CONFIGURACION.md`
+  y auditar/cerrar la **Fase 1** que está sin commit (H74 y UI general). El responsive de
+  ADMIN, SECRETARÍA y DOCENTE queda pausado. No iniciar Fase 8.
 - **Datos locales:** 21 alumnos, 54 cargas/142 h en el ADMIN, 0 horarios publicados. Para
   una demo docente hay que reasignar cargas; para el horario del estudiante hay que generar
   y publicar.
@@ -989,9 +990,10 @@ el sidebar y los módulos del estudiante están en Render (`df1f384`; documentac
    incluye todos los cursos del grado y el aviso visible.
 7. No iniciar Fase 8 ni cargar datos reales sin aprobación.
 8. El rollback H49/H73/H59 **no** se ejecuta en Supabase.
-9. **Siguiente bloque:** módulo de configuración (tarifas, cursos, horarios, becas,
-   parámetros y auditoría). El responsive de ADMIN, SECRETARÍA y DOCENTE queda pausado.
-   No mezclar con Fase 8.
+9. **Siguiente bloque:** revisar la Fase 0 y cerrar la Fase 1 del módulo de configuración
+   (H74, configuración global/año, auditoría y UI). Luego proponer/implementar tarifas,
+   cursos, jornada, becas y parámetros por fases. El responsive de ADMIN, SECRETARÍA y
+   DOCENTE queda pausado. No mezclar con Fase 8.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
@@ -1073,29 +1075,33 @@ cd siga-uc-backend; npm run test:integridad   # 21 PASS
 
 ```text
 Estás retomando la sesión de CÓDIGO de SIGA-UC. No es una sesión de asesoría.
-En esta sesión NO empiezas programando: primero debes ANALIZAR el sistema real,
-detectar los datos fijos y proponer el diseño y las fases de un MÓDULO DE
-CONFIGURACIÓN. No modifiques código hasta que el dueño apruebe la propuesta.
+El módulo de configuración ya tiene una Fase 0 de diseño. En esta sesión NO
+debes empezar de cero ni implementar a ciegas: primero revisa la Fase 0, audita
+los cambios sin commit que existen en el árbol de trabajo y propone el cierre
+de la Fase 1 y el orden de las siguientes fases. No borres ni reviertas nada
+sin autorización.
 
 ## Lectura mínima (en este orden)
 1. AGENTS.md (raíz).
 2. HANDOFF_SESSION.md: sección 1.11 y este prompt.
-3. HANDOFF_PROMPTS.md: estado del sistema y pendientes.
-4. documentacion/04-BASE-DE-DATOS.md.
-5. documentacion/05-API-REST.md.
-6. documentacion/07-FLUJOS-POR-ROL.md.
-7. documentacion/08-PROCESOS-DE-NEGOCIO.md.
-8. documentacion/09-FRONTEND-UI-Y-NAVEGACION.md.
-9. documentacion/10-REGLAS-DE-NEGOCIO-Y-VALIDACIONES.md.
-10. documentacion/13-OPERACION-MANTENIMIENTO-Y-TESTEO.md.
-11. documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md.
-12. Revisar el código real: conceptos_pago, becas, cursos, competencias,
-    carga_curricular, periodos_clase, horarios, tesoreriaDao, horarioService,
-    rolloverDao y los componentes de tesorería, horarios y ajustes.
+3. documentacion/20-MODULO-CONFIGURACION.md (Fase 0: diagnóstico, decisiones,
+   modelo, fases, criterios de aceptación y preguntas pendientes).
+4. HANDOFF_PROMPTS.md: estado del sistema y pendientes.
+5. documentacion/04-BASE-DE-DATOS.md.
+6. documentacion/05-API-REST.md.
+7. documentacion/07-FLUJOS-POR-ROL.md.
+8. documentacion/08-PROCESOS-DE-NEGOCIO.md.
+9. documentacion/09-FRONTEND-UI-Y-NAVEGACION.md.
+10. documentacion/10-REGLAS-DE-NEGOCIO-Y-VALIDACIONES.md.
+11. documentacion/13-OPERACION-MANTENIMIENTO-Y-TESTEO.md.
+12. documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md.
+13. Revisar el código real y `git status`/`git diff`: hay cambios sin commit
+    de la Fase 1 (H74, configuración global/año, auditoría y UI general).
 
-## Estado verificado al cierre (22/11/2026)
-- HEAD de documentación: a3ed927 (verificar con `git log -1`).
-- Código desplegado en Render: df1f384.
+## Estado verificado al cierre
+- HEAD: fe5f273 (`docs(configuracion): cerrar fase 0 con diseno y linea base`).
+- Código desplegado en Render: df1f384. La documentación y los cambios de
+  configuración posteriores NO están desplegados.
 - Frontend de Render sirve main-SCTCECV3.js. API Render: 200, database "ok".
 - E2E 75 PASS; integridad 21 PASS en base nueva y 19/2 de seed local;
   smoke 11 PASS; H47 4 PASS; build Angular OK.
@@ -1103,125 +1109,122 @@ CONFIGURACIÓN. No modifiques código hasta que el dueño apruebe la propuesta.
   0 promociones confirmadas, 0 actas, 1 alumno. No tocar sin autorización.
 - Ya están hechos: SIAGIE interno, H70, H71 local, login responsive, sidebar
   con scroll en los 4 roles y módulos del ESTUDIANTE responsive.
-- El responsive de ADMIN/SECRETARÍA/DOCENTE queda PAUSADO. No continuarlo en
-  esta sesión salvo que el dueño lo pida.
+- El responsive de ADMIN/SECRETARÍA/DOCENTE queda PAUSADO.
+
+## Importante: trabajo sin commit
+El árbol de trabajo contiene cambios de Fase 1 que no deben perderse:
+- `database/migracion_h74_configuracion_base.sql`
+- `siga-uc-backend/src/dao/configuracionDao.js`
+- cambios en `configuracionController`, `configuracionRoutes`,
+  `configuracionService`, `auditoriaDao`, `auditoriaService` y tests.
+- `siga-uc-frontend/src/app/core/services/configuracion-admin.service.ts`
+- `siga-uc-frontend/src/app/features/admin/configuracion/`
+- cambios en rutas, sidebar, layout, auditoría y `configuracion.service.ts`.
+Antes de tocar cualquier archivo, muestra `git status` y revisa el diff.
+No asumas que esos cambios están completos ni que están aprobados.
 
 ## Objetivo de esta sesión
-Diseñar un módulo de CONFIGURACIÓN/AJUSTES para que el colegio pueda cambiar
-sus datos operativos sin editar código, sin valores fijos y con auditoría.
-Como mínimo debe cubrir:
+1. Revisar la Fase 0 de `documentacion/20-MODULO-CONFIGURACION.md` contra el
+   código real y confirmar que el diagnóstico sigue vigente.
+2. Auditar los cambios sin commit de la Fase 1:
+   - ¿H74 es idempotente y segura?
+   - ¿El endpoint público solo expone datos seguros?
+   - ¿La configuración admin exige ADMIN/SECRETARÍA y escritura solo ADMIN?
+   - ¿La auditoría guarda valor anterior/nuevo y motivo en la misma transacción?
+   - ¿La UI guarda, recarga y muestra errores sin romper el diseño?
+   - ¿Los tests cubren los criterios de aceptación de la Fase 1?
+3. Reportar brechas, riesgos y archivos que falten.
+4. Proponer el plan para cerrar Fase 1 y luego las fases 2–7, con dependencias,
+   riesgo y esfuerzo. El módulo debe quedar dinámico: tarifas, cursos, jornada,
+   becas y textos sin valores fijos.
+5. No implementar las fases 2–7 hasta que el dueño apruebe el plan. Si la
+   Fase 1 ya está aprobada, terminarla primero y probarla.
 
-### A. Tarifas y conceptos de pago
-- Matrícula, pensiones y otros conceptos.
-- Montos configurables por año lectivo, nivel y/o grado si el negocio lo
-  necesita; no asumir un único monto de S/ 250.
-- Fechas de vigencia y cambios hacia adelante; decidir qué pasa con pagos ya
-  realizados y con el año en curso.
-- Generación de pensiones y pre-tickets leyendo la configuración, no IDs ni
-  meses hardcodeados en el frontend.
-- Validaciones: monto > 0, moneda, duplicados, concepto MATRICULA/PENSION/OTROS,
-  mes válido, año válido.
-- Vista previa de impacto antes de guardar y confirmación con motivo.
+## Qué debe cubrir el módulo (visión completa)
+### A. Tarifas y conceptos
+- Matrícula, pensiones y otros conceptos; montos por año y, si se aprueba,
+  por nivel/grado; vigencia; no repreciar pagos ya realizados.
+- Pensiones/pre-tickets generados desde la configuración, sin IDs ni meses
+  hardcodeados en el frontend.
+- Vista previa de impacto, motivo y confirmación.
 
-### B. Cursos, áreas y carga curricular
-- Catálogo de cursos, áreas, horas semanales y competencias.
-- Asignación por grado y año; activar/desactivar sin borrar históricos.
-- Evitar eliminar cursos con notas, carga, horarios o competencias asociadas.
-- Revisar el rollover y la promoción para que la nueva oferta se clone bien.
+### B. Cursos, áreas y carga
+- Catálogo de cursos, áreas, horas y competencias.
+- Activar/desactivar sin borrar históricos; bloquear borrados con dependencias.
+- Revisar rollover, promoción, notas, horarios y reportes.
 
 ### C. Horarios y jornada
-- Períodos configurables: hora de inicio/fin, duración, recesos, almuerzo,
-  cantidad de bloques y días de clase.
-- Soportar jornadas más largas (por ejemplo 07:00–18:00) sin cambiar código.
-- Mover a configuración los valores hoy fijos en `config/horarios.js`
-  (`HORAS_DEFAULT_CARGA`, `MAX_BLOQUES_CURSO_DIA`) o justificar su permanencia.
-- Validar solapamientos, orden, duración mínima, recreo/almuerzo y capacidad
-  del generador. No romper horarios ya publicados; versionar por año.
+- Períodos, hora inicio/fin, recesos, almuerzo, días, cantidad de bloques y
+  jornadas largas (07:00–18:00) sin cambiar código.
+- Mover a configuración los valores de `config/horarios.js` o justificar su
+  permanencia; validar solapes y proteger horarios publicados.
 
-### D. Becas, descuentos y exoneraciones
-- Tipos configurables: excelencia académica, orfandad, hermanos,
-  socioeconómica, convenios u otros que defina el colegio.
-- Porcentaje o monto fijo; alcance matrícula, pensión o ambos; vigencia;
-  límite máximo; combinación o exclusividad entre becas.
-- Flujo de solicitud/aprobación, quién autoriza y qué evidencia queda.
-- Aplicación al generar pensiones/matrícula sin alterar pagos ya realizados.
-- No codificar los tipos en un CHECK rígido ni asumir una sola beca por alumno
-  sin definirlo con el colegio.
+### D. Becas y descuentos
+- Tipos configurables (excelencia, orfandad, hermanos, socioeconómica, etc.),
+  porcentaje o monto fijo, alcance, vigencia, tope y combinación.
+- Aprobación, evidencia, aplicación a matrícula/pensión y respeto a pagos ya
+  realizados. No inventar la política del colegio.
 
 ### E. Parámetros generales
-- Datos del colegio, año activo, moneda, zona horaria, correo remitente,
-  textos de boletas/libretas y cualquier otro valor que hoy esté fijo.
-- Separar configuración global de configuración por año lectivo.
+- Datos institucionales, moneda, zona horaria, textos de PDF/correo y demás
+  valores hoy fijos. Separar configuración global de la anual.
 
 ### F. Auditoría y seguridad
-- Todo cambio de configuración debe quedar en `bitacora_auditoria` con:
-  usuario, rol, fecha, módulo, acción, valor anterior, valor nuevo y motivo.
-- Solo ADMIN puede escribir; SECRETARÍA puede leer si se autoriza.
-- No guardar secretos ni contraseñas en texto plano.
-- Los cambios deben ser transaccionales y con validación en backend.
+- Todo cambio con usuario, rol, fecha, acción, valor anterior, valor nuevo y
+  motivo; escritura solo ADMIN; lectura según aprobación.
+- Sin secretos en texto plano; transacciones y validación backend.
 
-### G. UI y experiencia
-- Pantalla(s) de ajustes claras, con formularios validados, vista previa y
-  advertencia de impacto. Debe nacer responsive si es viable.
-- No mostrar IDs internos; usar nombres legibles.
-- Confirmación explícita para cambios que afecten dinero, notas u horarios.
-
-## Lo que debes entregar en tu PRIMERA respuesta (sin programar)
-1. Inventario real de valores fijos y acoplamientos, con archivo y línea:
-   montos, IDs de conceptos, meses, cursos, períodos, horas, becas, años,
-   textos y cualquier otro hardcode relevante.
-2. Propuesta funcional del módulo de configuración: pantallas, permisos,
-   validaciones y reglas.
-3. Propuesta de modelo de datos: tablas nuevas, columnas, vigencias,
-   relaciones, migraciones y qué tablas existentes se reutilizan.
-4. Análisis de impacto en tesorería, caja, matrícula, pensiones, becas,
-   horarios, carga, promoción, rollover, reportes y auditoría.
-5. Fases de implementación ordenadas, con dependencias, riesgo y esfuerzo.
-   Deben ir de diagnóstico a modelo, backend, UI, migración/backfill, pruebas
-   y despliegue. No mezclar todo en una sola fase.
-6. Preguntas abiertas para el dueño del colegio; si falta una regla de negocio,
-   no la inventes.
-7. Criterios de aceptación y pruebas por fase.
+## Lo que debes entregar en tu PRIMERA respuesta (sin modificar archivos)
+1. Confirmación o corrección de la Fase 0 con hallazgos concretos
+   (archivo/línea) y detección de valores fijos que falten.
+2. Inventario y evaluación de los cambios sin commit de Fase 1: qué está
+   completo, qué falta, qué riesgo tiene y si se puede conservar.
+3. Brechas entre `documentacion/20` y el código actual.
+4. Plan de cierre de Fase 1 y plan de fases 2–7, con dependencias, riesgo y
+   esfuerzo. Incluye un MVP recomendado.
+5. Preguntas pendientes del colegio que bloquean cada fase.
+6. Criterios de aceptación y pruebas por fase.
+7. Confirmación explícita de que no modificarás nada hasta recibir aprobación.
 
 ## Preguntas que debes hacer antes de implementar
 - ¿Los precios cambian solo para años nuevos o también dentro del año?
-- ¿Matrícula y pensión varían por nivel/grado? ¿Hay más conceptos?
-- ¿Qué becas existen, quién las aprueba y cómo se combinan?
-- ¿La beca aplica a matrícula, pensión o ambas? ¿Tiene tope?
-- ¿Qué pasa con pagos ya realizados si cambia un precio?
-- ¿Qué jornada y períodos necesita el colegio? ¿Recesos y almuerzo?
-- ¿Los cursos cambian por año/grado? ¿Quién los administra?
-- ¿Quién puede editar ajustes y quién solo leerlos?
-- ¿Se requiere aprobación de dos personas para cambios de dinero?
-- ¿Se deben conservar versiones históricas de cada configuración?
+- ¿Matrícula y pensión varían por nivel/grado? ¿Qué pasa con cargos pendientes?
+- ¿Qué becas existen, quién las aprueba, cómo se combinan y con qué tope?
+- ¿La beca aplica a matrícula, pensión o ambas?
+- ¿Qué jornada, días, recesos y almuerzo necesita el colegio?
+- ¿Los cursos cambian por año/grado? ¿Quién administra áreas y competencias?
+- ¿Quién edita ajustes y quién solo lee?
+- ¿Se requiere doble aprobación para cambios de dinero?
+- ¿Basta auditoría o se necesitan versiones históricas completas?
+- ¿Qué pasa con un cargo de S/ 0 por beca del 100%?
 
 ## Reglas
-- No cambiar el stack. No crear un módulo gigante sin fases.
-- No duplicar tablas ni lógica existente; reutilizar `conceptos_pago`,
-  `becas`, `cursos`, `competencias`, `carga_curricular`, `periodos_clase` y
-  `horarios` si alcanza.
+- No cambiar el stack ni agregar librerías de UI.
+- No borrar ni revertir cambios sin commit sin autorización.
 - Respetar MVC + DAO, SQL parametrizado, transacciones y respuesta uniforme.
+- No duplicar tablas o lógica existente; reutilizar `conceptos_pago`, `becas`,
+  `cursos`, `competencias`, `carga_curricular`, `periodos_clase` y `horarios`.
 - No tocar Supabase, no activar 2027, no cargar datos reales.
-- No iniciar Fase 8. No integrar SIAGIE oficial.
-- No implementar hasta que el dueño apruebe el análisis y las fases.
+- No iniciar Fase 8 ni integración oficial con SIAGIE.
+- No implementar fases 2–7 hasta aprobación.
 - Mantener español en mensajes, documentación y commits.
 
 ## Entorno local
 - Backend: http://localhost:3000 (npm run dev en siga-uc-backend).
 - Frontend: http://localhost:4200 (ng serve en siga-uc-frontend).
-- Base local: siga_uc (21 alumnos; 54 cargas/142 h en el ADMIN; 0 horarios
-  publicados). Preparar datos de prueba si una fase lo requiere.
+- Base local: siga_uc (21 alumnos; 11 cursos; 54 cargas/142 h en el ADMIN;
+  10 períodos 07:30–14:30; 0 horarios publicados).
 - Credenciales de demo en docs/CREDENCIALES.md y README.md. La contraseña del
   ADMIN de producción no está en el repo.
 
 ## Forma de trabajo
-1. Analiza e inventaría.
-2. Propón el modelo y las fases.
+1. Revisa Fase 0 y los cambios sin commit.
+2. Entrega el informe y el plan.
 3. Espera aprobación.
-4. Implementa una fase por commit.
-5. Prueba con build, E2E, smoke e integridad según corresponda.
-6. Actualiza documentación y despliega solo cuando el dueño lo autorice.
+4. Cierra Fase 1 por commit.
+5. Prueba build, E2E, smoke, integridad y H47 según corresponda.
+6. Actualiza documentación y despliega solo con autorización.
 
-Empieza leyendo el código real y entregando el inventario, la propuesta de
-módulo y las preguntas. No modifiques archivos todavía.
+Empieza con `git status`, `git diff` y la lectura de
+`documentacion/20-MODULO-CONFIGURACION.md`. No modifiques archivos todavía.
 ```

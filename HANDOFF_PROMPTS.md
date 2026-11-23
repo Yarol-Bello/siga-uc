@@ -239,10 +239,11 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
    cerrado, H71 aplicado en local, UAT de los 4 roles, guion, backup y reinicio. H71 no se
    aplicó en Supabase porque no hay retirados.
 6. No empezar Fase 8 ni integración oficial con MINEDU sin pedido explícito.
-7. **Siguiente bloque de código:** análisis y diseño del **módulo de configuración**
-   (tarifas, cursos, horarios, becas, parámetros y auditoría). El responsive de ADMIN,
-   SECRETARÍA y DOCENTE queda pausado. El prompt completo está en
-   `HANDOFF_SESSION.md`, sección 10.
+7. **Siguiente bloque de código:** revisar la **Fase 0** de
+   `documentacion/20-MODULO-CONFIGURACION.md` y auditar/cerrar la **Fase 1** que está
+   sin commit (H74, configuración global/año, auditoría y UI). Después seguir con tarifas,
+   cursos, jornada y becas por fases. El responsive de ADMIN/SECRETARÍA/DOCENTE queda
+   pausado. El prompt completo está en `HANDOFF_SESSION.md`, sección 10.
 
 ---
 
@@ -274,9 +275,10 @@ No implementas código, no tocas Supabase ni Render.
 3. Revisa el cierre de Fase 7: H62 (DOCENTE 403), H59 (observaciones de cese), H65
    (docentes vs personal), H66/H67/H68/H69 (textos y credibilidad).
 4. Verifica el cierre de demo: SIAGIE interno, H70/H71, UAT de los 4 roles y límites.
-5. Revisa el siguiente bloque: módulo de configuración (tarifas, cursos, horarios,
-   becas, parámetros y auditoría). El responsive de ADMIN/SECRETARÍA/DOCENTE queda
-   pausado. Usa el prompt de `HANDOFF_SESSION.md`, sección 10.
+5. Revisa la Fase 0 (`documentacion/20-MODULO-CONFIGURACION.md`) y los cambios sin
+   commit de Fase 1; no asumas que están aprobados. El responsive de
+   ADMIN/SECRETARÍA/DOCENTE queda pausado. Usa el prompt de `HANDOFF_SESSION.md`,
+   sección 10.
 6. No implementes código; no toques Supabase/Render sin confirmación.
 6. No confirmes promociones, no actives 2027 y no anules en Supabase en esta fase.
 
