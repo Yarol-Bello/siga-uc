@@ -6,7 +6,10 @@
 const calificacionDao = require("../dao/calificacionDao");
 const alumnoDao = require("../dao/alumnoDao");
 const cursoDao = require("../dao/cursoDao");
+const cargaCurricularDao = require("../dao/cargaCurricularDao");
 const auditoriaDao = require("../dao/auditoriaDao");
+const auditoriaService = require("./auditoriaService");
+const { getClient } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
 
 const verificarActaAbierta = async (idGrado, bimestre, anioLectivo) => {
@@ -299,6 +302,259 @@ const obtenerNotasFinales = async (
   };
 };
 
+/**
+ * Normaliza un texto de conclusión: recorta y colapsa espacios.
+ */
+const normalizarTextoConclusion = (valor) =>
+  String(valor ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const componerDescripcionConclusion = ({ avance, dificultad, sugerencia }) =>
+  [avance, dificultad, sugerencia]
+    .map(normalizarTextoConclusion)
+    .filter(Boolean)
+    .join(" ");
+
+const resumenConclusion = (conclusion) =>
+  conclusion
+    ? {
+        id_conclusion: conclusion.id_conclusion,
+        id_alumno: conclusion.id_alumno,
+        id_curso: conclusion.id_curso,
+        bimestre: conclusion.bimestre,
+        anio_lectivo: conclusion.anio_lectivo,
+        nivel_logro: conclusion.nivel_logro,
+        avance: conclusion.avance,
+        dificultad: conclusion.dificultad,
+        sugerencia: conclusion.sugerencia,
+        descripcion: conclusion.descripcion,
+        estado: conclusion.estado,
+      }
+    : null;
+
+/**
+ * Listar alumnos y conclusiones de un curso/grado/bimestre.
+ * Devuelve también si el acta está cerrada para que la UI sea solo lectura.
+ */
+const listarConclusionesCursoGrado = async (
+  id_curso,
+  id_grado,
+  bimestre,
+  anioLectivo = getAnioLectivo(),
+  idPersonal = null,
+) => {
+  const idCurso = Number(id_curso);
+  const idGrado = Number(id_grado);
+  const bim = Number(bimestre);
+  const anio = Number(anioLectivo) || getAnioLectivo();
+
+  if (!idCurso || !idGrado) {
+    const error = new Error("Curso y grado son obligatorios.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (![1, 2, 3, 4].includes(bim)) {
+    const error = new Error("Bimestre inválido (1-4).");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const destino = await cargaCurricularDao.validarDestino({
+    id_grado: idGrado,
+    id_curso: idCurso,
+    anio_lectivo: anio,
+  });
+  if (!destino) {
+    const error = new Error("El curso no pertenece al grado y año indicados.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const actaCerrada = await auditoriaDao.actaEstaCerrada(
+    idGrado,
+    bim,
+    anio,
+  );
+  const alumnos = await calificacionDao.listarConclusionesCursoGrado(
+    idCurso,
+    idGrado,
+    bim,
+    anio,
+    idPersonal,
+  );
+
+  return {
+    acta_cerrada: Boolean(actaCerrada),
+    id_grado: idGrado,
+    id_curso: idCurso,
+    bimestre: bim,
+    anio_lectivo: anio,
+    alumnos,
+  };
+};
+
+/**
+ * Guardar una conclusión estructurada (Opción A).
+ * El nivel debe coincidir con la nota final cuando esta ya existe.
+ */
+const guardarConclusion = async (data = {}, usuario = {}, ip = null) => {
+  const idAlumno = Number(data.id_alumno);
+  const idCurso = Number(data.id_curso);
+  const idGrado = Number(data.id_grado);
+  const bimestre = Number(data.bimestre);
+  const anio = Number(data.anio_lectivo) || getAnioLectivo();
+
+  if (!idAlumno || !idCurso || !idGrado) {
+    const error = new Error("Alumno, curso y grado son obligatorios.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (![1, 2, 3, 4].includes(bimestre)) {
+    const error = new Error("Bimestre inválido (1-4).");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const nivel = normalizarTextoConclusion(data.nivel_logro).toUpperCase();
+  if (!["AD", "A", "B", "C"].includes(nivel)) {
+    const error = new Error("Nivel de logro inválido. Debe ser AD, A, B o C.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const avance = normalizarTextoConclusion(data.avance);
+  const dificultad = normalizarTextoConclusion(data.dificultad);
+  const sugerencia = normalizarTextoConclusion(data.sugerencia);
+  const estado =
+    normalizarTextoConclusion(data.estado).toUpperCase() === "PUBLICADO"
+      ? "PUBLICADO"
+      : "BORRADOR";
+
+  if (estado === "PUBLICADO" && (!avance || !dificultad || !sugerencia)) {
+    const error = new Error(
+      "Para publicar la conclusión complete avance, dificultad y sugerencia.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const descripcion = componerDescripcionConclusion({
+    avance,
+    dificultad,
+    sugerencia,
+  });
+  if (descripcion.length > 350) {
+    const error = new Error(
+      `La conclusión no puede superar los 350 caracteres (actual: ${descripcion.length}).`,
+    );
+    error.statusCode = 400;
+    error.details = {
+      codigo: "CONCLUSION_LARGA",
+      maximo: 350,
+      actual: descripcion.length,
+    };
+    throw error;
+  }
+
+  const alumno = await alumnoDao.validarMatriculaAnual(idAlumno, anio);
+  if (Number(alumno.id_grado) !== idGrado) {
+    const error = new Error("El alumno no pertenece al grado indicado.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const destino = await cargaCurricularDao.validarDestino({
+    id_grado: idGrado,
+    id_curso: idCurso,
+    anio_lectivo: anio,
+  });
+  if (!destino) {
+    const error = new Error("El curso no pertenece al grado y año indicados.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const nota = await calificacionDao.obtenerNotaFinal(
+    idAlumno,
+    idCurso,
+    bimestre,
+    anio,
+  );
+  if (nota?.nota_final && nota.nota_final !== nivel) {
+    const error = new Error(
+      `El nivel ${nivel} no coincide con la nota final ${nota.nota_final} del curso.`,
+    );
+    error.statusCode = 400;
+    error.details = {
+      codigo: "NIVEL_NO_COINCIDE",
+      nota_final: nota.nota_final,
+      nivel_logro: nivel,
+    };
+    throw error;
+  }
+
+  await verificarActaAbierta(idGrado, bimestre, anio);
+
+  const anterior = await calificacionDao.findConclusion(
+    idAlumno,
+    idCurso,
+    bimestre,
+    anio,
+  );
+  const curso = await cursoDao.findById(idCurso);
+  const idPersonal = usuario?.id_personal || data.id_personal || null;
+  const client = await getClient();
+
+  try {
+    await client.query("BEGIN");
+
+    const saved = await calificacionDao.guardarConclusion(
+      {
+        id_alumno: idAlumno,
+        id_curso: idCurso,
+        bimestre,
+        anio_lectivo: anio,
+        descripcion,
+        nivel_logro: nivel,
+        avance,
+        dificultad,
+        sugerencia,
+        estado,
+        id_personal: idPersonal,
+        actualizado_por: usuario?.id_usuario || null,
+        publicado_por:
+          estado === "PUBLICADO" ? usuario?.id_usuario || null : null,
+      },
+      client,
+    );
+
+    await auditoriaService.registrarEnTransaccion(client, {
+      id_usuario: usuario?.id_usuario || null,
+      modulo: "Calificaciones",
+      accion: anterior
+        ? estado === "PUBLICADO"
+          ? "PUBLICAR"
+          : "MODIFICAR"
+        : "CREAR",
+      descripcion: `Conclusión descriptiva ${curso?.nombre_curso || ""} - ${
+        alumno.nombre_completo || alumno.dni || idAlumno
+      } (BIM ${bimestre}, ${anio})`,
+      anterior: resumenConclusion(anterior),
+      nuevo: resumenConclusion(saved),
+      ip,
+    });
+
+    await client.query("COMMIT");
+    return saved;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   obtenerPorAlumnoCurso,
   obtenerPorCursoGrado,
@@ -306,4 +562,6 @@ module.exports = {
   registrarMasivo,
   calcularYGuardarNotaFinal,
   obtenerNotasFinales,
+  listarConclusionesCursoGrado,
+  guardarConclusion,
 };

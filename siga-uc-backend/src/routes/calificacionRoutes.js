@@ -37,6 +37,12 @@ router.get(
   calificacionController.obtenerPorCursoGrado,
 );
 router.get(
+  "/curso/:id_curso/grado/:id_grado/conclusiones",
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkCursoDocente,
+  calificacionController.obtenerConclusionesCursoGrado,
+);
+router.get(
   "/notas-finales/alumno/:id_alumno",
   checkRole(["ADMIN", "DOCENTE", "ESTUDIANTE"]),
   checkAlumnoPropio,
@@ -63,6 +69,12 @@ router.post(
   checkRole(["ADMIN", "DOCENTE"]),
   checkCursoDocente,
   calificacionController.calcularNotaFinal,
+);
+router.put(
+  "/conclusiones",
+  checkRole(["ADMIN", "DOCENTE"]),
+  checkCursoDocente,
+  calificacionController.guardarConclusion,
 );
 
 module.exports = router;

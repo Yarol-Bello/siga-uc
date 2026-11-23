@@ -33,4 +33,14 @@ router.get("/resumen", siagieController.obtenerResumen);
  */
 router.get("/exportar", siagieController.exportarInterno);
 
+/**
+ * @route   GET /api/siagie/exportaciones/:codigo/verificar
+ * @desc    Verifica un código de control interno contra los datos actuales
+ * @access  Privado (ADMIN)
+ */
+router.get(
+  "/exportaciones/:codigo/verificar",
+  siagieController.verificarExportacion,
+);
+
 module.exports = router;

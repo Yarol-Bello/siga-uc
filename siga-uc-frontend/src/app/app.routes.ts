@@ -219,6 +219,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'conclusiones',
+        loadComponent: () =>
+          import('./features/docente/conclusiones/docente-conclusiones.component').then(
+            (m) => m.DocenteConclusionesComponent,
+          ),
+      },
+      {
         path: 'horario',
         loadComponent: () =>
           import('./features/docente/horario/docente-horario.component').then(

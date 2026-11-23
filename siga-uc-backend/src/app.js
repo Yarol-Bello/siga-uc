@@ -58,7 +58,15 @@ app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
-    exposedHeaders: ["Content-Disposition"],
+    exposedHeaders: [
+      "Content-Disposition",
+      "X-Exportacion-Interna",
+      "X-Total-Alumnos",
+      "X-Total-Cursos",
+      "X-Total-Notas",
+      "X-Codigo-Control",
+      "X-Hash-Integridad",
+    ],
   }),
 );
 

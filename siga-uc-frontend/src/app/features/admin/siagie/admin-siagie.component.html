@@ -100,6 +100,10 @@
       <div class="dato-resumen">
         <span>Conclusiones</span>
         <strong>{{ r.total_conclusiones }}</strong>
+        <small class="resumen-detalle">
+          {{ r.total_conclusiones_publicadas }} publicadas ·
+          {{ r.total_conclusiones_borrador }} borradores
+        </small>
       </div>
     </div>
 
@@ -123,8 +127,8 @@
 
     <div class="action-row">
       <div class="columnas-incluidas">
-        <strong>Columnas:</strong> DNI, alumno, grado, sección, año, bimestre, curso, nota final y conclusión
-        descriptiva.
+        <strong>Columnas:</strong> DNI, alumno, grado, sección, año, bimestre, curso, área, nota final, nivel de logro,
+        avance, dificultad, sugerencia, conclusión descriptiva y estado.
       </div>
       <button class="btn-excel" [disabled]="!puedeExportar()" (click)="exportarExcel()">
         @if (exportando()) {
@@ -147,6 +151,106 @@
     <div class="alert alert-danger">
       <i class="fa-solid fa-circle-exclamation"></i>
       {{ errorExportacion() }}
+    </div>
+    }
+  </div>
+
+  <!-- CÓDIGO DE CONTROL INTERNO -->
+  <div class="card-container">
+    <h3 class="section-title">
+      <i class="fa-solid fa-shield-halved"></i>
+      Verificar código de control interno
+    </h3>
+    <p class="section-hint">
+      El Excel incluye un código de control interno y un hash SHA-256. Sirve para
+      comprobar que los datos no cambiaron desde la exportación. No es el código
+      oficial de SIAGIE/MINEDU.
+    </p>
+
+    <div class="verificacion-form">
+      <div class="campo verificacion-codigo">
+        <label for="codigoControl">Código de control</label>
+        <input
+          id="codigoControl"
+          type="text"
+          [ngModel]="codigoVerificacion()"
+          (ngModelChange)="codigoVerificacion.set($event)"
+          placeholder="Ej. SI-2026-2-ABCDEF123456"
+          autocomplete="off"
+        />
+      </div>
+      <button
+        type="button"
+        class="btn-verificar"
+        (click)="verificarCodigo()"
+        [disabled]="verificando() || !codigoVerificacion().trim()"
+      >
+        @if (verificando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Verificando...
+        } @else {
+        <i class="fa-solid fa-magnifying-glass"></i> Verificar
+        }
+      </button>
+      @if (ultimoCodigo()) {
+      <button
+        type="button"
+        class="btn-ultimo"
+        (click)="usarUltimoCodigo()"
+        [disabled]="verificando()"
+      >
+        Usar último código
+      </button>
+      }
+    </div>
+
+    @if (errorVerificacion()) {
+    <div class="alert alert-danger">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      {{ errorVerificacion() }}
+    </div>
+    }
+
+    @if (resultadoVerificacion(); as v) {
+    <div
+      class="resultado-verificacion"
+      [class.valido]="v.coincide"
+      [class.invalido]="!v.coincide"
+    >
+      <div class="resultado-head">
+        <i
+          class="fa-solid"
+          [ngClass]="v.coincide ? 'fa-circle-check' : 'fa-circle-exclamation'"
+        ></i>
+        <strong>
+          {{ v.coincide ? 'Código válido: los datos coinciden.' : 'El código existe, pero los datos cambiaron.' }}
+        </strong>
+      </div>
+      <div class="resultado-grid">
+        <div><span>Código</span><strong>{{ v.codigo_control }}</strong></div>
+        <div><span>Origen</span><strong>{{ v.origen }}</strong></div>
+        <div><span>Archivo</span><strong>{{ v.nombre_archivo }}</strong></div>
+        <div>
+          <span>Generado</span>
+          <strong>{{ v.fecha_generacion | date: 'dd/MM/yyyy HH:mm' }}</strong>
+        </div>
+        <div>
+          <span>Grado / bimestre</span>
+          <strong>{{ v.resumen.nombre_grado }} · {{ v.resumen.bimestre }}°</strong>
+        </div>
+        <div>
+          <span>Alumnos / cursos</span>
+          <strong>{{ v.resumen.total_alumnos }} / {{ v.resumen.total_cursos }}</strong>
+        </div>
+      </div>
+      <div class="hash-row">
+        <span>Hash registrado</span>
+        <code>{{ v.hash_registrado || '—' }}</code>
+      </div>
+      <div class="hash-row">
+        <span>Hash actual</span>
+        <code>{{ v.hash_actual }}</code>
+      </div>
+      <p class="resultado-aviso">{{ v.aviso }}</p>
     </div>
     }
   </div>

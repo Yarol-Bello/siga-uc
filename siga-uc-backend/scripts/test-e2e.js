@@ -67,6 +67,11 @@ const MIGRACIONES = [
   path.join(RAIZ_REPO, "database", "migracion_h77_horario_jornada.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h78_becas.sql"),
   path.join(RAIZ_REPO, "database", "migracion_h79_setup_inicial.sql"),
+  path.join(
+    RAIZ_REPO,
+    "database",
+    "migracion_h80_conclusiones_estructuradas.sql",
+  ),
 ];
 
 const PUERTO = 3101;
@@ -6423,6 +6428,16 @@ async function ejecutarPruebas() {
         /spreadsheetml/i,
         "Content-Type inesperado para el Excel",
       );
+      const codigoControl = respuesta.headers.get("x-codigo-control");
+      const hashIntegridad = respuesta.headers.get("x-hash-integridad");
+      assert.ok(codigoControl, "Falta el header X-Codigo-Control");
+      assert.match(
+        String(hashIntegridad || ""),
+        /^[a-f0-9]{64}$/,
+        "El hash de integridad no es SHA-256",
+      );
+      ctx.siagieCodigo = codigoControl;
+      ctx.siagieHash = hashIntegridad;
       const buffer = Buffer.from(await respuesta.arrayBuffer());
       assert.equal(buffer.subarray(0, 2).toString("ascii"), "PK");
 
@@ -6446,7 +6461,12 @@ async function ejecutarPruebas() {
         "Curso",
         "Área",
         "Nota final",
+        "Nivel de logro",
+        "Avance",
+        "Dificultad",
+        "Sugerencia",
         "Conclusión descriptiva",
+        "Estado",
       ]);
 
       const cursosEsperados = await sql(
@@ -6497,7 +6517,12 @@ async function ejecutarPruebas() {
           curso: String(row.getCell(7).value ?? ""),
           area: String(row.getCell(8).value ?? ""),
           nota: String(row.getCell(9).value ?? ""),
-          conclusion: String(row.getCell(10).value ?? ""),
+          nivel: String(row.getCell(10).value ?? ""),
+          avance: String(row.getCell(11).value ?? ""),
+          dificultad: String(row.getCell(12).value ?? ""),
+          sugerencia: String(row.getCell(13).value ?? ""),
+          conclusion: String(row.getCell(14).value ?? ""),
+          estado: String(row.getCell(15).value ?? ""),
         });
       });
 
@@ -6542,9 +6567,31 @@ async function ejecutarPruebas() {
         "El Excel no contiene el aviso de exportación interna",
       );
 
+      const verificacion = await api(
+        `/siagie/exportaciones/${encodeURIComponent(codigoControl)}/verificar`,
+        { token: ctx.adminToken },
+      );
+      const { datos: verificacionDatos } = await leerJson(verificacion);
+      assert.equal(
+        verificacion.status,
+        200,
+        detalleHttp(verificacion, verificacionDatos),
+      );
+      assert.equal(
+        verificacionDatos?.data?.coincide,
+        true,
+        "El código de control no coincide con los datos exportados",
+      );
+      assert.equal(
+        verificacionDatos?.data?.codigo_control,
+        codigoControl,
+        "El código devuelto no coincide",
+      );
+
       const auditoria = await sql(
         `
-          SELECT estado, anio_lectivo, bimestre, id_grado
+          SELECT estado, anio_lectivo, bimestre, id_grado,
+                 codigo_control, hash_integridad, origen
           FROM exportaciones_siagie
           WHERE nombre_archivo LIKE 'EXPORTACION_INTERNA_%'
           ORDER BY id_exportacion DESC
@@ -6555,6 +6602,9 @@ async function ejecutarPruebas() {
       assert.equal(Number(auditoria[0]?.anio_lectivo), ANIO);
       assert.equal(Number(auditoria[0]?.bimestre), 2);
       assert.equal(Number(auditoria[0]?.id_grado), idGrado);
+      assert.equal(auditoria[0]?.codigo_control, codigoControl);
+      assert.equal(auditoria[0]?.hash_integridad, hashIntegridad);
+      assert.equal(auditoria[0]?.origen, "INTERNO");
 
       const endpointViejo = await api("/siagie/generar-excel", {
         method: "POST",
@@ -6571,7 +6621,7 @@ async function ejecutarPruebas() {
         74,
         "SIAGIE interno: Excel con todos los cursos, notas y conclusión",
         "PASS",
-        `${cursosEsperados.length} cursos, ${alumnosEsperados[0].total} alumnos, aviso y auditoría`,
+        `${cursosEsperados.length} cursos, ${alumnosEsperados[0].total} alumnos, aviso, código ${codigoControl} y auditoría`,
       );
     },
   );
@@ -6634,6 +6684,219 @@ async function ejecutarPruebas() {
         "SIAGIE interno: UI sin portal, análisis simulado ni carga de plantilla",
         "PASS",
         "aviso interno; sin portal, análisis ni plantilla",
+      );
+    },
+  );
+
+  // 76. Conclusiones descriptivas estructuradas (Opción A).
+  await prueba(
+    76,
+    "Conclusiones descriptivas: API guarda, valida y bloquea nivel inconsistente",
+    async () => {
+      const asignacionRows = await sql(
+        `
+          SELECT cc.id_grado, cc.id_curso
+          FROM carga_curricular cc
+          WHERE cc.anio_lectivo = $1
+          ORDER BY cc.id_grado, cc.id_curso
+          LIMIT 1
+        `,
+        [ANIO],
+      );
+      assert.ok(
+        asignacionRows[0],
+        "No hay carga curricular para la prueba de conclusiones",
+      );
+
+      const idGrado = Number(asignacionRows[0].id_grado);
+      const idCurso = Number(asignacionRows[0].id_curso);
+      const bimestre = 3;
+
+      const actas = await sql(
+        `
+          SELECT id_acta, estado
+          FROM actas_bimestrales
+          WHERE id_grado = $1 AND bimestre = $2 AND anio_lectivo = $3
+        `,
+        [idGrado, bimestre, ANIO],
+      );
+      if (actas[0]?.estado === "CERRADO") {
+        const reapertura = await api(
+          `/auditoria/actas/${actas[0].id_acta}/reabrir`,
+          {
+            method: "POST",
+            token: ctx.adminToken,
+            body: { motivo: "Reapertura E2E H80 para conclusiones" },
+          },
+        );
+        assert.equal(reapertura.status, 200, "No se pudo reabrir el acta");
+      }
+
+      const alumno = await sql(
+        `
+          SELECT a.id_alumno, a.dni, a.nombres || ' ' || a.apellidos AS nombre_completo,
+                 nf.nota_final
+          FROM alumnos a
+          LEFT JOIN notas_finales_area nf
+            ON nf.id_alumno = a.id_alumno
+           AND nf.id_curso = $2
+           AND nf.bimestre = $3
+           AND nf.anio_lectivo = $4
+          WHERE a.id_grado = $1
+            AND a.anio_lectivo = $4
+            AND a.estado_matricula = 'Matriculado'
+          ORDER BY a.id_alumno
+          LIMIT 1
+        `,
+        [idGrado, idCurso, bimestre, ANIO],
+      );
+      assert.ok(alumno[0], "No hay alumno en el grado de la carga");
+
+      await sql(
+        `
+          INSERT INTO notas_finales_area
+            (id_alumno, id_curso, bimestre, anio_lectivo, nota_final, calculo_automatico)
+          VALUES ($1, $2, $3, $4, 'A', false)
+          ON CONFLICT ON CONSTRAINT uq_nota_final
+          DO UPDATE SET nota_final = EXCLUDED.nota_final
+        `,
+        [alumno[0].id_alumno, idCurso, bimestre, ANIO],
+      );
+
+      const url =
+        `/calificaciones/curso/${idCurso}/grado/${idGrado}/conclusiones` +
+        `?bimestre=${bimestre}&anio=${ANIO}`;
+      const lectura = await api(url, { token: ctx.adminToken });
+      const { datos: lecturaDatos } = await leerJson(lectura);
+      assert.equal(lectura.status, 200, detalleHttp(lectura, lecturaDatos));
+      assert.equal(lecturaDatos?.data?.acta_cerrada, false);
+      assert.ok(
+        (lecturaDatos?.data?.alumnos || []).some(
+          (item) => item.id_alumno === alumno[0].id_alumno,
+        ),
+        "El alumno no aparece en las conclusiones del curso",
+      );
+
+      const cuerpo = {
+        id_alumno: alumno[0].id_alumno,
+        id_curso: idCurso,
+        id_grado: idGrado,
+        bimestre,
+        anio_lectivo: ANIO,
+        nivel_logro: "A",
+        avance: "Logra los aprendizajes esperados del área y participa en las actividades.",
+        dificultad: "Requiere consolidar la explicación de sus procedimientos.",
+        sugerencia: "Se recomienda practicar con casos contextualizados y explicar sus respuestas.",
+        estado: "PUBLICADO",
+      };
+      const guardado = await api("/calificaciones/conclusiones", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: cuerpo,
+      });
+      const { datos: guardadoDatos } = await leerJson(guardado);
+      assert.equal(guardado.status, 200, detalleHttp(guardado, guardadoDatos));
+      assert.equal(guardadoDatos?.data?.nivel_logro, "A");
+      assert.equal(guardadoDatos?.data?.estado, "PUBLICADO");
+      assert.equal(
+        guardadoDatos?.data?.descripcion,
+        `${cuerpo.avance} ${cuerpo.dificultad} ${cuerpo.sugerencia}`,
+      );
+      assert.ok(
+        String(guardadoDatos?.data?.descripcion || "").length <= 350,
+        "La conclusión supera los 350 caracteres",
+      );
+
+      const inconsistente = await api("/calificaciones/conclusiones", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: { ...cuerpo, nivel_logro: "B" },
+      });
+      const inconsistenteDatos = (await leerJson(inconsistente)).datos;
+      assert.equal(inconsistente.status, 400);
+      assert.equal(
+        inconsistenteDatos?.errors?.codigo ||
+          inconsistenteDatos?.data?.errors?.codigo,
+        "NIVEL_NO_COINCIDE",
+      );
+
+      const larga = await api("/calificaciones/conclusiones", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: { ...cuerpo, avance: "x".repeat(360) },
+      });
+      assert.equal(larga.status, 400);
+
+      ctx.conclusionDocente = {
+        idGrado,
+        idCurso,
+        bimestre,
+        idAlumno: alumno[0].id_alumno,
+      };
+
+      registrar(
+        76,
+        "Conclusiones descriptivas: API guarda, valida y bloquea nivel inconsistente",
+        "PASS",
+        `curso ${idCurso}, grado ${idGrado}, BIM ${bimestre}; nivel y longitud validados`,
+      );
+    },
+  );
+
+  // 77. SIAGIE: el código de control interno detecta cambios.
+  await prueba(
+    77,
+    "SIAGIE: el código de control interno detecta cambios en los datos",
+    async () => {
+      assert.ok(ctx.siagieCodigo, "Falta el código de la exportación de la prueba 74");
+      assert.ok(ctx.siagieAlumno, "Falta el alumno de la prueba 74");
+      assert.ok(ctx.siagieCurso, "Falta el curso de la prueba 74");
+
+      await sql(
+        `
+          UPDATE conclusiones_descriptivas
+          SET descripcion = descripcion || ' Cambio E2E H80.',
+              estado = 'PUBLICADO',
+              nivel_logro = COALESCE(nivel_logro, 'A'),
+              actualizado_en = now()
+          WHERE id_alumno = $1
+            AND id_curso = $2
+            AND bimestre = 2
+            AND anio_lectivo = $3
+        `,
+        [
+          ctx.siagieAlumno.id_alumno,
+          ctx.siagieCurso.id_curso,
+          ANIO,
+        ],
+      );
+
+      const verificacion = await api(
+        `/siagie/exportaciones/${encodeURIComponent(ctx.siagieCodigo)}/verificar`,
+        { token: ctx.adminToken },
+      );
+      const { datos } = await leerJson(verificacion);
+      assert.equal(
+        verificacion.status,
+        200,
+        detalleHttp(verificacion, datos),
+      );
+      assert.equal(
+        datos?.data?.coincide,
+        false,
+        "El código debería detectar el cambio de la conclusión",
+      );
+      assert.notEqual(
+        datos?.data?.hash_actual,
+        datos?.data?.hash_registrado,
+        "El hash actual debería diferir del registrado",
+      );
+
+      registrar(
+        77,
+        "SIAGIE: el código de control interno detecta cambios en los datos",
+        "PASS",
+        `código ${ctx.siagieCodigo}: hash distinto tras editar una conclusión`,
       );
     },
   );

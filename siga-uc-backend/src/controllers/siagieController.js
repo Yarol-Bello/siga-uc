@@ -74,6 +74,9 @@ const exportarInterno = async (req, res) => {
         alumnos: resultado.resumen.total_alumnos,
         cursos: resultado.resumen.total_cursos,
         notas: resultado.resumen.total_notas,
+        conclusiones: resultado.resumen.total_conclusiones,
+        codigo_control: resultado.codigo_control,
+        hash_integridad: resultado.hash_integridad,
       },
     });
 
@@ -89,6 +92,14 @@ const exportarInterno = async (req, res) => {
     res.setHeader("X-Total-Alumnos", String(resultado.resumen.total_alumnos));
     res.setHeader("X-Total-Cursos", String(resultado.resumen.total_cursos));
     res.setHeader("X-Total-Notas", String(resultado.resumen.total_notas));
+    res.setHeader(
+      "X-Codigo-Control",
+      String(resultado.codigo_control || ""),
+    );
+    res.setHeader(
+      "X-Hash-Integridad",
+      String(resultado.hash_integridad || ""),
+    );
     res.setHeader("Content-Length", String(resultado.buffer.length));
 
     return res.send(resultado.buffer);
@@ -98,7 +109,34 @@ const exportarInterno = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/siagie/exportaciones/:codigo/verificar
+ * Verifica un código de control interno contra el estado actual de los datos.
+ * No es una validación oficial de SIAGIE.
+ */
+const verificarExportacion = async (req, res) => {
+  try {
+    const data = await siagieService.verificarExportacion(req.params.codigo);
+    return response.success(
+      res,
+      200,
+      data.coincide
+        ? "Código de control interno válido: los datos no cambiaron desde la exportación."
+        : "El código existe, pero los datos cambiaron desde la exportación.",
+      data,
+    );
+  } catch (error) {
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
+  }
+};
+
 module.exports = {
   obtenerResumen,
   exportarInterno,
+  verificarExportacion,
 };

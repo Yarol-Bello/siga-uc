@@ -97,7 +97,10 @@ const obtenerNotasFinales = async (id_grado, bimestre, anioLectivo) => {
  */
 const obtenerConclusiones = async (id_grado, bimestre, anioLectivo) => {
   const sql = `
-    SELECT cd.id_alumno, cd.id_curso, cd.descripcion AS conclusion
+    SELECT cd.id_alumno, cd.id_curso,
+           cd.descripcion AS conclusion,
+           cd.nivel_logro, cd.avance, cd.dificultad, cd.sugerencia,
+           cd.estado
     FROM conclusiones_descriptivas cd
     INNER JOIN alumnos a ON a.id_alumno = cd.id_alumno
     WHERE a.id_grado = $1
@@ -114,8 +117,20 @@ const obtenerConclusiones = async (id_grado, bimestre, anioLectivo) => {
 const registrarExportacion = async (data) => {
   const sql = `
     INSERT INTO exportaciones_siagie (
-      id_grado, bimestre, anio_lectivo, nombre_archivo, id_usuario, estado
-    ) VALUES ($1, $2, $3, $4, $5, 'GENERADO')
+      id_grado, bimestre, anio_lectivo, nombre_archivo, id_usuario, estado,
+      codigo_control, hash_integridad, origen, detalle
+    ) VALUES ($1, $2, $3, $4, $5, 'GENERADO', $6, $7, $8, $9)
+    ON CONFLICT (codigo_control) DO UPDATE SET
+      id_grado = EXCLUDED.id_grado,
+      bimestre = EXCLUDED.bimestre,
+      anio_lectivo = EXCLUDED.anio_lectivo,
+      nombre_archivo = EXCLUDED.nombre_archivo,
+      id_usuario = EXCLUDED.id_usuario,
+      fecha_generacion = now(),
+      estado = 'GENERADO',
+      hash_integridad = EXCLUDED.hash_integridad,
+      origen = EXCLUDED.origen,
+      detalle = EXCLUDED.detalle
     RETURNING *
   `;
   const result = await query(sql, [
@@ -124,8 +139,26 @@ const registrarExportacion = async (data) => {
     data.anio_lectivo,
     data.nombre_archivo,
     data.id_usuario,
+    data.codigo_control || null,
+    data.hash_integridad || null,
+    data.origen || "INTERNO",
+    data.detalle ? JSON.stringify(data.detalle) : null,
   ]);
   return result.rows[0];
+};
+
+/**
+ * Buscar una exportación por su código de control interno.
+ */
+const findExportacionPorCodigo = async (codigo) => {
+  const sql = `
+    SELECT *
+    FROM exportaciones_siagie
+    WHERE codigo_control = $1
+    LIMIT 1
+  `;
+  const result = await query(sql, [codigo]);
+  return result.rows[0] || null;
 };
 
 module.exports = {
@@ -135,4 +168,5 @@ module.exports = {
   obtenerNotasFinales,
   obtenerConclusiones,
   registrarExportacion,
+  findExportacionPorCodigo,
 };

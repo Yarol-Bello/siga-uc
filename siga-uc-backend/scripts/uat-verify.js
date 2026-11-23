@@ -270,7 +270,21 @@ async function main() {
     if (!(excel.headers.get("content-type") || "").includes("spreadsheet")) {
       throw new Error("El Excel no tiene content-type de hoja de cálculo");
     }
-    return `${resumen.datos.data.total_cursos} cursos, ${resumen.datos.data.total_alumnos} alumnos`;
+    const codigo = excel.headers.get("x-codigo-control");
+    const hash = excel.headers.get("x-hash-integridad");
+    if (!codigo) throw new Error("Falta el código de control interno");
+    if (!/^[a-f0-9]{64}$/.test(String(hash || ""))) {
+      throw new Error("El hash de integridad no es SHA-256");
+    }
+    const verificacion = await api(
+      `/siagie/exportaciones/${encodeURIComponent(codigo)}/verificar`,
+      { token: admin.token },
+    );
+    ok(verificacion.respuesta, verificacion.datos, "verificación SIAGIE");
+    if (!verificacion.datos.data?.coincide) {
+      throw new Error("El código de control no coincide con los datos");
+    }
+    return `${resumen.datos.data.total_cursos} cursos, ${resumen.datos.data.total_alumnos} alumnos, código ${codigo}`;
   });
 
   await check("ADMIN · acta: cierre, PDF y reapertura", async () => {
@@ -432,6 +446,28 @@ async function main() {
     ok(notas.respuesta, notas.datos, "notas docente");
     ok(asistencia.respuesta, asistencia.datos, "asistencia docente");
     return `${curso[0].nombre_curso}, notas y asistencia`;
+  });
+
+  await check("DOCENTE · conclusiones descriptivas", async () => {
+    const { respuesta, datos } = await api(
+      `/calificaciones/curso/${curso[0].id_curso}/grado/${grado[0].id_grado}/conclusiones?bimestre=1&anio=${ANIO}`,
+      { token: docente.token },
+    );
+    ok(respuesta, datos, "conclusiones docente");
+    const filas = datos.data?.alumnos || [];
+    if (filas.length < 15) {
+      throw new Error(`Solo ${filas.length} alumnos en conclusiones`);
+    }
+    const conConclusion = filas.filter(
+      (fila) => fila.descripcion && fila.nivel_logro,
+    ).length;
+    if (conConclusion < 15) {
+      throw new Error(`Solo ${conConclusion} conclusiones completas`);
+    }
+    if (datos.data?.acta_cerrada) {
+      throw new Error("El acta del bimestre 1 está cerrada");
+    }
+    return `${filas.length} alumnos, ${conConclusion} conclusiones`;
   });
 
   await check("DOCENTE · libreta y ficha de alumno", async () => {

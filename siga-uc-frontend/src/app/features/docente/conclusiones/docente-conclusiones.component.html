@@ -1,0 +1,343 @@
+<div class="conclusiones-page">
+  <div class="page-header">
+    <div>
+      <h1>
+        <i class="fa-solid fa-comment-dots"></i>
+        Conclusiones descriptivas
+      </h1>
+      <p>
+        Registra el nivel de logro, el avance, la dificultad y la sugerencia de
+        cada estudiante al cierre del bimestre. El texto se usa en la libreta y
+        en la exportación interna.
+      </p>
+    </div>
+    <span class="badge-anio">Año lectivo {{ anioLectivo() }}</span>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  @if (mensajeExito()) {
+  <div class="alert alert-success">
+    <i class="fa-solid fa-circle-check"></i>
+    {{ mensajeExito() }}
+  </div>
+  }
+
+  <div class="card-container filtros-card">
+    <div class="filtros">
+      <div class="campo">
+        <label for="conclusionCurso">
+          <i class="fa-solid fa-book"></i> Curso y grado
+        </label>
+        <select
+          id="conclusionCurso"
+          [ngModel]="cursoSeleccionado()?.id_curso || ''"
+          (ngModelChange)="onCursoChange($event)"
+          [disabled]="cargandoCursos() || cursos().length === 0"
+        >
+          @for (curso of cursos(); track curso.id_carga) {
+          <option [value]="curso.id_curso">
+            {{ curso.nombre_curso }} — {{ curso.nombre_grado }} ({{ curso.seccion }})
+          </option>
+          }
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="conclusionBimestre">
+          <i class="fa-solid fa-calendar"></i> Bimestre
+        </label>
+        <select
+          id="conclusionBimestre"
+          [ngModel]="bimestre()"
+          (ngModelChange)="onBimestreChange($event)"
+        >
+          <option [value]="1">I Bimestre</option>
+          <option [value]="2">II Bimestre</option>
+          <option [value]="3">III Bimestre</option>
+          <option [value]="4">IV Bimestre</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  @if (cargandoCursos()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando cursos del docente...</p>
+  </div>
+  }
+
+  @if (!cargandoCursos() && cursos().length === 0) {
+  <div class="empty-state">
+    <i class="fa-solid fa-book-open"></i>
+    <h3>No tienes cursos asignados</h3>
+    <p>Cuando tengas carga curricular podrás registrar conclusiones descriptivas.</p>
+  </div>
+  }
+
+  @if (cursoSeleccionado(); as curso) {
+  @if (actaCerrada()) {
+  <div class="alert alert-warning">
+    <i class="fa-solid fa-lock"></i>
+    El acta de este grado y bimestre está cerrada. Las conclusiones son de solo lectura.
+  </div>
+  }
+
+  <div class="card-container">
+    <div class="section-head">
+      <div>
+        <h3>
+          <i class="fa-solid fa-pen-to-square"></i>
+          {{ curso.nombre_curso }} — {{ curso.nombre_grado }} ({{ curso.seccion }})
+        </h3>
+        <p>
+          {{ bimestre() }}° Bimestre · {{ alumnos().length }} estudiantes
+        </p>
+      </div>
+      <button
+        type="button"
+        class="btn-soft"
+        (click)="cargarConclusiones()"
+        [disabled]="cargando()"
+      >
+        <i class="fa-solid fa-rotate"></i> Actualizar
+      </button>
+    </div>
+
+    @if (cargando()) {
+    <div class="loading-state">
+      <i class="fa-solid fa-spinner fa-spin"></i>
+      <p>Cargando conclusiones...</p>
+    </div>
+    }
+
+    @if (!cargando() && alumnos().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-users-slash"></i>
+      <h3>No hay alumnos matriculados</h3>
+      <p>No se encontraron estudiantes para este curso y grado.</p>
+    </div>
+    }
+
+    @if (!cargando() && alumnos().length > 0) {
+    <div class="tabla-conclusiones">
+      <table>
+        <thead>
+          <tr>
+            <th>DNI</th>
+            <th>Estudiante</th>
+            <th class="centro">Nota final</th>
+            <th class="centro">Nivel</th>
+            <th>Conclusión</th>
+            <th class="centro">Estado</th>
+            <th class="centro">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (alumno of alumnos(); track alumno.id_alumno) {
+          <tr>
+            <td class="mono">{{ alumno.dni }}</td>
+            <td>
+              <strong>{{ alumno.nombre_completo }}</strong>
+              <small>{{ alumno.codigo_estudiante }}</small>
+            </td>
+            <td class="centro">
+              <span class="nota-chip">{{ alumno.nota_final || '—' }}</span>
+            </td>
+            <td class="centro">
+              <span class="nivel-chip">{{ alumno.nivel_logro || '—' }}</span>
+            </td>
+            <td class="conclusion-cell">
+              @if (alumno.descripcion) {
+              <span class="texto-conclusion">{{ alumno.descripcion }}</span>
+              } @else {
+              <span class="sin-conclusion">Sin conclusión registrada</span>
+              }
+            </td>
+            <td class="centro">
+              <span class="estado" [ngClass]="estadoClase(alumno.estado)">
+                {{ estadoTexto(alumno.estado) }}
+              </span>
+            </td>
+            <td class="centro">
+              <button
+                type="button"
+                class="btn-icon"
+                (click)="abrirModal(alumno)"
+                [disabled]="actaCerrada()"
+                [title]="actaCerrada() ? 'Acta cerrada' : 'Editar conclusión'"
+              >
+                <i
+                  class="fa-solid"
+                  [ngClass]="actaCerrada() ? 'fa-lock' : 'fa-pen'"
+                ></i>
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+  }
+</div>
+
+@if (modalAbierto() && alumnoSeleccionado(); as alumno) {
+<div class="modal-overlay" (click)="cerrarModal()">
+  <div class="modal-container modal-conclusion" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h3>
+          <i class="fa-solid fa-pen-to-square"></i>
+          Conclusión descriptiva
+        </h3>
+        <p>
+          {{ alumno.nombre_completo }} · {{ cursoSeleccionado()?.nombre_curso }} ·
+          {{ bimestre() }}° Bimestre
+        </p>
+      </div>
+      <button type="button" class="modal-close" (click)="cerrarModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      @if (avisoNivel()) {
+      <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        {{ avisoNivel() }}
+      </div>
+      }
+
+      @if (errorModal()) {
+      <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorModal() }}
+      </div>
+      }
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="nivelConclusion">Nivel de logro *</label>
+          <select
+            id="nivelConclusion"
+            [ngModel]="nivelLogro()"
+            (ngModelChange)="nivelLogro.set($event)"
+            [disabled]="nivelBloqueado()"
+          >
+            <option value="">Seleccione...</option>
+            <option value="AD">AD — Logro destacado</option>
+            <option value="A">A — Logro esperado</option>
+            <option value="B">B — En proceso</option>
+            <option value="C">C — En inicio</option>
+          </select>
+          <small>
+            @if (alumno.nota_final) {
+            Se toma de la nota final ({{ alumno.nota_final }}).
+            } @else {
+            No hay nota final; puede seleccionar el nivel.
+            }
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label>Nota final del curso</label>
+          <div class="nota-final">{{ alumno.nota_final || 'Sin nota final' }}</div>
+          <small>La conclusión debe ser coherente con este nivel.</small>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="avanceConclusion">Avance — ¿qué logró? *</label>
+        <textarea
+          id="avanceConclusion"
+          rows="3"
+          [ngModel]="avance()"
+          (ngModelChange)="avance.set($event)"
+          placeholder="Describa lo que el estudiante logró demostrar..."
+        ></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="dificultadConclusion">Dificultad — ¿qué necesita fortalecer? *</label>
+        <textarea
+          id="dificultadConclusion"
+          rows="3"
+          [ngModel]="dificultad()"
+          (ngModelChange)="dificultad.set($event)"
+          placeholder="Describa la principal dificultad o aspecto por fortalecer..."
+        ></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="sugerenciaConclusion">Sugerencia — ¿qué puede hacer? *</label>
+        <textarea
+          id="sugerenciaConclusion"
+          rows="3"
+          [ngModel]="sugerencia()"
+          (ngModelChange)="sugerencia.set($event)"
+          placeholder="Indique una recomendación concreta para el estudiante y la familia..."
+        ></textarea>
+      </div>
+
+      <div class="preview-box">
+        <div class="preview-head">
+          <span>Texto compuesto para la libreta / exportación interna</span>
+          <span [class.excedido]="longitud() > 350">{{ longitud() }}/350</span>
+        </div>
+        <p>
+          {{ descripcionPreview() || 'Complete los campos para ver la vista previa.' }}
+        </p>
+        <small>
+          El código de control del Excel es interno. No es el código oficial de
+          SIAGIE/MINEDU.
+        </small>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button
+        type="button"
+        class="btn-soft"
+        (click)="generarSugerencia()"
+        [disabled]="guardando()"
+      >
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Generar sugerencia
+      </button>
+      <button
+        type="button"
+        class="btn-secondary"
+        (click)="cerrarModal()"
+        [disabled]="guardando()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-soft"
+        (click)="guardar('BORRADOR')"
+        [disabled]="!puedeGuardar() || guardando()"
+      >
+        Guardar borrador
+      </button>
+      <button
+        type="button"
+        class="btn-primary"
+        (click)="guardar('PUBLICADO')"
+        [disabled]="!puedeGuardar() || guardando()"
+      >
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-check"></i> Publicar
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}

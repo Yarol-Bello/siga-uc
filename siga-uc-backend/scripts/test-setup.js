@@ -67,6 +67,7 @@ const MIGRACIONES = [
   "migracion_h77_horario_jornada.sql",
   "migracion_h78_becas.sql",
   "migracion_h79_setup_inicial.sql",
+  "migracion_h80_conclusiones_estructuradas.sql",
 ].map((archivo) => path.join(RAIZ_REPO, "database", archivo));
 
 const entornoPg = {

@@ -25,9 +25,23 @@ interface ResumenExportacion {
   total_alumnos: number;
   total_notas: number;
   total_conclusiones: number;
+  total_conclusiones_publicadas: number;
+  total_conclusiones_borrador: number;
   total_combinaciones: number;
   exportable: boolean;
   advertencias: string[];
+}
+
+interface VerificacionExportacion {
+  codigo_control: string;
+  origen: string;
+  fecha_generacion: string;
+  nombre_archivo: string;
+  hash_registrado: string | null;
+  hash_actual: string;
+  coincide: boolean;
+  resumen: ResumenExportacion;
+  aviso: string;
 }
 
 interface AuditoriaDocente {
@@ -78,6 +92,14 @@ export class AdminSiagieComponent implements OnInit {
   exportando = signal(false);
   errorExportacion = signal<string | null>(null);
   mensajeExito = signal<string | null>(null);
+
+  // Código de control interno
+  codigoVerificacion = signal<string>('');
+  verificando = signal(false);
+  resultadoVerificacion = signal<VerificacionExportacion | null>(null);
+  errorVerificacion = signal<string | null>(null);
+  ultimoCodigo = signal<string>('');
+  ultimoHash = signal<string>('');
 
   // Auditoría de notas por docente
   auditoria = signal<AuditoriaDocente[]>([]);
@@ -295,6 +317,16 @@ export class AdminSiagieComponent implements OnInit {
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
 
+          const codigo = respuesta.headers.get('x-codigo-control') || '';
+          const hash = respuesta.headers.get('x-hash-integridad') || '';
+          this.ultimoCodigo.set(codigo);
+          this.ultimoHash.set(hash);
+          if (codigo) {
+            this.codigoVerificacion.set(codigo);
+            this.resultadoVerificacion.set(null);
+            this.errorVerificacion.set(null);
+          }
+
           this.exportando.set(false);
           const alumnos =
             resumen.total_alumnos === 1 ? 'alumno' : 'alumnos';
@@ -303,7 +335,8 @@ export class AdminSiagieComponent implements OnInit {
             resumen.total_notas === 1 ? 'nota final' : 'notas finales';
           this.mensajeExito.set(
             `Excel interno descargado: ${resumen.total_alumnos} ${alumnos}, ` +
-              `${resumen.total_cursos} ${cursos} y ${resumen.total_notas} ${notas}.`,
+              `${resumen.total_cursos} ${cursos} y ${resumen.total_notas} ${notas}.` +
+              (codigo ? ` Código de control interno: ${codigo}.` : ''),
           );
         },
         error: async (err) => {
@@ -311,6 +344,53 @@ export class AdminSiagieComponent implements OnInit {
           this.errorExportacion.set(await this.mensajeErrorBlob(err));
         },
       });
+  }
+
+  /**
+   * Verificar un código de control interno contra los datos actuales.
+   * No es una validación oficial de SIAGIE.
+   */
+  verificarCodigo(): void {
+    const codigo = this.codigoVerificacion().trim();
+    if (!codigo) {
+      this.errorVerificacion.set('Ingrese el código de control interno.');
+      this.resultadoVerificacion.set(null);
+      return;
+    }
+
+    this.verificando.set(true);
+    this.errorVerificacion.set(null);
+    this.resultadoVerificacion.set(null);
+
+    this.http
+      .get<any>(
+        `${environment.apiUrl}/siagie/exportaciones/${encodeURIComponent(
+          codigo,
+        )}/verificar`,
+      )
+      .subscribe({
+        next: (res) => {
+          this.verificando.set(false);
+          this.resultadoVerificacion.set(res?.success ? res.data : null);
+        },
+        error: (err) => {
+          this.verificando.set(false);
+          this.resultadoVerificacion.set(null);
+          this.errorVerificacion.set(
+            err?.error?.message ||
+              'No se pudo verificar el código de control interno.',
+          );
+        },
+      });
+  }
+
+  usarUltimoCodigo(): void {
+    const codigo = this.ultimoCodigo();
+    if (codigo) {
+      this.codigoVerificacion.set(codigo);
+      this.errorVerificacion.set(null);
+      this.resultadoVerificacion.set(null);
+    }
   }
 
   private parametrosExportacion(idGrado: number): Record<string, number> {

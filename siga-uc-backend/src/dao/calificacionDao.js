@@ -6,6 +6,13 @@
 const { query, getClient } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
 
+const ejecutar = async (client, texto, params = []) => {
+  const result = client
+    ? await client.query(texto, params)
+    : await query(texto, params);
+  return result.rows;
+};
+
 /**
  * Obtener calificaciones de un alumno en un curso (por competencias)
  */
@@ -414,6 +421,180 @@ const obtenerConclusiones = async (
   return result.rows;
 };
 
+/**
+ * Listar alumnos de un curso/grado con su nota final y conclusión descriptiva.
+ * La conclusión es por alumno/curso/bimestre/año (Opción A).
+ */
+const listarConclusionesCursoGrado = async (
+  id_curso,
+  id_grado,
+  bimestre,
+  anioLectivo = getAnioLectivo(),
+  idPersonal = null,
+) => {
+  const sql = `
+    SELECT
+      a.id_alumno,
+      a.dni,
+      a.nombres || ' ' || a.apellidos AS nombre_completo,
+      a.codigo_estudiante,
+      nf.nota_final,
+      cd.id_conclusion,
+      cd.nivel_logro,
+      cd.avance,
+      cd.dificultad,
+      cd.sugerencia,
+      cd.descripcion,
+      cd.estado,
+      cd.actualizado_en
+    FROM alumnos a
+    LEFT JOIN notas_finales_area nf
+      ON nf.id_alumno = a.id_alumno
+     AND nf.id_curso = $1
+     AND nf.bimestre = $2
+     AND nf.anio_lectivo = $3
+    LEFT JOIN conclusiones_descriptivas cd
+      ON cd.id_alumno = a.id_alumno
+     AND cd.id_curso = $1
+     AND cd.bimestre = $2
+     AND cd.anio_lectivo = $3
+    WHERE a.id_grado = $4
+      AND a.anio_lectivo = $3
+      AND a.estado_matricula = 'Matriculado'
+      AND (
+        $5::INT IS NULL
+        OR EXISTS (
+          SELECT 1 FROM carga_curricular cc
+          WHERE cc.id_personal = $5
+            AND cc.id_curso = $1
+            AND cc.id_grado = $4
+            AND cc.anio_lectivo = $3
+        )
+      )
+    ORDER BY a.apellidos, a.nombres
+  `;
+  return await ejecutar(null, sql, [
+    id_curso,
+    bimestre,
+    anioLectivo,
+    id_grado,
+    idPersonal,
+  ]);
+};
+
+/**
+ * Obtener la nota final de un alumno/curso/bimestre/año.
+ */
+const obtenerNotaFinal = async (
+  id_alumno,
+  id_curso,
+  bimestre,
+  anioLectivo,
+  client = null,
+) => {
+  const rows = await ejecutar(
+    client,
+    `SELECT nota_final
+     FROM notas_finales_area
+     WHERE id_alumno = $1
+       AND id_curso = $2
+       AND bimestre = $3
+       AND anio_lectivo = $4
+     LIMIT 1`,
+    [id_alumno, id_curso, bimestre, anioLectivo],
+  );
+  return rows[0] || null;
+};
+
+/**
+ * Obtener una conclusión descriptiva puntual.
+ */
+const findConclusion = async (
+  id_alumno,
+  id_curso,
+  bimestre,
+  anioLectivo,
+  client = null,
+) => {
+  const rows = await ejecutar(
+    client,
+    `SELECT id_conclusion, id_alumno, id_curso, bimestre, anio_lectivo,
+            descripcion, nivel_logro, avance, dificultad, sugerencia,
+            estado, id_personal, actualizado_por, actualizado_en,
+            publicado_por, publicado_en
+     FROM conclusiones_descriptivas
+     WHERE id_alumno = $1
+       AND id_curso = $2
+       AND bimestre = $3
+       AND anio_lectivo = $4
+     LIMIT 1`,
+    [id_alumno, id_curso, bimestre, anioLectivo],
+  );
+  return rows[0] || null;
+};
+
+/**
+ * Guardar o actualizar una conclusión descriptiva estructurada.
+ */
+const guardarConclusion = async (data, client = null) => {
+  const rows = await ejecutar(
+    client,
+    `INSERT INTO conclusiones_descriptivas (
+       id_alumno, id_curso, bimestre, anio_lectivo, descripcion,
+       nivel_logro, avance, dificultad, sugerencia, estado,
+       id_personal, actualizado_por, actualizado_en,
+       publicado_por, publicado_en
+     ) VALUES (
+       $1, $2, $3, $4, $5,
+       $6, $7, $8, $9, $10,
+       $11, $12, now(), $13,
+       CASE WHEN $14 THEN now() ELSE NULL END
+     )
+     ON CONFLICT ON CONSTRAINT uq_conclusion
+     DO UPDATE SET
+       descripcion = EXCLUDED.descripcion,
+       nivel_logro = EXCLUDED.nivel_logro,
+       avance = EXCLUDED.avance,
+       dificultad = EXCLUDED.dificultad,
+       sugerencia = EXCLUDED.sugerencia,
+       estado = EXCLUDED.estado,
+       id_personal = EXCLUDED.id_personal,
+       actualizado_por = EXCLUDED.actualizado_por,
+       actualizado_en = now(),
+       publicado_por = CASE
+         WHEN EXCLUDED.estado = 'PUBLICADO' THEN EXCLUDED.publicado_por
+         ELSE conclusiones_descriptivas.publicado_por
+       END,
+       publicado_en = CASE
+         WHEN EXCLUDED.estado = 'PUBLICADO'
+           THEN COALESCE(conclusiones_descriptivas.publicado_en, now())
+         ELSE conclusiones_descriptivas.publicado_en
+       END
+     RETURNING
+       id_conclusion, id_alumno, id_curso, bimestre, anio_lectivo,
+       descripcion, nivel_logro, avance, dificultad, sugerencia,
+       estado, id_personal, actualizado_por, actualizado_en,
+       publicado_por, publicado_en`,
+    [
+      data.id_alumno,
+      data.id_curso,
+      data.bimestre,
+      data.anio_lectivo,
+      data.descripcion,
+      data.nivel_logro,
+      data.avance,
+      data.dificultad,
+      data.sugerencia,
+      data.estado,
+      data.id_personal,
+      data.actualizado_por,
+      data.publicado_por,
+      data.estado === "PUBLICADO",
+    ],
+  );
+  return rows[0];
+};
+
 module.exports = {
   obtenerPorAlumnoCurso,
   obtenerPorCursoGrado,
@@ -423,4 +604,8 @@ module.exports = {
   guardarNotaFinal,
   obtenerNotasFinales,
   obtenerConclusiones,
+  listarConclusionesCursoGrado,
+  obtenerNotaFinal,
+  findConclusion,
+  guardarConclusion,
 };

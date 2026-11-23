@@ -935,6 +935,36 @@ async function main() {
     `,
   );
 
+  // 36. H80: conclusiones estructuradas válidas y publicadas completas.
+  await verificarInvariante(
+    36,
+    "Conclusiones estructuradas inválidas o publicadas incompletas",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT cd.id_conclusion, cd.id_alumno, cd.id_curso,
+               cd.bimestre, cd.anio_lectivo, cd.nivel_logro, cd.estado,
+               char_length(cd.descripcion) AS longitud,
+               CASE
+                 WHEN cd.nivel_logro IS NOT NULL
+                   AND cd.nivel_logro NOT IN ('AD', 'A', 'B', 'C')
+                   THEN 'NIVEL_INVALIDO'
+                 WHEN cd.estado NOT IN ('BORRADOR', 'PUBLICADO')
+                   THEN 'ESTADO_INVALIDO'
+                 WHEN char_length(cd.descripcion) > 350
+                   THEN 'LONGITUD'
+                 WHEN cd.estado = 'PUBLICADO'
+                   AND (cd.nivel_logro IS NULL OR btrim(cd.descripcion) = '')
+                   THEN 'PUBLICADA_INCOMPLETA'
+               END AS problema
+        FROM conclusiones_descriptivas cd
+      ) q
+      WHERE q.problema IS NOT NULL
+      ORDER BY q.id_conclusion
+      LIMIT 5
+    `,
+  );
+
   const pass = resultados.filter((r) => r.estado === "PASS").length;
   const fail = resultados.filter((r) => r.estado === "FAIL").length;
 

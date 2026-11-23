@@ -3,7 +3,7 @@
  * Dataset UAT realista para SIGA-UC.
  *
  * Requiere:
- *  - base `siga_uc_uat` ya creada con siga_uc.sql + seed_produccion + H32…H79
+ *  - base `siga_uc_uat` ya creada con siga_uc.sql + seed_produccion + H32…H80
  *  - backend en http://localhost:3000 usando esa base
  *  - admin 74829102 / UC2026* con requiere_cambio_password=false
  *
@@ -595,27 +595,54 @@ async function crearNotasYAsistencia() {
   );
 
   await sql(
-    `INSERT INTO conclusiones_descriptivas (
-       id_alumno, id_curso, bimestre, anio_lectivo, descripcion, id_personal
+    `WITH base AS (
+       SELECT a.id_alumno, cc.id_curso, cc.id_personal, b.bimestre,
+              (ARRAY['AD','A','B','C'])[1 + ((a.id_alumno + cc.id_curso + b.bimestre) % 4)] AS nivel
+       FROM alumnos a
+       JOIN carga_curricular cc
+         ON cc.id_grado = a.id_grado AND cc.anio_lectivo = a.anio_lectivo
+       CROSS JOIN generate_series(1, 4) AS b(bimestre)
+       WHERE a.anio_lectivo = $1 AND a.estado_matricula = 'Matriculado'
+     ),
+     datos AS (
+       SELECT id_alumno, id_curso, id_personal, bimestre, nivel,
+              CASE nivel
+                WHEN 'AD' THEN 'Demuestra un dominio destacado de los aprendizajes del área y participa con iniciativa.'
+                WHEN 'A' THEN 'Logra los aprendizajes esperados del área y cumple con las actividades propuestas.'
+                WHEN 'B' THEN 'Está en proceso de lograr los aprendizajes del área y participa en las actividades.'
+                ELSE 'Requiere apoyo para alcanzar los aprendizajes esperados del área.'
+              END AS avance,
+              CASE nivel
+                WHEN 'AD' THEN 'No se identifican dificultades relevantes; puede asumir retos de mayor complejidad.'
+                WHEN 'A' THEN 'Requiere consolidar la transferencia de lo aprendido a situaciones nuevas.'
+                WHEN 'B' THEN 'Requiere acompañamiento y práctica adicional para consolidar sus aprendizajes.'
+                ELSE 'Presenta dificultades en los aprendizajes del área y necesita refuerzo.'
+              END AS dificultad,
+              CASE nivel
+                WHEN 'AD' THEN 'Se recomienda continuar con situaciones desafiantes y compartir sus estrategias.'
+                WHEN 'A' THEN 'Se recomienda practicar con casos contextualizados y explicar sus procedimientos.'
+                WHEN 'B' THEN 'Se recomienda práctica guiada y retroalimentación constante.'
+                ELSE 'Se recomienda seguimiento cercano, actividades breves y acompañamiento de la familia.'
+              END AS sugerencia
+       FROM base
      )
-     SELECT a.id_alumno, cc.id_curso, b.bimestre, $1,
-            CASE
-              WHEN (ARRAY['AD','A','B','C'])[1 + ((a.id_alumno + cc.id_curso + b.bimestre) % 4)] = 'AD'
-                THEN 'Demuestra un dominio destacado de los aprendizajes del área y participa con iniciativa.'
-              WHEN (ARRAY['AD','A','B','C'])[1 + ((a.id_alumno + cc.id_curso + b.bimestre) % 4)] = 'A'
-                THEN 'Logra los aprendizajes esperados del área y cumple con las actividades propuestas.'
-              WHEN (ARRAY['AD','A','B','C'])[1 + ((a.id_alumno + cc.id_curso + b.bimestre) % 4)] = 'B'
-                THEN 'Está en proceso de lograr los aprendizajes; requiere acompañamiento y práctica adicional.'
-              ELSE 'Presenta dificultades en los aprendizajes del área; requiere refuerzo y seguimiento cercano.'
-            END,
-            cc.id_personal
-     FROM alumnos a
-     JOIN carga_curricular cc
-       ON cc.id_grado = a.id_grado AND cc.anio_lectivo = a.anio_lectivo
-     CROSS JOIN generate_series(1, 4) AS b(bimestre)
-     WHERE a.anio_lectivo = $1 AND a.estado_matricula = 'Matriculado'
+     INSERT INTO conclusiones_descriptivas (
+       id_alumno, id_curso, bimestre, anio_lectivo, descripcion,
+       nivel_logro, avance, dificultad, sugerencia, estado, id_personal
+     )
+     SELECT id_alumno, id_curso, bimestre, $1,
+            avance || ' ' || dificultad || ' ' || sugerencia,
+            nivel, avance, dificultad, sugerencia, 'PUBLICADO', id_personal
+     FROM datos
      ON CONFLICT (id_alumno, id_curso, bimestre, anio_lectivo)
-     DO UPDATE SET descripcion = EXCLUDED.descripcion`,
+     DO UPDATE SET
+       descripcion = EXCLUDED.descripcion,
+       nivel_logro = EXCLUDED.nivel_logro,
+       avance = EXCLUDED.avance,
+       dificultad = EXCLUDED.dificultad,
+       sugerencia = EXCLUDED.sugerencia,
+       estado = EXCLUDED.estado,
+       id_personal = EXCLUDED.id_personal`,
     [ANIO],
   );
 

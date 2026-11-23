@@ -127,6 +127,52 @@ const obtenerNotasFinales = async (req, res) => {
   }
 };
 
+const obtenerConclusionesCursoGrado = async (req, res) => {
+  try {
+    const { id_curso, id_grado } = req.params;
+    const { bimestre = 1, anio } = req.query;
+    const idPersonal =
+      req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null;
+    const data = await calificacionService.listarConclusionesCursoGrado(
+      id_curso,
+      id_grado,
+      parseInt(bimestre, 10),
+      anio ? parseInt(anio, 10) : getAnioLectivo(),
+      idPersonal,
+    );
+    return response.success(res, 200, "Conclusiones del aula", data);
+  } catch (error) {
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
+  }
+};
+
+const guardarConclusion = async (req, res) => {
+  try {
+    const data = await calificacionService.guardarConclusion(
+      {
+        ...req.body,
+        id_personal:
+          req.usuario?.rol === "DOCENTE" ? req.usuario.id_personal : null,
+      },
+      req.usuario,
+      req.ip,
+    );
+    return response.success(res, 200, "Conclusión descriptiva guardada", data);
+  } catch (error) {
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
+  }
+};
+
 module.exports = {
   obtenerPorAlumnoCurso,
   obtenerPorCursoGrado,
@@ -134,4 +180,6 @@ module.exports = {
   registrarMasivo,
   calcularNotaFinal,
   obtenerNotasFinales,
+  obtenerConclusionesCursoGrado,
+  guardarConclusion,
 };
