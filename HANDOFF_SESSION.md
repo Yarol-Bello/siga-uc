@@ -1,15 +1,16 @@
 # HANDOFF_SESSION.md — SIGA-UC
 
 > **Actualización 23/11/2026 (despliegue de configuración Fases 1–7 + Supabase).**
-> HEAD y código desplegado en Render (backend `siga-uc-api-prod` y frontend
-> `siga-uc-web`): **`bef0861`**. **H74–H79 aplicadas en Supabase demo (`siga-uc-prod`)**:
-> 48 tablas, 2026 ACTIVO, 2027 no activo, 0 promociones, 0 actas, 145 horarios,
-> 5 docentes, 5 tipos de beca y `setup_completado=true`. `/api/configuracion` de
-> producción ya devuelve la institución y `/api/setup/status` reporta setup completado.
-> Verificación local: **E2E 100 PASS**, **integridad 35 PASS** en base nueva (33/2 local
-> por seed), **`test:setup` 5 PASS**, smoke 12, H47 4 y build Angular OK. El smoke contra
-> producción no autentica con las credenciales locales de `.env` (son de la base local;
-> no es un fallo del sistema). El responsive de ADMIN/SECRETARÍA/DOCENTE sigue **pausado**.
+> HEAD documental: **`db960e2`**. Código funcional desplegado en Render (backend
+> `siga-uc-api-prod` y frontend `siga-uc-web`): **`bef0861`**. **H74–H79 aplicadas en
+> Supabase demo (`siga-uc-prod`)**: 48 tablas, 2026 ACTIVO, 2027 no activo, 0 promociones,
+> 0 actas, 145 horarios, 5 docentes, 5 tipos de beca y `setup_completado=true`.
+> `/api/configuracion` de producción ya devuelve la institución y `/api/setup/status`
+> reporta setup completado. Verificación local: **E2E 100 PASS**, **integridad 35 PASS** en
+> base nueva (33/2 local por seed), **`test:setup` 5 PASS**, smoke 12, H47 4 y build
+> Angular OK. El smoke contra producción no autentica con las credenciales locales de
+> `.env` (son de la base local; no es un fallo del sistema). El responsive de
+> ADMIN/SECRETARÍA/DOCENTE sigue **pausado**.
 >
 > **Fase actual: demostración y aprobación.** SIGA-UC se muestra a la dirección del
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
@@ -1134,7 +1135,7 @@ sin autorización.
     de la Fase 1 (H74, configuración global/año, auditoría y UI general).
 
 ## Estado verificado al cierre (actualizado 23/11/2026)
-- HEAD: `bef0861`; código desplegado en Render (backend y frontend) en `bef0861`.
+- HEAD documental: `db960e2`; código funcional desplegado en Render en `bef0861`.
 - Frontend de Render sirve el build de `bef0861`. API Render: 200, database "ok".
 - E2E 100 PASS; integridad 35 PASS en base nueva y 33/2 de seed local;
   smoke 12 PASS; H47 4 PASS; build Angular OK.
