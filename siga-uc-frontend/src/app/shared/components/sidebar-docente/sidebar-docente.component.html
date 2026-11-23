@@ -24,7 +24,7 @@
   <div class="sidebar-user">
     <div class="user-info">
       <p>{{ usuario()?.nombre_completo || 'Docente' }}</p>
-      <span>Docente de Área</span>
+      <span>{{ usuario()?.info_adicional?.especialidad || usuario()?.info_adicional?.cargo || 'Docente' }}</span>
     </div>
     <i class="fa-solid fa-right-from-bracket user-logout" (click)="logout()" title="Cerrar Sesión"></i>
   </div>

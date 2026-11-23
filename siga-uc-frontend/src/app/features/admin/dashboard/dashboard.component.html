@@ -30,7 +30,7 @@
         <i class="fa-solid fa-user-graduate"></i>
       </div>
       <div class="stat-info">
-        <span>Total Estudiantes</span>
+        <span>Estudiantes matriculados</span>
         <h3>{{ datos()!.total_alumnos }}</h3>
       </div>
     </div>
@@ -41,7 +41,8 @@
       </div>
       <div class="stat-info">
         <span>Plana Docente</span>
-        <h3>{{ datos()!.total_personal }}</h3>
+        <h3>{{ datos()!.total_docentes }}</h3>
+        <small class="stat-hint">Personal activo: {{ datos()!.total_personal }}</small>
       </div>
     </div>
 
@@ -72,9 +73,8 @@
       <div class="panel-header">
         <h3>
           <i class="fa-solid fa-bell" style="color: #EF4444;"></i>
-          Alertas de Asistencia y Expedientes
+          Cobranza y expedientes
         </h3>
-        <span class="panel-badge">Filtro Automático</span>
       </div>
 
       <ul class="alert-list">

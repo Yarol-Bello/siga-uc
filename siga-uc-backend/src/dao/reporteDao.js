@@ -14,6 +14,12 @@ const getDashboardEjecutivo = async (anioLectivo = getAnioLectivo()) => {
     SELECT 
       (SELECT COUNT(*) FROM alumnos WHERE estado_matricula = 'Matriculado' AND anio_lectivo = $1) AS total_alumnos,
       (SELECT COUNT(*) FROM personal WHERE fecha_cese IS NULL) AS total_personal,
+      (SELECT COUNT(*)
+       FROM personal p
+       INNER JOIN usuarios u ON u.id_usuario = p.id_usuario
+       WHERE p.fecha_cese IS NULL
+         AND u.estado = 'ACTIVO'
+         AND u.id_rol = 2) AS total_docentes,
       (SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE EXTRACT(YEAR FROM fecha_pago) = $1 AND estado = 'PAGADO') AS recaudacion_anual,
       (SELECT COUNT(*)
        FROM pre_tickets pt

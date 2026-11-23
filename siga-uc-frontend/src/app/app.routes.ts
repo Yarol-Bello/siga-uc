@@ -286,16 +286,6 @@ export const routes: Routes = [
     ],
   },
 
-  // EN CONSTRUCCIÓN
-  {
-    path: 'en-construccion',
-    canActivate: [authGuard],
-    loadComponent: () =>
-      import('./features/en-construccion/en-construccion.component').then(
-        (m) => m.EnConstruccionComponent,
-      ),
-  },
-
   {
     path: '**',
     canActivate: [authGuard],

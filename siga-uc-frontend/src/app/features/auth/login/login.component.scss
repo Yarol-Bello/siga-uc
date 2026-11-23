@@ -296,6 +296,25 @@
   font-size: 0.88rem;
 }
 
+/* NOTA DE CORREO EN MODO PRUEBA */
+.email-mode-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 14px;
+  margin-top: 14px;
+  border-radius: 8px;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  color: #92400E;
+  font-size: 0.8rem;
+  line-height: 1.45;
+
+  i {
+    margin-top: 2px;
+  }
+}
+
 /* MODAL DE RECUPERACIÓN */
 .modal-overlay {
   position: fixed;

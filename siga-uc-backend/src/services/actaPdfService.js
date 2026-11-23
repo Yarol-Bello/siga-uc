@@ -255,7 +255,7 @@ const generarActaPdf = (acta) =>
       const estadoTexto =
         String(acta.estado).toUpperCase() === "CERRADO"
           ? "El acta se encuentra CERRADA. Las calificaciones quedaron congeladas y bloqueadas para edición."
-          : "El acta se encuentra ABIERTA y pendiente de firma. Este documento es un borrador.";
+          : "El acta se encuentra ABIERTA y pendiente de cierre. Este documento es un borrador.";
 
       doc
         .font("Helvetica")
@@ -305,7 +305,7 @@ const generarActaPdf = (acta) =>
         );
       });
 
-      // Firma / hash
+      // Hash de integridad del cierre
       if (y + 55 > doc.page.height - MARGIN - 26) {
         nuevaPagina();
       }
@@ -333,16 +333,18 @@ const generarActaPdf = (acta) =>
           width: contentWidth - 138,
         });
 
-      doc
-        .font("Helvetica")
-        .fontSize(6.5)
-        .fillColor("#92400E")
-        .text(
-          `Firmado digitalmente por: ${safeText(acta.cerrado_por_nombre)} · ${formatDateTime(acta.fecha_cierre)}`,
-          MARGIN + 8,
-          y + 23,
-          { width: contentWidth - 16 },
-        );
+      if (String(acta.estado).toUpperCase() === "CERRADO") {
+        doc
+          .font("Helvetica")
+          .fontSize(6.5)
+          .fillColor("#92400E")
+          .text(
+            `Acta cerrada por: ${safeText(acta.cerrado_por_nombre)} · ${formatDateTime(acta.fecha_cierre)}`,
+            MARGIN + 8,
+            y + 23,
+            { width: contentWidth - 16 },
+          );
+      }
 
       addFooters(doc, MARGIN);
       doc.end();

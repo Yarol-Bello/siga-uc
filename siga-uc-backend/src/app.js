@@ -269,7 +269,7 @@ const startServer = async () => {
       `   📅 Año lectivo activo: ${anioActivo.anio} (fuente: ${anioActivo.fuente})`,
     );
 
-    // Arrancar el servidor PRIMERO (sin esperar al SMTP)
+    // Arrancar el servidor PRIMERO (sin esperar a Resend)
     server = app.listen(PORT, "0.0.0.0", () => {
       console.log("═══════════════════════════════════════════════════");
       console.log(`   🎓 ${env.APP.NAME} v${env.APP.VERSION}`);
@@ -281,17 +281,17 @@ const startServer = async () => {
       console.log(`   💾 BD:           ${describirConexion()}`);
       console.log("═══════════════════════════════════════════════════\n");
 
-      // Verificar conexión SMTP en SEGUNDO PLANO (no bloquea el arranque)
+      // Verificar conexión con Resend en SEGUNDO PLANO (no bloquea el arranque)
       setTimeout(async () => {
         try {
           const emailService = require("./services/emailService");
           await emailService.verificarConexion();
-          console.log("✅ SMTP verificado correctamente.");
+          console.log("✅ Resend configurado correctamente.");
         } catch (err) {
-          console.warn("⚠️  SMTP no disponible:", err.message);
+          console.warn("⚠️  Resend no disponible:", err.message);
           console.warn("   El servidor sigue funcionando, solo sin correos.\n");
         }
-      }, 5000); // espera 5 segundos antes de verificar SMTP
+      }, 5000); // espera 5 segundos antes de verificar Resend
     });
   } catch (error) {
     console.error("❌ Error al iniciar el servidor:", error.message);

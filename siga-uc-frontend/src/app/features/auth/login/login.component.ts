@@ -63,7 +63,7 @@ export class LoginComponent {
 
     this.authService.login(credentials).subscribe({
       next: (response) => {
-        console.log('✅ Login exitoso:', response.data.usuario);
+        console.log('Login exitoso:', response.data.usuario.rol);
 
         // Si tiene una contraseña temporal, forzar el cambio antes de entrar
         if (response.data.usuario.requiere_cambio_password) {

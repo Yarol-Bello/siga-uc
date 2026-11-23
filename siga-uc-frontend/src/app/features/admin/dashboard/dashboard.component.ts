@@ -30,6 +30,7 @@ import {
 interface DashboardData {
   total_alumnos: string;
   total_personal: string;
+  total_docentes: string;
   recaudacion_anual: string;
   pre_tickets_pendientes: string;
   monto_pendiente: string;

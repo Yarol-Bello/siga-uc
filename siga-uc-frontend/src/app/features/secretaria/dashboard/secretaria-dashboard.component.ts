@@ -13,6 +13,7 @@ interface Estadisticas {
 interface PreTicket {
   id_preticket: number;
   id_alumno: number;
+  dni: string;
   monto: string;
   estado: string;
   fecha_emision: string;
