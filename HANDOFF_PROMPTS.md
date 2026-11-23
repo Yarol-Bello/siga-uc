@@ -24,9 +24,10 @@
 
 | Elemento | Estado |
 |---|---|
-| Código desplegado en Render | `8eba9e9` (Fases 6.1–6.4 + Fase 7); cierre de demo pendiente de push |
+| Código desplegado en Render | `e1c3ada` (Fases 6.1–6.4 + Fase 7 + cierre de demo + login responsive) |
 | 6.4 histórico | Implementado, verificado y **desplegado**; sin migración |
-| Fase 7 (pulido) | Desplegada en Render (`8eba9e9`); H59 aplicada en Supabase; **H70 y H71 cerrados** en el cierre de demo |
+| Fase 7 (pulido) | Desplegada en Render (`e1c3ada`); H59 aplicada en Supabase; **H70 y H71 cerrados** en el cierre de demo |
+| Login responsive | Desplegado en Render (`e1c3ada`): móviles, tabletas, plegables, laptops y modal adaptativo |
 | SIAGIE | **Exportación interna** (decisión cerrada): sin portal MINEDU, sin plantilla y sin análisis simulado; todos los cursos del grado |
 | Último commit de documentación | `2371b5b` (cierre Fase 7) |
 | Backend / Frontend | Live en Render (6.4 + Fase 7); backend sin commit expuesto en `/health` |
@@ -39,7 +40,7 @@
 | Fase 6.2 (rollover) | Desplegada en Render (`f05ecc5`); H49 aplicada en Supabase |
 | Fase 6.3 + 6.3.1 (promoción) | Desplegadas en Render (`89eba24`); H73 aplicada en Supabase, 0 promociones |
 | Fase 6.4 (histórico) | Desplegada en Render (`cdc129e`); sin migración; Supabase sin cambios |
-| Fase 7 (pulido) | Desplegada en Render (`8eba9e9`); H59 aplicada en Supabase (columna `personal.observaciones`); H70 y H71 cerrados en el cierre de demo |
+| Fase 7 (pulido) | Desplegada en Render (`e1c3ada`); H59 aplicada en Supabase (columna `personal.observaciones`); H70 y H71 cerrados en el cierre de demo |
 | E2E | **75 PASS** |
 | Integridad (base de producción desechable) | **21 PASS**; local 19 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 11 PASS / 4 PASS |
@@ -228,7 +229,7 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 
 1. H49/H73/H59 ya están aplicadas en Supabase demo: 43 tablas, 2026 activo, 1 política,
    0 promociones, 0 actas, 145 horarios y 5 docentes. **No volver a aplicarlas.**
-2. 6.2, 6.3, 6.3.1 y 6.4 ya están desplegadas en Render (`8eba9e9`).
+2. 6.2, 6.3, 6.3.1, 6.4, el cierre de demo y el login responsive ya están desplegados en Render (`e1c3ada`).
 3. Probar en Supabase **solo previews** de rollover y promoción. **No confirmar, no activar
    2027 y no anular** en la demo. Con 0 actas, el preview de promoción bloqueará: es correcto.
 4. La **Fase 6.4 (histórico)** no requiere migración ni tocar Supabase.
@@ -253,9 +254,9 @@ No implementas código, no tocas Supabase ni Render.
 4. HANDOFF_SESSION.md (estado de la sesión de código).
 
 ## Estado
-- Código desplegado: 8eba9e9 (Fases 6.1-6.4 + Fase 7). Documentación: 2371b5b.
-- Fases 1-4 y 6.1-6.4 desplegadas; Fase 7 desplegada en Render (`8eba9e9`). E2E 75 PASS.
-- Cierre de demo implementado en local: SIAGIE interno, H70/H71, UAT y guion.
+- Código desplegado: `e1c3ada` (Fases 6.1-6.4 + Fase 7 + cierre de demo + login responsive).
+- Fases 1-4 y 6.1-6.4 desplegadas; Fase 7 y cierre de demo desplegados en Render (`e1c3ada`). E2E 75 PASS.
+- Login responsive probado en 320×568 a 1920×1080; frontend de Render ya lo sirve.
 - **H49 y H73 aplicadas en Supabase demo**: 43 tablas, 2026 activo, 1 política,
   0 promociones, 0 actas, 145 horarios y 5 docentes.
 - **H59 aplicada en Supabase**: columna `personal.observaciones` existente; 43 tablas.

@@ -4,6 +4,11 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
+> **Actualización 22/11/2026 (despliegue `e1c3ada`):** login adaptado a celulares,
+> tabletas, plegables, laptops y escritorio; modal de recuperación con scroll interno y
+> botones táctiles. Código subido a GitHub y desplegado en Render (frontend y API).
+> `test:e2e` **75 PASS** tras el cambio. Ver sección 1.8.
+>
 > **Actualización 22/11/2026 (cierre de demo):** SIAGIE quedó como **exportación interna**
 > honesta (sin portal MINEDU, sin análisis simulado y sin carga de plantilla); incluye
 > **todos los cursos** del grado/año (H05), nota final y conclusión, con aviso visible.
@@ -28,7 +33,7 @@
 >
 > **Próximo bloque:** demo y aprobación. **H59 ya está aplicada en Supabase demo**;
 > 2026 sigue activo, 2027 no se activa y no hay promociones confirmadas. No iniciar Fase 8
-> ni cargar datos reales. `test:e2e` **75 PASS**. Ver sección 1.7.
+> ni cargar datos reales. `test:e2e` **75 PASS**. Ver secciones 1.7 y 1.8.
 >
 > **Actualización 22/11/2026 (Fases 6.3 y 6.3.1 desplegadas):** promoción anual con
 > política configurable, preview por alumno y hash, confirmación transaccional e idempotente,
@@ -421,6 +426,30 @@ En esta fase **no** se prepara el despliegue definitivo.
   Detalle y límites en `documentacion/17`, sección 9.
 - **Estado Supabase:** 43 tablas, 2026 ACTIVO, 2027 no activo, 1 política, 0 promociones
   confirmadas, 0 actas, 1 alumno. Solo previews y consultas.
+
+### 1.8 Login responsive y despliegue `e1c3ada` (22/11/2026)
+
+- **Alcance:** solo `login.component.html` y `login.component.scss`. No cambia la API ni la
+  base de datos.
+- **Layout:** alto real de pantalla (`100dvh` con respaldo `100vh`), login centrado, ancho
+  máximo 1100 px en escritorio y una columna de 600 px en tabletas/plegables.
+- **Móvil (≤640 px):** marca compacta, se ocultan el bloque promocional y el pie, el
+  formulario queda prioritario, inputs de 16 px para evitar el zoom de iOS, DNI con teclado
+  numérico y botón de contraseña de 44×44 px.
+- **Pantallas bajas:** reglas por altura para laptops y tabletas en horizontal; si aun así
+  no cabe, el login permite scroll vertical sin desbordamiento horizontal.
+- **Modal de recuperación:** ancho/alto adaptativos, cuerpo con scroll interno, botones
+  táctiles a ancho completo en móvil y cierre accesible.
+- **Accesibilidad:** `aria-live` en errores, `aria-label`/`aria-pressed` en el ojo de la
+  contraseña, `aria-modal`/`aria-labelledby` en el modal, foco visible y
+  `prefers-reduced-motion`.
+- **Verificación:** probado en 320×568, 360×640, 375×667, 390×844, 412×915, 600×960,
+  768×1024, 820×1180, 1024×600, 1280×800, 1366×768, 1440×900 y 1920×1080; sin
+  desbordamiento horizontal. Login real ADMIN en 390×844. `npm run build` OK y E2E
+  **75 PASS**.
+- **Despliegue:** commits `2a6bd7d`…`e1c3ada` subidos a `origin/main`; Render actualizó
+  frontend y API. El frontend de producción ya sirve el login responsive y la API nueva
+  responde `403` a DOCENTE en `/api/siagie/resumen` (rol ADMIN requerido).
 
 ---
 

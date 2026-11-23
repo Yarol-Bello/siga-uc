@@ -497,6 +497,7 @@ cargarse con datos reales.
 | Área | Resultado |
 |---|---|
 | Login 4 roles | ✅ ADMIN, SECRETARIA, DOCENTE y ESTUDIANTE entran y ven su panel |
+| Login responsive | ✅ Probado de 320×568 a 1920×1080; móvil con marca compacta, inputs de 16 px y modal adaptativo |
 | Padrón y matrícula | ✅ 21 alumnos, alta/edición/retiro disponibles; E2E cubre alta, pago y retiro |
 | Tesorería y caja | ✅ Cobro, boleta, movimientos y cierre; efectivo/digital separados (H50) |
 | Notas, actas y libretas | ✅ E2E 9–19; UI de reportes lista 4 alumnos de 3ro y PDF de libreta |

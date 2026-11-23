@@ -260,7 +260,7 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 
 | Componente | Endpoints consumidos |
 |---|---|
-| `LoginComponent` | `POST /auth/login`, `POST /auth/recuperar-password` |
+| `LoginComponent` | `POST /auth/login`, `POST /auth/recuperar-password`; layout responsive para móvil, tableta, plegable y laptop (marca compacta, inputs de 16 px y modal adaptativo) |
 | `ResetPasswordComponent` | `GET /auth/validar-token/:token`, `POST /auth/restablecer-password` |
 | `CambiarPasswordComponent` | `PUT /auth/cambiar-password` |
 | `HeaderComponent` | `GET /notificaciones/no-leidas`, `GET /notificaciones`, `PUT /:id/leer`, `PUT /leer-todas`, `GET /auth/perfil`; el carné propio usa QR real y se imprime aislado (H58) |
