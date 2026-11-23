@@ -219,6 +219,11 @@ Cada layout contiene:
 | Ficha del Estudiante | `/docente/ficha-estudiante` |
 | Reportes de Aula | `/docente/reportes` |
 
+> **Estudiante responsive (22/11/2026):** en ≤900 px el sidebar es un drawer con overlay
+> y botón de menú en el header; dashboard, asistencia y horario ajustan banner, KPIs,
+> filtros y tablas. El horario conserva la columna de horas fija y las tablas hacen scroll
+> interno. El header muestra el título de la sección activa.
+
 #### ESTUDIANTE
 | Ítem | Ruta |
 |---|---|

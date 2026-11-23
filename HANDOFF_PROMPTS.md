@@ -24,11 +24,12 @@
 
 | Elemento | Estado |
 |---|---|
-| Código desplegado en Render | `c098f02` (Fases 6.1–6.4 + Fase 7 + cierre de demo + login responsive + sidebar corregido) |
+| Código desplegado en Render | `df1f384` (Fases 6.1–6.4 + Fase 7 + cierre de demo + login responsive + sidebar + módulos del estudiante responsive) |
 | 6.4 histórico | Implementado, verificado y **desplegado**; sin migración |
 | Fase 7 (pulido) | Desplegada en Render (`e1c3ada`); H59 aplicada en Supabase; **H70 y H71 cerrados** en el cierre de demo |
 | Login responsive | Desplegado en Render (`e1c3ada`): móviles, tabletas, plegables, laptops y modal adaptativo |
 | Sidebar | Desplegado en Render (`c098f02`): menú con scroll propio, marca fija y usuario/logout siempre visible; compacto en pantallas bajas |
+| Estudiante responsive | Desplegado en Render (`df1f384`): drawer móvil, header compacto, dashboard, asistencia y horario adaptados; tablas con scroll interno |
 | SIAGIE | **Exportación interna** (decisión cerrada): sin portal MINEDU, sin plantilla y sin análisis simulado; todos los cursos del grado |
 | Último commit de documentación | `2371b5b` (cierre Fase 7) |
 | Backend / Frontend | Live en Render (6.4 + Fase 7); backend sin commit expuesto en `/health` |
@@ -41,7 +42,7 @@
 | Fase 6.2 (rollover) | Desplegada en Render (`f05ecc5`); H49 aplicada en Supabase |
 | Fase 6.3 + 6.3.1 (promoción) | Desplegadas en Render (`89eba24`); H73 aplicada en Supabase, 0 promociones |
 | Fase 6.4 (histórico) | Desplegada en Render (`cdc129e`); sin migración; Supabase sin cambios |
-| Fase 7 (pulido) | Desplegada en Render (`c098f02`); H59 aplicada en Supabase (columna `personal.observaciones`); H70 y H71 cerrados en el cierre de demo |
+| Fase 7 (pulido) | Desplegada en Render (`df1f384`); H59 aplicada en Supabase (columna `personal.observaciones`); H70 y H71 cerrados en el cierre de demo |
 | E2E | **75 PASS** |
 | Integridad (base de producción desechable) | **21 PASS**; local 19 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 11 PASS / 4 PASS |
@@ -230,7 +231,7 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 
 1. H49/H73/H59 ya están aplicadas en Supabase demo: 43 tablas, 2026 activo, 1 política,
    0 promociones, 0 actas, 145 horarios y 5 docentes. **No volver a aplicarlas.**
-2. 6.2, 6.3, 6.3.1, 6.4, el cierre de demo, el login responsive y el sidebar corregido ya están desplegados en Render (`c098f02`).
+2. 6.2, 6.3, 6.3.1, 6.4, el cierre de demo, el login responsive, el sidebar y los módulos del estudiante responsive ya están desplegados en Render (`df1f384`).
 3. Probar en Supabase **solo previews** de rollover y promoción. **No confirmar, no activar
    2027 y no anular** en la demo. Con 0 actas, el preview de promoción bloqueará: es correcto.
 4. La **Fase 6.4 (histórico)** no requiere migración ni tocar Supabase.
@@ -255,9 +256,9 @@ No implementas código, no tocas Supabase ni Render.
 4. HANDOFF_SESSION.md (estado de la sesión de código).
 
 ## Estado
-- Código desplegado: `c098f02` (Fases 6.1-6.4 + Fase 7 + cierre de demo + login responsive + sidebar).
-- Fases 1-4 y 6.1-6.4 desplegadas; Fase 7 y cierre de demo desplegados en Render (`c098f02`). E2E 75 PASS.
-- Login responsive probado en 320×568 a 1920×1080; sidebar probado en escritorio/laptop con menú desplazable y logout visible.
+- Código desplegado: `df1f384` (Fases 6.1-6.4 + Fase 7 + cierre de demo + login responsive + sidebar + estudiante responsive).
+- Fases 1-4 y 6.1-6.4 desplegadas; Fase 7 y cierre de demo desplegados en Render (`df1f384`). E2E 75 PASS.
+- Login probado de 320×568 a 1920×1080; sidebar con menú desplazable; módulos del estudiante probados en móvil, tableta, laptop y escritorio.
 - **H49 y H73 aplicadas en Supabase demo**: 43 tablas, 2026 activo, 1 política,
   0 promociones, 0 actas, 145 horarios y 5 docentes.
 - **H59 aplicada en Supabase**: columna `personal.observaciones` existente; 43 tablas.

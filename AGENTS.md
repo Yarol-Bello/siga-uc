@@ -282,8 +282,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   21 integridad en base nueva (19/2 de seed local), smoke 11, H47 4 y build Angular OK.
   Sin migración y sin cambios en Supabase.
 - **Fase 7 (pulido de demo):** H62, H59, H65, H66, H67, H68 y H69 implementados y
-  desplegados en Render (`c098f02`, junto con el cierre de demo, el login responsive y el
-  sidebar con scroll).
+  desplegados en Render (`df1f384`, junto con el cierre de demo, el login responsive, el
+  sidebar con scroll y los módulos del estudiante adaptados a móvil/tableta).
   `POST /api/notificaciones` es ADMIN/SECRETARIA;
   DOCENTE recibe 403. `personal.observaciones` se agregó con **H59** y **ya está aplicada
   en Supabase demo** (43 tablas, 2026 ACTIVO, 0 promociones). `total_docentes` se separa de

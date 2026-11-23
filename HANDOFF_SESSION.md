@@ -4,6 +4,11 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
+> **Actualización 22/11/2026 (despliegue `df1f384`):** módulos del **ESTUDIANTE**
+> adaptados a móviles, tabletas y laptops: drawer de navegación, cabecera compacta,
+> dashboard, asistencia y horario responsive; tablas con scroll interno y horario con
+> columna de horas fija. E2E **75 PASS** y build OK. Ver sección 1.10.
+>
 > **Actualización 22/11/2026 (despliegue `c098f02`):** sidebar con menú de scroll propio,
 > marca fija y bloque de usuario/cerrar sesión siempre visible; compactación automática en
 > pantallas bajas. Aplicado a ADMIN, SECRETARÍA, DOCENTE y ESTUDIANTE. Código subido a
@@ -475,6 +480,29 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Despliegue:** commit `c098f02` en `origin/main`; Render sirve el frontend nuevo. En
   producción, a 1024×600, el menú del DOCENTE tiene `overflow-y: auto`, el botón de logout
   existe y el bloque de usuario queda dentro de la pantalla.
+
+### 1.10 Módulos del ESTUDIANTE adaptados a móviles y tabletas (22/11/2026)
+
+- **Layout:** en pantallas ≤900 px el sidebar se convierte en un **drawer** con overlay,
+  botón de hamburguesa en el header, cierre con X/overlay y bloqueo del scroll de fondo. En
+  escritorio (≥901 px) sigue fijo y visible. Al cambiar de ruta se cierra solo; si se
+  amplía la ventana se cierra y se libera el scroll.
+- **Cabecera:** botón de menú accesible (`aria-controls`, `aria-expanded`), título
+  dinámico por sección (“Mis Cursos y Calificaciones”, “Mi Asistencia”, “Horario de
+  Clases”), título compacto, campana y avatar sin nombre en móvil, y modales adaptativos.
+- **Dashboard:** banner de bienvenida en columna, KPIs apilados en pantallas pequeñas y
+  tabla de notas con scroll horizontal interno.
+- **Asistencia:** filtro a ancho completo, KPIs en 2 columnas (1 columna bajo 360 px),
+  tabla con scroll interno y resumen global en rejilla adaptable.
+- **Horario:** banner reordenado, aviso “Desliza horizontalmente…”, tabla con scroll
+  interno y columna de horas fija para no perder la referencia.
+- **Sin cambios funcionales:** mismas rutas, servicios, permisos y llamadas HTTP. El logout
+  conserva confirmación y redirección.
+- **Verificación:** 320×568, 360×640, 390×844, 412×915, 600×960, 640×360, 768×1024,
+  1024×600 y 1366×768. Sin desbordamiento horizontal; drawer, overlay, cierre, navegación,
+  logout y modales probados. `npm run build` OK, E2E **75 PASS**, smoke **11 PASS**.
+- **Despliegue:** commit `df1f384` en `origin/main`; pendiente de verificación final en
+  Render.
 
 ---
 
