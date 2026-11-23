@@ -4,6 +4,11 @@
 > colegio; **no es producción real**. Nada de dominios, DNS, planes pagos ni datos de
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
+> **Actualización 22/11/2026 (despliegue `c098f02`):** sidebar con menú de scroll propio,
+> marca fija y bloque de usuario/cerrar sesión siempre visible; compactación automática en
+> pantallas bajas. Aplicado a ADMIN, SECRETARÍA, DOCENTE y ESTUDIANTE. Código subido a
+> GitHub y desplegado en Render; `test:e2e` **75 PASS**. Ver sección 1.9.
+>
 > **Actualización 22/11/2026 (despliegue `e1c3ada`):** login adaptado a celulares,
 > tabletas, plegables, laptops y escritorio; modal de recuperación con scroll interno y
 > botones táctiles. Código subido a GitHub y desplegado en Render (frontend y API).
@@ -450,6 +455,26 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Despliegue:** commits `2a6bd7d`…`e1c3ada` subidos a `origin/main`; Render actualizó
   frontend y API. El frontend de producción ya sirve el login responsive y la API nueva
   responde `403` a DOCENTE en `/api/siagie/resumen` (rol ADMIN requerido).
+
+### 1.9 Sidebar con scroll y cierre de sesión siempre visible (22/11/2026)
+
+- **Problema:** el sidebar tenía `height: 100vh` con la marca, todos los ítems y el bloque
+  de usuario dentro de un `space-between`; al crecer el menú, los últimos ítems y el
+  usuario/cerrar sesión quedaban fuera de la pantalla, sobre todo en laptops de 600–720 px.
+- **Solución:** la marca queda fija arriba, el menú tiene `overflow-y: auto` con scrollbar
+  fina y el bloque de usuario/cerrar sesión queda fijo abajo. El sidebar usa `100dvh`.
+- **Compactación:** hasta 800 px de alto se reducen paddings, logo y tipografía; hasta
+  650 px se compacta aún más. En 1024×600 los 14 ítems del ADMIN entran completos y el
+  usuario sigue visible. En 1024×500 el menú hace scroll y el usuario permanece visible.
+- **Alcance:** se aplicó el mismo patrón a los cuatro sidebars (ADMIN, SECRETARÍA, DOCENTE
+  y ESTUDIANTE). El logout pasó de `<i>` a `<button>` con `aria-label`, conservando la
+  confirmación y la funcionalidad existentes.
+- **Verificación:** ADMIN a 1920×1080, 1440×900, 1366×768, 1280×720, 1024×600 y 1024×500;
+  SECRETARÍA, DOCENTE y ESTUDIANTE a 1024×600. Footer visible en todos los casos; logout
+  probado (confirma y redirige a `/login`). `npm run build` OK y E2E **75 PASS**.
+- **Despliegue:** commit `c098f02` en `origin/main`; Render sirve el frontend nuevo. En
+  producción, a 1024×600, el menú del DOCENTE tiene `overflow-y: auto`, el botón de logout
+  existe y el bloque de usuario queda dentro de la pantalla.
 
 ---
 

@@ -186,6 +186,11 @@ Cada layout contiene:
 
 ### Sidebars
 
+> **Sidebar (22/11/2026):** marca fija arriba, menú con scroll propio (`overflow-y: auto`)
+> y bloque de usuario/cerrar sesión fijo abajo. Se compacta automáticamente en pantallas
+> bajas (≤800 px y ≤650 px). Corregido en los cuatro roles para que ningún ítem ni el
+> logout queden ocultos en laptops.
+
 #### ADMIN (`sidebar.component.ts`)
 | Ítem | Ruta |
 |---|---|
