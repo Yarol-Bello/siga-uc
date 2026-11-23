@@ -1099,7 +1099,8 @@ sin autorización.
     de la Fase 1 (H74, configuración global/año, auditoría y UI general).
 
 ## Estado verificado al cierre
-- HEAD: fe5f273 (`docs(configuracion): cerrar fase 0 con diseno y linea base`).
+- HEAD: verificar con `git log -1`; al preparar este handoff la Fase 0 quedó en
+  `fe5f273` y el cierre documental en `4aabac4`.
 - Código desplegado en Render: df1f384. La documentación y los cambios de
   configuración posteriores NO están desplegados.
 - Frontend de Render sirve main-SCTCECV3.js. API Render: 200, database "ok".
