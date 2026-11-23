@@ -5,7 +5,7 @@
     class="header-menu-btn"
     (click)="menuClick.emit()"
     [attr.aria-expanded]="menuAbierto"
-    aria-controls="sidebarEstudiante"
+    [attr.aria-controls]="menuId"
     aria-label="Abrir menú de navegación"
   >
     <i class="fa-solid fa-bars" aria-hidden="true"></i>

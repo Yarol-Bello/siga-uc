@@ -1,4 +1,4 @@
-<aside class="sidebar">
+<aside class="sidebar" id="sidebarDocente" [class.sidebar-abierto]="abierto">
   <div>
     <div class="sidebar-brand">
       <div class="sidebar-logo-icon">UC</div>
@@ -6,6 +6,9 @@
         <h3>SIGA-UC</h3>
         <p>Panel Docente</p>
       </div>
+      <button type="button" class="sidebar-close" (click)="cerrar.emit()" aria-label="Cerrar menú">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
     </div>
 
     <ul class="sidebar-menu">

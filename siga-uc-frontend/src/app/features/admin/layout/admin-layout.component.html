@@ -1,11 +1,31 @@
-<div class="admin-layout">
+<div class="admin-layout" [class.sidebar-abierto]="sidebarAbierto()">
   <!-- SIDEBAR -->
-  <app-sidebar [rol]="usuario()?.rol || 'ADMIN'"></app-sidebar>
+  <app-sidebar
+    [rol]="usuario()?.rol || 'ADMIN'"
+    [abierto]="sidebarAbierto()"
+    (cerrar)="cerrarSidebar()"
+  ></app-sidebar>
+
+  @if (sidebarAbierto()) {
+  <button
+    type="button"
+    class="sidebar-overlay"
+    aria-label="Cerrar menú de navegación"
+    (click)="cerrarSidebar()"
+  ></button>
+  }
 
   <!-- CONTENEDOR PRINCIPAL -->
   <main class="main-content">
     <!-- HEADER -->
-    <app-header [titulo]="titulo()" [subtitulo]="nombreInstitucion() + ' - Panel Directivo Central'"></app-header>
+    <app-header
+      [titulo]="titulo()"
+      [subtitulo]="nombreInstitucion() + ' - Panel Directivo Central'"
+      [mostrarMenu]="true"
+      [menuAbierto]="sidebarAbierto()"
+      menuId="sidebarAdmin"
+      (menuClick)="abrirSidebar()"
+    ></app-header>
 
     <!-- CONTENIDO DINÁMICO (según la ruta) -->
     <div class="content-area">

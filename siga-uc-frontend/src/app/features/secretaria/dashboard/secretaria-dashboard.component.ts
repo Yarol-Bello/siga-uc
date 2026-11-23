@@ -7,7 +7,15 @@ import { ConfiguracionService } from '../../../core/services/configuracion.servi
 
 interface Estadisticas {
   recaudado: { total: number; total_pagos: number };
-  pendiente: { total_pretickets: number; monto_pendiente: number };
+  pendiente: {
+    total_pretickets: number;
+    monto_pretickets: number;
+    total_pensiones: number;
+    monto_pensiones: number;
+    alumnos_con_deuda: number;
+    total_pendientes: number;
+    monto_pendiente: number;
+  };
 }
 
 interface PreTicket {

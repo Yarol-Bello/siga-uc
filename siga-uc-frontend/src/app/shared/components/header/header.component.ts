@@ -32,6 +32,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   @Input() subtitulo: string = '';
   @Input() mostrarMenu: boolean = false;
   @Input() menuAbierto: boolean = false;
+  @Input() menuId: string | null = null;
   @Output() menuClick = new EventEmitter<void>();
 
   private authService = inject(AuthService);

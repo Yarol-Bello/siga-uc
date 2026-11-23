@@ -1,9 +1,27 @@
-<div class="admin-layout">
-  <app-sidebar-docente></app-sidebar-docente>
+<div class="admin-layout" [class.sidebar-abierto]="sidebarAbierto()">
+  <app-sidebar-docente
+    [abierto]="sidebarAbierto()"
+    (cerrar)="cerrarSidebar()"
+  ></app-sidebar-docente>
+
+  @if (sidebarAbierto()) {
+  <button
+    type="button"
+    class="sidebar-overlay"
+    aria-label="Cerrar menú de navegación"
+    (click)="cerrarSidebar()"
+  ></button>
+  }
 
   <main class="main-content">
-    <app-header titulo="Mis Cursos y Horarios"
-      subtitulo="Carga horaria asignada y control rápido de asistencia y calificaciones."></app-header>
+    <app-header
+      [titulo]="titulo()"
+      [subtitulo]="subtitulo()"
+      [mostrarMenu]="true"
+      [menuAbierto]="sidebarAbierto()"
+      menuId="sidebarDocente"
+      (menuClick)="abrirSidebar()"
+    ></app-header>
 
     <div class="content-area">
       <router-outlet></router-outlet>

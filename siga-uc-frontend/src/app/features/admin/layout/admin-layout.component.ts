@@ -1,4 +1,11 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  inject,
+  OnDestroy,
+  signal,
+} from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs';
@@ -37,7 +44,7 @@ const TITULOS_POR_RUTA: Record<string, string> = {
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.scss',
 })
-export class AdminLayoutComponent {
+export class AdminLayoutComponent implements OnDestroy {
   private authService = inject(AuthService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
@@ -45,6 +52,7 @@ export class AdminLayoutComponent {
 
   usuario = this.authService.usuario;
   titulo = signal('Resumen Ejecutivo');
+  sidebarAbierto = signal(false);
   nombreInstitucion = this.configuracion.nombreInstitucion;
 
   constructor() {
@@ -56,8 +64,31 @@ export class AdminLayoutComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((evento) => {
+        this.cerrarSidebar();
         this.actualizarTitulo(evento.urlAfterRedirects);
       });
+  }
+
+  ngOnDestroy(): void {
+    document.body.style.overflow = '';
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    if (window.innerWidth > 900 && this.sidebarAbierto()) {
+      this.cerrarSidebar();
+    }
+  }
+
+  abrirSidebar(): void {
+    this.sidebarAbierto.set(true);
+    document.body.style.overflow = 'hidden';
+  }
+
+  cerrarSidebar(): void {
+    if (!this.sidebarAbierto()) return;
+    this.sidebarAbierto.set(false);
+    document.body.style.overflow = '';
   }
 
   private actualizarTitulo(url: string): void {
