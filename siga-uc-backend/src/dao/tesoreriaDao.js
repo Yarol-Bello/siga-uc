@@ -779,13 +779,35 @@ const getEstadisticasMes = async (anioLectivo, mes) => {
 
 const getPendientesCobro = async (anioLectivo = getAnioLectivo()) => {
   const sql = `
-    SELECT 
-      COUNT(*) AS total_pendientes,
-      COALESCE(SUM(pt.monto), 0) AS monto_pendiente
-    FROM pre_tickets pt
-    INNER JOIN alumnos a ON a.id_alumno = pt.id_alumno
-    WHERE pt.estado = 'PENDIENTE'
-      AND a.anio_lectivo = $1
+    WITH pretickets AS (
+      SELECT
+        COUNT(*)::int AS total,
+        COALESCE(SUM(pt.monto), 0) AS monto
+      FROM pre_tickets pt
+      INNER JOIN alumnos a ON a.id_alumno = pt.id_alumno
+      WHERE pt.estado = 'PENDIENTE'
+        AND a.anio_lectivo = $1
+    ),
+    pensiones AS (
+      SELECT
+        COUNT(*)::int AS total,
+        COALESCE(SUM(p.monto_final), 0) AS monto,
+        COUNT(DISTINCT p.id_alumno)::int AS alumnos
+      FROM pensiones p
+      INNER JOIN alumnos a ON a.id_alumno = p.id_alumno
+      WHERE p.estado = 'PENDIENTE'
+        AND p.anio_lectivo = $1
+    )
+    SELECT
+      pt.total AS total_pretickets,
+      pt.monto AS monto_pretickets,
+      p.total AS total_pensiones,
+      p.monto AS monto_pensiones,
+      p.alumnos AS alumnos_con_deuda,
+      (pt.total + p.total) AS total_pendientes,
+      (pt.monto + p.monto) AS monto_pendiente
+    FROM pretickets pt
+    CROSS JOIN pensiones p
   `;
   const result = await query(sql, [anioLectivo]);
   return result.rows[0];

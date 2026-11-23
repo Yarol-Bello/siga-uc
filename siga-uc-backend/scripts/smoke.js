@@ -310,7 +310,28 @@ async function main() {
     const { datos } = await leerJson(respuesta);
 
     if (respuesta.status === 200 && datos?.success) {
-      registrar(4, "Login ADMIN + GET /auth/perfil", "PASS", "200, perfil obtenido");
+      const fechaServidor = respuesta.headers.get("date");
+      const ultimoLogin = datos.data?.ultimo_login;
+      if (fechaServidor && ultimoLogin) {
+        const desfaseMin = Math.abs(
+          new Date(fechaServidor).getTime() - new Date(ultimoLogin).getTime(),
+        ) / 60000;
+        if (desfaseMin > 3) {
+          registrar(
+            4,
+            "Login ADMIN + GET /auth/perfil",
+            "FAIL",
+            `desfase horario de ${desfaseMin.toFixed(0)} min (zona horaria de la sesión)`,
+          );
+          return;
+        }
+      }
+      registrar(
+        4,
+        "Login ADMIN + GET /auth/perfil",
+        "PASS",
+        "200, perfil obtenido, hora consistente",
+      );
       return;
     }
     registrar(

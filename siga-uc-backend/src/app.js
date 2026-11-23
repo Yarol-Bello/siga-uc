@@ -21,6 +21,7 @@ const {
   checkDatabase,
   pool,
   describirConexion,
+  getZonaHorariaSesion,
 } = require("./config/database");
 const response = require("./utils/response");
 
@@ -106,6 +107,12 @@ app.get("/api/health", async (req, res) => {
     version: env.APP.VERSION,
     environment: env.NODE_ENV,
     database: "ok",
+    zona_horaria: getZonaHorariaSesion(),
+    commit:
+      process.env.RENDER_GIT_COMMIT ||
+      process.env.GIT_COMMIT ||
+      process.env.COMMIT_SHA ||
+      null,
     timestamp: new Date().toISOString(),
   });
 });

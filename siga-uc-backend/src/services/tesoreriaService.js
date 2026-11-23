@@ -452,7 +452,12 @@ const getEstadisticas = async (anioLectivo, mes) => {
       pagos_digital: parseInt(recaudacion.pagos_digital),
     },
     pendiente: {
-      total_pretickets: parseInt(pendientes.total_pendientes),
+      total_pretickets: parseInt(pendientes.total_pretickets, 10),
+      monto_pretickets: parseFloat(pendientes.monto_pretickets),
+      total_pensiones: parseInt(pendientes.total_pensiones, 10),
+      monto_pensiones: parseFloat(pendientes.monto_pensiones),
+      alumnos_con_deuda: parseInt(pendientes.alumnos_con_deuda, 10),
+      total_pendientes: parseInt(pendientes.total_pendientes, 10),
       monto_pendiente: parseFloat(pendientes.monto_pendiente),
     },
   };

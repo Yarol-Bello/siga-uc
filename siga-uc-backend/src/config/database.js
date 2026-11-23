@@ -17,6 +17,12 @@ require("dotenv").config();
 
 const esProduccion = process.env.NODE_ENV === "production";
 
+// Zona horaria de negocio. No basta con `options`: algunos poolers (Supabase
+// Supavisor) ignoran los parámetros de arranque y dejan la sesión en UTC.
+// Por eso además se ejecuta SET TIME ZONE al abrir cada conexión nueva.
+const ZONA_HORARIA_NEGOCIO = "America/Lima";
+let zonaHorariaSesion = null;
+
 const parseEnteroPositivo = (valor, defecto) => {
   const numero = Number.parseInt(valor, 10);
   return Number.isInteger(numero) && numero > 0 ? numero : defecto;
@@ -42,7 +48,22 @@ const configuracionPool = {
   ),
   // Todas las sesiones del pool trabajan en hora de Lima. Funciona también
   // cuando la conexión se define con DATABASE_URL.
-  options: "-c timezone=America/Lima",
+  options: `-c timezone=${ZONA_HORARIA_NEGOCIO}`,
+  // Refuerzo para poolers que ignoran `options` (Supabase/Supavisor).
+  // `verify` se ejecuta antes de entregar una conexión nueva al pool.
+  verify: (client, callback) => {
+    client.query(`SET TIME ZONE '${ZONA_HORARIA_NEGOCIO}'`, (error) => {
+      if (error) {
+        console.warn(
+          `⚠️ No se pudo fijar la zona horaria "${ZONA_HORARIA_NEGOCIO}" en la sesión:`,
+          error.message,
+        );
+      } else {
+        zonaHorariaSesion = ZONA_HORARIA_NEGOCIO;
+      }
+      callback();
+    });
+  },
 };
 
 if (databaseUrl) {
@@ -100,6 +121,8 @@ const describirConexion = () => {
 
   return `${process.env.DB_NAME || "siga_uc"}@${process.env.DB_HOST || "localhost"}:${process.env.DB_PORT || 5432}`;
 };
+
+const getZonaHorariaSesion = () => zonaHorariaSesion;
 
 // Evento: cuando se establece una conexión (solo en desarrollo, para no
 // ensuciar los logs de producción con una línea por conexión nueva).
@@ -167,11 +190,11 @@ const testConnection = async () => {
     // Verificar que la sesión del pool use la zona de negocio.
     const zonaResult = await pool.query("SHOW timezone");
     const zonaBd = zonaResult.rows[0]?.TimeZone;
-    if (zonaBd === "America/Lima") {
+    if (zonaBd === ZONA_HORARIA_NEGOCIO) {
       console.log("   Zona horaria BD:", zonaBd);
     } else {
       console.warn(
-        `⚠️ La sesión de PostgreSQL usa "${zonaBd}" en lugar de "America/Lima". Las fechas/horas de negocio podrían desfasarse.`,
+        `⚠️ La sesión de PostgreSQL usa "${zonaBd}" en lugar de "${ZONA_HORARIA_NEGOCIO}". Las fechas/horas de negocio podrían desfasarse.`,
       );
     }
 
@@ -193,7 +216,13 @@ const checkDatabase = async (timeoutMs = 2000) => {
 
   try {
     await Promise.race([
-      pool.query("SELECT 1"),
+      pool.query(
+        "SELECT 1 AS ok, current_setting('TimeZone') AS zona_horaria",
+      ).then((resultado) => {
+        const zona = resultado.rows[0]?.zona_horaria;
+        if (zona) zonaHorariaSesion = zona;
+        return resultado;
+      }),
       new Promise((_, reject) => {
         timer = setTimeout(
           () => reject(new Error("timeout de conexión a la BD")),
@@ -220,4 +249,6 @@ module.exports = {
   testConnection,
   checkDatabase,
   describirConexion,
+  getZonaHorariaSesion,
+  ZONA_HORARIA_NEGOCIO,
 };

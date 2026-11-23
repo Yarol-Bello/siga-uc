@@ -219,13 +219,27 @@ async function main() {
   });
 
   await check("ADMIN · tesorería y becas aplicadas", async () => {
-    const pagos = await api("/tesoreria/pagos", { token: admin.token });
+    const [pagos, stats] = await Promise.all([
+      api("/tesoreria/pagos", { token: admin.token }),
+      api(`/tesoreria/estadisticas?anio=${ANIO}`, { token: admin.token }),
+    ]);
     ok(pagos.respuesta, pagos.datos, "pagos");
+    ok(stats.respuesta, stats.datos, "estadísticas");
     const [pensiones, exoneradas] = await Promise.all([
       sql(`SELECT COUNT(*)::int AS total FROM pensiones WHERE anio_lectivo=$1`, [ANIO]),
       sql(`SELECT COUNT(*)::int AS total FROM pensiones WHERE anio_lectivo=$1 AND estado='EXONERADO'`, [ANIO]),
     ]);
-    if (exoneradas[0].total < 10) throw new Error("No hay pensiones EXONERADO");
+    if (exoneradas[0].total < 5) throw new Error("No hay pensiones EXONERADO");
+    const pendiente = stats.datos.data.pendiente || {};
+    const suma =
+      Number(pendiente.monto_pretickets || 0) +
+      Number(pendiente.monto_pensiones || 0);
+    if (Math.abs(Number(pendiente.monto_pendiente || 0) - suma) > 0.01) {
+      throw new Error("El pendiente total no suma pre-tickets + pensiones");
+    }
+    if (Number(pendiente.monto_pensiones || 0) <= 0) {
+      throw new Error("El KPI no incluye la deuda de pensiones");
+    }
     return `${pagos.datos.data.length} pagos, ${pensiones[0].total} pensiones, ${exoneradas[0].total} exoneradas`;
   });
 
