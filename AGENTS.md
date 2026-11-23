@@ -231,7 +231,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   es bootstrap/respaldo. Desde 6.2, la activación desde la UI/API actualiza la caché sin
   reiniciar; un cambio manual por SQL sí exige reiniciar el backend.
 - **6.1, 6.2, 6.3, 6.3.1 y 6.4 están implementadas y desplegadas en Render**
-  (código funcional `e1d6655`; el bloque de demo v2 se documenta al final de esta sección).
+  (código funcional `5f3512d`; el bloque de demo v2 se documenta al final de esta sección).
   **H49, H73 y H74–H80 están aplicadas en Supabase demo**:
   48 tablas, 2026 ACTIVO, 2027 no activo, 75 alumnos (15 por grado), 6 docentes activos,
   55 carga, 5 tutores, 145 horarios publicados, 750 pensiones, 113 pagos (seed v1), 3 becas,
@@ -370,7 +370,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   UI `/admin/configuracion` con pestañas General, Tarifas, Académico, Horarios y Becas.
   **Solo ADMIN escribe**; SECRETARÍA lee tarifas, académico, horarios y becas.
   **H74–H80 están aplicadas en Supabase demo** desde el 23/11/2026; `setup_completado=true`.
-  Render sirve backend y frontend con `e1d6655`. 48 tablas base (49 en local con
+  Render sirve backend y frontend con `5f3512d`. 48 tablas base (49 en local con
   `horarios_h47_backup`).
 - **Datos demo en Supabase (seed v1, 23/11/2026):** 75 alumnos (15 por grado), 6 docentes
   activos, 1 secretaria, 55 carga, 5 tutores, 145 horarios publicados, 750 pensiones
@@ -386,9 +386,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   Las notas usan perfiles por alumno: puntajes de mérito 11–39 (4 valores distintos por
   grado) y **28 de 75 alumnos con al menos una C**. Este seed corrige el aspecto artificial
   del seed v1 (todos los pagos el mismo día y todos los alumnos empatados). **Supabase demo
-  sigue con el seed v1** hasta ejecutar el refresh con credenciales. Para refrescar:
-  `CONFIRM_DEMO_RESET=1 npm run demo:reset` y luego `npm run uat:seed` (requiere
-  `UAT_DATABASE_URL`, `UAT_BASE_URL` y `UAT_ADMIN_PASSWORD`).
+  se deja con el seed v1 a propósito**; el refresh y el borrado total se harán al cierre
+  final, cuando el usuario lo pida. Herramientas listas: `database/demo_reset_seed_v2.sql`,
+  `CONFIRM_DEMO_RESET=1 npm run demo:reset` y `npm run uat:seed`.
 - **Zona horaria (demo v2):** el pooler de Supabase ignora `options`, así que
   `database.js` ejecuta `SET TIME ZONE 'America/Lima'` en cada conexión nueva y
   `/api/health` expone `zona_horaria` y `commit`. En Supabase conviene además
@@ -408,12 +408,12 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   defecto). El frontend ya no hace 75 peticiones. `GET /api/personal?page=` pagina el
   personal y `GET /api/tesoreria/pagos?limit=50` limita la caja. La migración
   `migracion_h81_rendimiento_paginacion.sql` agrega índices idempotentes.
-- **Cierre 23/11/2026:** Render quedó verificado con `d9b24fe` (health OK,
-  `zona_horaria: America/Lima`); el código H81 `e1d6655` se despliega con el push de
-  `main`. El frontend responsive y el padrón paginado están desplegados. Las suites
-  smoke 12, integridad 36, E2E 102 y uat:verify 22 están verdes. **La próxima sesión no
-  debe re-revisar la demo ni repetir esas suites**: solo falta refrescar los datos de
-  Supabase al seed v2, aplicar H81, normalizar timestamps y limpiar las 4 cajas UAT.
+- **Cierre 23/11/2026:** Render quedó verificado con `5f3512d` (health OK,
+  `zona_horaria: America/Lima`) y H81 desplegado. El frontend responsive y el padrón
+  paginado están activos. Las suites smoke 12, integridad 36, E2E 102 y uat:verify 22
+  están verdes. **Los datos de Supabase se dejan con el seed v1 a propósito**: el usuario
+  decidió borrar todo y reiniciar desde 0 al final. La próxima sesión no debe re-revisar
+  la demo, repetir suites, pedir credenciales ni refrescar datos hasta que se lo pidan.
 - **Becas (H78):** el catálogo `tipos_beca` define alcance, modalidad, tope, combinación,
   grupo de exclusividad, prioridad, evidencia y aprobación. Una beca aprobada se aplica a
   cargos `PENDIENTE`/`EXONERADO`; una beca del 100% deja el cargo `EXONERADO` en 0. Los

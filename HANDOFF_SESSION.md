@@ -2,17 +2,20 @@
 
 > **Fecha:** 23/11/2026
 > **Fase:** demostración y aprobación. **No es producción real.**
-> **Código funcional:** `e1d6655` (demo v2 + rendimiento H81).
-> **Render:** `d9b24fe` verificado; `e1d6655` (H81) se despliega con el push de `main`.
-> **Supabase demo:** sigue con el **seed v1** hasta ejecutar el refresh con credenciales.
+> **Código funcional:** `5f3512d` (demo v2 + rendimiento H81 + reset reproducible).
+> **Render:** **verificado** con `5f3512d`; `/api/health` devuelve
+> `zona_horaria: "America/Lima"` y el commit del HEAD.
+> **Supabase demo:** se deja con el **seed v1 a propósito**; el borrado total será al
+> cierre final, cuando el usuario lo pida.
 > **Demo local v2:** base `siga_uc_h81` con 432 pagos y notas por perfil.
 > **HEAD documental:** ver `git log -1`.
 > **Repo:** `https://github.com/Yarol-Bello/siga-uc.git` · rama `main`.
 
-> **Cierre de esta sesión:** la demo, el build y las suites ya fueron verificados; H81
-> (rendimiento) queda en `main` y se despliega con el push. La próxima sesión **no debe
-> volver a revisar módulos, ni ejecutar smoke/E2E/integridad**. Solo debe ejecutar el
-> refresh de datos de Supabase si recibe credenciales.
+> **Cierre de esta sesión:** la demo, el build y las suites ya fueron verificados. Los
+> datos de Supabase se dejan con el seed v1 **a propósito**; el borrado total y reinicio
+> desde 0 se hará al final, cuando el usuario lo pida. La próxima sesión **no debe
+> volver a revisar módulos, ni ejecutar smoke/E2E/integridad, ni pedir credenciales de
+> Supabase**.
 
 ---
 
@@ -123,8 +126,8 @@ documentada en `documentacion/21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md`.
   `migracion_h81_rendimiento_paginacion.sql` agrega índices idempotentes.
 - **Seed v2 (local `siga_uc_h81`):** 432 pagos de marzo a noviembre, 750 pensiones
   (357 pagadas, 386 pendientes, 7 exoneradas), S/ 95,625 pendientes y notas por perfil
-  (puntajes 11–39; 28/75 alumnos con al menos una C). El seed v1 de Supabase sigue
-  pendiente de refresh.
+  (puntajes 11–39; 28/75 alumnos con al menos una C). **Supabase se deja con el seed v1 a
+  propósito**; el borrado total y el reinicio desde 0 serán al cierre final.
 - **Pruebas:** smoke 12, integridad 36, E2E 102, `uat:verify` 22 sobre `siga_uc_h81`,
   setup 5 y build Angular OK. La UI se verificó con 25 filas/página, búsqueda server-side
   y una sola petición por página.
@@ -168,7 +171,7 @@ Estudiantes `72000002`–`72000075`: contraseña `UC<DNI>`.
 | `npm run uat:verify` en `siga_uc_h81` (seed v2) | **22 PASS, 0 FAIL** |
 | `npm run uat:verify` contra Supabase (seed v1) | **22 PASS, 0 FAIL** |
 | Build Angular | OK (warning de budget inicial) |
-| Render producción | `d9b24fe` verificado; `e1d6655` (H81) se despliega con el push de `main` |
+| Render producción | `5f3512d`; H81 activo; health OK con `zona_horaria: "America/Lima"` |
 | Frontend producción | drawer y matriz de pensiones verificados a 375 px y 1280 px |
 | Rendimiento H81 | Tesorería: **1 petición**, 25 filas/página, ~44 ms local; Personal paginado; Caja 50 pagos |
 
@@ -216,28 +219,19 @@ Health: `GET http://localhost:3000/api/health`.
 ## 6. Pendientes y próximos pasos
 
 1. **Aprobación de la demo** por la dirección del colegio.
-2. **Refrescar Supabase demo al seed v2** (pendiente de credenciales): la base sigue con
-   113 pagos, 38 pensiones pagadas y 10 exoneradas. El seed v2 está validado en local
-   (`siga_uc_h81` y `siga_uc_reset_test`): 432/423 pagos, 357/347 pagadas, 386 pendientes,
-   7 exoneradas y S/ 95,625. Para refrescar:
-   ```powershell
-   $env:UAT_DATABASE_URL="postgresql://..."; $env:CONFIRM_DEMO_RESET="1"
-   npm run demo:reset
-   $env:UAT_BASE_URL="https://siga-uc-api-prod.onrender.com/api"
-   $env:UAT_ADMIN_PASSWORD="<clave real del admin>"
-   npm run uat:seed
-   ```
-   En el mismo paso aplicar `database/migracion_h81_rendimiento_paginacion.sql` y limpiar
-   las 4 aperturas/cierres de la verificación UAT. Sin la `DATABASE_URL`/contraseña actual
-   no se puede ejecutar el refresh.
-3. **Normalizar timestamps viejos de Supabase:** el fix de zona horaria corrige los
-   registros nuevos, pero los `timestamp without time zone` guardados antes del deploy
-   siguen +5 h. Se corrigen con el refresh del seed o con un script de normalización
-   respaldado. En Supabase conviene además
+2. **Datos de Supabase: se dejan como están por decisión del usuario.** No refrescar,
+   no pedir credenciales y no ejecutar `demo:reset`/`uat:seed` en esta etapa. La base
+   demo sigue con el seed v1 (113 pagos, 38 pagadas, 10 exoneradas) **a propósito**.
+   Al cierre final se borrará todo y el sistema iniciará desde 0; para ese momento ya
+   están listos `database/demo_reset_seed_v2.sql`, `npm run demo:reset` y
+   `npm run uat:seed`.
+3. **Timestamps viejos de Supabase:** también se resolverán con el borrado/reinicio
+   final. No ejecutar normalizaciones ni cambios de datos ahora. Si en el futuro se
+   reactiva el refresh, aplicar `database/migracion_h81_rendimiento_paginacion.sql` y
    `ALTER DATABASE postgres SET timezone = 'America/Lima';` si el pooler es transaccional.
-4. ✅ **Render verificado** con `d9b24fe` (demo v2). El código H81 `e1d6655` se
-   despliega con el push de `main`; solo hay que confirmar una vez que `/api/health`
-   devuelva el commit nuevo. **No repetir la revisión de módulos ni las suites.**
+4. ✅ **Render desplegado y verificado** con `5f3512d`: health OK,
+   `zona_horaria: "America/Lima"` y H81 activo (padrón paginado, personal paginado y
+   caja limitada). **No repetir la revisión de módulos ni las suites.**
 5. **SIAGIE oficial** (solo si el colegio lo pide):
    - obtener la plantilla oficial de SIAGIE;
    - mapear áreas/cursos/competencias;
@@ -253,6 +247,7 @@ Health: `GET http://localhost:3000/api/health`.
 ## 7. Archivos clave
 
 - `AGENTS.md` — resumen operativo y trampas conocidas.
+- `CONTEXTO_SESION.md` — **lectura mínima para la próxima sesión** (una página).
 - `documentacion/21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md` — H80 y límites de SIAGIE.
 - `documentacion/17-GUION-DEMOSTRACION.md` — guion actualizado.
 - `documentacion/05-API-REST.md` — 168 endpoints.
@@ -282,33 +277,36 @@ Documentos históricos 15, 16, 18, `HANDOFF_PROMPTS.md`, `docs/INSTALACION.md` y
 Copiar y pegar:
 
 ```text
-Estás retomando SIGA-UC, el Sistema Integrado de Gestión Académica de la
-I.E.P. Unión Científica (Huancayo, Perú). Es una demo funcional, no producción real.
-Lee AGENTS.md y HANDOFF_SESSION.md.
+Estás retomando SIGA-UC, la demo del Sistema Integrado de Gestión Académica de la
+I.E.P. Unión Científica (Huancayo, Perú). No es producción real.
 
-La sesión anterior ya cerró la demo y la verificó. NO vuelvas a revisar módulos, ni a
-ejecutar smoke/E2E/integridad, ni a recorrer la demo; eso ya está hecho y solo consume
-tiempo. Tampoco vuelvas a desplegar si no hay cambios de código.
+NO reanalices el repo, NO leas AGENTS.md, HANDOFF_SESSION.md ni documentacion/ completos.
+Lee solo CONTEXTO_SESION.md (una página) si necesitas el detalle.
 
 ESTADO
-- Render: código de la sesión anterior desplegado y verificado; /api/health responde
-  database ok, zona_horaria America/Lima y el commit del HEAD.
-- Supabase demo: sigue con el seed v1 (113 pagos, 39 pagadas, 10 exoneradas).
-- Local: siga_uc_h81 tiene el seed v2 validado (432 pagos y notas por perfil).
-- Rendimiento H81 ya implementado: Tesorería carga 25 alumnos/página en una sola
-  petición, Personal está paginado y Caja limita a 50 pagos. No volver a revisarlo.
+- main = 5f3512d; Render verificado; /api/health: database ok, zona_horaria America/Lima.
+- Demo funcional y suites verdes; no las repitas.
+- Supabase se queda con el seed v1 A PROPÓSITO. NO refrescar datos, NO pedir
+  DATABASE_URL ni contraseñas, NO ejecutar demo:reset/uat:seed ahora.
+- El borrado total y el inicio desde 0 serán al final, cuando el usuario lo pida.
+- H81 ya está resuelto: /api/tesoreria/pensiones/padron (25/página, una petición),
+  /api/personal?page= y /api/tesoreria/pagos?limit=50. No volver a revisarlo.
 
-ÚNICO PENDIENTE
-Refrescar los datos de Supabase al seed v2, aplicar
-database/migracion_h81_rendimiento_paginacion.sql, normalizar los timestamps viejos
-(+5 h) y limpiar las 4 aperturas/cierres de la verificación UAT. El flujo ya está
-probado en local: `CONFIRM_DEMO_RESET=1 npm run demo:reset` y luego `npm run uat:seed`
-(requiere UAT_DATABASE_URL, UAT_BASE_URL y UAT_ADMIN_PASSWORD). Si no tienes la
-DATABASE_URL o la contraseña del ADMIN, pídelas y detente; no modifiques datos a ciegas.
+ARCHIVOS QUE SE ESTÁN USANDO
+- Backend: src/config/database.js, src/dao/tesoreriaDao.js, src/dao/personalDao.js,
+  src/controllers/tesoreriaController.js, src/controllers/personalController.js,
+  src/routes/tesoreriaRoutes.js, scripts/{uat-seed,uat-verify,smoke,demo-reset}.js.
+- Frontend: features/secretaria/tesoreria/, features/admin/personal/,
+  features/secretaria/caja/, features/{admin,secretaria,docente}/layout/,
+  shared/components/{sidebar,sidebar-secretaria,sidebar-docente,header}/.
+- BD: database/migracion_h81_rendimiento_paginacion.sql,
+  database/demo_reset_seed_v2.sql.
 
-REGLAS
-- No activar 2027 ni confirmar promociones.
-- No cargar datos reales de menores.
-- No tocar INFORME/.
-- Si el pedido es SIAGIE oficial, pedir primero la plantilla oficial.
+CÓMO TRABAJAR
+- Abre solo el archivo o módulo que se te indique; no recorras todo el proyecto.
+- No ejecutes smoke/E2E/integridad ni revises pantallas “por si acaso”.
+- No toques INFORME/.
+- No actives 2027, no confirmes promociones y no cargues datos reales de menores.
+- Si el usuario pide el cierre final: backup y luego demo_reset_seed_v2.sql +
+  uat:seed, o recrear la base desde siga_uc.sql + migraciones.
 ```
