@@ -75,7 +75,7 @@ export class SidebarComponent {
       icon: 'fa-cash-register',
       roles: ['ADMIN', 'SECRETARIA'],
     },
-    { path: '/admin/siagie', label: 'Exportación SIAGIE', icon: 'fa-file-excel', roles: ['ADMIN'] },
+    { path: '/admin/siagie', label: 'Exportación interna', icon: 'fa-file-excel', roles: ['ADMIN'] },
     {
       path: '/admin/reportes',
       label: 'Reportes y Libretas',

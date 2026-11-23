@@ -1,14 +1,33 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { ConfiguracionService } from '../../../core/services/configuracion.service';
+import { AnioLectivoService } from '../../../core/services/anio-lectivo.service';
+import { SelectorAnioComponent } from '../../../shared/components/selector-anio/selector-anio.component';
 
 interface Grado {
   id_grado: number;
   nombre_grado: string;
   seccion: string;
+  anio_lectivo: number;
+}
+
+interface ResumenExportacion {
+  anio_lectivo: number;
+  bimestre: number;
+  id_grado: number;
+  nombre_grado: string;
+  nivel: string;
+  seccion: string;
+  total_cursos: number;
+  total_alumnos: number;
+  total_notas: number;
+  total_conclusiones: number;
+  total_combinaciones: number;
+  exportable: boolean;
+  advertencias: string[];
 }
 
 interface AuditoriaDocente {
@@ -27,170 +46,307 @@ interface AuditoriaDocente {
 }
 
 /**
- * Módulo de Exportación SIAGIE (Admin)
- * SIGA-UC - Sistema Integrado de Gestión Académica
+ * Exportación interna de calificaciones (ADMIN).
+ * Genera un Excel de apoyo con las notas finales de SIGA-UC.
+ * No es una exportación oficial a SIAGIE/MINEDU.
  */
 @Component({
   selector: 'app-admin-siagie',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SelectorAnioComponent],
   templateUrl: './admin-siagie.component.html',
   styleUrl: './admin-siagie.component.scss',
 })
 export class AdminSiagieComponent implements OnInit {
   private http = inject(HttpClient);
-  private configuracion = inject(ConfiguracionService);
-
-  anioLectivo = this.configuracion.anioLectivo;
-
-  // Estado
-  cargando = signal(true);
-  error = signal<string | null>(null);
-  grados = signal<Grado[]>([]);
-  auditoria = signal<AuditoriaDocente[]>([]);
+  protected readonly configuracion = inject(ConfiguracionService);
+  private anioService = inject(AnioLectivoService);
 
   // Filtros
-  gradoSeleccionado = signal<number>(3);
+  anio = signal<number>(this.configuracion.anioLectivo());
+  anios = signal<number[]>([this.configuracion.anioLectivo()]);
   bimestre = signal<number>(2);
+  gradoSeleccionado = signal<number | null>(null);
 
-  // Estado de carga de archivo
-  archivoCargado = signal<File | null>(null);
-  analisisCompletado = signal(false);
+  // Catálogo y estados
+  grados = signal<Grado[]>([]);
+  cargandoGrados = signal(true);
+  error = signal<string | null>(null);
 
-  ngOnInit(): void {
+  resumen = signal<ResumenExportacion | null>(null);
+  cargandoResumen = signal(false);
+  exportando = signal(false);
+  errorExportacion = signal<string | null>(null);
+  mensajeExito = signal<string | null>(null);
+
+  // Auditoría de notas por docente
+  auditoria = signal<AuditoriaDocente[]>([]);
+  cargandoAuditoria = signal(false);
+  errorAuditoria = signal<string | null>(null);
+
+  readonly puedeExportar = computed(
+    () => this.resumen()?.exportable === true && !this.exportando(),
+  );
+
+  async ngOnInit(): Promise<void> {
+    await this.cargarAnios();
     this.cargarGrados();
   }
 
+  /**
+   * Catálogo de años con respaldo en el año activo si el endpoint falla.
+   */
+  private async cargarAnios(): Promise<void> {
+    try {
+      await this.anioService.asegurarCargado();
+      const disponibles = this.anioService.aniosDisponibles();
+      if (disponibles.length > 0) {
+        this.anios.set(disponibles);
+        if (!disponibles.includes(this.anio())) {
+          const activo = this.configuracion.anioLectivo();
+          this.anio.set(
+            disponibles.includes(activo) ? activo : disponibles[0],
+          );
+        }
+      }
+    } catch {
+      // Sin catálogo de años la exportación sigue limitada al año activo.
+      this.anios.set([this.configuracion.anioLectivo()]);
+    }
+  }
+
   cargarGrados(): void {
+    this.cargandoGrados.set(true);
+    this.error.set(null);
+    this.mensajeExito.set(null);
+    this.errorExportacion.set(null);
+
     this.http
       .get<any>(`${environment.apiUrl}/grados`, {
-        params: { anio: this.anioLectivo() },
+        params: { anio: this.anio() },
       })
       .subscribe({
         next: (res) => {
-          if (res.success) {
-            this.grados.set(res.data);
-            if (res.data.length > 0) {
-              const actual = this.gradoSeleccionado();
-              if (!res.data.some((g: Grado) => g.id_grado === actual)) {
-                this.gradoSeleccionado.set(res.data[0].id_grado);
-              }
-              this.cargarAuditoria();
-            }
+          const grados: Grado[] = res?.success ? res.data || [] : [];
+          this.grados.set(grados);
+
+          const actual = this.gradoSeleccionado();
+          if (!grados.some((g) => g.id_grado === actual)) {
+            this.gradoSeleccionado.set(
+              grados.length > 0 ? grados[0].id_grado : null,
+            );
+          }
+          this.cargandoGrados.set(false);
+
+          if (this.gradoSeleccionado() !== null) {
+            this.cargarResumen();
+            this.cargarAuditoria();
+          } else {
+            this.resumen.set(null);
+            this.auditoria.set([]);
           }
         },
         error: (err) => {
-          console.error('Error grados:', err);
-          this.cargando.set(false);
+          this.cargandoGrados.set(false);
+          this.grados.set([]);
+          this.gradoSeleccionado.set(null);
+          this.resumen.set(null);
+          this.auditoria.set([]);
+          this.error.set(
+            err?.error?.message ||
+              'No se pudieron cargar los grados del año seleccionado.',
+          );
+        },
+      });
+  }
+
+  cargarResumen(): void {
+    const idGrado = this.gradoSeleccionado();
+    if (idGrado === null) {
+      this.resumen.set(null);
+      return;
+    }
+
+    this.cargandoResumen.set(true);
+    this.errorExportacion.set(null);
+
+    this.http
+      .get<any>(`${environment.apiUrl}/siagie/resumen`, {
+        params: this.parametrosExportacion(idGrado),
+      })
+      .subscribe({
+        next: (res) => {
+          this.cargandoResumen.set(false);
+          this.resumen.set(res?.success ? res.data : null);
+        },
+        error: (err) => {
+          this.cargandoResumen.set(false);
+          this.resumen.set(null);
+          this.errorExportacion.set(
+            err?.error?.message ||
+              'No se pudo preparar la exportación interna.',
+          );
         },
       });
   }
 
   cargarAuditoria(): void {
-    this.cargando.set(true);
-    this.error.set(null);
-
-    const url = `${environment.apiUrl}/reportes/auditoria-docentes/${this.gradoSeleccionado()}?bimestre=${this.bimestre()}&anio=${this.anioLectivo()}`;
-
-    this.http.get<any>(url).subscribe({
-      next: (res) => {
-        if (res.success) this.auditoria.set(res.data);
-        this.cargando.set(false);
-      },
-      error: (err) => {
-        console.error('❌ Error:', err);
-        this.error.set('No se pudo cargar la auditoría');
-        this.cargando.set(false);
-      },
-    });
-  }
-
-  onGradoChange(idGrado: string): void {
-    this.gradoSeleccionado.set(Number(idGrado));
-    this.limpiarArchivo();
-    this.cargarAuditoria();
-  }
-
-  onBimestreChange(bimestre: string): void {
-    this.bimestre.set(Number(bimestre));
-    this.limpiarArchivo();
-    this.cargarAuditoria();
-  }
-
-  /**
-   * Limpiar el archivo cargado
-   */
-  limpiarArchivo(): void {
-    this.archivoCargado.set(null);
-    this.analisisCompletado.set(false);
-    const fileInput = document.getElementById('fileSiagie') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
-  }
-
-  descargarPlantilla(): void {
-    alert(
-      '📥 Descargando plantilla oficial del SIAGIE desde el portal del MINEDU...\n\n' +
-        'El archivo se guardará como:\n' +
-        `PLANTILLA_SIAGIE_${this.anioLectivo()}.xlsx\n\n` +
-        'Una vez descargada, cárgala aquí para mapear las columnas.',
-    );
-  }
-
-  onArchivoSeleccionado(event: any): void {
-    const file = event.target.files[0];
-    if (file) {
-      this.archivoCargado.set(file);
-      this.analisisCompletado.set(false);
-
-      setTimeout(() => {
-        this.analisisCompletado.set(true);
-      }, 800);
-    }
-  }
-
-  onDropzoneClick(): void {
-    document.getElementById('fileSiagie')?.click();
-  }
-
-  /**
-   * Generar y descargar el Excel SIAGIE inyectado con las notas reales
-   */
-  generarExcel(): void {
-    if (!this.archivoCargado() || !this.analisisCompletado()) {
-      alert('⚠️ Primero debes cargar la plantilla del SIAGIE.');
+    const idGrado = this.gradoSeleccionado();
+    if (idGrado === null) {
+      this.auditoria.set([]);
       return;
     }
 
-    const archivo = this.archivoCargado()!;
-    const formData = new FormData();
-    formData.append('plantilla', archivo);
-    formData.append('id_grado', this.gradoSeleccionado().toString());
-    formData.append('bimestre', this.bimestre().toString());
-    formData.append('anio_lectivo', this.anioLectivo().toString());
+    this.cargandoAuditoria.set(true);
+    this.errorAuditoria.set(null);
 
     this.http
-      .post(`${environment.apiUrl}/siagie/generar-excel`, formData, { responseType: 'blob' })
+      .get<any>(`${environment.apiUrl}/reportes/auditoria-docentes/${idGrado}`, {
+        params: {
+          bimestre: this.bimestre(),
+          anio: this.anio(),
+        },
+      })
       .subscribe({
-        next: (blob: Blob) => {
+        next: (res) => {
+          this.cargandoAuditoria.set(false);
+          this.auditoria.set(res?.success ? res.data || [] : []);
+        },
+        error: (err) => {
+          this.cargandoAuditoria.set(false);
+          this.auditoria.set([]);
+          this.errorAuditoria.set(
+            err?.error?.message || 'No se pudo cargar el estado de las notas.',
+          );
+        },
+      });
+  }
+
+  onAnioChange(anio: number): void {
+    if (!Number.isInteger(anio) || anio <= 0 || anio === this.anio()) return;
+    this.anio.set(anio);
+    this.gradoSeleccionado.set(null);
+    this.resumen.set(null);
+    this.auditoria.set([]);
+    this.mensajeExito.set(null);
+    this.errorExportacion.set(null);
+    this.cargarGrados();
+  }
+
+  onGradoChange(valor: string | number): void {
+    const idGrado = Number(valor);
+    if (!Number.isInteger(idGrado) || idGrado <= 0) return;
+    this.gradoSeleccionado.set(idGrado);
+    this.mensajeExito.set(null);
+    this.cargarResumen();
+    this.cargarAuditoria();
+  }
+
+  onBimestreChange(valor: string | number): void {
+    const bimestre = Number(valor);
+    if (!Number.isInteger(bimestre) || bimestre < 1 || bimestre > 4) return;
+    this.bimestre.set(bimestre);
+    this.mensajeExito.set(null);
+    this.cargarResumen();
+    this.cargarAuditoria();
+  }
+
+  /**
+   * Descarga el Excel interno generado directamente desde la base de datos.
+   */
+  exportarExcel(): void {
+    const idGrado = this.gradoSeleccionado();
+    const resumen = this.resumen();
+    if (idGrado === null || !resumen?.exportable || this.exportando()) return;
+
+    this.exportando.set(true);
+    this.errorExportacion.set(null);
+    this.mensajeExito.set(null);
+
+    this.http
+      .get(`${environment.apiUrl}/siagie/exportar`, {
+        params: this.parametrosExportacion(idGrado),
+        observe: 'response',
+        responseType: 'blob',
+      })
+      .subscribe({
+        next: (respuesta) => {
+          const blob = respuesta.body;
+          if (!blob) {
+            this.exportando.set(false);
+            this.errorExportacion.set(
+              'El servidor no devolvió un archivo Excel.',
+            );
+            return;
+          }
+
+          const nombre =
+            this.nombreDesdeCabecera(
+              respuesta.headers.get('content-disposition'),
+            ) ||
+            `EXPORTACION_INTERNA_BIM${this.bimestre()}_${this.anio()}.xlsx`;
+
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `SIAGIE_BIM${this.bimestre()}_${this.anioLectivo()}.xlsx`;
+          link.download = nombre;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
 
-          alert('✅ Excel SIAGIE generado y descargado exitosamente.');
-        },
-        error: (err) => {
-          console.error('❌ Error al generar Excel:', err);
-          alert(
-            '❌ Error al generar el Excel: ' +
-              (err.error?.message || 'Verifica la consola del navegador.'),
+          this.exportando.set(false);
+          const alumnos =
+            resumen.total_alumnos === 1 ? 'alumno' : 'alumnos';
+          const cursos = resumen.total_cursos === 1 ? 'curso' : 'cursos';
+          const notas =
+            resumen.total_notas === 1 ? 'nota final' : 'notas finales';
+          this.mensajeExito.set(
+            `Excel interno descargado: ${resumen.total_alumnos} ${alumnos}, ` +
+              `${resumen.total_cursos} ${cursos} y ${resumen.total_notas} ${notas}.`,
           );
         },
+        error: async (err) => {
+          this.exportando.set(false);
+          this.errorExportacion.set(await this.mensajeErrorBlob(err));
+        },
       });
+  }
+
+  private parametrosExportacion(idGrado: number): Record<string, number> {
+    return {
+      id_grado: idGrado,
+      bimestre: this.bimestre(),
+      anio: this.anio(),
+    };
+  }
+
+  private nombreDesdeCabecera(cabecera: string | null): string | null {
+    if (!cabecera) return null;
+    const coincidencia = /filename="?([^";]+)"?/i.exec(cabecera);
+    if (!coincidencia?.[1]) return null;
+    try {
+      return decodeURIComponent(coincidencia[1]);
+    } catch {
+      return coincidencia[1];
+    }
+  }
+
+  private async mensajeErrorBlob(err: any): Promise<string> {
+    const cuerpo = err?.error;
+    if (cuerpo instanceof Blob) {
+      try {
+        const texto = await cuerpo.text();
+        const json = JSON.parse(texto);
+        if (json?.message) return json.message;
+      } catch {
+        // El cuerpo del error no era JSON.
+      }
+      return 'No se pudo generar el Excel interno.';
+    }
+    return (
+      cuerpo?.message || err?.message || 'No se pudo generar el Excel interno.'
+    );
   }
 
   estaCompleto(item: AuditoriaDocente): boolean {
@@ -236,7 +392,7 @@ export class AdminSiagieComponent implements OnInit {
   }
 
   /**
-   * Enviar notificación real al docente (campanita + correo)
+   * Enviar notificación real al docente (campanita + correo).
    */
   alertarDocente(item: AuditoriaDocente): void {
     const totalAlumnos = Number(item.total_alumnos) || 0;
@@ -262,38 +418,40 @@ export class AdminSiagieComponent implements OnInit {
 
         const idUsuarioDestino = res.data.id_usuario;
         const gradoNombre =
-          this.grados().find((g) => g.id_grado === this.gradoSeleccionado())?.nombre_grado || '';
+          this.grados().find((g) => g.id_grado === this.gradoSeleccionado())
+            ?.nombre_grado || '';
 
         const asunto = `Recordatorio: Notas Pendientes — ${item.nombre_curso} ${gradoNombre} ${this.getBimestreTexto()}`;
         const cuerpo =
           `Estimado(a) Prof. ${item.docente_nombre},\n\n` +
           `Te recordamos que tienes notas pendientes de registrar en el curso de ${item.nombre_curso} ` +
-          `para el ${gradoNombre} — ${this.getBimestreTexto()} ${this.anioLectivo()}.\n\n` +
+          `para el ${gradoNombre} — ${this.getBimestreTexto()} ${this.anio()}.\n\n` +
           `📊 Alumnos pendientes: ${pendientes} de ${totalAlumnos} ` +
           `(${item.porcentaje || 0}% completado)\n\n` +
           `Por favor, ingresa al módulo "Registro de Notas" para completar las calificaciones ` +
           `antes del cierre del bimestre.\n\n` +
           `Atentamente,\nDirección Académica — I.E.P. Unión Científica`;
 
-        const payload = {
-          id_usuario_destino: idUsuarioDestino,
-          asunto,
-          cuerpo,
-        };
-
-        this.http.post<any>(`${environment.apiUrl}/notificaciones`, payload).subscribe({
-          next: () => {
-            alert(
-              `✅ Notificación enviada exitosamente a ${item.docente_nombre}.\n\nLlegará a su campanita y a su correo personal.`,
-            );
-          },
-          error: (err) => {
-            console.error('Error al enviar notificación:', err);
-            alert(
-              '❌ Error al enviar la notificación: ' + (err.error?.message || 'Error desconocido'),
-            );
-          },
-        });
+        this.http
+          .post<any>(`${environment.apiUrl}/notificaciones`, {
+            id_usuario_destino: idUsuarioDestino,
+            asunto,
+            cuerpo,
+          })
+          .subscribe({
+            next: () => {
+              alert(
+                `✅ Notificación enviada a ${item.docente_nombre}.\n\nLlegará a su campanita y a su correo personal.`,
+              );
+            },
+            error: (err) => {
+              console.error('Error al enviar notificación:', err);
+              alert(
+                '❌ Error al enviar la notificación: ' +
+                  (err.error?.message || 'Error desconocido'),
+              );
+            },
+          });
       },
       error: (err) => {
         console.error('Error al obtener docente:', err);
@@ -302,9 +460,6 @@ export class AdminSiagieComponent implements OnInit {
     });
   }
 
-  /**
-   * Convertir bimestre a texto
-   */
   getBimestreTexto(): string {
     switch (this.bimestre()) {
       case 1:

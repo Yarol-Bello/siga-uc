@@ -16,7 +16,7 @@ const TITULOS_POR_RUTA: Record<string, string> = {
   '/admin/anios-lectivos': 'Años Lectivos y Rollover',
   '/admin/promociones': 'Promoción de Alumnos',
   '/admin/asistencia-qr': 'Control de Asistencia QR',
-  '/admin/siagie': 'Exportación SIAGIE',
+  '/admin/siagie': 'Exportación interna',
   '/admin/auditoria': 'Auditoría y Actas',
   '/admin/tesoreria': 'Tesorería y Pensiones',
   '/admin/caja': 'Cuadre de Caja',
