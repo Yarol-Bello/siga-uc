@@ -337,7 +337,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   de configuración reemplazará esos supuestos por tarifas y calendarios administrables.
 - **Módulo de configuración:** Fase 0 documentada en
   `documentacion/20-MODULO-CONFIGURACION.md`. **Fase 1 implementada y aplicada en local**
-  (H74): `configuracion_institucional`, `configuracion_anio`, `bitacora_auditoria.motivo`,
+  (H74, commit `3a0d20b`): `configuracion_institucional`, `configuracion_anio`, `bitacora_auditoria.motivo`,
   `GET /api/configuracion` con institución pública, `GET /api/configuracion/admin` y
   `PUT /api/configuracion/institucional` (solo ADMIN, motivo obligatorio y auditoría
   transaccional). UI `/admin/configuracion` con datos generales y años en solo lectura.

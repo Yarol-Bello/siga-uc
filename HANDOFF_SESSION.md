@@ -537,7 +537,7 @@ En esta fase **no** se prepara el despliegue definitivo.
 
 - **Fase 0 cerrada:** `documentacion/20-MODULO-CONFIGURACION.md` con diagnóstico, decisiones,
   modelo, fases, riesgos y criterios de aceptación. Commit `fe5f273`.
-- **Fase 1 implementada y aplicada en local:** migración
+- **Fase 1 implementada y aplicada en local:** commit `3a0d20b`; migración
   `database/migracion_h74_configuracion_base.sql`; `configuracion_institucional` (una fila),
   `configuracion_anio` (una por año), `bitacora_auditoria.motivo`.
 - **Backend:** `GET /api/configuracion` público con año e institución segura;

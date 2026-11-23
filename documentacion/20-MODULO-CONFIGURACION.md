@@ -3,7 +3,7 @@
 **SIGA-UC — I.E.P. Unión Científica**
 **Fases 0 y 1:** diagnóstico, diseño y núcleo de configuración
 **Fecha:** 23/11/2026
-**Commit base:** `3b7240d` (Fase 0: `fe5f273`)
+**Commit base:** `3b7240d` (Fase 0: `fe5f273`; Fase 1: `3a0d20b`)
 **Estado:** Fase 0 cerrada; Fase 1 implementada, aplicada en local y verificada. H74 no se aplicó en Supabase.
 
 > Este documento es la referencia de implementación del módulo de configuración.

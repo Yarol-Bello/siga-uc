@@ -46,7 +46,7 @@
 | E2E | **80 PASS** |
 | Integridad (base de producción desechable) | **24 PASS**; local 22 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 12 PASS / 4 PASS |
-| Módulo de configuración | Fase 0 documentada (`documentacion/20`); Fase 1 implementada y aplicada en local (H74); no desplegada; H74 no aplicada en Supabase |
+| Módulo de configuración | Fase 0 documentada (`documentacion/20`); Fase 1 implementada y aplicada en local (H74, commit `3a0d20b`); no desplegada; H74 no aplicada en Supabase |
 
 > Recordatorio: un push que solo toca `database/` o `documentacion/` **no despliega**.
 > Las migraciones se aplican a mano en Supabase.
