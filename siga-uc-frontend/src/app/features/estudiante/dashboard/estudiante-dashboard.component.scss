@@ -60,6 +60,12 @@
 
 .w-stat-item {
   text-align: center;
+
+  & + .w-stat-item {
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
+    padding-left: 20px;
+  }
+
   span {
     display: block;
     font-size: 0.7rem;
@@ -190,5 +196,116 @@ td {
     font-size: 1.1rem;
     color: #1e293b;
     margin-bottom: 8px;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 900px) {
+  .welcome-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .welcome-text {
+    h2 {
+      font-size: 1.15rem;
+    }
+
+    p {
+      font-size: 0.83rem;
+      line-height: 1.45;
+    }
+  }
+
+  .welcome-stats {
+    width: 100%;
+    justify-content: space-around;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .w-stat-item {
+    strong {
+      font-size: 1.3rem;
+    }
+
+    & + .w-stat-item {
+      padding-left: 16px;
+    }
+  }
+
+  .section-header-banner {
+    padding: 14px 16px;
+    gap: 10px;
+
+    h3 {
+      font-size: 0.9rem;
+    }
+
+    .periodo-badge {
+      font-size: 0.72rem;
+    }
+  }
+
+  .table-responsive {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 560px;
+    font-size: 0.82rem;
+  }
+
+  th,
+  td {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-banner {
+    padding: 16px;
+  }
+
+  .welcome-stats {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .w-stat-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    text-align: left;
+
+    & + .w-stat-item {
+      border-left: 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      padding-left: 0;
+      padding-top: 8px;
+    }
+
+    strong {
+      font-size: 1.2rem;
+    }
+  }
+
+  .section-header-banner {
+    padding: 12px 14px;
+
+    h3 {
+      font-size: 0.86rem;
+      gap: 7px;
+    }
+  }
+
+  th,
+  td {
+    padding: 9px 10px;
   }
 }

@@ -1,4 +1,13 @@
-import { Component, inject, Input, OnInit, OnDestroy, signal } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  inject,
+  Input,
+  OnInit,
+  OnDestroy,
+  Output,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
@@ -20,6 +29,9 @@ import * as QRCode from 'qrcode';
 export class HeaderComponent implements OnInit, OnDestroy {
   @Input() titulo: string = 'Panel';
   @Input() subtitulo: string = '';
+  @Input() mostrarMenu: boolean = false;
+  @Input() menuAbierto: boolean = false;
+  @Output() menuClick = new EventEmitter<void>();
 
   private authService = inject(AuthService);
   private notificacionService = inject(NotificacionService);

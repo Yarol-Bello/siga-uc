@@ -5,6 +5,25 @@
 .table-responsive {
   width: 100%;
   overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+
+  &::-webkit-scrollbar {
+    height: 7px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
 }
 
 .horario-table {
@@ -180,6 +199,28 @@
   p {
     margin: 0;
     font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .table-responsive {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .horario-table {
+    min-width: 780px;
+  }
+
+  .horario-table thead th.col-hora,
+  .horario-table .hora-cell {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    box-shadow: 2px 0 4px rgba(15, 23, 42, 0.06);
+  }
+
+  .horario-table thead th.col-hora {
+    z-index: 3;
   }
 }
 

@@ -1,9 +1,26 @@
-<div class="admin-layout">
-  <app-sidebar-estudiante></app-sidebar-estudiante>
+<div class="admin-layout" [class.sidebar-abierto]="sidebarAbierto()">
+  <app-sidebar-estudiante
+    [abierto]="sidebarAbierto()"
+    (cerrar)="cerrarSidebar()"
+  ></app-sidebar-estudiante>
+
+  @if (sidebarAbierto()) {
+  <button
+    type="button"
+    class="sidebar-overlay"
+    aria-label="Cerrar menú de navegación"
+    (click)="cerrarSidebar()"
+  ></button>
+  }
 
   <main class="main-content">
-    <app-header titulo="Mis Cursos y Calificaciones"
-      subtitulo="Consulta tus asignaturas matriculadas y tus niveles de logro alcanzados."></app-header>
+    <app-header
+      [titulo]="tituloHeader()"
+      [subtitulo]="subtituloHeader()"
+      [mostrarMenu]="true"
+      [menuAbierto]="sidebarAbierto()"
+      (menuClick)="abrirSidebar()"
+    ></app-header>
 
     <div class="content-area">
       <router-outlet></router-outlet>

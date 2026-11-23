@@ -33,6 +33,10 @@
     <p>El administrador debe publicar el horario de tu grado para que puedas verlo.</p>
   </div>
   } @else {
+  <div class="scroll-hint">
+    <i class="fa-solid fa-arrows-left-right"></i>
+    Desliza horizontalmente para ver todos los días.
+  </div>
   <app-horario-grid
     [periodos]="periodos()"
     [bloques]="bloques()"

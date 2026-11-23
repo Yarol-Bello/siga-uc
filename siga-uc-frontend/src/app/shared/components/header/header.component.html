@@ -1,4 +1,17 @@
 <header class="main-header">
+  @if (mostrarMenu) {
+  <button
+    type="button"
+    class="header-menu-btn"
+    (click)="menuClick.emit()"
+    [attr.aria-expanded]="menuAbierto"
+    aria-controls="sidebarEstudiante"
+    aria-label="Abrir menú de navegación"
+  >
+    <i class="fa-solid fa-bars" aria-hidden="true"></i>
+  </button>
+  }
+
   <div class="header-title">
     <h2>{{ titulo }}</h2>
     <p>{{ subtitulo }}</p>

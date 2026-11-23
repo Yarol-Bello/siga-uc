@@ -9,14 +9,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
 }
 
 .header-title {
+  flex: 1;
+  min-width: 0;
+
   h2 {
     font-size: 1.35rem;
     font-weight: 800;
     color: #1e293b;
     margin: 0 0 4px 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
   }
 
   p {
@@ -27,9 +33,31 @@
 }
 
 .header-widgets {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 15px;
+}
+
+.header-menu-btn {
+  display: none;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #800020;
+  font-size: 1.05rem;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(128, 0, 32, 0.06);
+    border-color: #800020;
+  }
 }
 
 .notification-bell-container {
@@ -587,6 +615,109 @@
 
   i {
     font-size: 0.9rem;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE DEL HEADER Y SUS MODALES
+   ========================================================= */
+@media (max-width: 900px) {
+  .main-header {
+    padding: 14px 18px;
+    gap: 12px;
+  }
+
+  .header-menu-btn {
+    display: inline-flex;
+  }
+
+  .header-title {
+    h2 {
+      font-size: 1.08rem;
+    }
+
+    p {
+      display: none;
+    }
+  }
+
+  .header-widgets {
+    gap: 8px;
+  }
+
+  .notification-bell-container .bell-icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .user-profile-widget {
+    padding: 5px;
+    gap: 0;
+  }
+
+  .user-profile-widget .user-details {
+    display: none;
+  }
+
+  .user-profile-widget .user-avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 0.8rem;
+  }
+
+  .modal-overlay {
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .modal-container {
+    max-height: calc(100dvh - 24px);
+  }
+}
+
+@media (max-width: 420px) {
+  .main-header {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .header-title h2 {
+    font-size: 0.98rem;
+  }
+
+  .header-menu-btn,
+  .notification-bell-container .bell-icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .user-profile-widget .user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+
+    h3 {
+      font-size: 0.95rem;
+    }
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+  }
+
+  .modal-footer,
+  .modal-footer-compact {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+
+    button {
+      flex: 1 1 0;
+      justify-content: center;
+      min-height: 44px;
+    }
   }
 }
 

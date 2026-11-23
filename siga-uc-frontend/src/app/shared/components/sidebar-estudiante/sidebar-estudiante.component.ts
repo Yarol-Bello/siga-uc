@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, EventEmitter, inject, Input, Output } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
@@ -16,6 +16,9 @@ import { ConfiguracionService } from '../../../core/services/configuracion.servi
   styleUrl: './sidebar-estudiante.component.scss',
 })
 export class SidebarEstudianteComponent {
+  @Input() abierto = false;
+  @Output() cerrar = new EventEmitter<void>();
+
   private authService = inject(AuthService);
   private configuracion = inject(ConfiguracionService);
 
