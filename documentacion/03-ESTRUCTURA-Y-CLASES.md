@@ -1,7 +1,7 @@
 # 03 — Estructura y Mapa de Clases
 
-> Conteo verificado el 21/11/2026: **80 archivos JS backend**, **129 archivos frontend
-> (53 TypeScript)**, **15 routers**, **15 controladores**, **21 servicios** y **17 DAOs**.
+> Conteo verificado el 23/11/2026: **98 archivos JS backend**, **151 archivos frontend
+> (66 TypeScript)**, **17 routers**, **17 controladores**, **26 servicios** y **23 DAOs**.
 
 ## 1. Backend
 
@@ -9,19 +9,19 @@
 
 | Archivo | Responsabilidad |
 |---|---|
-| `src/app.js` | Crea Express, registra middlewares globales, 14 routers, health check, 404 y error handler; arranca en `0.0.0.0:PORT`; prueba BD y correo |
+| `src/app.js` | Crea Express, registra middlewares globales, 17 routers, health check, 404 y error handler; arranca en `0.0.0.0:PORT`; prueba BD y correo |
 | `src/config/env.js` | Carga `.env`, valida `DB_*`, `JWT_SECRET` y `ANIO_LECTIVO`, exporta configuración centralizada |
 | `src/config/academico.js` | Expone `getAnioLectivo()` desde `ANIO_LECTIVO` |
 | `src/config/database.js` | Pool `pg` (`max=20`), helper `query`, `getClient` transaccional, `testConnection` |
 | `src/middlewares/authMiddleware.js` | `verificarAutenticacion` (Bearer/JWT, estado y bloqueo por cambio de contraseña) y `verificarRol(...roles)` |
 | `src/utils/response.js` | `success` (con `pagination` opcional), `error`, `validationError`, `unauthorized`, `forbidden`, `notFound` |
 
-### 1.2 Routers (14)
+### 1.2 Routers (17)
 
 | Router | Prefijo | Endpoints | Rol de escritura |
 |---|---|---|---|
 | `authRoutes.js` | `/api/auth` | 9 | ADMIN para reset por DNI |
-| `configuracionRoutes.js` | `/api/configuracion` | 1 | Público (solo lectura) |
+| `configuracionRoutes.js` | `/api/configuracion` | 3 | Público GET; ADMIN/SECRETARÍA lectura admin; ADMIN escritura |
 | `academicoRoutes.js` | `/api` | 7 | Solo lectura |
 | `alumnoRoutes.js` | `/api/alumnos` | 6 | ADMIN/SECRETARIA |
 | `personalRoutes.js` | `/api/personal` | 8 | ADMIN |
@@ -35,12 +35,12 @@
 | `siagieRoutes.js` | `/api/siagie` | 2 | ADMIN (exportación interna) |
 | `notificacionRoutes.js` | `/api/notificaciones` | 8 | ADMIN/DOCENTE; masivo ADMIN |
 
-### 1.3 Controladores (14)
+### 1.3 Controladores (17)
 
 | Controlador | Métodos | Notas |
 |---|---|---|
 | `authController.js` | `login`, `perfil`, `verify`, `logout`, `resetPassword`, `solicitarRecuperacion`, `validarToken`, `restablecerPassword`, `cambiarPassword` | `validationResult` en login y cambio de contraseña; recuperación delega a `recuperacionService` |
-| `configuracionController.js` | `obtener` | Devuelve el año lectivo activo |
+| `configuracionController.js` | `obtenerPublica`, `obtenerAdmin`, `actualizarInstitucional` | Año + institución pública; configuración completa; update con motivo y auditoría transaccional |
 | `academicoController.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion` | Solo lectura |
 | `horarioController.js` | `listarPeriodos`, CRUD de períodos, `listar`, `miHorario`, CRUD de bloques, `generar`, `publicar`, `despublicar` | H47; ADMIN/SECRETARIA/DOCENTE/ESTUDIANTE según ruta |
 | `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda, año, `limit`, `solo_activos` y paginación (`page`/`pageSize`) |
@@ -55,12 +55,12 @@
 | `siagieController.js` | `obtenerResumen`, `exportarInterno` | Valida año/grado/bimestre, audita y descarga el Excel interno |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
-### 1.4 Servicios (19)
+### 1.4 Servicios (26)
 
 | Servicio | Métodos principales | Reglas que concentra |
 |---|---|---|
 | `authService.js` | `login`, `verificarToken`, `getPerfil`, `resetPassword`, `cambiarPassword` | Usuario activo, bcrypt, JWT, info adicional por rol, QR en perfil, cambio de contraseña con verificación de la actual |
-| `configuracionService.js` | `obtenerConfiguracion` | Año lectivo activo desde `ANIO_LECTIVO` |
+| `configuracionService.js` | `obtenerConfiguracionPublica`, `obtenerConfiguracionAdmin`, `actualizarInstitucion` | H74: institución única, validaciones, motivo, auditoría en transacción, fallback sin migración |
 | `academicoService.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion` | 404 si no existe; agrega tutor/competencias |
 | `horarioService.js` | `listar`, `miHorario`, CRUD de bloques, `generar`, `publicar`, `despublicar` | Alcance por token, conflictos, publicación y auditoría |
 | `periodoClaseService.js` | `listar`, `crear`, `actualizar`, `eliminar` | Malla por año, sin solapes |
@@ -82,11 +82,12 @@
 | `recuperacionService.js` | `solicitarRecuperacion`, `validarToken`, `restablecerPassword` | Token 32 bytes, 2 h, un uso, no revelar existencia |
 | `emailService.js` | `verificarConexion`, `enviarCorreo`, `enviarNotificacion` | Resend; plantilla guindo/dorado |
 
-### 1.5 DAOs (15)
+### 1.5 DAOs (23)
 
 | DAO | Entidades / operaciones | Consultas destacadas |
 |---|---|---|
 | `usuarioDao.js` | `usuarios`, `roles`, `alumnos`, `personal`, `credenciales_qr`, `recuperacion_password` | `findByDni`, `findByCorreo`, `findByDniOCorreo`, `findById`, `getCredencialQR`, reset/actualizar password |
+| `configuracionDao.js` | `configuracion_institucional`, `configuracion_anio`, `anios_lectivos` | Institución única, años, bloqueo `FOR UPDATE` y actualización |
 | `alumnoDao.js` | `apoderados`, `usuarios`, `alumnos`, `expediente_alumno`, `credenciales_qr` | Listado con filtros, búsqueda `unaccent` por DNI/nombre completo, `LIMIT` opcional y `LIMIT/OFFSET` con `contar`; código `EST-XXX`, matrícula transaccional, retiro |
 | `personalDao.js` | `usuarios`, `personal`, `credenciales_qr` | Listado con rol, creación transaccional, cese/reactivación, reset |
 | `gradoDao.js` | `grados`, `alumnos`, `tutores_grado` | Grados con conteo y tutor |
@@ -157,6 +158,7 @@
 | Admin | `AdminSiagieComponent` | `/admin/siagie` | ts/html/scss |
 | Admin | `AdminReportesComponent` | `/admin/reportes` | ts/html/scss |
 | Admin | `AdminAuditoriaComponent` | `/admin/auditoria` | ts/html/scss |
+| Admin | `AdminConfiguracionComponent` | `/admin/configuracion` | ts/html/scss |
 | Docente | `DocenteDashboardComponent` | `/docente` | ts/html/scss |
 | Docente | `DocenteNotasComponent` | `/docente/notas` | ts/html/scss |
 | Docente | `DocenteHorarioComponent` | `/docente/horario` | ts/html/scss |

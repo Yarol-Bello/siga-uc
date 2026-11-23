@@ -49,15 +49,15 @@
 |---|---|
 | Roles | 4 (`ADMIN`, `DOCENTE`, `SECRETARIA`, `ESTUDIANTE`) |
 | Paneles frontend | 4 + autenticación |
-| Tablas PostgreSQL | 43 base (44 en local con `horarios_h47_backup`) |
-| Funciones + triggers | 11 objetos en el esquema base; H47/H48 agregan triggers |
-| Endpoints REST | 129 (71 GET, 36 POST, 17 PUT, 5 DELETE) |
+| Tablas PostgreSQL | 45 base (46 en local con `horarios_h47_backup`) |
+| Funciones + triggers | 11 objetos en el esquema base; H47/H48/H74 agregan triggers |
+| Endpoints REST | 131 (72 GET, 36 POST, 18 PUT, 5 DELETE) |
 | Routers backend | 17 |
 | Controladores backend | 17 |
 | Servicios backend | 26 |
-| DAOs backend | 22 |
-| Archivos backend | 97 JS |
-| Archivos frontend | 147 (62 TypeScript) |
+| DAOs backend | 23 |
+| Archivos backend | 98 JS |
+| Archivos frontend | 151 (66 TypeScript) |
 | Transacciones de negocio | Matrícula, pago+boleta, cierre de caja, carga masiva, asignación de tutor |
 | Autenticación | JWT (8 h) + bcrypt (coste 10) |
 | Correo transaccional | Resend (API HTTP), con degradación no bloqueante |
@@ -67,8 +67,9 @@
 
 ## 3. Advertencias importantes (leer antes de tocar código)
 
-1. **El año lectivo se configura con `ANIO_LECTIVO`** y se expone en `GET /api/configuracion`.
-   No introducir literales `2026` en controllers, DAOs ni componentes.
+1. **El año lectivo activo sale de `anios_lectivos.estado='ACTIVO'`**; `ANIO_LECTIVO` es
+   bootstrap/respaldo. Se expone en `GET /api/configuracion`. No introducir literales `2026`
+   en controllers, DAOs ni componentes.
 2. **El correo real es `correo_personal`**; el institucional es decorativo. Todo envío usa
    `correo_personal || correo_institucional`.
 3. **Muchos GET solo exigen JWT, no rol ni pertenencia**. La UI oculta módulos, pero la API

@@ -94,6 +94,12 @@ export class SidebarComponent {
       icon: 'fa-shield-halved',
       roles: ['ADMIN'],
     },
+    {
+      path: '/admin/configuracion',
+      label: 'Configuración',
+      icon: 'fa-sliders',
+      roles: ['ADMIN'],
+    },
   ];
   // 👆 FIN DEL ARRAY 👆
 

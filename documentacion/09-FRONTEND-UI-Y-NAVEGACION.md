@@ -43,6 +43,7 @@ index.html
 | `admin/anios-lectivos` | `AdminAniosLectivosComponent` | hereda | Admin |
 | `admin/promociones` | `AdminPromocionesComponent` | hereda | Admin |
 | `admin/auditoria` | `AdminAuditoriaComponent` | hereda | Admin |
+| `admin/configuracion` | `AdminConfiguracionComponent` | hereda | Admin |
 | `docente` | `DocenteLayoutComponent` | `authGuard`, `roleGuard(['DOCENTE'])` | Docente |
 | `docente/horario` | `DocenteHorarioComponent` | hereda | Docente |
 | `docente/notas` | `DocenteNotasComponent` | hereda | Docente |
@@ -113,7 +114,10 @@ una ruta interna válida; si no, navega al dashboard del rol (H72).
 | Método / propiedad | Efecto |
 |---|---|
 | `anioLectivo` | Signal con el año lectivo activo; fallback `new Date().getFullYear()` |
+| `institucion` | Signal con los datos públicos de H74: nombre, logo, moneda, símbolo, zona horaria y locale |
+| `nombreInstitucion`, `moneda`, `simboloMoneda`, `zonaHoraria` | Computed con fallback seguro |
 | `cargar()` | `GET /api/configuracion`; se ejecuta en `provideAppInitializer` antes de renderizar las vistas |
+| `recargar()` | Vuelve a cargar la configuración pública después de guardar ajustes |
 
 > El año lectivo no se define en `environment.ts` ni en componentes: se obtiene del backend al
 > iniciar la app. Cambiarlo en 2027 solo requiere actualizar `ANIO_LECTIVO` y reiniciar el API.
@@ -208,6 +212,7 @@ Cada layout contiene:
 | Años Lectivos y Rollover | `/admin/anios-lectivos` |
 | Promoción de Alumnos | `/admin/promociones` |
 | Auditoría y Actas | `/admin/auditoria` |
+| Configuración | `/admin/configuracion` |
 
 #### DOCENTE
 | Ítem | Ruta |
@@ -282,7 +287,8 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
 | `AdminSiagieComponent` | `GET /anios-lectivos` (selector), `GET /grados?anio=`, `GET /reportes/auditoria-docentes/:id?bimestre=&anio=`, `GET /siagie/resumen`, `GET /siagie/exportar`, `GET /personal/:id`, `POST /notificaciones`. Exportación interna: sin portal, plantilla ni archivo subido; aviso visible y Excel con todos los cursos |
 | `AdminReportesComponent` | `GET /grados?anio=`, `GET /alumnos?anio=`, `GET /anios-lectivos` (selector 6.4), `GET /reportes/cuadro-merito/:id?bimestre=&anio=`, `/alumnos-riesgo/:id?bimestre=&anio=`, `/libreta/:id?bimestre=&anio=`, `/libreta/:id/pdf?bimestre=&anio=`; selector de bimestre 1-4 también en libretas (H51); deep link `?anio=&dni=&grado=&bimestre=` abre la libreta; mérito/riesgo se imprimen con vista aislada y libreta descarga PDF de backend (H58) |
-| `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `POST /actas/:id/reabrir`, `GET /actas/:id/pdf`; tarjeta de cierre, badge global, modal de reapertura (H48) |
+| `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `POST /actas/:id/reabrir`, `GET /actas/:id/pdf`; tarjeta de cierre, badge global, modal de reapertura (H48); muestra el `motivo` de configuración |
+| `AdminConfiguracionComponent` | `GET /configuracion/admin`, `PUT /configuracion/institucional`; formulario general con confirmación y motivo; tabla de años en solo lectura (H74/Fase 1) |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id`; botones Asistencia/Notas navegan con `id_curso` e `id_grado` (H53) |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53) |
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53), usa `parseFechaLocal`/`diaSemanaLocal` y muestra el día en español (H61); bloquea observación sin P/T/F con error inline (H60) |

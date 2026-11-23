@@ -8,7 +8,7 @@ I.E.P. Unión Científica.
 ### A. Desarrollo / demostración
 
 `siga_uc_completo.sql` es un **dump completo**: crea el esquema (40 tablas) y, tras aplicar
-la migración H49 y H73, queda en **43 tablas base** (44 en local con `horarios_h47_backup`), funciones,
+las migraciones H49, H73 y H74, queda en **45 tablas base** (46 en local con `horarios_h47_backup`), funciones,
 triggers, índices y carga los **datos ficticios de demostración** (21 alumnos, apoderados,
 pagos y pensiones de ejemplo). **Nunca debe usarse como base de producción.**
 
@@ -26,6 +26,7 @@ psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
+psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -48,6 +49,7 @@ psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
+psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
 ```
 
 > **H49:** antes de ejecutar la migración, editar `_param_anio` en
@@ -98,6 +100,7 @@ caja, bitácora ni becas.
 | `migracion_h73_promociones.sql` | Crea `politicas_promocion` y `promociones` (H73/6.3). Requiere H49. Idempotente; no agrega `TRASLADADO` ni toca el CHECK de alumnos. |
 | `migracion_h59_observaciones_personal.sql` | Agrega `personal.observaciones` (H59). Idempotente; no cambia el número de tablas. |
 | `migracion_h71_retirados_historicos.sql` | Backfill H71: congela el expediente de los alumnos `Retirado` y desactiva al usuario solo si no conserva otra matrícula no retirada. Idempotente; no toca alumnos no retirados. |
+| `migracion_h74_configuracion_base.sql` | Crea `configuracion_institucional` (una fila), `configuracion_anio` (una por año), el trigger que crea la configuración de años nuevos y `bitacora_auditoria.motivo`. Requiere H49; toma la jornada de `periodos_clase` si H47 está aplicada. Idempotente; no toca tarifas, cursos, becas ni horarios. |
 | `rollback_h73_promociones.sql` | Solo base desechable: elimina `promociones` y `politicas_promocion`. En producción se restaura el backup. |
 | `rollback_h49_multianio_base.sql` | Solo para base desechable: restaura los UNIQUE globales y elimina `anios_lectivos`/`grados.orden`. Aborta si hay varias matrículas por persona o promociones con filas. |
 | `preparar_anio_lectivo.sql` | Utilidad **histórica y parcial**: solo copia conceptos `MATRICULA`/`PENSION` y períodos. No crea grados, carga ni tutores. La reemplaza la pantalla ADMIN de 6.2 (años lectivos y rollover). |
@@ -106,7 +109,7 @@ caja, bitácora ni becas.
 ## Verificación
 
 ```sql
--- 43 tablas base (después de H49 y H73; 44 en local con horarios_h47_backup)
+-- 45 tablas base (después de H49, H73 y H74; 46 en local con horarios_h47_backup)
 SELECT COUNT(*) FROM information_schema.tables
 WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 

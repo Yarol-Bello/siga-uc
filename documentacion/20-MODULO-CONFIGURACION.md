@@ -1,10 +1,10 @@
 # 20 — Módulo de Configuración y Ajustes
 
 **SIGA-UC — I.E.P. Unión Científica**
-**Fase 0:** diagnóstico, decisiones y diseño
+**Fases 0 y 1:** diagnóstico, diseño y núcleo de configuración
 **Fecha:** 23/11/2026
-**Commit base:** `3b7240d`
-**Estado:** diseño aprobado para iniciar Fase 1. No se modificó código de negocio ni base de datos.
+**Commit base:** `3b7240d` (Fase 0: `fe5f273`)
+**Estado:** Fase 0 cerrada; Fase 1 implementada, aplicada en local y verificada. H74 no se aplicó en Supabase.
 
 > Este documento es la referencia de implementación del módulo de configuración.
 > Si una regla de negocio no está confirmada por el colegio, se marca como
@@ -333,8 +333,8 @@ claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de insta
 
 | Fase | Alcance | Depende de | Riesgo | Esfuerzo |
 |---|---|---|---|---|
-| 0 | Diagnóstico, decisiones, línea base. | — | Bajo | 2–3 días |
-| 1 | Núcleo global/año, auditoría, UI General. | 0 | Medio | 5–7 días |
+| 0 | Diagnóstico, decisiones, línea base. ✅ Cerrada. | — | Bajo | 2–3 días |
+| 1 | Núcleo global/año, auditoría, UI General. ✅ Implementada en local. | 0 | Medio | 5–7 días |
 | 2 | Tarifas, resolución, matrícula/pensiones/promoción, preview. | 1 | Alto | 8–12 días |
 | 3 | Cursos, áreas, competencias, carga, rollover. | 1 | Medio-alto | 5–7 días |
 | 4 | Jornada, días, límites, generador. | 1, 3 | Medio | 5–7 días |
@@ -447,8 +447,52 @@ claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de insta
 
 ---
 
-## 14. Registro de cambios
+## 14. Estado de implementación (Fase 1)
+
+**Migración:** `database/migracion_h74_configuracion_base.sql`, aplicada en local y en la
+base desechable E2E. Idempotente. Crea:
+
+- `configuracion_institucional` con una fila inicial.
+- `configuracion_anio` con una fila por año; toma la jornada de `periodos_clase` si existe.
+- Trigger `trg_anio_configuracion` que crea la fila de configuración al insertar un año nuevo.
+- `bitacora_auditoria.motivo`.
+
+**Backend:**
+
+- `GET /api/configuracion` público con año + institución segura; fallback si H74 falta.
+- `GET /api/configuracion/admin` ADMIN/SECRETARÍA.
+- `PUT /api/configuracion/institucional` solo ADMIN, motivo obligatorio, validaciones y
+  auditoría dentro de la misma transacción.
+- `auditoriaDao` incluye `motivo` y tolera una base sin H74.
+
+**Frontend:**
+
+- `/admin/configuracion` con formulario general, confirmación con motivo, tabla de años en
+  solo lectura y datos públicos en `ConfiguracionService`.
+- Item “Configuración” en el sidebar ADMIN y título en el layout.
+- La auditoría muestra el motivo en el detalle.
+
+**Verificación (23/11/2026):**
+
+- Migración H74 aplicada dos veces en local sin error.
+- E2E: **80 PASS, 0 FAIL** (75 previos + 5 de configuración).
+- Integridad en base nueva desechable: **24 PASS, 0 FAIL**.
+- Integridad local: **22 PASS, 2 FAIL** de seed (invariantes 4 y 8, conocidos).
+- Smoke: **12 PASS, 0 FAIL** contra el backend local nuevo.
+- H47 generador: **4 PASS**.
+- Build Angular: OK (solo advertencia de presupuesto).
+- `node --check`: OK.
+- UI probada a 768 y 1366 px; a 390 px el componente se adapta, pero el sidebar fijo del
+  ADMIN (responsive pausado) limita el ancho. No se modificó el layout por indicación.
+
+**Pendiente:** fases 2–7 (tarifas, cursos, jornada, becas, textos/PDF, endurecimiento y
+despliegue). H74 no se aplicó en Supabase; no se activó 2027.
+
+---
+
+## 15. Registro de cambios
 
 | Fecha | Cambio | Autor |
 |---|---|---|
 | 23/11/2026 | Fase 0: documento de diseño, decisiones, línea base y plan de fases. | Sesión de código |
+| 23/11/2026 | Fase 1: H74, backend de configuración, UI general, auditoría con motivo y pruebas. | Sesión de código |

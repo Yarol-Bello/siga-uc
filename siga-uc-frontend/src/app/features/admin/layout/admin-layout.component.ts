@@ -22,6 +22,7 @@ const TITULOS_POR_RUTA: Record<string, string> = {
   '/admin/caja': 'Cuadre de Caja',
   '/admin/reportes': 'Reportes y Libretas',
   '/admin/historico': 'Histórico por Estudiante',
+  '/admin/configuracion': 'Configuración del Sistema',
 };
 
 @Component({

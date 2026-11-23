@@ -44,6 +44,15 @@ const registrarSeguro = async (req, evento) => {
   });
 };
 
+/**
+ * Registra auditoría dentro de la transacción del llamador.
+ * Si la escritura falla, la transacción completa debe revertirse: se usa para
+ * cambios de configuración, donde no se admite un cambio sin bitácora.
+ */
+const registrarEnTransaccion = async (client, evento) => {
+  return await auditoriaDao.registrarEvento(evento, client);
+};
+
 const listarBitacora = async (filtros) => {
   return await auditoriaDao.listarBitacora(filtros);
 };
@@ -260,6 +269,7 @@ const getEstadisticas = async () => {
 module.exports = {
   registrar,
   registrarSeguro,
+  registrarEnTransaccion,
   listarBitacora,
   contarBitacora,
   obtenerBitacora,

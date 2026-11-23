@@ -15,6 +15,7 @@ El backup `siga_uc_backup.sql` no se versiona.
 | Seguridad | `roles`, `usuarios`, `recuperacion_password`, `personal`, `asistencia_personal`, `bitacora_auditoria`, `notificaciones`, `credenciales_qr` | 8 |
 | Multi-año | `anios_lectivos` | 1 |
 | Promociones | `promociones`, `politicas_promocion` | 2 |
+| Configuración | `configuracion_institucional`, `configuracion_anio` | 2 |
 | Curricular | `grados`, `cursos`, `competencias`, `carga_curricular`, `tutores_grado`, `horarios`, `periodos_clase`, `escala_calificacion` | 8 |
 | Alumnos | `apoderados`, `alumnos`, `expediente_alumno` | 3 |
 | Asistencia | `asistencia_alumnos`, `resumen_asistencia_curso` | 2 |
@@ -23,7 +24,7 @@ El backup `siga_uc_backup.sql` no se versiona.
 | Caja | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` | 4 |
 | SIAGIE | `exportaciones_siagie`, `estado_carga_docentes` | 2 |
 | Reportes | `cuadro_merito`, `alumnos_riesgo` | 2 |
-| **Total** | | **43** |
+| **Total** | | **45** |
 
 > **Tablas de solo estructura / históricas:** `resumen_asistencia_curso`, `libretas`,
 > `cuadro_merito`, `alumnos_riesgo` y `estado_carga_docentes` existen en el esquema, pero el
@@ -147,6 +148,7 @@ erDiagram
 | `descripcion` | text | — |
 | `valor_anterior` | jsonb | — |
 | `valor_nuevo` | jsonb | — |
+| `motivo` | varchar(500) | H74; motivo declarado en cambios de configuración |
 | `ip_origen` | varchar(45) | — |
 
 #### `notificaciones`
@@ -418,6 +420,32 @@ sin destino.
 matrícula destino por promoción confirmada. No usa `ON DELETE CASCADE`; no agrega
 `TRASLADADO` (traslado = `RETIRADO` + condición `Traslado`).
 
+### 3.10 Configuración (H74/Fase 1)
+
+#### `configuracion_institucional` (una sola fila)
+`id_configuracion` smallint PK CHECK = 1 · `nombre_institucion` · `nombre_corto` · `ruc`
+(11 dígitos o NULL) · `direccion`, `distrito`, `provincia`, `departamento`, `pais` ·
+`telefono`, `correo_contacto`, `sitio_web`, `logo_url` · `moneda` char(3) default `PEN` ·
+`simbolo_moneda` default `S/` · `zona_horaria` default `America/Lima` · `locale` default
+`es-PE` · `nombre_remitente` · `texto_boleta`, `texto_libreta`, `texto_acta`, `texto_pie` ·
+`serie_boleta` default `B001` · `numero_boleta_inicial` default 4820 · `actualizado_por` FK
+usuarios SET NULL · `actualizado_en`.
+
+> La migración H74 inserta la fila inicial con los datos institucionales actuales. El
+> ADMIN puede editarla desde `/admin/configuracion`; `GET /api/configuracion` solo expone
+> nombre, nombre corto, logo, moneda, símbolo, zona horaria y locale.
+
+#### `configuracion_anio` (una fila por año)
+`anio` PK/FK `anios_lectivos` ON DELETE CASCADE · `dias_clase` varchar(15)[] default
+Lunes–Viernes · `hora_inicio_jornada`, `hora_fin_jornada` · `duracion_min_bloque` default 45
+· `max_bloques_curso_dia` default 2 · `horas_default_carga` default 2 ·
+`politica_inicio_pension` (`MES_MATRICULA`/`PRIMER_MES_CONFIGURADO`/`MES_FIJO`) ·
+`mes_inicio_pension` · `version` · `actualizado_por`, `actualizado_en`.
+
+> H74 crea una fila por año existente y toma la jornada de `periodos_clase` cuando H47 está
+> aplicada. El trigger `trg_anio_configuracion` crea la fila al insertar un año nuevo. La
+> edición de jornada y límites se habilita en la Fase 4.
+
 ---
 
 ## 4. Restricciones de negocio en BD (CHECK)
@@ -480,7 +508,7 @@ Además de los índices automáticos de PK/UNIQUE, el esquema define **26 índic
 
 ---
 
-## 6. Funciones y triggers (11 objetos)
+## 6. Funciones y triggers (11 base + H47/H48/H74)
 
 ### 6.1 `trg_actualizar_timestamp()`
 Trigger `trg_usuarios_actualizar` **BEFORE UPDATE** en `usuarios`. Asigna
@@ -530,6 +558,13 @@ Función PL/pgSQL que cuenta `AD/A/B/C` y devuelve:
 `tesoreriaDao.registrarPago` actualiza manualmente pre-ticket, pensión y matrícula, y además
 los triggers 6.3/6.4/6.5 hacen lo mismo. Las operaciones son idempotentes, pero hay
 duplicación de lógica. El movimiento de caja solo lo crea el trigger.
+
+### 6.8 `trg_configuracion_anio_crear()` (H74)
+Trigger **AFTER INSERT** en `anios_lectivos`. Inserta una fila default en
+`configuracion_anio` para el año nuevo (`dias_clase` Lunes–Viernes, duración 45, máximos 2)
+con `ON CONFLICT DO NOTHING`. Así el rollover y cualquier alta de año no quedan sin
+configuración. La jornada (`hora_inicio_jornada`/`hora_fin_jornada`) se completa en la
+Fase 4.
 
 ---
 
@@ -609,6 +644,15 @@ psql -U postgres -d siga_uc -f database/siga_uc_completo.sql
 psql -U postgres -d siga_uc -f database/migracion_h32_anulacion_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h10_h38_concurrencia_pagos.sql
 psql -U postgres -d siga_uc -f database/migracion_h07_auditoria.sql
+psql -U postgres -d siga_uc -f database/migracion_h45_pensiones_anuladas.sql
+psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
+psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
+psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
+psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
+psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
 ```
 
 > `siga_uc_completo.sql` ya contiene esquema, funciones e índices. **No** cargar

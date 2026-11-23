@@ -1,0 +1,507 @@
+<div class="config-page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Configuración del sistema</span>
+      <h1>Datos generales del colegio</h1>
+      <p>
+        Estos datos se usan en la interfaz y, en las siguientes fases, en boletas,
+        libretas, actas y correos. Los cambios quedan auditados con su motivo.
+      </p>
+    </div>
+    <div class="head-actions">
+      <button type="button" class="btn-soft" (click)="cargar()" [disabled]="cargando()">
+        <i class="fa-solid fa-rotate"></i>
+        Recargar
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-danger" role="alert">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  @if (exito()) {
+  <div class="alert alert-success" role="status">
+    <i class="fa-solid fa-circle-check"></i>
+    {{ exito() }}
+  </div>
+  }
+
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando configuración...</p>
+  </div>
+  }
+
+  @if (!cargando() && !error()) {
+  <form (ngSubmit)="abrirModal()" novalidate>
+    <section class="config-card">
+      <div class="card-title">
+        <i class="fa-solid fa-school"></i>
+        <div>
+          <h2>Identidad institucional</h2>
+          <p>Nombre visible, RUC, logo y sitio web.</p>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-12 col-lg-8">
+          <label class="form-label" for="nombre_institucion">
+            Nombre de la institución <span class="req">*</span>
+          </label>
+          <input
+            id="nombre_institucion"
+            name="nombre_institucion"
+            class="form-control"
+            maxlength="200"
+            [(ngModel)]="form.nombre_institucion"
+            placeholder="I.E.P. Unión Científica"
+            required
+          />
+        </div>
+        <div class="col-12 col-lg-4">
+          <label class="form-label" for="nombre_corto">Nombre corto</label>
+          <input
+            id="nombre_corto"
+            name="nombre_corto"
+            class="form-control"
+            maxlength="100"
+            [(ngModel)]="form.nombre_corto"
+            placeholder="Unión Científica"
+          />
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label" for="ruc">RUC</label>
+          <input
+            id="ruc"
+            name="ruc"
+            class="form-control"
+            maxlength="11"
+            inputmode="numeric"
+            [(ngModel)]="form.ruc"
+            placeholder="11 dígitos"
+          />
+        </div>
+        <div class="col-12 col-md-8">
+          <label class="form-label" for="sitio_web">Sitio web</label>
+          <input
+            id="sitio_web"
+            name="sitio_web"
+            class="form-control"
+            maxlength="200"
+            [(ngModel)]="form.sitio_web"
+            placeholder="https://..."
+          />
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="logo_url">URL del logo</label>
+          <input
+            id="logo_url"
+            name="logo_url"
+            class="form-control"
+            maxlength="1000"
+            [(ngModel)]="form.logo_url"
+            placeholder="https://.../logo.png"
+          />
+          <small class="hint">Se usará en documentos y en la interfaz cuando se conecte en la Fase 6.</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="config-card">
+      <div class="card-title">
+        <i class="fa-solid fa-location-dot"></i>
+        <div>
+          <h2>Ubicación y contacto</h2>
+          <p>Dirección, teléfono y correo de contacto del colegio.</p>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-12 col-lg-8">
+          <label class="form-label" for="direccion">Dirección</label>
+          <input
+            id="direccion"
+            name="direccion"
+            class="form-control"
+            maxlength="250"
+            [(ngModel)]="form.direccion"
+            placeholder="Av. / Jr. / Calle"
+          />
+        </div>
+        <div class="col-12 col-lg-4">
+          <label class="form-label" for="telefono">Teléfono</label>
+          <input
+            id="telefono"
+            name="telefono"
+            class="form-control"
+            maxlength="30"
+            [(ngModel)]="form.telefono"
+            placeholder="(064) ..."
+          />
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label" for="distrito">Distrito</label>
+          <input
+            id="distrito"
+            name="distrito"
+            class="form-control"
+            maxlength="100"
+            [(ngModel)]="form.distrito"
+          />
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label" for="provincia">Provincia</label>
+          <input
+            id="provincia"
+            name="provincia"
+            class="form-control"
+            maxlength="100"
+            [(ngModel)]="form.provincia"
+          />
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label" for="departamento">Departamento</label>
+          <input
+            id="departamento"
+            name="departamento"
+            class="form-control"
+            maxlength="100"
+            [(ngModel)]="form.departamento"
+          />
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label" for="pais">País</label>
+          <input
+            id="pais"
+            name="pais"
+            class="form-control"
+            maxlength="100"
+            [(ngModel)]="form.pais"
+          />
+        </div>
+        <div class="col-12 col-md-8">
+          <label class="form-label" for="correo_contacto">Correo de contacto</label>
+          <input
+            id="correo_contacto"
+            name="correo_contacto"
+            type="email"
+            class="form-control"
+            maxlength="150"
+            [(ngModel)]="form.correo_contacto"
+            placeholder="contacto@colegio.edu.pe"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section class="config-card">
+      <div class="card-title">
+        <i class="fa-solid fa-coins"></i>
+        <div>
+          <h2>Moneda, zona horaria e idioma</h2>
+          <p>Valores operativos que usan la interfaz y los documentos.</p>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="moneda">Moneda</label>
+          <input
+            id="moneda"
+            name="moneda"
+            class="form-control text-uppercase"
+            maxlength="3"
+            [(ngModel)]="form.moneda"
+            placeholder="PEN"
+          />
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="simbolo_moneda">Símbolo</label>
+          <input
+            id="simbolo_moneda"
+            name="simbolo_moneda"
+            class="form-control"
+            maxlength="5"
+            [(ngModel)]="form.simbolo_moneda"
+            placeholder="S/"
+          />
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label" for="zona_horaria">Zona horaria</label>
+          <input
+            id="zona_horaria"
+            name="zona_horaria"
+            class="form-control"
+            maxlength="50"
+            list="zonas-sugeridas"
+            [(ngModel)]="form.zona_horaria"
+            placeholder="America/Lima"
+          />
+          <datalist id="zonas-sugeridas">
+            @for (zona of zonasSugeridas; track zona) {
+            <option [value]="zona"></option>
+            }
+          </datalist>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="locale">Idioma / locale</label>
+          <input
+            id="locale"
+            name="locale"
+            class="form-control"
+            maxlength="10"
+            [(ngModel)]="form.locale"
+            placeholder="es-PE"
+          />
+        </div>
+        <div class="col-12 col-md-9">
+          <label class="form-label" for="nombre_remitente">Nombre visible del remitente</label>
+          <input
+            id="nombre_remitente"
+            name="nombre_remitente"
+            class="form-control"
+            maxlength="150"
+            [(ngModel)]="form.nombre_remitente"
+            placeholder="I.E.P. Unión Científica"
+          />
+          <small class="hint">El correo real se configura por despliegue; aquí solo el nombre visible.</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="config-card">
+      <div class="card-title">
+        <i class="fa-solid fa-file-lines"></i>
+        <div>
+          <h2>Textos y boletas</h2>
+          <p>Se conectarán a PDFs y correos en la Fase 6.</p>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-12 col-lg-6">
+          <label class="form-label" for="texto_boleta">Texto de boleta</label>
+          <textarea
+            id="texto_boleta"
+            name="texto_boleta"
+            class="form-control"
+            rows="3"
+            maxlength="4000"
+            [(ngModel)]="form.texto_boleta"
+            placeholder="Texto adicional para boletas"
+          ></textarea>
+        </div>
+        <div class="col-12 col-lg-6">
+          <label class="form-label" for="texto_libreta">Texto de libreta</label>
+          <textarea
+            id="texto_libreta"
+            name="texto_libreta"
+            class="form-control"
+            rows="3"
+            maxlength="4000"
+            [(ngModel)]="form.texto_libreta"
+            placeholder="Texto adicional para libretas"
+          ></textarea>
+        </div>
+        <div class="col-12 col-lg-6">
+          <label class="form-label" for="texto_acta">Texto de acta</label>
+          <textarea
+            id="texto_acta"
+            name="texto_acta"
+            class="form-control"
+            rows="3"
+            maxlength="4000"
+            [(ngModel)]="form.texto_acta"
+            placeholder="Texto adicional para actas"
+          ></textarea>
+        </div>
+        <div class="col-12 col-lg-6">
+          <label class="form-label" for="texto_pie">Texto de pie de página</label>
+          <textarea
+            id="texto_pie"
+            name="texto_pie"
+            class="form-control"
+            rows="3"
+            maxlength="4000"
+            [(ngModel)]="form.texto_pie"
+            placeholder="Texto de pie para documentos"
+          ></textarea>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="serie_boleta">Serie de boleta</label>
+          <input
+            id="serie_boleta"
+            name="serie_boleta"
+            class="form-control text-uppercase"
+            maxlength="10"
+            [(ngModel)]="form.serie_boleta"
+            placeholder="B001"
+          />
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="numero_boleta_inicial">Número inicial</label>
+          <input
+            id="numero_boleta_inicial"
+            name="numero_boleta_inicial"
+            type="number"
+            min="0"
+            max="999999"
+            class="form-control"
+            [(ngModel)]="form.numero_boleta_inicial"
+          />
+        </div>
+      </div>
+      <div class="notice">
+        <i class="fa-solid fa-circle-info"></i>
+        La serie y numeración se guardan desde ahora, pero la emisión de boletas
+        seguirá usando el flujo actual hasta la Fase 6.
+      </div>
+    </section>
+
+    @if (errorLocal()) {
+    <div class="alert alert-warning" role="alert">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      {{ errorLocal() }}
+    </div>
+    }
+
+    <div class="form-actions">
+      <button type="button" class="btn-soft" (click)="cargar()" [disabled]="guardando()">
+        Descartar cambios
+      </button>
+      <button type="submit" class="btn-primary" [disabled]="guardando()">
+        <i class="fa-solid fa-floppy-disk"></i>
+        Guardar cambios
+      </button>
+    </div>
+  </form>
+
+  <section class="config-card years-card">
+    <div class="card-title">
+      <i class="fa-solid fa-calendar-days"></i>
+      <div>
+        <h2>Años lectivos</h2>
+        <p>Resumen de la configuración operativa por año. La edición de jornada y límites llega en la Fase 4.</p>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle years-table">
+        <thead>
+          <tr>
+            <th>Año</th>
+            <th>Estado</th>
+            <th>Días de clase</th>
+            <th>Jornada</th>
+            <th class="text-center">Máx. bloques / curso / día</th>
+            <th class="text-center">Horas default de carga</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (anio of anios(); track anio.anio) {
+          <tr>
+            <td>
+              <strong>{{ anio.anio }}</strong>
+              @if (anio.anio === anioActivo()) {
+              <span class="badge-active">Activo</span>
+              }
+            </td>
+            <td>{{ anio.estado }}</td>
+            <td>{{ diasTexto(anio) }}</td>
+            <td>{{ jornadaTexto(anio) }}</td>
+            <td class="text-center">{{ anio.max_bloques_curso_dia }}</td>
+            <td class="text-center">{{ anio.horas_default_carga }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (anios().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-calendar-xmark"></i>
+      <p>No hay años lectivos configurados.</p>
+    </div>
+    }
+  </section>
+  }
+</div>
+
+@if (modalGuardar()) {
+<div class="modal-overlay" (click)="cerrarModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">Confirmar cambio</span>
+        <h2>Guardar configuración general</h2>
+      </div>
+      <button type="button" class="icon-btn" (click)="cerrarModal()" [disabled]="guardando()" aria-label="Cerrar">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <p class="modal-intro">
+        Se actualizarán los datos institucionales. El cambio quedará registrado en la
+        bitácora con el valor anterior, el nuevo y el motivo.
+      </p>
+
+      <dl class="summary">
+        <div>
+          <dt>Institución</dt>
+          <dd>{{ form.nombre_institucion || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Moneda</dt>
+          <dd>{{ form.moneda || '—' }} · {{ form.simbolo_moneda || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Zona horaria</dt>
+          <dd>{{ form.zona_horaria || '—' }}</dd>
+        </div>
+      </dl>
+
+      <label class="form-label" for="motivo">
+        Motivo del cambio <span class="req">*</span>
+      </label>
+      <textarea
+        id="motivo"
+        name="motivo"
+        class="form-control"
+        rows="3"
+        maxlength="500"
+        [(ngModel)]="motivo"
+        placeholder="Explique por qué se realiza este cambio (mínimo 10 caracteres)"
+      ></textarea>
+      <div class="counter">{{ motivo().trim().length }}/500 · mínimo 10</div>
+
+      @if (errorModal()) {
+      <div class="alert alert-danger" role="alert">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorModal() }}
+      </div>
+      }
+    </div>
+
+    <div class="modal-foot">
+      <button type="button" class="btn-soft" (click)="cerrarModal()" [disabled]="guardando()">
+        Cancelar
+      </button>
+      <button type="button" class="btn-primary" (click)="confirmarGuardado()" [disabled]="guardando()">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        Guardando...
+        } @else {
+        <i class="fa-solid fa-check"></i>
+        Confirmar y guardar
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}

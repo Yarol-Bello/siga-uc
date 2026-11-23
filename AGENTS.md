@@ -34,9 +34,9 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | SQL | Crudo parametrizado (sin ORM) |
 | Tests/CI/Docker | Suites manuales (`smoke`, integridad, E2E); sin CI ni Docker |
 
-**Conteos actuales:** 43 tablas base (44 en local con `horarios_h47_backup`) · 129 endpoints ·
-4 roles · 17 routers · 17 controladores · 26 servicios · 22 DAOs · 97 archivos JS backend ·
-147 archivos frontend (62 TS).
+**Conteos actuales:** 45 tablas base (46 en local con `horarios_h47_backup`) · 131 endpoints ·
+4 roles · 17 routers · 17 controladores · 26 servicios · 23 DAOs · 98 archivos JS backend ·
+151 archivos frontend (66 TS).
 
 ---
 
@@ -92,6 +92,7 @@ psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
+psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
@@ -108,6 +109,7 @@ psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
+psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
 ```
 
 > **H49:** antes de ejecutar `migracion_h49_multianio_base.sql`, editar `_param_anio` al año
@@ -333,13 +335,18 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - Los **IDs de conceptos** de tesorería ya se resuelven por tipo y por pre-ticket; la
   tabla de pensiones aún muestra 12 meses fijos y el mensaje “hasta diciembre”. El módulo
   de configuración reemplazará esos supuestos por tarifas y calendarios administrables.
-- **Módulo de configuración (Fase 0):** el diseño está en
-  `documentacion/20-MODULO-CONFIGURACION.md`. No hay CRUD de conceptos, cursos,
-  competencias ni becas todavía; no confundir el diseño con funcionalidad existente.
+- **Módulo de configuración:** Fase 0 documentada en
+  `documentacion/20-MODULO-CONFIGURACION.md`. **Fase 1 implementada y aplicada en local**
+  (H74): `configuracion_institucional`, `configuracion_anio`, `bitacora_auditoria.motivo`,
+  `GET /api/configuracion` con institución pública, `GET /api/configuracion/admin` y
+  `PUT /api/configuracion/institucional` (solo ADMIN, motivo obligatorio y auditoría
+  transaccional). UI `/admin/configuracion` con datos generales y años en solo lectura.
+  **No hay CRUD de conceptos, cursos, competencias, horarios ni becas todavía.** H74 no se
+  aplicó en Supabase. 45 tablas base (46 en local con `horarios_h47_backup`).
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
-- Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (21) y
-  `npm run test:e2e` (75, base desechable); el resto del testeo es manual.
+- Sí hay suites automatizadas: `npm run smoke` (12), `npm run test:integridad` (24) y
+  `npm run test:e2e` (80, base desechable); el resto del testeo es manual.
 
 ---
 
@@ -350,8 +357,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Visión, alcance, glosario | `documentacion/01-VISION-GENERAL-Y-ALCANCE.md` |
 | Arquitectura, patrones, request lifecycle | `documentacion/02-ARQUITECTURA-Y-PATRONES.md` |
 | Archivos y clases | `documentacion/03-ESTRUCTURA-Y-CLASES.md` |
-| 43 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
-| 129 endpoints y permisos | `documentacion/05-API-REST.md` |
+| 45 tablas, triggers, seeds | `documentacion/04-BASE-DE-DATOS.md` |
+| 131 endpoints y permisos | `documentacion/05-API-REST.md` |
 | Usuarios, roles, matriz de permisos | `documentacion/06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Flujos por rol | `documentacion/07-FLUJOS-POR-ROL.md` |
 | Procesos de negocio | `documentacion/08-PROCESOS-DE-NEGOCIO.md` |

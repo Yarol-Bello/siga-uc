@@ -553,6 +553,60 @@ async function main() {
     );
   });
 
+  // 12. Configuración administrativa (H74). Tolera una base sin la migración.
+  await prueba(
+    12,
+    "ADMIN: configuración administrativa (GET /configuracion/admin)",
+    async () => {
+      if (!sesionAdmin) {
+        registrar(
+          12,
+          "ADMIN: configuración administrativa (GET /configuracion/admin)",
+          "SKIP",
+          "Sin sesión ADMIN",
+        );
+        return;
+      }
+
+      const respuesta = await solicitar("/configuracion/admin", {
+        token: sesionAdmin.token,
+      });
+      const { datos } = await leerJson(respuesta);
+
+      if (respuesta.status === 503 && datos?.errors?.codigo === "CONFIG_NO_APLICADA") {
+        registrar(
+          12,
+          "ADMIN: configuración administrativa (GET /configuracion/admin)",
+          "SKIP",
+          "H74 no aplicada",
+        );
+        return;
+      }
+
+      if (
+        respuesta.status === 200 &&
+        datos?.success &&
+        datos?.data?.institucion?.id_configuracion === 1 &&
+        Array.isArray(datos?.data?.anios)
+      ) {
+        registrar(
+          12,
+          "ADMIN: configuración administrativa (GET /configuracion/admin)",
+          "PASS",
+          `200, institución y ${datos.data.anios.length} año(s)`,
+        );
+        return;
+      }
+
+      registrar(
+        12,
+        "ADMIN: configuración administrativa (GET /configuracion/admin)",
+        "FAIL",
+        detalleHttp(respuesta, datos),
+      );
+    },
+  );
+
   const pass = resultados.filter((r) => r.estado === "PASS").length;
   const fail = resultados.filter((r) => r.estado === "FAIL").length;
   const skip = resultados.filter((r) => r.estado === "SKIP").length;

@@ -11,7 +11,7 @@
  * Conexión: usa DATABASE_URL si existe; si no, DB_HOST/DB_PORT/DB_USER/
  * DB_PASSWORD/DB_NAME. Las credenciales nunca se imprimen.
  *
- * Códigos de salida: 0 si las 21 invariantes pasan; 1 si hay algún FAIL.
+ * Códigos de salida: 0 si las 24 invariantes pasan; 1 si hay algún FAIL.
  */
 
 "use strict";
@@ -81,6 +81,8 @@ const TABLAS_ESPERADAS = [
   "cierres_caja",
   "competencias",
   "conceptos_pago",
+  "configuracion_anio",
+  "configuracion_institucional",
   "conclusiones_descriptivas",
   "credenciales_qr",
   "cuadro_merito",
@@ -196,10 +198,10 @@ async function main() {
     return;
   }
 
-  // 1. Las 43 tablas base del esquema existen.
+  // 1. Las 45 tablas base del esquema existen.
   await verificarInvariante(
     1,
-    "Las 43 tablas esperadas existen",
+    "Las 45 tablas esperadas existen",
     `
       SELECT q.*, COUNT(*) OVER() AS _total
       FROM (
@@ -644,6 +646,65 @@ async function main() {
           )
       ) q
       ORDER BY q.id_alumno
+      LIMIT 5
+    `,
+  );
+
+  // 22. H74: exactamente una configuración institucional.
+  await verificarInvariante(
+    22,
+    "Configuración institucional única",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT COUNT(*)::int AS total
+        FROM configuracion_institucional
+      ) q
+      WHERE q.total <> 1
+    `,
+  );
+
+  // 23. H74: una configuración por cada año lectivo.
+  await verificarInvariante(
+    23,
+    "Una configuración por año lectivo",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT a.anio, COUNT(c.anio)::int AS configuraciones
+        FROM anios_lectivos a
+        LEFT JOIN configuracion_anio c ON c.anio = a.anio
+        GROUP BY a.anio
+        HAVING COUNT(c.anio) <> 1
+      ) q
+      ORDER BY q.anio
+      LIMIT 5
+    `,
+  );
+
+  // 24. H74: días, jornada y límites coherentes.
+  await verificarInvariante(
+    24,
+    "Días, jornada y límites coherentes",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT c.anio, c.dias_clase, c.hora_inicio_jornada,
+               c.hora_fin_jornada, c.duracion_min_bloque,
+               c.max_bloques_curso_dia, c.horas_default_carga
+        FROM configuracion_anio c
+        WHERE c.dias_clase IS NULL
+           OR cardinality(c.dias_clase) = 0
+           OR (
+             c.hora_inicio_jornada IS NOT NULL
+             AND c.hora_fin_jornada IS NOT NULL
+             AND c.hora_fin_jornada <= c.hora_inicio_jornada
+           )
+           OR c.duracion_min_bloque <= 0
+           OR c.max_bloques_curso_dia <= 0
+           OR c.horas_default_carga <= 0
+      ) q
+      ORDER BY q.anio
       LIMIT 5
     `,
   );

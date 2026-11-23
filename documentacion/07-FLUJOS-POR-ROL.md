@@ -295,6 +295,22 @@ navegador (no genera PDF).
    - **Tesorería**: `/admin/tesoreria?anio=&dni=` (filtra el padrón de ese año).
 6. Los años no activos aparecen con etiqueta **Histórico**; la pantalla es solo lectura.
 
+### 1.13 Configuración general (`/admin/configuracion`, H74/Fase 1)
+
+1. El ADMIN abre **Configuración** en el sidebar.
+2. `GET /api/configuracion/admin` devuelve la fila institucional y el resumen de años.
+3. Edita nombre, RUC, contacto, moneda, símbolo, zona horaria, locale, textos y numeración.
+4. “Guardar cambios” valida en el navegador y abre un modal de confirmación con resumen.
+5. El motivo es obligatorio (10–500). `PUT /api/configuracion/institucional` actualiza en
+   una transacción y registra `MODIFICAR` en la bitácora con valor anterior, nuevo y motivo.
+6. Al terminar, la UI recarga `ConfiguracionService` para refrescar los datos públicos.
+7. La tabla de años es solo lectura en esta fase: muestra días, jornada, máximo por curso y
+   horas default. La edición de jornada y límites llega en la Fase 4.
+8. SECRETARÍA puede leer la configuración administrativa; DOCENTE y ESTUDIANTE reciben 403.
+
+> Si H74 no está aplicada, la UI muestra el error `CONFIG_NO_APLICADA`; la configuración
+> pública sigue funcionando con el año activo y valores por defecto.
+
 ---
 
 ## 2. SECRETARIA

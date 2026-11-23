@@ -100,6 +100,22 @@ Catálogo consolidado. Cada regla indica dónde se aplica y qué ocurre si se in
 | RN-49.5 | Publicar exige horas completas, salvo `permitir_parcial` explícito | `horarioService.publicar` | 409 con faltantes |
 | RN-49.6 | Cambiar docente/estructura de una carga con horario publicado exige despublicar; en BORRADOR se actualiza o elimina en la misma transacción | `cargaCurricularService` | 409 |
 
+### 5.1 Configuración general (H74/Fase 1)
+
+| ID | Regla | Dónde | Detalle |
+|---|---|---|---|
+| RN-156 | Existe exactamente una fila de configuración institucional | BD `chk_configuracion_unica` | `id_configuracion = 1` |
+| RN-157 | Solo ADMIN escribe la configuración | Router `checkRole(["ADMIN"])` | SECRETARÍA lee; DOCENTE/ESTUDIANTE 403 |
+| RN-158 | El motivo es obligatorio en cambios | `configuracionService` | 10–500 caracteres; código `MOTIVO_REQUERIDO` |
+| RN-159 | La auditoría se escribe en la misma transacción | `auditoriaService.registrarEnTransaccion` | Si falla, se revierte el cambio |
+| RN-160 | Validaciones de institución | Service | Nombre ≤200, RUC 11 dígitos, correo, URL http(s), moneda 3 letras, zona `Intl`, locale `es-PE`, serie alfanumérica, número 0–999999 |
+| RN-161 | El endpoint público no expone datos internos | `GET /api/configuracion` | Sin RUC, correo, dirección ni IDs |
+| RN-162 | No se guardan secretos en configuración | Service + UI | `RESEND_API_KEY`/`JWT_SECRET` siguen en `.env` |
+| RN-163 | Sin H74, la API no se cae | Controller | `503 CONFIG_NO_APLICADA` en admin; público con fallback |
+| RN-164 | Guardar sin cambios no duplica auditoría | Service | `sin_cambios: true` |
+| RN-165 | Una configuración por año lectivo | BD `configuracion_anio.anio` | FK a `anios_lectivos` |
+| RN-166 | El componente nace responsive; el shell ADMIN sigue pausado | CSS del componente | A 768/1366 funciona; a 390 el sidebar fijo del ADMIN limita el ancho |
+
 ## 6. Asistencia de alumnos
 
 | ID | Regla | Dónde | Detalle |

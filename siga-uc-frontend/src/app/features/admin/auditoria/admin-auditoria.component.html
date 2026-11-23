@@ -438,6 +438,9 @@
         <p><strong>Módulo:</strong> {{ registroDetalle()!.modulo_afectado }}</p>
         <p><strong>Acción:</strong> {{ registroDetalle()!.accion }}</p>
         <p><strong>Descripción:</strong> {{ registroDetalle()!.descripcion }}</p>
+        @if (registroDetalle()!.motivo) {
+        <p><strong>Motivo:</strong> {{ registroDetalle()!.motivo }}</p>
+        }
       </div>
 
       <div class="diff-box">

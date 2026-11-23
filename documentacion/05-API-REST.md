@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto la exportación interna SIAGIE, que responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **129 endpoints** - 71 GET, 36 POST, 17 PUT, 5 DELETE.
+**Total verificado:** **131 endpoints** - 72 GET, 36 POST, 18 PUT, 5 DELETE.
 
 ---
 
@@ -74,7 +74,7 @@ Error:
 |---|---|---|---|
 | GET | `/` | Público | Bienvenida + versión |
 | GET | `/api/health` | Público | Health check (`app`, `version`, `environment`, `timestamp`) |
-| GET | `/api/configuracion` | Público | Año lectivo activo (`anio_lectivo`): `anios_lectivos.estado='ACTIVO'` o, si falta, `ANIO_LECTIVO` |
+| GET | `/api/configuracion` | Público | Año activo (`anio_lectivo`) + institución pública segura (nombre, logo, moneda, símbolo, zona horaria, locale) |
 
 ### 2.1 Años lectivos y rollover — `/api/anios-lectivos` (5; lectura ADMIN/SECRETARIA, escritura ADMIN)
 
@@ -161,6 +161,27 @@ Reglas verificadas:
   `ACTUALIZAR_POLITICA` en el módulo `Promociones`, después del COMMIT.
 - No se agrega `TRASLADADO`: un traslado es `RETIRADO` + `alumnos.condicion='Traslado'` y
   `metadata.retiro.motivo='TRASLADO'`.
+
+### 2.3 Configuración — `/api/configuracion` (H74/Fase 1)
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/configuracion` | Público | Año activo + institución pública segura. Si H74 no está aplicada, devuelve `institucion: null` y no falla. |
+| GET | `/api/configuracion/admin` | ADMIN/SECRETARIA | Configuración institucional completa + filas de `configuracion_anio` |
+| PUT | `/api/configuracion/institucional` | ADMIN | Actualiza la configuración global. Exige `motivo` (10–500) y audita antes/después |
+
+Reglas:
+
+- `PUT` es transaccional y audita en la misma transacción; si falla la bitácora, se revierte
+  el cambio.
+- Validaciones: nombre obligatorio (≤200), RUC de 11 dígitos o vacío, correo válido, URL
+  http(s), moneda de 3 letras, símbolo obligatorio, zona horaria válida (`Intl`), locale
+  `es-PE`, serie de boleta alfanumérica y número inicial 0–999999.
+- Si no hay cambios, responde `200` con `sin_cambios: true` y no crea bitácora.
+- Si H74 no está aplicada, las rutas administrativas responden
+  `503 CONFIG_NO_APLICADA`.
+- `SECRETARÍA` solo lee; `DOCENTE`/`ESTUDIANTE` reciben `403`.
+- No se exponen secretos: `RESEND_API_KEY`, `JWT_SECRET` y credenciales siguen en `.env`.
 
 ---
 
@@ -688,7 +709,7 @@ contraseñas.
 
 | Módulo | Endpoints |
 |---|---|
-| Generales | 3 |
+| Generales / Configuración (H74) | 5 |
 | Años lectivos (6.2) | 5 |
 | Promociones (6.3) | 8 |
 | Auth | 9 |
@@ -705,13 +726,13 @@ contraseñas.
 | Auditoría | 8 |
 | SIAGIE interno | 2 |
 | Notificaciones | 8 |
-| **Total** | **129** |
+| **Total** | **131** |
 
 | Verbo | Cantidad |
 |---|---|
-| GET | 71 |
+| GET | 72 |
 | POST | 36 |
-| PUT | 17 |
+| PUT | 18 |
 | DELETE | 5 |
 
 Acceso: el detalle exacto está en la columna **Acceso** de cada tabla. Con H47 se retiró
@@ -721,7 +742,7 @@ consolidado histórico por DNI. En el cierre de demo, SIAGIE pasó de un `POST`
 `multipart/form-data` (plantilla) a dos `GET`: `resumen` y `exportar` interno.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo vigente es 129 (71 GET, 36 POST, 17 PUT, 5 DELETE).
+> El conteo vigente es 131 (72 GET, 36 POST, 18 PUT, 5 DELETE).
 
 ---
 

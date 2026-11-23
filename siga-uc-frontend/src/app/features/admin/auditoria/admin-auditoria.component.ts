@@ -14,6 +14,7 @@ interface Bitacora {
   modulo_afectado: string;
   accion: string;
   descripcion: string;
+  motivo: string | null;
   ip_origen: string | null;
   valor_anterior: any;
   valor_nuevo: any;

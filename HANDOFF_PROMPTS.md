@@ -43,9 +43,10 @@
 | Fase 6.3 + 6.3.1 (promoción) | Desplegadas en Render (`89eba24`); H73 aplicada en Supabase, 0 promociones |
 | Fase 6.4 (histórico) | Desplegada en Render (`cdc129e`); sin migración; Supabase sin cambios |
 | Fase 7 (pulido) | Desplegada en Render (`df1f384`); H59 aplicada en Supabase (columna `personal.observaciones`); H70 y H71 cerrados en el cierre de demo |
-| E2E | **75 PASS** |
-| Integridad (base de producción desechable) | **21 PASS**; local 19 PASS / 2 FAIL de seed |
-| Smoke / generador H47 | 11 PASS / 4 PASS |
+| E2E | **80 PASS** |
+| Integridad (base de producción desechable) | **24 PASS**; local 22 PASS / 2 FAIL de seed |
+| Smoke / generador H47 | 12 PASS / 4 PASS |
+| Módulo de configuración | Fase 0 documentada (`documentacion/20`); Fase 1 implementada y aplicada en local (H74); no desplegada; H74 no aplicada en Supabase |
 
 > Recordatorio: un push que solo toca `database/` o `documentacion/` **no despliega**.
 > Las migraciones se aplican a mano en Supabase.
@@ -214,9 +215,9 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 ```
 
 - Supabase: **43 tablas**, 0 actas, 145 horarios, 5 docentes demo. **H49/H73 aplicadas; 2026 activo; 1 política; 0 promociones.**
-- Local: `npm run test:e2e` (75 PASS), `npm run test:integridad` (21 PASS en base de
-  producción desechable; 19/2 de seed en local), `npm run test:h47-generador` (4 PASS) y
-  `npm run smoke` (11 PASS).
+- Local: `npm run test:e2e` (80 PASS), `npm run test:integridad` (24 PASS en base de
+  producción desechable; 22/2 de seed en local), `npm run test:h47-generador` (4 PASS) y
+  `npm run smoke` (12 PASS).
 - Deep links: `/login`, `/admin`, `/docente/asistencia` → 200.
 - UI 6.2: `/admin/anios-lectivos` probada con ADMIN (preview, confirm, activación y modal de
   reversión).
@@ -239,11 +240,11 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
    cerrado, H71 aplicado en local, UAT de los 4 roles, guion, backup y reinicio. H71 no se
    aplicó en Supabase porque no hay retirados.
 6. No empezar Fase 8 ni integración oficial con MINEDU sin pedido explícito.
-7. **Siguiente bloque de código:** revisar la **Fase 0** de
-   `documentacion/20-MODULO-CONFIGURACION.md` y auditar/cerrar la **Fase 1** que está
-   sin commit (H74, configuración global/año, auditoría y UI). Después seguir con tarifas,
-   cursos, jornada y becas por fases. El responsive de ADMIN/SECRETARÍA/DOCENTE queda
-   pausado. El prompt completo está en `HANDOFF_SESSION.md`, sección 10.
+7. **Siguiente bloque de código:** Fase 0 cerrada y Fase 1 implementada en local (H74:
+   configuración general/año, auditoría y UI). El siguiente paso es la **Fase 2**
+   (tarifas y conceptos). Después siguen cursos, jornada y becas por fases. El responsive
+   de ADMIN/SECRETARÍA/DOCENTE sigue pausado. El diseño y las fases están en
+   `documentacion/20-MODULO-CONFIGURACION.md`.
 
 ---
 
@@ -262,7 +263,7 @@ No implementas código, no tocas Supabase ni Render.
 
 ## Estado
 - Código desplegado: `df1f384` (Fases 6.1-6.4 + Fase 7 + cierre de demo + login responsive + sidebar + estudiante responsive).
-- Fases 1-4 y 6.1-6.4 desplegadas; Fase 7 y cierre de demo desplegados en Render (`df1f384`). E2E 75 PASS.
+- Fases 1-4 y 6.1-6.4 desplegadas; Fase 7 y cierre de demo desplegados en Render (`df1f384`). E2E 80 PASS en local; Fase 1 de configuración aún no desplegada.
 - Login probado de 320×568 a 1920×1080; sidebar con menú desplazable; módulos del estudiante probados en móvil, tableta, laptop y escritorio.
 - **H49 y H73 aplicadas en Supabase demo**: 43 tablas, 2026 activo, 1 política,
   0 promociones, 0 actas, 145 horarios y 5 docentes.

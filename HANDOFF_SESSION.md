@@ -533,6 +533,29 @@ En esta fase **no** se prepara el despliegue definitivo.
   una demo docente hay que reasignar cargas; para el horario del estudiante hay que generar
   y publicar.
 
+### 1.12 Fase 1 del módulo de configuración (23/11/2026)
+
+- **Fase 0 cerrada:** `documentacion/20-MODULO-CONFIGURACION.md` con diagnóstico, decisiones,
+  modelo, fases, riesgos y criterios de aceptación. Commit `fe5f273`.
+- **Fase 1 implementada y aplicada en local:** migración
+  `database/migracion_h74_configuracion_base.sql`; `configuracion_institucional` (una fila),
+  `configuracion_anio` (una por año), `bitacora_auditoria.motivo`.
+- **Backend:** `GET /api/configuracion` público con año e institución segura;
+  `GET /api/configuracion/admin` ADMIN/SECRETARÍA; `PUT /api/configuracion/institucional`
+  solo ADMIN, motivo obligatorio y auditoría en la misma transacción. Fallback
+  `503 CONFIG_NO_APLICADA` si H74 falta.
+- **Frontend:** `/admin/configuracion` con datos generales, confirmación con motivo, tabla de
+  años en solo lectura, item en sidebar ADMIN y título en el layout. La auditoría muestra el
+  motivo.
+- **Datos locales:** H74 aplicada; 45 tablas base (46 con `horarios_h47_backup`); 2026
+  ACTIVO. No se tocó Supabase ni 2027.
+- **Verificación:** E2E **80 PASS**, integridad local **22 PASS / 2 FAIL de seed**, smoke
+  **12 PASS**, H47 **4 PASS**, build Angular OK y `node --check` OK.
+- **Pendiente:** fases 2–7 (tarifas, cursos, jornada, becas, textos/PDF, endurecimiento y
+  despliegue). No hay CRUD de conceptos, cursos, competencias, horarios ni becas todavía.
+- **UI:** el componente se adapta a 768 y 1366 px; a 390 px el sidebar fijo del ADMIN
+  (responsive pausado) limita el ancho. No se modificó el layout.
+
 ---
 
 ## 2. Entorno

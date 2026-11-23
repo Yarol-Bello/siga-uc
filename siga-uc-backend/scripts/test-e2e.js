@@ -57,6 +57,11 @@ const MIGRACIONES = [
     "database",
     "migracion_h71_retirados_historicos.sql",
   ),
+  path.join(
+    RAIZ_REPO,
+    "database",
+    "migracion_h74_configuracion_base.sql",
+  ),
 ];
 
 const PUERTO = 3101;
@@ -1794,7 +1799,7 @@ async function ejecutarPruebas() {
   });
 
   // 20. Configuración table-backed y catálogo de años.
-  await prueba(20, "Año activo desde anios_lectivos y 43 tablas base", async () => {
+  await prueba(20, "Año activo desde anios_lectivos y 45 tablas base", async () => {
     const tablas = await sql(
       `SELECT COUNT(*)::int AS total
        FROM information_schema.tables
@@ -1808,7 +1813,11 @@ async function ejecutarPruebas() {
     const respuesta = await api("/configuracion");
     const { datos } = await leerJson(respuesta);
 
-    assert.equal(tablas[0].total, 43, "Se esperaban 43 tablas base");
+    assert.equal(
+      tablas[0].total,
+      45,
+      "Se esperaban 45 tablas base (43 + configuración H74)",
+    );
     assert.equal(activos.length, 1, "Debe haber exactamente un año ACTIVO");
     assert.equal(Number(activos[0].anio), ANIO, "El año ACTIVO inicial no es el esperado");
     assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
@@ -1820,9 +1829,9 @@ async function ejecutarPruebas() {
 
     registrar(
       20,
-      "Año activo desde anios_lectivos y 43 tablas base",
+      "Año activo desde anios_lectivos y 45 tablas base",
       "PASS",
-      `tablas=43, activo=${ANIO}`,
+      `tablas=45, activo=${ANIO}`,
     );
   });
 
@@ -6598,6 +6607,380 @@ async function ejecutarPruebas() {
         "SIAGIE interno: UI sin portal, análisis simulado ni carga de plantilla",
         "PASS",
         "aviso interno; sin portal, análisis ni plantilla",
+      );
+    },
+  );
+
+  // 76. Configuración pública: año + institución segura.
+  await prueba(
+    76,
+    "Configuración pública: año activo e institución sin datos internos",
+    async () => {
+      const respuesta = await api("/configuracion");
+      const { datos } = await leerJson(respuesta);
+      assert.equal(respuesta.status, 200, detalleHttp(respuesta, datos));
+      assert.ok(
+        Number(datos?.data?.anio_lectivo) >= ANIO,
+        "La configuración pública no devuelve un año válido",
+      );
+      assert.ok(
+        datos?.data?.institucion?.nombre_institucion,
+        "La configuración pública no devuelve el nombre de la institución",
+      );
+      assert.equal(datos.data.institucion.moneda, "PEN");
+      assert.equal(datos.data.institucion.zona_horaria, "America/Lima");
+      assert.ok(
+        !("ruc" in datos.data.institucion),
+        "La configuración pública no debe exponer el RUC",
+      );
+      assert.ok(
+        !("correo_contacto" in datos.data.institucion),
+        "La configuración pública no debe exponer el correo de contacto",
+      );
+
+      registrar(
+        76,
+        "Configuración pública: año activo e institución sin datos internos",
+        "PASS",
+        `año=${datos.data.anio_lectivo}, moneda=PEN, sin RUC ni correo`,
+      );
+    },
+  );
+
+  // 77. Configuración administrativa y RBAC.
+  await prueba(
+    77,
+    "Configuración administrativa: ADMIN/SECRETARIA leen, DOCENTE 403",
+    async () => {
+      const secretaria = await iniciarSesion(
+        "SECRETARIA",
+        process.env.SMOKE_SECRETARIA_DNI || "40596837",
+        process.env.SMOKE_SECRETARIA_PASSWORD || "UC2026*",
+      );
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+
+      const admin = await api("/configuracion/admin", {
+        token: ctx.adminToken,
+      });
+      const adminDatos = await leerJson(admin);
+      assert.equal(admin.status, 200, detalleHttp(admin, adminDatos.datos));
+      assert.ok(
+        adminDatos.datos?.data?.institucion?.id_configuracion === 1,
+        "ADMIN no recibió la configuración institucional",
+      );
+      assert.ok(
+        Array.isArray(adminDatos.datos?.data?.anios),
+        "ADMIN no recibió el arreglo de años",
+      );
+      assert.ok(
+        adminDatos.datos.data.anios.some(
+          (anio) =>
+            Number(anio.anio) ===
+            Number(adminDatos.datos.data.anio_lectivo),
+        ),
+        "Falta la configuración del año activo",
+      );
+      assert.ok(
+        "ruc" in adminDatos.datos.data.institucion,
+        "La configuración administrativa debe incluir el RUC",
+      );
+
+      const secretariaRespuesta = await api("/configuracion/admin", {
+        token: secretaria.token,
+      });
+      assert.equal(
+        secretariaRespuesta.status,
+        200,
+        "SECRETARIA debe poder leer la configuración administrativa",
+      );
+
+      const docenteRespuesta = await api("/configuracion/admin", {
+        token: docente.token,
+      });
+      assert.equal(
+        docenteRespuesta.status,
+        403,
+        "DOCENTE no debe leer la configuración administrativa",
+      );
+
+      const sinToken = await api("/configuracion/admin");
+      assert.equal(sinToken.status, 401, "Sin token debe responder 401");
+
+      registrar(
+        77,
+        "Configuración administrativa: ADMIN/SECRETARIA leen, DOCENTE 403",
+        "PASS",
+        "ADMIN 200, SECRETARIA 200, DOCENTE 403, sin token 401",
+      );
+    },
+  );
+
+  // 78. Validaciones y permisos de escritura.
+  await prueba(
+    78,
+    "Configuración: escritura solo ADMIN y validaciones de motivo, correo, RUC y zona",
+    async () => {
+      const secretaria = await iniciarSesion(
+        "SECRETARIA",
+        process.env.SMOKE_SECRETARIA_DNI || "40596837",
+        process.env.SMOKE_SECRETARIA_PASSWORD || "UC2026*",
+      );
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+
+      const sinToken = await api("/configuracion/institucional", {
+        method: "PUT",
+        body: { telefono: "064-000000", motivo: "Motivo de prueba válido" },
+      });
+      assert.equal(sinToken.status, 401, "Sin token debe responder 401");
+
+      for (const [rol, token] of [
+        ["DOCENTE", docente.token],
+        ["SECRETARIA", secretaria.token],
+      ]) {
+        const respuesta = await api("/configuracion/institucional", {
+          method: "PUT",
+          token,
+          body: { telefono: "064-000000", motivo: "Motivo de prueba válido" },
+        });
+        assert.equal(
+          respuesta.status,
+          403,
+          `${rol} no debe escribir la configuración`,
+        );
+      }
+
+      const motivoCorto = await api("/configuracion/institucional", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: { telefono: "064-000000", motivo: "corto" },
+      });
+      const motivoDatos = await leerJson(motivoCorto);
+      assert.equal(motivoCorto.status, 400, detalleHttp(motivoCorto, motivoDatos.datos));
+      assert.equal(
+        motivoDatos.datos?.errors?.codigo,
+        "MOTIVO_REQUERIDO",
+        "Falta el código MOTIVO_REQUERIDO",
+      );
+
+      const correoInvalido = await api("/configuracion/institucional", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: {
+          correo_contacto: "correo-invalido",
+          motivo: "Prueba de correo inválido",
+        },
+      });
+      assert.equal(correoInvalido.status, 400, "El correo inválido debe fallar");
+
+      const rucInvalido = await api("/configuracion/institucional", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: { ruc: "123", motivo: "Prueba de RUC inválido" },
+      });
+      assert.equal(rucInvalido.status, 400, "El RUC inválido debe fallar");
+
+      const zonaInvalida = await api("/configuracion/institucional", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: {
+          zona_horaria: "No/Existe",
+          motivo: "Prueba de zona horaria inválida",
+        },
+      });
+      assert.equal(
+        zonaInvalida.status,
+        400,
+        "La zona horaria inválida debe fallar",
+      );
+
+      registrar(
+        78,
+        "Configuración: escritura solo ADMIN y validaciones de motivo, correo, RUC y zona",
+        "PASS",
+        "401, 403, 400 motivo/correo/RUC/zona",
+      );
+    },
+  );
+
+  // 79. Actualización real, auditoría y idempotencia.
+  await prueba(
+    79,
+    "Configuración: actualiza, audita antes/después/motivo y no duplica sin cambios",
+    async () => {
+      const antes = await api("/configuracion/admin", {
+        token: ctx.adminToken,
+      });
+      const antesDatos = await leerJson(antes);
+      const anterior = antesDatos.datos?.data?.institucion;
+      assert.ok(anterior, "No se pudo leer la configuración previa");
+
+      const nuevoNombre = `Unión Científica E2E ${Date.now()}`;
+      const motivo = "Prueba E2E de configuración institucional";
+      const payload = {
+        nombre_corto: nuevoNombre,
+        telefono: "064-123456",
+        motivo,
+      };
+
+      const actualizacion = await api("/configuracion/institucional", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: payload,
+      });
+      const actualizacionDatos = await leerJson(actualizacion);
+      assert.equal(
+        actualizacion.status,
+        200,
+        detalleHttp(actualizacion, actualizacionDatos.datos),
+      );
+      assert.equal(
+        actualizacionDatos.datos?.data?.institucion?.nombre_corto,
+        nuevoNombre,
+        "No se guardó el nombre corto",
+      );
+      assert.equal(
+        actualizacionDatos.datos?.data?.institucion?.telefono,
+        "064-123456",
+        "No se guardó el teléfono",
+      );
+
+      const auditoria = await sql(
+        `SELECT id_bitacora, modulo_afectado, accion, motivo,
+                valor_anterior, valor_nuevo
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = $1
+         ORDER BY id_bitacora DESC
+         LIMIT 1`,
+        ["Configuración"],
+      );
+      assert.equal(auditoria.length, 1, "No se registró la auditoría");
+      assert.equal(auditoria[0].accion, "MODIFICAR");
+      assert.equal(auditoria[0].motivo, motivo);
+      assert.equal(
+        auditoria[0].valor_anterior?.nombre_corto,
+        anterior.nombre_corto,
+      );
+      assert.equal(auditoria[0].valor_nuevo?.nombre_corto, nuevoNombre);
+      assert.equal(
+        auditoria[0].valor_anterior?.telefono,
+        anterior.telefono,
+      );
+      assert.equal(auditoria[0].valor_nuevo?.telefono, "064-123456");
+
+      const conteoAntes = await sql(
+        `SELECT COUNT(*)::int AS total
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = $1`,
+        ["Configuración"],
+      );
+      const repetida = await api("/configuracion/institucional", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: payload,
+      });
+      const repetidaDatos = await leerJson(repetida);
+      assert.equal(repetida.status, 200);
+      assert.equal(
+        repetidaDatos.datos?.data?.sin_cambios,
+        true,
+        "El guardado sin cambios debe ser idempotente",
+      );
+      const conteoDespues = await sql(
+        `SELECT COUNT(*)::int AS total
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = $1`,
+        ["Configuración"],
+      );
+      assert.equal(
+        conteoDespues[0].total,
+        conteoAntes[0].total,
+        "El guardado sin cambios no debe auditar",
+      );
+
+      // Revertir el valor para no contaminar las pruebas siguientes.
+      await api("/configuracion/institucional", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: {
+          nombre_corto: anterior.nombre_corto,
+          telefono: anterior.telefono,
+          motivo: "Reversión de la prueba E2E de configuración",
+        },
+      });
+
+      registrar(
+        79,
+        "Configuración: actualiza, audita antes/después/motivo y no duplica sin cambios",
+        "PASS",
+        "update 200, auditoría MODIFICAR, repetido sin cambios",
+      );
+    },
+  );
+
+  // 80. La configuración pública refleja el cambio y conserva el año.
+  await prueba(
+    80,
+    "Configuración pública refleja el cambio y conserva el año activo",
+    async () => {
+      const admin = await api("/configuracion/admin", {
+        token: ctx.adminToken,
+      });
+      const adminDatos = await leerJson(admin);
+      const actual = adminDatos.datos?.data?.institucion;
+      assert.ok(actual, "No se pudo leer la configuración actual");
+
+      const nuevoNombre = `Público E2E ${Date.now()}`;
+      const cambio = await api("/configuracion/institucional", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: {
+          nombre_corto: nuevoNombre,
+          motivo: "Prueba E2E de configuración pública",
+        },
+      });
+      assert.equal(cambio.status, 200, "No se pudo actualizar la configuración");
+
+      const publica = await api("/configuracion");
+      const publicaDatos = await leerJson(publica);
+      assert.equal(publica.status, 200);
+      assert.equal(
+        publicaDatos.datos?.data?.institucion?.nombre_corto,
+        nuevoNombre,
+        "La configuración pública no refleja el cambio",
+      );
+      assert.equal(
+        Number(publicaDatos.datos?.data?.anio_lectivo),
+        Number(adminDatos.datos?.data?.anio_lectivo),
+        "El año público no coincide con el año administrativo",
+      );
+
+      await api("/configuracion/institucional", {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: {
+          nombre_corto: actual.nombre_corto,
+          motivo: "Reversión de la prueba E2E pública",
+        },
+      });
+
+      const anios = await sql(
+        `SELECT COUNT(*)::int AS total FROM configuracion_anio`,
+      );
+      assert.ok(anios[0].total >= 1, "No hay configuración por año");
+
+      registrar(
+        80,
+        "Configuración pública refleja el cambio y conserva el año activo",
+        "PASS",
+        "cambio visible en /configuracion y reversión",
       );
     },
   );

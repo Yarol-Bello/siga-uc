@@ -260,13 +260,32 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
   datos reales o si el invariante 21 falla.
 - El rollback es el backup; no hay script de reversa porque el backfill no es destructivo.
 
+### 3.10 Configuración base (H74/Fase 1)
+
+- Crea `configuracion_institucional` (una fila), `configuracion_anio` (una por año) y
+  `bitacora_auditoria.motivo`. Requiere H49; si H47 está aplicada, toma la jornada de
+  `periodos_clase`. El trigger `trg_anio_configuracion` crea la configuración default al
+  insertar un año nuevo.
+- Se aplica después de H71, con backup:
+  ```powershell
+  psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
+  ```
+- Es idempotente. No cambia tarifas, cursos, becas ni horarios.
+- Tras aplicarla, el ADMIN puede editar la configuración general en
+  `/admin/configuracion`; SECRETARÍA solo lee. Cada cambio exige motivo y queda en la
+  bitácora con antes/después.
+- Si no está aplicada, `GET /api/configuracion` sigue devolviendo el año con
+  `institucion: null`; las rutas admin responden `503 CONFIG_NO_APLICADA`.
+- No hay rollback destructivo: se restaura el backup. Para una base desechable se pueden
+  eliminar las dos tablas y la columna `motivo`.
+
 ---
 
 ## 4. Testeo
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(21 invariantes de datos, solo lectura) y **E2E** (75 flujos sobre una base desechable,
+(24 invariantes de datos, solo lectura) y **E2E** (80 flujos sobre una base desechable,
 incluidos los de multi-año H49, rollover 6.2, promociones 6.3, histórico 6.4, pulido
 H59/H62/H65–H69, exportación interna SIAGIE y H71). El resto de la estrategia sigue siendo
 manual y por rol.
@@ -318,7 +337,8 @@ token, login/perfil ADMIN, alumnos página 1, bitácora con paginación, pagos, 
 del primer alumno (Content-Type y firma `%PDF`), RBAC del ESTUDIANTE (403 en `/alumnos`),
 login/perfil DOCENTE y libreta propia del ESTUDIANTE.
 
-Resultado esperado en local con las tres cuentas: **11 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+Resultado esperado en local con las tres cuentas: **12 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+La prueba 12 tolera una base sin H74 y la marca `SKIP` con `CONFIG_NO_APLICADA`.
 Sin credenciales: **3 PASS, 0 FAIL, 8 SKIP**, exit `2` (resultado parcial).
 
 > La cuenta docente `10293847` tiene `requiere_cambio_password = TRUE` y su contraseña
@@ -333,7 +353,7 @@ $env:SMOKE_BASE_URL="https://<backend>/api"
 npm run smoke
 ```
 
-Criterio de aceptación del ensayo en Render: **11 PASS, 0 FAIL, 0 SKIP**, exit `0`. Un FAIL
+Criterio de aceptación del ensayo en Render: **12 PASS, 0 FAIL, 0 SKIP**, exit `0`. Un FAIL
 (exit `1`) o un SKIP inesperado (exit `2`) bloquea el despliegue. `SMOKE_ALLOW_SKIP=1` solo
 sirve para diagnósticos parciales.
 
@@ -448,7 +468,7 @@ cd siga-uc-backend
 npm run test:integridad
 ```
 
-- Verifica **21 invariantes**: 43 tablas base, índices críticos de pagos/boletas, multi-año
+- Verifica **24 invariantes**: 45 tablas base, índices críticos de pagos/boletas, multi-año
   y promociones (`uq_alumno_*_anio`, `uq_anio_activo`, `uq_promocion_*`,
   `uq_politica_*`), pagos/pensiones/boletas coherentes, movimientos de caja, usuarios
   activos asociados, escala AD/A/B/C, alumnos matriculados con usuario activo, matrículas
@@ -468,7 +488,7 @@ npm run test:integridad
 > a ESTUDIANTE/DOCENTE; ADMIN y SECRETARIA están exentos. No son fallos de la suite: deben
 > revisarse antes de cargar datos reales. La base local da **19 PASS / 2 FAIL**; una base de
 > producción sembrada con `siga_uc.sql` + `seed_produccion.sql` + migraciones (incluidas H49,
-> H73, H59 y H71) da **21 PASS**. En la base local de demo se esperan **19 PASS y 2 FAIL**
+> H73, H59, H71 y H74) da **24 PASS**. En la base local de demo se esperan **22 PASS y 2 FAIL**
 > de seed (pagos sin INGRESO y pensiones PAGADO sin pago).
 
 #### `test:e2e` — base desechable
@@ -479,11 +499,11 @@ npm run test:e2e
 ```
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
-  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`, `h59`, `h71`), arranca el
-  backend en `http://localhost:3101` y ejecuta **75 flujos**: alta/retiro de alumno, matrícula, pensión,
+  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`, `h59`, `h71`, `h74`), arranca el
+  backend en `http://localhost:3101` y ejecuta **80 flujos**: alta/retiro de alumno, matrícula, pensión,
   doble pago, anulación, doble anulación, calificaciones, guardado masivo, PDFs, RBAC,
   auditoría, cierre/reapertura real de actas, bloqueo global, caja con efectivo/Yape (con y
-  sin anulación), PDF de acta ADMIN-only, multi-año (43 tablas, uniques por año, apoderado
+  sin anulación), PDF de acta ADMIN-only, multi-año (45 tablas, uniques por año, apoderado
   compartido, login sin matrícula activa, consultas por año, retiro con matrícula en otro año,
   login con año activo 2027 y pre-tickets/pendientes sin mezclar años), rollover 6.2
   (preview sin escrituras, confirm idempotente, oferta distinta, docente inactivo/sobrecarga,
@@ -501,7 +521,9 @@ npm run test:e2e
   apoderado sin nombres 400; H65: docentes vs personal activo; H67/H68/H69: contratos de UI
   sin grados/cursos fijos, sin “firma digital” y sin textos de maqueta) y cierre de demo
   (SIAGIE interno: resumen/RBAC, Excel con todos los cursos y conclusión, aviso interno,
-  auditoría `exportaciones_siagie`, endpoint viejo 404 y UI sin portal/análisis simulado).
+  auditoría `exportaciones_siagie`, endpoint viejo 404 y UI sin portal/análisis simulado) y
+  configuración H74 (público con institución, RBAC ADMIN/SECRETARIA, validaciones, update
+  auditado con motivo, idempotencia sin cambios y reflejo en el endpoint público).
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -509,7 +531,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **75 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **80 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -637,8 +659,8 @@ WHERE m.id_movimiento IS NULL;
 | Mejora | Beneficio |
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
-| ~~Integridad de datos~~ ✅ | 21 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 72 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~Integridad de datos~~ ✅ | 24 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
+| ~~E2E de flujos críticos~~ ✅ | 80 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

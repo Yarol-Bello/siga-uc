@@ -125,6 +125,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'configuracion',
+        loadComponent: () =>
+          import('./features/admin/configuracion/admin-configuracion.component').then(
+            (m) => m.AdminConfiguracionComponent,
+          ),
+      },
+      {
         path: 'tesoreria',
         loadComponent: () =>
           import('./features/admin/tesoreria/admin-tesoreria.component').then(

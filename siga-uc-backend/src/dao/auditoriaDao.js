@@ -8,33 +8,64 @@ const { getAnioLectivo } = require("../config/academico");
 
 /**
  * Registrar un evento genérico en la bitácora.
+ *
+ * `client` permite escribir la auditoría dentro de una transacción de negocio.
+ * `motivo` solo existe desde H74; si la columna aún no está aplicada, los
+ * llamados fuera de transacción reintentan sin ella para no romper la API.
  */
-const registrarEvento = async ({
-  id_usuario = null,
-  modulo,
-  accion,
-  descripcion = null,
-  anterior = null,
-  nuevo = null,
-  ip = null,
-}) => {
-  const sql = `
-    INSERT INTO bitacora_auditoria (
-      id_usuario, modulo_afectado, accion, descripcion,
-      valor_anterior, valor_nuevo, ip_origen
-    ) VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7)
-    RETURNING id_bitacora
-  `;
-  const result = await query(sql, [
-    id_usuario,
+const registrarEvento = async (
+  {
+    id_usuario = null,
     modulo,
     accion,
-    descripcion,
-    anterior ? JSON.stringify(anterior) : null,
-    nuevo ? JSON.stringify(nuevo) : null,
-    ip || null,
-  ]);
-  return result.rows[0];
+    descripcion = null,
+    anterior = null,
+    nuevo = null,
+    motivo = null,
+    ip = null,
+  },
+  client = null,
+) => {
+  const ejecutar = client ? client.query.bind(client) : query;
+
+  const insertar = async (conMotivo) => {
+    const columnas = conMotivo
+      ? `id_usuario, modulo_afectado, accion, descripcion,
+         valor_anterior, valor_nuevo, motivo, ip_origen`
+      : `id_usuario, modulo_afectado, accion, descripcion,
+         valor_anterior, valor_nuevo, ip_origen`;
+    const valores = conMotivo
+      ? `$1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8`
+      : `$1, $2, $3, $4, $5::jsonb, $6::jsonb, $7`;
+    const params = [
+      id_usuario,
+      modulo,
+      accion,
+      descripcion,
+      anterior ? JSON.stringify(anterior) : null,
+      nuevo ? JSON.stringify(nuevo) : null,
+    ];
+    if (conMotivo) params.push(motivo || null);
+    params.push(ip || null);
+
+    const sql = `
+      INSERT INTO bitacora_auditoria (${columnas})
+      VALUES (${valores})
+      RETURNING id_bitacora
+    `;
+    return await ejecutar(sql, params);
+  };
+
+  try {
+    const result = await insertar(true);
+    return result.rows[0];
+  } catch (error) {
+    if (!client && error.code === "42703") {
+      const result = await insertar(false);
+      return result.rows[0];
+    }
+    throw error;
+  }
 };
 
 /**
@@ -85,6 +116,27 @@ const construirFiltrosBitacora = (filtros = {}) => {
   return { where, params, nextIdx: idx };
 };
 
+let columnaMotivoDisponible = null;
+
+/**
+ * H74 agrega `motivo`. Mientras no esté aplicada, el listado debe seguir
+ * funcionando sin esa columna.
+ * @returns {Promise<boolean>}
+ */
+const tieneColumnaMotivo = async () => {
+  if (columnaMotivoDisponible !== null) return columnaMotivoDisponible;
+  const result = await query(
+    `SELECT 1
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'bitacora_auditoria'
+       AND column_name = 'motivo'
+     LIMIT 1`,
+  );
+  columnaMotivoDisponible = result.rows.length > 0;
+  return columnaMotivoDisponible;
+};
+
 /**
  * Listar bitácora con filtros.
  * Con `page` + `pageSize` aplica LIMIT/OFFSET; sin `page` conserva el
@@ -92,6 +144,7 @@ const construirFiltrosBitacora = (filtros = {}) => {
  */
 const listarBitacora = async (filtros = {}) => {
   const { where, params, nextIdx } = construirFiltrosBitacora(filtros);
+  const conMotivo = await tieneColumnaMotivo();
   let idx = nextIdx;
   let paginacionClause = "LIMIT 200";
 
@@ -113,6 +166,7 @@ const listarBitacora = async (filtros = {}) => {
       b.modulo_afectado,
       b.accion,
       b.descripcion,
+      ${conMotivo ? "b.motivo," : "NULL::varchar AS motivo,"}
       b.ip_origen,
       b.valor_anterior,
       b.valor_nuevo,
