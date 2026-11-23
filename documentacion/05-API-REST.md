@@ -321,12 +321,16 @@ matrícula y el concepto `MATRICULA` debe existir para ese año; si no, responde
 | 24 | GET | `/api/personal/:id` | Autenticado | Detalle por `id_personal` |
 | 25 | POST | `/api/personal` | ADMIN | Crea usuario + personal + QR |
 | 26 | PUT | `/api/personal/:id` | ADMIN | Actualiza datos y rol |
-| 27 | PUT | `/api/personal/:id/cesar` | ADMIN | Cese con motivo |
-| 28 | PUT | `/api/personal/:id/reactivar` | ADMIN | Reactiva usuario y limpia cese |
+| 27 | PUT | `/api/personal/:id/cesar` | ADMIN | Cese con motivo y observación opcional; persiste `personal.observaciones` (H59) |
+| 28 | PUT | `/api/personal/:id/reactivar` | ADMIN | Reactiva usuario y limpia cese (incluida la observación) |
 | 29 | PUT | `/api/personal/:id/reset-password` | ADMIN | Restablece a `UC<DNI>` |
 
 **POST body:** `{ dni, nombres, apellidos, correo_institucional?, correo_personal, telefono, id_rol, especialidad, cargo, fecha_ingreso, password? }`.
 Si no se envía contraseña: `UC2026*`. Genera QR según rol.
+
+**Cese body:** `{ motivo_cese, fecha_cese?, observaciones? }`. `observaciones` se guarda en
+`personal.observaciones` (máximo 1000 caracteres) y se devuelve en
+`GET /personal` y `GET /personal/:id`.
 
 > Orden de rutas: `/roles` está antes de `/:id`, evitando colisión.
 > `GET /personal` y `GET /personal/:id` incluyen `codigo_qr` y `tipo_credencial` desde
@@ -515,8 +519,10 @@ alumno no existe y `400` si no está `Matriculado`. Audita `CREAR` en `Tesorerí
 | 83 | GET | `/api/reportes/libreta/:id_alumno/pdf?bimestre=&anio=` | ADMIN/DOCENTE/ESTUDIANTE (propio) | PDF de libreta (`application/pdf`, attachment) |
 | 84 | GET | `/api/reportes/consolidado/:dni` | ADMIN/SECRETARIA | Consolidado histórico por estudiante: una fila por año, agrupada por `id_usuario`/DNI (notas AD/A/B/C, asistencia, pagos, deuda y promoción) |
 
-**Dashboard data:** `total_alumnos`, `total_personal`, `recaudacion_anual`,
+**Dashboard data:** `total_alumnos`, `total_personal`, `total_docentes`, `recaudacion_anual`,
 `pre_tickets_pendientes`, `monto_pendiente`, `total_retirados`, `total_grados`, `total_cursos`.
+`total_docentes` cuenta usuarios `ACTIVO` con rol DOCENTE y ficha sin cese; `total_personal`
+cuenta todo el personal con `fecha_cese IS NULL`.
 
 **Mérito:** AD=4, A=3, B=2, C=1; promedio ponderado; top 10.
 
@@ -620,7 +626,7 @@ encabezado por “DNI”/“DOCUMENTO”; detecta columnas por prefijos `ARITM`,
 | 96 | PUT | `/api/notificaciones/:id/leer` | Autenticado | Marca una como leída |
 | 97 | PUT | `/api/notificaciones/leer-todas` | Autenticado | Marca todas |
 | 98 | DELETE | `/api/notificaciones/:id` | Autenticado | Elimina propia |
-| 99 | POST | `/api/notificaciones` | ADMIN/DOCENTE | Envía a un usuario |
+| 99 | POST | `/api/notificaciones` | ADMIN/SECRETARIA | Envía a un usuario; DOCENTE recibe 403 (H62) |
 | 100 | POST | `/api/notificaciones/masivo` | ADMIN | Envía a TODOS, PERSONAL, ROL, GRADO o ALUMNO |
 
 **Crear body:** `{ id_usuario_destino, asunto, cuerpo }`.

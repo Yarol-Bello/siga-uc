@@ -229,15 +229,28 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
 7. `GET /api/anios-lectivos` es legible por ADMIN y SECRETARIA. Las escrituras de años
    (preview, rollover, activar, revertir) siguen siendo solo ADMIN.
 
+### 3.8 Observaciones de cese (H59)
+
+- Aplicar **antes de desplegar** el backend que lee `personal.observaciones`:
+  ```powershell
+  psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
+  ```
+- Agrega `personal.observaciones text`; no modifica datos ni tablas (siguen 43).
+- Es idempotente. El rollback `database/rollback_h59_observaciones_personal.sql` solo se usa
+  en bases desechables o con backup verificado.
+- En Supabase demo **no se aplicó** en esta fase; requiere autorización y backup.
+- El cese guarda la observación y la reactivación la limpia. La ficha del trabajador cesado
+  muestra fecha, motivo y observación.
+
 ---
 
 ## 4. Testeo
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(20 invariantes de datos, solo lectura) y **E2E** (65 flujos sobre una base desechable,
-incluidos los de multi-año H49, rollover 6.2, promociones 6.3 y el histórico 6.4). El resto
-de la estrategia sigue siendo manual y por rol.
+(20 invariantes de datos, solo lectura) y **E2E** (72 flujos sobre una base desechable,
+incluidos los de multi-año H49, rollover 6.2, promociones 6.3, histórico 6.4 y pulido
+H59/H62/H65–H69). El resto de la estrategia sigue siendo manual y por rol.
 
 ### 4.1 Preparación
 
@@ -445,8 +458,8 @@ npm run test:e2e
 ```
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
-  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`), arranca el backend en
-  `http://localhost:3101` y ejecuta **65 flujos**: alta/retiro de alumno, matrícula, pensión,
+  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`, `h59`), arranca el
+  backend en `http://localhost:3101` y ejecuta **72 flujos**: alta/retiro de alumno, matrícula, pensión,
   doble pago, anulación, doble anulación, calificaciones, guardado masivo, PDFs, RBAC,
   auditoría, cierre/reapertura real de actas, bloqueo global, caja con efectivo/Yape (con y
   sin anulación), PDF de acta ADMIN-only, multi-año (43 tablas, uniques por año, apoderado
@@ -459,10 +472,13 @@ npm run test:e2e
   retirado/traslado, bloqueo por actas/notas y override, asistencia bajo umbral, doble
   confirmación, anulación sin/con actividad, reintento con reversa, rollback forzado,
   QR/código/pre-ticket, RBAC, auditoría, histórico, notas multibimestre, egresado/repitente
-  estrictos, `copiar_becas` en el hash y rechazo de PENDIENTE) e histórico 6.4
+  estrictos, `copiar_becas` en el hash y rechazo de PENDIENTE), histórico 6.4
   (listados y DNI sin mezclar años, libreta/asistencia/pensiones por año, `404`
   `MATRICULA_NO_ENCONTRADA_EN_ANIO` en 5 endpoints, consolidado por `id_usuario` con notas,
-  asistencia, pagos y deuda, RBAC ADMIN/SECRETARIA y contrato de UI del selector).
+  asistencia, pagos y deuda, RBAC ADMIN/SECRETARIA y contrato de UI del selector) y pulido
+  Fase 7 (H62: DOCENTE 403 en notificaciones; H59: observación de cese persistida y
+  apoderado sin nombres 400; H65: docentes vs personal activo; H67/H68/H69: contratos de UI
+  sin grados/cursos fijos, sin “firma digital” y sin textos de maqueta).
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -470,7 +486,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **65 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **72 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -599,7 +615,7 @@ WHERE m.id_movimiento IS NULL;
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
 | ~~Integridad de datos~~ ✅ | 20 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 65 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~E2E de flujos críticos~~ ✅ | 72 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

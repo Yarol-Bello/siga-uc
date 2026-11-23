@@ -26,6 +26,7 @@
 |---|---|
 | Código desplegado en Render | `cdc129e` (Fases 6.1, 6.2, 6.3, 6.3.1 y 6.4) |
 | 6.4 histórico | Implementado, verificado y **desplegado**; sin migración |
+| Fase 7 (pulido) | Implementada y verificada en local; H59 incluye migración; pendiente de aplicar en Supabase y desplegar |
 | Último commit de documentación | `cdc129e` (cierre 6.4); docs de cierre en curso |
 | Backend / Frontend | Live en Render (6.4); backend sin commit expuesto en `/health` |
 | `/api/health` | OK, `database: "ok"` |
@@ -37,7 +38,8 @@
 | Fase 6.2 (rollover) | Desplegada en Render (`f05ecc5`); H49 aplicada en Supabase |
 | Fase 6.3 + 6.3.1 (promoción) | Desplegadas en Render (`89eba24`); H73 aplicada en Supabase, 0 promociones |
 | Fase 6.4 (histórico) | Desplegada en Render (`cdc129e`); sin migración; Supabase sin cambios |
-| E2E | **65 PASS** |
+| Fase 7 (pulido) | H59, H62, H65–H69 cerrados en local; H59 requiere migración antes del deploy; H70 parcial y H71 pendiente |
+| E2E | **72 PASS** |
 | Integridad (base de producción desechable) | **20 PASS**; local 18 PASS / 2 FAIL de seed |
 | Smoke / generador H47 | 11 PASS / 4 PASS |
 
@@ -114,11 +116,11 @@ La **Fase 6.3.1 (cierre de reglas de promoción)** quedó implementada, verifica
 - Tests 55–58: **58 E2E** (54 previas + 4 nuevas), integridad 20, smoke 11, H47 4, build y
   `node --check` OK. Commits `f1c5f71` (fix) y `f9d8d1a` (tests); docs en este cierre.
 
-**Siguiente paso:** **Fase 7 seleccionada** (H59, H62, H65–H69) y cierre de demo.
-6.4 ya está desplegada en Render (`cdc129e`) sin migración. H49/H73 siguen aplicadas en
-Supabase demo (43 tablas, 2026 activo, 1 política, 0 promociones). En Supabase, probar
-**solo previews** de rollover/promoción; **no confirmar promociones, no activar 2027 y no
-anular** en el demo.
+**Siguiente paso:** **Fase 7 implementada en local.** Aplicar
+`database/migracion_h59_observaciones_personal.sql` en Supabase con backup y autorización
+antes de desplegar; luego push a Render. No iniciar Fase 8 ni SIAGIE oficial. H49/H73 siguen
+aplicadas en Supabase; 2026 sigue activo. En Supabase, probar **solo previews** de
+rollover/promoción; **no confirmar promociones, no activar 2027 y no anular** en el demo.
 
 ---
 
@@ -151,8 +153,9 @@ anular** en el demo.
 
 ### Fase 7 — Quick wins P2
 
-H59, H62, H65–H71 (campos que se pierden, notificación de docente, KPIs, textos,
-logs, retirados históricos, 404/returnUrl menor).
+✅ H59, H62, H65, H66, H67, H68 y H69 implementados y verificados en local (72 E2E).
+🟡 H70 parcial (queda `nodemailer` y variables SMTP sin retirar).
+⏳ H71 pendiente (backfill de retirados históricos).
 
 ### Fase 8 — Operación
 
@@ -203,7 +206,7 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 ```
 
 - Supabase: **43 tablas**, 0 actas, 145 horarios, 5 docentes demo. **H49/H73 aplicadas; 2026 activo; 1 política; 0 promociones.**
-- Local: `npm run test:e2e` (65 PASS), `npm run test:integridad` (20 PASS en base de
+- Local: `npm run test:e2e` (72 PASS), `npm run test:integridad` (20 PASS en base de
   producción desechable; 18/2 de seed en local), `npm run test:h47-generador` (4 PASS) y
   `npm run smoke` (11 PASS).
 - Deep links: `/login`, `/admin`, `/docente/asistencia` → 200.
@@ -223,10 +226,10 @@ curl.exe -s https://siga-uc-api-prod.onrender.com/api/health
 2. 6.2, 6.3 y 6.3.1 ya están desplegadas en Render (`89eba24`).
 3. Probar en Supabase **solo previews** de rollover y promoción. **No confirmar, no activar
    2027 y no anular** en el demo. Con 0 actas, el preview de promoción bloqueará: es correcto.
-4. La **Fase 6.4 (histórico)** ya está desplegada en Render (65 E2E); no requiere migración
+4. La **Fase 6.4 (histórico)** ya está desplegada en Render (72 E2E); no requiere migración
    ni tocar Supabase.
-5. Preparar la **Fase 7 seleccionada** (H59, H62, H65–H69) y el cierre de demo. No empezar
-   Fase 5/8 sin pedido explícito.
+5. Preparar el **cierre de Fase 7**: aplicar H59 en Supabase con backup y autorización, luego
+   push/despliegue. H70 parcial y H71 pendiente. No empezar Fase 5/8 sin pedido explícito.
 
 ---
 
@@ -245,17 +248,19 @@ No implementas código, no tocas Supabase ni Render.
 
 ## Estado
 - Código desplegado: cdc129e (Fases 6.1, 6.2, 6.3, 6.3.1 y 6.4). Documentación: cdc129e.
-- Fases 1-4 y 6.1-6.4 desplegadas; E2E 65 PASS.
+- Fases 1-4 y 6.1-6.4 desplegadas; Fase 7 implementada en local. E2E 72 PASS.
 - **H49 y H73 aplicadas en Supabase demo**: 43 tablas, 2026 activo, 1 política,
   0 promociones, 0 actas, 145 horarios y 5 docentes.
+- **H59 no aplicada en Supabase**: migración pendiente con backup y autorización.
 - No activar 2027 en el demo.
 
 ## Tarea de esta sesión
 1. Verifica el estado sin tocar producción: git, health, tablas, actas y año activo.
 2. Confirma que 2026 sigue activo y que no hay promociones confirmadas en Supabase.
-3. Revisa el cierre de la Fase 6.4 (histórico): selector de año, consolidado por
-   `id_usuario`/DNI, históricos read-only y enlaces con `?anio`.
-4. Prepara el prompt de la **Fase 7 seleccionada** (H59, H62, H65–H69) y el cierre de demo.
+3. Revisa el cierre de Fase 7: H62 (DOCENTE 403), H59 (observaciones de cese), H65
+   (docentes vs personal), H66/H67/H68/H69 (textos y credibilidad).
+4. Prepara el prompt de despliegue de Fase 7: aplicar H59 en Supabase con backup y
+   autorización, luego push/despliegue. H70 parcial y H71 pendiente.
 5. No implementes código; no toques Supabase/Render sin confirmación.
 6. No confirmes promociones, no actives 2027 y no anules en Supabase en esta fase.
 

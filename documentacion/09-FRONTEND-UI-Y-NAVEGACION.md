@@ -18,7 +18,7 @@ index.html
 - `main.ts` importa `zone.js` primero y hace `bootstrapApplication(App, appConfig)`.
 - `app.config.ts` registra router, HttpClient y el interceptor.
 - `app.html` solo contiene `<router-outlet>`.
-- `index.html` conserva el título `SigaUcFrontend` (pendiente de personalizar).
+- `index.html` usa `lang="es"` y el título `SIGA-UC — I.E.P. Unión Científica`.
 
 ## 2. Rutas
 
@@ -148,7 +148,7 @@ Cada layout contiene:
 
 | Elemento | Comportamiento |
 |---|---|
-| Título/subtítulo | `@Input` desde el layout |
+| Título/subtítulo | `@Input` desde el layout; en Admin el título se calcula por ruta (H69) |
 | Campanita | Badge `noLeidas`; polling 30 s |
 | Buzón | Modal con lista, detalle y “marcar todas” |
 | Carné | Modal con QR generado desde `codigo_qr`; botón imprimir |
@@ -264,10 +264,10 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 | `ResetPasswordComponent` | `GET /auth/validar-token/:token`, `POST /auth/restablecer-password` |
 | `CambiarPasswordComponent` | `PUT /auth/cambiar-password` |
 | `HeaderComponent` | `GET /notificaciones/no-leidas`, `GET /notificaciones`, `PUT /:id/leer`, `PUT /leer-todas`, `GET /auth/perfil`; el carné propio usa QR real y se imprime aislado (H58) |
-| `DashboardComponent` | `GET /reportes/dashboard`, `GET /grados`, `GET /personal/roles`, `GET /alumnos?search=&limit=10&solo_activos=1`, `POST /notificaciones/masivo` |
+| `DashboardComponent` | `GET /reportes/dashboard`, `GET /grados`, `GET /personal/roles`, `GET /alumnos?search=&limit=10&solo_activos=1`, `POST /notificaciones/masivo`; muestra “Estudiantes matriculados”, “Plana Docente” (`total_docentes`) y “Personal activo” (`total_personal`); panel “Cobranza y expedientes” (H65/H66) |
 | `AdminAlumnosComponent` | `GET /alumnos?page=&pageSize=&anio=`, `GET /grados?anio=`, `GET /anios-lectivos` (selector 6.4), `POST /alumnos`, `PUT /alumnos/:id`, `PUT /alumnos/:id/retirar`, `PUT /auth/reset-password`; en año no activo oculta las escrituras |
 | `AdminHistoricoComponent` | `GET /reportes/consolidado/:dni`, `GET /asistencias/alumno/:id?anio=` (modal); enlaces con `?anio` a libreta y tesorería |
-| `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar`, `PUT /:id/reactivar`, `PUT /:id/reset-password`; el carné genera un QR real con `codigo_qr` (H55) y la impresión aísla la credencial (H58) |
+| `AdminPersonalComponent` | `GET /personal`, `GET /personal/roles`, `POST /personal`, `PUT /personal/:id`, `PUT /:id/cesar` (con `observaciones` H59), `PUT /:id/reactivar`, `PUT /:id/reset-password`; el carné genera un QR real con `codigo_qr` (H55) y la impresión aísla la credencial (H58); la ficha muestra el cese y su observación |
 | `AdminCargaCurricularComponent` | `GET /grados`, `GET /cursos`, `GET /personal?id_rol=2`, `GET /carga-curricular/grado/:id`, `GET /.../tutor`, `POST /carga-curricular`, `PUT /:id`, `DELETE /:id`, `POST /tutor` |
 | `AdminAsistenciaQrComponent` | `GET /asistencias/personal/todos`, `/resumen`, `/dni/:dni`, `POST /personal/marcar` |
 | `AdminSiagieComponent` | `GET /grados`, `GET /reportes/auditoria-docentes/:id`, `POST /siagie/generar-excel`, `GET /personal/:id`, `POST /notificaciones` |
@@ -284,7 +284,7 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 | `AdminHorariosComponent` | `GET/POST/PUT/DELETE /horarios`, `/periodos`, `/generar`, `/publicar`, `/despublicar` |
 | `SecretariaHorariosComponent` | `GET /horarios`, `GET /horarios/periodos` |
 | `DocenteHorarioComponent` | `GET /horarios/mi-horario` |
-| `SecretariaDashboardComponent` | `GET /tesoreria/estadisticas`, `GET /tesoreria/pre-tickets?estado=PENDIENTE`; “Cobrar” navega a tesorería con `id_preticket`/`id_alumno` (H54) |
+| `SecretariaDashboardComponent` | `GET /tesoreria/estadisticas`, `GET /tesoreria/pre-tickets?estado=PENDIENTE`; “Cobrar” navega a tesorería con `id_preticket`/`id_alumno` (H54); muestra el DNI real del pre-ticket y la etiqueta “Pagos del Mes” |
 
 > En **Tesorería**, el detalle de un alumno distingue tres estados:
 >
@@ -418,4 +418,4 @@ del rol original; el backend debe permitir ambos roles.
 7. ~~Parametrizar año lectivo y conceptos (hoy hardcodeados).~~ ✅ (H12: `ANIO_LECTIVO` + `GET /api/configuracion`).
 8. ~~Añadir “Cerrar acta” con bloqueo real.~~ ✅ (H48: tarjeta de cierre, reapertura, acta global y bloqueo). Nota final automática desde H04.
 9. Mejorar responsive del sidebar.
-10. Cambiar el título de `index.html` a “SIGA-UC”.
+10. ~~Cambiar el título de `index.html` a “SIGA-UC”.~~ ✅ (H69: `lang="es"` y título del colegio).

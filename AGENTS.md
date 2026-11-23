@@ -35,8 +35,8 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | Tests/CI/Docker | Suites manuales (`smoke`, integridad, E2E); sin CI ni Docker |
 
 **Conteos actuales:** 43 tablas base (44 en local con `horarios_h47_backup`) · 128 endpoints ·
-4 roles · 17 routers · 17 controladores · 26 servicios · 22 DAOs · 92 archivos JS backend ·
-150 archivos frontend (63 TS).
+4 roles · 17 routers · 17 controladores · 26 servicios · 22 DAOs · 97 archivos JS backend ·
+147 archivos frontend (62 TS).
 
 ---
 
@@ -89,6 +89,8 @@ psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 
 # B) Producción (catálogos + admin; sin datos ficticios)
 createdb -U postgres siga_uc
@@ -102,6 +104,8 @@ psql -U postgres -d siga_uc -f database/migracion_h47_horarios.sql
 psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 ```
 
 > **H49:** antes de ejecutar `migracion_h49_multianio_base.sql`, editar `_param_anio` al año
@@ -272,9 +276,20 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - **6.4 — UI:** año no activo = badge **Histórico** y solo lectura en padrón y tesorería
   (se ocultan nueva matrícula, editar, retirar, reset, cobrar y generar pensiones).
   `/admin/historico` enlaza a libreta/asistencia/tesorería con `?anio`.
-- Estado 6.4: implementado, verificado y **desplegado en Render** (`cdc129e`); **65 E2E**,
+- Estado 6.4: implementado, verificado y **desplegado en Render** (`cdc129e`); **72 E2E**,
   20 integridad en base nueva (18/2 de seed local), smoke 11, H47 4 y build Angular OK.
   Sin migración y sin cambios en Supabase.
+- **Fase 7 (pulido de demo):** H62, H59, H65, H66, H67, H68 y H69 cerrados en local.
+  `POST /api/notificaciones` es ADMIN/SECRETARIA; DOCENTE recibe 403. `personal.observaciones`
+  se agregó con **H59**, una migración nueva que debe aplicarse **antes** de desplegar el
+  código; en Supabase demo aún **no** está aplicada. `total_docentes` se separa de
+  `total_personal` en el dashboard. No tocar `/en-construccion`: fue eliminado.
+- **H59:** cese con `observaciones` (texto opcional) las persiste y la ficha las muestra;
+  la reactivación limpia fecha, motivo y observación. El apoderado con correo pero sin
+  nombres responde 400. La columna no cambia el conteo de tablas (43).
+- **H70 parcial:** queda `nodemailer` en `package.json` sin uso y variables SMTP en
+  `config/env.js`; el log de login ya no imprime el objeto usuario y el arranque dice
+  “Resend configurado”. **H71 pendiente** (backfill de retirados históricos).
 - La matrícula crea al alumno en **`PendientePago`**; solo el pago de matrícula lo pasa a
   `Matriculado`. El grado y el concepto `MATRICULA` deben ser del año de la matrícula.
 - El retiro es transaccional: pasa la matrícula a `Retirado`, congela el expediente (`H19`) y
@@ -302,7 +317,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
 - Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (20) y
-  `npm run test:e2e` (65, base desechable); el resto del testeo es manual.
+  `npm run test:e2e` (72, base desechable); el resto del testeo es manual.
 
 ---
 

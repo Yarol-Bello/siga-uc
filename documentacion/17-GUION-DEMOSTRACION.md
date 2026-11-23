@@ -294,7 +294,7 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
       aplicadas (44 en local si existe `horarios_h47_backup`).
 - [ ] Build del frontend genera `404.html` y apunta a la API correcta.
 - [ ] `npm run smoke` local: **11 PASS, 0 FAIL, 0 SKIP** (exit 0).
-- [ ] `npm run test:e2e` local: **65 PASS, 0 FAIL** (exit 0).
+- [ ] `npm run test:e2e` local: **72 PASS, 0 FAIL** (exit 0).
 - [ ] `npm run test:integridad` revisado; **20 PASS** en base nueva y los FAIL de seed
       local explicados.
 - [ ] Selector de año visible en Reportes, Padrón y Tesorería; un año no activo muestra
@@ -310,6 +310,11 @@ datos ficticios. Pedir la aprobación y registrar observaciones de la dirección
 - [ ] Notas del bimestre cargadas para que la libreta no salga vacía.
 - [ ] Caja aperturable y sin cierre pendiente que bloquee el cobro.
 - [ ] Notificación de prueba visible en la campanita.
+- [ ] Dashboard: “Estudiantes matriculados”, “Plana Docente” y “Personal activo” con cifras
+      coherentes; panel “Cobranza y expedientes” sin badge de filtro falso.
+- [ ] Personal: cese con observación y ficha del cesado muestran el texto guardado.
+- [ ] Textos de demo corregidos: sin “Facturación”, “Decorativo”, “11 cursos” ni “firma
+      digital”; `index.html` con `lang="es"` y título del colegio.
 - [ ] Eventos de auditoría de la demo visibles.
 
 ### Discurso y seguridad

@@ -81,6 +81,12 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 > **Actualización 22/11/2026 (H72):** página 404 propia y `returnUrl` respetado en el
 > login. Ver H72 en la sección 3.
 >
+> **Actualización 22/11/2026 (Fase 7):** se cierran H59 (observaciones de cese), H62
+> (DOCENTE ya no envía notificaciones), H65 (docentes vs. personal activo), H66 (panel de
+> cobranza y expedientes), H67 (grados/cursos desde la API), H68 (hash de integridad, no
+> firma digital) y H69 (textos de demo, `lang="es"` y títulos por ruta). H70 queda parcial y
+> H71 pendiente. Ver la sección 7.
+>
 > **Actualización 22/11/2026 (H49/6.1):** separación entre identidad (`usuarios`) y
 > matrícula anual (`alumnos`), tabla `anios_lectivos`, `grados.orden`, login por año,
 > apoderados reutilizados por DNI y filtros por año en las consultas operativas. La
@@ -803,10 +809,10 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 
 1. ~~6.1 Base: identidad vs. matrícula anual, `anios_lectivos`, `grados.orden`, login por
    año, filtros por año y apoderados por DNI~~ ✅ (22/11/2026, local; migración H49).
-2. 6.2 Rollover: clonar grados, conceptos, períodos, carga y tutores.
+2. 6.2 Rollover: clonar grados, conceptos, períodos, carga y tutores. ✅
 3. 6.3 Promoción: previsualización, confirmación, fichas del año destino, egresados,
-   repitentes, becas y pre-tickets.
-4. 6.4 Histórico: selector de año y consolidados por identidad.
+   repitentes, becas y pre-tickets. ✅
+4. 6.4 Histórico: selector de año y consolidados por identidad. ✅
 
 ---
 
@@ -821,3 +827,23 @@ hallazgo incluye evidencia, impacto, recomendación y esfuerzo estimado
 | **Total** | **~6–10 semanas** | — |
 
 > Las estimaciones son orientativas y asumen un desarrollador familiarizado con el código.
+
+---
+
+## 7. Fase 7 — Pulido de demo (22/11/2026)
+
+| Hallazgo | Estado | Evidencia |
+|---|---|---|
+| **H62** | ✅ Resuelto | `POST /api/notificaciones` quedó para ADMIN/SECRETARIA; DOCENTE recibe 403. `/masivo` sigue solo ADMIN. E2E 66 |
+| **H59** | ✅ Resuelto | `database/migracion_h59_observaciones_personal.sql` agrega `personal.observaciones`; el cese la guarda y la ficha la muestra; la reactivación la limpia. El apoderado con correo y sin nombres sigue respondiendo 400. E2E 67–68 |
+| **H65** | ✅ Resuelto | `total_docentes` (rol 2 activo con ficha sin cese) separado de `total_personal`; UI “Estudiantes matriculados”, “Plana Docente” y “Personal activo”; “Pagos del Mes” en Secretaría. E2E 69 |
+| **H66** | ✅ Resuelto | Panel renombrado “Cobranza y expedientes”; se retiró el badge “Filtro Automático”. E2E 72 |
+| **H67** | ✅ Resuelto | Filtro de grados desde `grados()` y texto de carga desde `cursos().length`; sin 1–5 ni “11 cursos” fijos. E2E 70 |
+| **H68** | ✅ Resuelto | “Hash de integridad” y “Acta cerrada por”; botón “Cerrar caja”; sin “firma digital” ni “Firmado digitalmente”. E2E 71 |
+| **H69** | ✅ Resuelto | `lang="es"`, título del colegio, “Boletas internas”, “Correo institucional (referencia)”, DNI real en pre-tickets, títulos por ruta, `/en-construccion` eliminado, aviso de correo en modo prueba. E2E 72 |
+| **H70** | 🟡 Parcial | Se quitó el log del objeto usuario y se cambió “SMTP” por “Resend configurado”; `nodemailer` sigue en `package.json` sin uso y las variables SMTP siguen en `env.js`. No bloquea la demo |
+| **H71** | ⏳ Pendiente | Requiere migración/backfill de retirados históricos y autorización con backup; no se toca Supabase en esta fase |
+
+**Verificación Fase 7:** E2E **72 PASS**, integridad **20 PASS** en base nueva (18/2 de seed
+local), smoke **11 PASS**, H47 **4 PASS**, build Angular y `node --check` OK. H59 se aplicó
+solo en la base local; Supabase queda pendiente de autorización.

@@ -69,10 +69,14 @@ Ruta solicitada
 ### 1.1 Dashboard ejecutivo (`/admin`)
 
 1. Al entrar, `DashboardComponent` llama `GET /api/reportes/dashboard`.
-2. Muestra KPIs: alumnos matriculados, personal activo, recaudación anual, pre-tickets
-   pendientes, monto pendiente, retirados, grados y cursos.
-3. No hay gráficos; son tarjetas numéricas.
-4. Si falla, muestra estado de error y permite recargar.
+2. Muestra KPIs: **Estudiantes matriculados**, **Plana Docente** (usuarios DOCENTE
+   activos con ficha sin cese), **Personal activo** (todo el personal sin cese),
+   **Recaudación Anual**, pre-tickets pendientes, monto pendiente, retirados, grados y
+   cursos.
+3. El panel **Cobranza y expedientes** muestra pre-tickets por cobrar y retirados; no
+   promete alertas de asistencia.
+4. No hay gráficos; son tarjetas numéricas.
+5. Si falla, muestra estado de error y permite recargar.
 
 ### 1.2 Padrón de alumnos (`/admin/alumnos`)
 
@@ -153,14 +157,17 @@ año elegido (no hay IDs fijos 1–5).
 3. Cambiar rol no recrea la credencial QR.
 
 #### Cesar
-1. Modal con motivo (obligatorio) y fecha.
+1. Modal con motivo (obligatorio), fecha y **observaciones** (opcional, hasta 1000
+   caracteres).
 2. `PUT /api/personal/:id/cesar`.
-3. Actualiza `personal.fecha_cese`, `motivo_cese` y `usuarios.estado = 'CESADO'`.
+3. Actualiza `personal.fecha_cese`, `motivo_cese`, `personal.observaciones` y
+   `usuarios.estado = 'CESADO'`.
 4. El usuario ya no puede iniciar sesión.
+5. La observación se muestra en la ficha (modal de edición) del trabajador cesado.
 
 #### Reactivar
 1. `PUT /api/personal/:id/reactivar`.
-2. `usuarios.estado = 'ACTIVO'`, limpia cese.
+2. `usuarios.estado = 'ACTIVO'` y limpia fecha, motivo y observación del cese.
 
 #### Reset de contraseña
 1. `PUT /api/personal/:id/reset-password`.
@@ -261,8 +268,10 @@ navegador (no genera PDF).
 
 ### 1.11 Notificaciones
 
-- Puede enviar a un usuario desde SIAGIE o desde la campanita (el módulo de envío no tiene
-  pantalla propia; el header solo lee).
+- ADMIN y SECRETARIA pueden enviar a un usuario desde SIAGIE o desde la campanita (el
+  módulo de envío no tiene pantalla propia; el header solo lee).
+- DOCENTE **no** puede enviar notificaciones individuales: `POST /api/notificaciones`
+  responde 403 (H62). `POST /masivo` sigue siendo solo ADMIN.
 - Envío masivo existe en API, pero **no tiene UI**.
 
 ### 1.12 Histórico por estudiante (`/admin/historico`, 6.4)

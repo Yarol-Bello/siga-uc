@@ -177,6 +177,8 @@ top = 10
 | RN-77.1 | El panel del estudiante usa el grado real y los cursos de `carga_curricular`; la felicitación exige notas | `estudiante-dashboard`, `sidebar-estudiante` | H57 |
 | RN-78 | Resumen de asistencia por grado filtra por año | `getResumenAsistenciaGrado` | Resuelto con H56 (`EXTRACT(YEAR FROM asis.fecha) = $2`) |
 | RN-79 | Auditoría docente compara notas finales vs alumnos | `reporteDao` | No usa estado_carga |
+| RN-79.1 | El dashboard separa `total_docentes` (rol 2 activo con ficha sin cese) de `total_personal` (todo el personal sin cese) | `getDashboardEjecutivo` | H65 |
+| RN-79.2 | El consolidado histórico por DNI agrupa por `id_usuario` y no suma años por `id_alumno` | `getConsolidadoPorDni` | 6.4 |
 
 ## 10. Tesorería
 

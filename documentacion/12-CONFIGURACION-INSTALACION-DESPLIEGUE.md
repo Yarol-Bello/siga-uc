@@ -122,6 +122,7 @@ psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -141,6 +142,7 @@ psql -U postgres -d siga_uc -f database/migracion_h48_actas.sql
 psql -U postgres -d siga_uc -f database/migracion_h61_dia_semana.sql
 psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
+psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -615,6 +617,8 @@ Crear una tarea diaria a las 02:00:
 | `database/migracion_h61_dia_semana.sql` | Normaliza `dia_semana` de asistencias a español y lo alinea con la fecha; solo datos e idempotente |
 | `database/migracion_h49_multianio_base.sql` | Crea `anios_lectivos`, `grados.orden` y UNIQUE de alumnos por año; se aplica antes del rollover |
 | `database/migracion_h73_promociones.sql` | Crea `politicas_promocion` y `promociones`; requiere H49 y se aplica antes de operar 6.3 |
+| `database/migracion_h59_observaciones_personal.sql` | Agrega `personal.observaciones`; aplicar antes de desplegar el código que la lee (H59) |
+| `database/rollback_h59_observaciones_personal.sql` | Solo bases desechables: elimina `personal.observaciones` y sus datos |
 | `database/rollback_h73_promociones.sql` | Solo bases desechables: elimina las tablas de promoción |
 | `database/preparar_anio_lectivo.sql` | Utilidad histórica y parcial (conceptos + períodos); la UI de 6.2 la reemplaza |
 | `database/migracion_*.sql` | Parches idempotentes para bases existentes |

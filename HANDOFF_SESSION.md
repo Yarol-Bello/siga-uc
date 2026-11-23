@@ -11,8 +11,9 @@
 > históricos. **Sin migración y sin cambios en Supabase.** `test:e2e` **65 PASS**, integridad
 > **20 PASS** en base nueva. Desplegada en Render (`cdc129e`). Ver sección 1.5.
 >
-> **Próximo bloque:** Fase 7 seleccionada (H59, H62, H65–H69) y cierre de demo. No activar
-> 2027 en Supabase sin aprobación.
+> **Próximo bloque:** Fase 7 implementada en local: H62, H59, H65, H66, H67, H68 y H69.
+> **H59 requiere aplicar la migración en Supabase antes de desplegar el código**; no se tocó
+> Supabase. `test:e2e` **72 PASS**. Ver sección 1.6.
 >
 > **Actualización 22/11/2026 (Fases 6.3 y 6.3.1 desplegadas):** promoción anual con
 > política configurable, preview por alumno y hash, confirmación transaccional e idempotente,
@@ -331,9 +332,41 @@ En esta fase **no** se prepara el despliegue definitivo.
   `test:integridad` **20 PASS** en base de producción desechable y **18 PASS / 2 FAIL** de
   seed en local (invariantes 4 y 8); `npm run smoke` **11 PASS**;
   `test:h47-generador` **4 PASS**; build Angular OK y `node --check` OK.
-- **Commits de 6.4:** pendientes de crear al cierre (backend, UI, tests y docs).
-- **Estado:** implementado y verificado en local/E2E; **sin migración**, por lo que el
-  push/despliegue a Render es seguro. Supabase no se modificó.
+- **Commits de 6.4:** `68308ac` (backend), `2b4faed` (UI), `70bddb0` (tests) y `cdc129e`
+  (docs); cierre `151ab95` (registro de despliegue).
+- **Estado:** implementado, verificado y **desplegado en Render** (`cdc129e`); **sin
+  migración** y sin cambios en Supabase.
+
+### 1.6 Fase 7 — Pulido de credibilidad, datos y seguridad (22/11/2026)
+
+- **H62:** `POST /api/notificaciones` quedó para ADMIN/SECRETARIA; DOCENTE recibe 403.
+  `/masivo` sigue solo ADMIN. No hay UI de envío para docente.
+- **H59:** `database/migracion_h59_observaciones_personal.sql` agrega
+  `personal.observaciones text` (idempotente). El cese la guarda, `GET /personal` la
+  devuelve y la ficha del cesado la muestra; la reactivación limpia fecha, motivo y
+  observación. El apoderado con correo y sin nombres sigue respondiendo 400.
+  **Aplicada en local; no en Supabase.**
+- **H65:** `GET /reportes/dashboard` agrega `total_docentes` (rol 2 activo con ficha sin
+  cese) y conserva `total_personal` (todo el personal sin cese). La UI rotula “Estudiantes
+  matriculados”, “Plana Docente” y “Personal activo”; Secretaría usa “Pagos del Mes”.
+- **H66:** el panel se llama “Cobranza y expedientes” y ya no muestra el badge “Filtro
+  Automático”.
+- **H67:** el filtro de grados usa `grados()` (ya venía de 6.4) y el texto de carga usa
+  `cursos().length`; no quedan 1–5 ni “11 cursos” fijos.
+- **H68:** el PDF del acta dice “Hash de integridad” y “Acta cerrada por”; el botón de caja
+  dice “Cerrar caja”. No se promete firma digital ni no repudio. El algoritmo MD5 no cambió.
+- **H69:** `lang="es"` y título del colegio; “Boletas internas / Tesorería”; “Correo
+  institucional (referencia)”; DNI real en pre-tickets; títulos del ADMIN por ruta;
+  `/en-construccion` eliminado; aviso de correo en modo prueba en recuperación; sidebar
+  docente usa especialidad/cargo real.
+- **H70 parcial:** el login ya no imprime el objeto usuario y el arranque dice “Resend
+  configurado”. `nodemailer` y variables SMTP siguen sin uso; no se retiraron.
+- **H71 pendiente:** backfill de retirados históricos; requiere migración y autorización.
+- **Verificación (local, 22/11/2026):** `test:e2e` **72 PASS**; `test:integridad` **20 PASS**
+  en base nueva y **18/2** de seed local; smoke **11 PASS**; H47 **4 PASS**; build Angular y
+  `node --check` OK.
+- **Commits de 7:** `c5f974e` (H62), `520cb7e` (H59), `184a543` (H65-H69), `c097b15`
+  (tests) y el cierre de documentación.
 
 ---
 
@@ -379,9 +412,9 @@ En esta fase **no** se prepara el despliegue definitivo.
 - `npm run test:integridad` (`scripts/test-integridad.js`): 20 invariantes de solo lectura
   sobre cualquier base. Fuerza `default_transaction_read_only=on`. Exit 1 si hay FAIL.
 - `npm run test:e2e` (`scripts/test-e2e.js`): crea `siga_uc_e2e`, carga el dump y las
-  migraciones (incluidas H49 y H73), arranca el backend en el puerto 3101, ejecuta 65 flujos
-  y elimina la base con `dropdb --force`. Verificado: **65 PASS, 0 FAIL** y exit 0 (incluye
-  H48, H49, H50, H51, H63, rollover 6.2, promociones 6.3/6.3.1 e histórico 6.4).
+  migraciones (incluidas H49, H73 y H59), arranca el backend en el puerto 3101, ejecuta 72
+  flujos y elimina la base con `dropdb --force`. Verificado: **72 PASS, 0 FAIL** y exit 0
+  (incluye H48, H49, H50, H51, H63, rollover 6.2, promociones 6.3, histórico 6.4 y pulido 7).
 - Integridad local del 22/11/2026: **18 PASS, 2 FAIL** por datos de seed reales
   (invariantes 4 y 8: 5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El
   invariante 7 ya no marca al ADMIN: solo exige ficha a ESTUDIANTE (rol 4) y
@@ -753,14 +786,25 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **6.4 UI:** selector de año con default activo; años no activos muestran **Histórico** y
   ocultan escrituras en padrón y tesorería. `/admin/historico` enlaza con `?anio`. La ficha
   docente se mantiene en el año activo.
-- **Estado 6.4:** implementado, verificado y **desplegado en Render (`cdc129e`)**; 65 E2E,
+- **Estado 6.4:** implementado, verificado y **desplegado en Render (`cdc129e`)**; 72 E2E,
   20 integridad, smoke 11, H47 4, build OK. Supabase no se modificó (sin migración).
+- **7 — H62:** `POST /api/notificaciones` es ADMIN/SECRETARIA; DOCENTE 403 y `/masivo` solo
+  ADMIN. No volver a habilitar DOCENTE sin validar pertenencia de cada destinatario.
+- **7 — H59:** `personal.observaciones` viene de `migracion_h59_observaciones_personal.sql`.
+  **Aplicarla antes de desplegar el backend** o `GET /personal` fallará por columna ausente.
+  En Supabase demo aún no está aplicada; requiere backup y autorización.
+- **7 — H65/H66:** `total_docentes` no reemplaza a `total_personal`; la UI muestra ambos.
+  El panel “Cobranza y expedientes” no promete alertas de asistencia.
+- **7 — H68:** el hash del acta es MD5 de integridad, no firma digital. No prometer valor
+  legal ni no repudio.
+- **7 — H69:** `/en-construccion` fue eliminado; los textos de demo y `lang="en"` no deben
+  volver. El login avisa que el correo está en modo prueba.
 - H49: el rollback está probado solo en bases desechables; aborta si detecta varias
   matrículas por persona o promociones con filas. **No ejecutarlo en Supabase.**
 
 ---
 
-## 7. Próximo paso exacto (cierre de 6.4)
+## 7. Próximo paso exacto (cierre de Fase 7)
 
 H49/H73 ya están aplicadas en Supabase demo (43 tablas, 2026 ACTIVO, 1 política,
 0 promociones, 0 actas, 145 horarios, 5 docentes). 6.3/6.3.1 están desplegadas en Render
@@ -770,11 +814,13 @@ existen y responden 401 sin token. **6.4 está desplegada y no tiene migración.
 1. No volver a aplicar H49/H73 en Supabase.
 2. Mantener 2026 activo. No activar 2027 en el demo.
 3. En Supabase, si se necesita oferta 2027, confirmar el rollover 2026→2027 (solo oferta).
-4. Implementar la Fase 7 seleccionada (H59, H62, H65–H69) y el cierre de demo.
-6. Probar en Supabase **solo previews** de promoción; el confirm/anulación se valida en
+4. **Fase 7 implementada en local.** Crear los commits, aplicar
+   `database/migracion_h59_observaciones_personal.sql` en Supabase con backup y autorización,
+   y recién después desplegar el backend en Render.
+5. Probar en Supabase **solo previews** de promoción; el confirm/anulación se valida en
    local/E2E. Con 0 actas, el preview bloqueará por actas: es correcto.
-7. No iniciar Fase 5/7/8 sin pedido explícito.
-8. El rollback H49/H73 **no** se ejecuta en Supabase.
+6. No iniciar Fase 8 ni SIAGIE oficial sin pedido explícito.
+7. El rollback H49/H73/H59 **no** se ejecuta en Supabase.
 
 > **No reejecutar** `database/demo_h47_docentes.sql` sobre Supabase mientras haya horarios
 > publicados: el guard aborta, pero primero hay que despublicar/limpiar. Resend real y
@@ -794,10 +840,11 @@ Nada de esta lista se hace en la fase actual.
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | H47, H48, H49 y H73 ya aplicadas en Supabase demo. H61 es solo datos y **aún no** está aplicada allí. 6.1, 6.2, 6.3 y 6.3.1 desplegadas en Render (`89eba24`). Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Migraciones** | H47, H48, H49 y H73 ya aplicadas en Supabase demo. H61 es solo datos y **aún no** está aplicada allí. **H59 tampoco**: aplicarla con backup y autorización antes de desplegar Fase 7. 6.1–6.4 desplegadas en Render (`cdc129e`). Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
 | **Integridad** | `npm run test:integridad` contra la base definitiva: 20 PASS |
 | **Multi-año** | 6.2 rollover, 6.3/6.3.1 promoción y 6.4 histórico implementados y desplegados en Render (`cdc129e`); H49/H73 aplicadas en Supabase demo. 6.4 no tiene migración. 2026 debe seguir activo en Supabase hasta la aprobación |
 | **Promociones** | 6.3 no crea usuarios ni QR; no copia notas/pagos/pensiones; no activa el año. La política estándar se siembra con el año ACTIVO. Revisar con dirección/UGEL los criterios de repitencia y transición |
+| **Fase 7** | H62, H59, H65, H66, H67, H68 y H69 cerrados en local; H59 requiere migración en Supabase antes del deploy. H70 parcial y H71 pendiente (backfill de retirados) |
 
 ---
 
@@ -816,7 +863,7 @@ psql -U postgres -d siga_uc -c "SELECT COUNT(*) FROM information_schema.tables W
 curl.exe -s http://localhost:3000/api/health
 cd siga-uc-backend; npm run smoke          # 11 PASS, exit 0
 npm run test:integridad                    # 20 invariantes; revisar FAIL reales
-npm run test:e2e                           # 65 PASS, exit 0; elimina siga_uc_e2e
+npm run test:e2e                           # 72 PASS, exit 0; elimina siga_uc_e2e
 npm run test:h47-generador                 # 4 PASS; no toca BD
 ```
 
@@ -824,7 +871,7 @@ El primero confirma el commit; los `psql` aplican H47/H48/H61/H49/H73 si faltan;
 debe devolver **43** sin backup o **44** con `horarios_h47_backup`; `anios_lectivos` debe
 tener un solo `ACTIVO`; el health debe devolver `success: true` y `database: "ok"` **con el
 backend en marcha**; el smoke debe terminar en **11 PASS, 0 FAIL**; integridad puede reportar
-violaciones reales de seed; E2E debe terminar en **65 PASS, 0 FAIL** y dejar `siga_uc_e2e`
+violaciones reales de seed; E2E debe terminar en **72 PASS, 0 FAIL** y dejar `siga_uc_e2e`
 eliminada; el generador en **4 PASS**. La base nueva de producción debe dar **20 PASS**.
 
 Para una base **definitiva** (solo después de la aprobación):
