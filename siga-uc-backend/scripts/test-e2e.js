@@ -8352,6 +8352,19 @@ async function ejecutarPruebas() {
       assert.equal(Number(previewDatos.datos.data.monto_final), 0);
       assert.equal(previewDatos.datos.data.aplicaciones.length, 1);
 
+      const auditoriaBeca = await sql(
+        `SELECT accion, motivo
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = 'Configuración'
+           AND descripcion LIKE $1
+         ORDER BY id_bitacora`,
+        ["%Beca 100% pensión E2E%"],
+      );
+      assert.ok(
+        auditoriaBeca.some((fila) => fila.accion === "APROBAR"),
+        "No se auditó la aprobación de la beca",
+      );
+
       registrar(
         96,
         "Becas: una beca 100% exonera pensiones pendientes y registra aplicaciones",
@@ -8506,6 +8519,19 @@ async function ejecutarPruebas() {
       const previewSinADatos = await leerJson(previewSinA);
       assert.equal(Number(previewSinADatos.datos.data.descuento), 30);
       assert.equal(Number(previewSinADatos.datos.data.monto_final), 70);
+
+      const auditoriaAnulacion = await sql(
+        `SELECT accion, motivo
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = 'Configuración'
+           AND descripcion LIKE $1
+         ORDER BY id_bitacora`,
+        ["%E2E_COMBOA%"],
+      );
+      assert.ok(
+        auditoriaAnulacion.some((fila) => fila.accion === "ANULAR"),
+        "No se auditó la anulación de la beca",
+      );
 
       registrar(
         97,
