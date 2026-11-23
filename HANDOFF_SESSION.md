@@ -5,7 +5,7 @@
 > menores hasta que la dirección apruebe. Alcance completo en la sección 0.
 >
 > **Actualización 22/11/2026 (Fase 7 desplegada):** pulido de demo con H62 (DOCENTE ya no
-> envía notificaciones), H59 (observaciones de cese; migración pendiente en Supabase), H65
+> envía notificaciones), H59 (observaciones de cese; **aplicada en Supabase demo**), H65
 > (docentes vs. personal activo), H66 (panel de cobranza y expedientes), H67 (grados/cursos
 > desde la API), H68 (hash de integridad, no firma digital) y H69 (textos, `lang="es"` y
 > títulos por ruta). Código `8eba9e9`; frontend de Render ya sirve los textos nuevos.
@@ -18,10 +18,9 @@
 > históricos. **Sin migración y sin cambios en Supabase.** `test:e2e` **65 PASS**, integridad
 > **20 PASS** en base nueva. Desplegada en Render (`cdc129e`). Ver sección 1.5.
 >
-> **Próximo bloque:** aplicar **H59** en Supabase con backup y autorización para habilitar
-> las observaciones de cese en el demo; sin la migración, el cese con observación responde
-> `503 H59_NO_APLICADO`. No iniciar Fase 8 ni tocar 2027. `test:e2e` **72 PASS**. Ver
-> sección 1.6.
+> **Próximo bloque:** cierre de demo/UAT. **H59 ya está aplicada en Supabase demo**;
+> 2026 sigue activo. No iniciar Fase 8 ni tocar 2027. `test:e2e` **72 PASS**. Ver sección
+> 1.6.
 >
 > **Actualización 22/11/2026 (Fases 6.3 y 6.3.1 desplegadas):** promoción anual con
 > política configurable, preview por alumno y hash, confirmación transaccional e idempotente,
@@ -32,9 +31,9 @@
 > nueva. Supabase: 43 tablas, 2026 ACTIVO, 1 política, 0 promociones, 0 actas, 145 horarios y
 > 5 docentes. Ver secciones 1.3 y 1.4.
 >
-> **Próximo bloque de trabajo:** Fase 6.4 cerrada en local; falta push/despliegue. No activar
-> 2027 en Supabase demo sin aprobación del colegio; el flujo completo de promoción se prueba
-> en local/E2E.
+> **Próximo bloque de trabajo:** cierre de demo/UAT. 6.4 y Fase 7 ya están desplegadas;
+> H59 aplicada en Supabase. No activar 2027 en Supabase demo sin aprobación del colegio; el
+> flujo completo de promoción se prueba en local/E2E.
 >
 > **Actualización 22/11/2026 (Fase 6.2 desplegada):** rollover anual con preview de solo
 > lectura y hash, clonado transaccional e idempotente de grados, conceptos, períodos, carga
@@ -353,8 +352,9 @@ En esta fase **no** se prepara el despliegue definitivo.
   `personal.observaciones text` (idempotente). El cese la guarda, `GET /personal` la
   devuelve y la ficha del cesado la muestra; la reactivación limpia fecha, motivo y
   observación. El apoderado con correo y sin nombres sigue respondiendo 400.
-  **Aplicada en local; no en Supabase.** Sin la migración, el listado devuelve
-  `observaciones: null` y un cese con observación responde `503 H59_NO_APLICADO`.
+  **Aplicada en local y en Supabase demo.** La columna existe en Supabase; el cese con
+  observación ya puede persistirla. Sin la migración, el listado devolvía
+  `observaciones: null` y el cese respondía `503 H59_NO_APLICADO`.
 - **H65:** `GET /reportes/dashboard` agrega `total_docentes` (rol 2 activo con ficha sin
   cese) y conserva `total_personal` (todo el personal sin cese). La UI rotula “Estudiantes
   matriculados”, “Plana Docente” y “Personal activo”; Secretaría usa “Pagos del Mes”.
@@ -377,8 +377,8 @@ En esta fase **no** se prepara el despliegue definitivo.
 - **Commits de 7:** `c5f974e` (H62), `520cb7e` (H59), `184a543` (H65-H69), `c097b15`
   (tests), `882da76` (docs) y `8eba9e9` (compatibilidad H59 sin migración).
 - **Estado:** código desplegado en Render (`8eba9e9`); el frontend ya sirve `lang="es"` y el
-  título del colegio. **H59 sigue pendiente en Supabase**: aplicar con backup y autorización
-  antes de registrar observaciones de cese en el demo.
+  título del colegio. **H59 aplicada en Supabase demo** (43 tablas, 2026 ACTIVO,
+  0 promociones).
 
 ---
 
@@ -802,9 +802,9 @@ En esta fase **no** se prepara el despliegue definitivo.
   20 integridad, smoke 11, H47 4, build OK. Supabase no se modificó (sin migración).
 - **7 — H62:** `POST /api/notificaciones` es ADMIN/SECRETARIA; DOCENTE 403 y `/masivo` solo
   ADMIN. No volver a habilitar DOCENTE sin validar pertenencia de cada destinatario.
-- **7 — H59:** `personal.observaciones` viene de `migracion_h59_observaciones_personal.sql`.
-  **Aplicarla antes de desplegar el backend** o `GET /personal` fallará por columna ausente.
-  En Supabase demo aún no está aplicada; requiere backup y autorización.
+- **7 - H59:** `personal.observaciones` viene de `migracion_h59_observaciones_personal.sql`.
+  **Ya está aplicada en Supabase demo**; 43 tablas, 2026 activo. El backend tolera bases sin
+  la columna, pero el cese con observación responde 503 hasta aplicarla.
 - **7 — H65/H66:** `total_docentes` no reemplaza a `total_personal`; la UI muestra ambos.
   El panel “Cobranza y expedientes” no promete alertas de asistencia.
 - **7 — H68:** el hash del acta es MD5 de integridad, no firma digital. No prometer valor
@@ -826,9 +826,8 @@ existen y responden 401 sin token. **6.4 está desplegada y no tiene migración.
 1. No volver a aplicar H49/H73 en Supabase.
 2. Mantener 2026 activo. No activar 2027 en el demo.
 3. En Supabase, si se necesita oferta 2027, confirmar el rollover 2026→2027 (solo oferta).
-4. **Fase 7 implementada en local.** Crear los commits, aplicar
-   `database/migracion_h59_observaciones_personal.sql` en Supabase con backup y autorización,
-   y recién después desplegar el backend en Render.
+4. **Fase 7 desplegada en Render (`8eba9e9`) y H59 aplicada en Supabase demo.** El cese
+   con observación ya puede persistirla; no volver a aplicar H59.
 5. Probar en Supabase **solo previews** de promoción; el confirm/anulación se valida en
    local/E2E. Con 0 actas, el preview bloqueará por actas: es correcto.
 6. No iniciar Fase 8 ni SIAGIE oficial sin pedido explícito.
@@ -852,11 +851,11 @@ Nada de esta lista se hace en la fase actual.
 | **Datos reales** | Limpiar datos de prueba, cargar alumnos/personal reales, rotar credenciales y actualizar `FRONTEND_URL`/`EMAIL_FROM` |
 | **Backups definitivos** | Verificar `pg_dump` en la Shell de Render o documentar el uso de los backups de Supabase |
 | **Smoke contra producción** | `SMOKE_ADMIN_PASSWORD` real en `.env` de sesión y `npm run smoke` contra Render: 11 PASS, 0 FAIL, 0 SKIP. Escribe `ultimo_login`, `LOGIN` y `DESCARGAR` en la bitácora. Solo con confirmación explícita |
-| **Migraciones** | H47, H48, H49 y H73 ya aplicadas en Supabase demo. H61 es solo datos y **aún no** está aplicada allí. **H59 tampoco**: aplicarla con backup y autorización antes de desplegar Fase 7. 6.1–6.4 desplegadas en Render (`cdc129e`). Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
+| **Migraciones** | H47, H48, H49, H59 y H73 ya aplicadas en Supabase demo. H61 es solo datos y **aún no** está aplicada allí. 6.1-6.4 y Fase 7 desplegadas en Render (`8eba9e9`). Las próximas, **a mano**, en orden, con archivos idempotentes. Un `git push` que solo toca `database/` o `documentacion/` **no despliega** |
 | **Integridad** | `npm run test:integridad` contra la base definitiva: 20 PASS |
 | **Multi-año** | 6.2 rollover, 6.3/6.3.1 promoción y 6.4 histórico implementados y desplegados en Render (`cdc129e`); H49/H73 aplicadas en Supabase demo. 6.4 no tiene migración. 2026 debe seguir activo en Supabase hasta la aprobación |
 | **Promociones** | 6.3 no crea usuarios ni QR; no copia notas/pagos/pensiones; no activa el año. La política estándar se siembra con el año ACTIVO. Revisar con dirección/UGEL los criterios de repitencia y transición |
-| **Fase 7** | H62, H59, H65, H66, H67, H68 y H69 cerrados en local; H59 requiere migración en Supabase antes del deploy. H70 parcial y H71 pendiente (backfill de retirados) |
+| **Fase 7** | H62, H59, H65, H66, H67, H68 y H69 desplegados en Render; H59 aplicada en Supabase demo. H70 parcial y H71 pendiente (backfill de retirados). Queda cierre de demo/UAT |
 
 ---
 
