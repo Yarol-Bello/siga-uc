@@ -3,7 +3,7 @@
  * Sistema Integrado de Gestión Académica
  *
  * Usa Resend (API HTTP) para funcionar tanto en local como en Render.
- * Mantiene la misma interfaz pública que la versión anterior con Nodemailer.
+ * El correo es opcional: si no hay RESEND_API_KEY, la API sigue funcionando.
  */
 
 const { Resend } = require("resend");
@@ -42,9 +42,7 @@ const verificarConexion = async () => {
  */
 const enviarCorreo = async ({ to, subject, html, text }) => {
   if (!resend) {
-    console.warn(
-      `⚠️ RESEND_API_KEY no configurada: correo omitido para ${to}`,
-    );
+    console.warn("⚠️ RESEND_API_KEY no configurada: correo omitido.");
     return { success: false, error: "RESEND_API_KEY no configurada" };
   }
 
@@ -58,14 +56,14 @@ const enviarCorreo = async ({ to, subject, html, text }) => {
     });
 
     if (error) {
-      console.error(`❌ Error al enviar correo a ${to}:`, error.message);
+      console.error("❌ Error al enviar correo:", error.message);
       return { success: false, error: error.message };
     }
 
-    console.log(`📧 Correo enviado a ${to}: ${data.id}`);
+    console.log(`📧 Correo enviado: ${data.id}`);
     return { success: true, messageId: data.id };
   } catch (error) {
-    console.error(`❌ Error al enviar correo a ${to}:`, error.message);
+    console.error("❌ Error al enviar correo:", error.message);
     return { success: false, error: error.message };
   }
 };

@@ -54,7 +54,7 @@ const login = async (req, res) => {
     if (error.statusCode) {
       return response.error(res, error.statusCode, error.message);
     }
-    console.error("❌ Error en login:", error);
+    console.error("❌ Error en login:", error.message);
     return response.error(res, 500, "Error interno del servidor");
   }
 };
