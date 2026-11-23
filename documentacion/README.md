@@ -23,8 +23,8 @@
 | Entender el negocio, alcance y glosario | `01-VISION-GENERAL-Y-ALCANCE.md` |
 | Entender capas, patrones y ciclo de una petición | `02-ARQUITECTURA-Y-PATRONES.md` |
 | Ubicar archivos, controladores, servicios y DAOs | `03-ESTRUCTURA-Y-CLASES.md` |
-| Conocer las 43 tablas, relaciones, triggers y seeds | `04-BASE-DE-DATOS.md` |
-| Consumir o auditar la API (129 endpoints) | `05-API-REST.md` |
+| Conocer las 48 tablas, relaciones, triggers y seeds | `04-BASE-DE-DATOS.md` |
+| Consumir o auditar la API (163 endpoints) | `05-API-REST.md` |
 | Ver roles, usuarios semilla y matriz de permisos | `06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Reproducir el recorrido completo de cada rol | `07-FLUJOS-POR-ROL.md` |
 | Entender un proceso de negocio de inicio a fin | `08-PROCESOS-DE-NEGOCIO.md` |
@@ -49,15 +49,15 @@
 |---|---|
 | Roles | 4 (`ADMIN`, `DOCENTE`, `SECRETARIA`, `ESTUDIANTE`) |
 | Paneles frontend | 4 + autenticación |
-| Tablas PostgreSQL | 45 base (46 en local con `horarios_h47_backup`) |
-| Funciones + triggers | 11 objetos en el esquema base; H47/H48/H74 agregan triggers |
-| Endpoints REST | 131 (72 GET, 36 POST, 18 PUT, 5 DELETE) |
+| Tablas PostgreSQL | 48 base (49 en local con `horarios_h47_backup`) |
+| Funciones + triggers | 11 objetos en el esquema base; H47/H48/H74/H75/H77 agregan triggers |
+| Endpoints REST | 163 (80 GET, 45 POST, 30 PUT, 8 DELETE) |
 | Routers backend | 17 |
 | Controladores backend | 17 |
-| Servicios backend | 26 |
-| DAOs backend | 23 |
-| Archivos backend | 98 JS |
-| Archivos frontend | 151 (66 TypeScript) |
+| Servicios backend | 30 |
+| DAOs backend | 26 |
+| Archivos backend | 100 JS |
+| Archivos frontend | 164 (69 TypeScript) |
 | Transacciones de negocio | Matrícula, pago+boleta, cierre de caja, carga masiva, asignación de tutor |
 | Autenticación | JWT (8 h) + bcrypt (coste 10) |
 | Correo transaccional | Resend (API HTTP), con degradación no bloqueante |
@@ -77,8 +77,8 @@
 4. **La documentación histórica está desactualizada** en varios puntos: decía 26 tablas, 17
    servicios, 16 DAOs, 14 controladores y Nodemailer/SMTP. El estado real está en estos
    documentos y en el código.
-5. **Sí existen suites automatizadas locales**: `npm run smoke` (11), `npm run
-   test:integridad` (21 en base nueva), `npm run test:e2e` (75, base desechable) y
+5. **Sí existen suites automatizadas locales**: `npm run smoke` (12), `npm run
+   test:integridad` (34 en base nueva), `npm run test:e2e` (99, base desechable) y
    `npm run test:h47-generador` (4). No hay CI/CD ni Docker.
 
 ---

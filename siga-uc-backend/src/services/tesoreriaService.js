@@ -6,6 +6,8 @@
 const tesoreriaDao = require("../dao/tesoreriaDao");
 const cajaDao = require("../dao/cajaDao");
 const alumnoDao = require("../dao/alumnoDao");
+const conceptoPagoDao = require("../dao/conceptoPagoDao");
+const becaService = require("./becaService");
 const { getAnioLectivo } = require("../config/academico");
 
 const listarConceptos = async (anioLectivo) => {
@@ -128,6 +130,55 @@ const registrarPago = async (data) => {
     throw error;
   }
 
+  if (concepto.tipo !== "PENSION" && !concepto.activo) {
+    const error = new Error("El concepto seleccionado está inactivo.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (
+    concepto.tipo === "MATRICULA" &&
+    Number(concepto.anio_lectivo) !== Number(alumno.anio_lectivo)
+  ) {
+    const error = new Error(
+      "El concepto de matrícula no pertenece al año de la matrícula.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (concepto.tipo === "MATRICULA") {
+    const resuelto = await conceptoPagoDao.resolver({
+      anio: concepto.anio_lectivo,
+      tipo: "MATRICULA",
+      mes: null,
+      idGrado: alumno.id_grado,
+      fecha: new Date().toISOString().slice(0, 10),
+    });
+    if (
+      !resuelto ||
+      Number(resuelto.id_concepto) !== Number(concepto.id_concepto)
+    ) {
+      const error = new Error(
+        "El concepto de matrícula no corresponde a la tarifa vigente del alumno.",
+      );
+      error.statusCode = 400;
+      error.details = { codigo: "CONCEPTO_NO_CORRESPONDE_AL_ALUMNO" };
+      throw error;
+    }
+  }
+
+  if (
+    concepto.tipo === "OTROS" &&
+    Number(concepto.anio_lectivo) !== Number(alumno.anio_lectivo)
+  ) {
+    const error = new Error(
+      "El concepto no pertenece al año lectivo de la matrícula.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
   // Resolver la pensión vinculada al pago (si corresponde)
   let pension = null;
 
@@ -185,6 +236,18 @@ const registrarPago = async (data) => {
         error.statusCode = 400;
         throw error;
       }
+
+      if (
+        pension.id_concepto &&
+        Number(pension.id_concepto) !== Number(concepto.id_concepto)
+      ) {
+        const error = new Error(
+          "El concepto no corresponde a la tarifa con la que se generó la pensión.",
+        );
+        error.statusCode = 400;
+        error.details = { codigo: "CONCEPTO_NO_CORRESPONDE_A_PENSION" };
+        throw error;
+      }
     }
 
     if (Number(pension.id_alumno) !== Number(data.id_alumno)) {
@@ -213,8 +276,21 @@ const registrarPago = async (data) => {
       "El monto de la pensión es",
     );
   } else {
+    const preticket =
+      data.id_preticket ||
+      (
+        await tesoreriaDao.findPreTicketPendiente(
+          data.id_alumno,
+          data.id_concepto,
+        )
+      )?.id_preticket;
+
+    const preticketPendiente = preticket
+      ? await tesoreriaDao.findPreTicketById(preticket)
+      : null;
+
     validarMontoEsperado(
-      concepto.monto_base,
+      preticketPendiente?.monto ?? concepto.monto_base,
       data.monto,
       "El monto del concepto es",
     );
@@ -280,61 +356,75 @@ const generarPensionesAlumno = async (id_alumno) => {
 };
 
 const generarPensionesMes = async (anioLectivo, mes, montoBase) => {
-  if (!mes || mes < 1 || mes > 12) {
+  if (!mes || Number(mes) < 1 || Number(mes) > 12) {
     const error = new Error("Mes inválido (1-12)");
     error.statusCode = 400;
     throw error;
   }
 
-  const anio = anioLectivo || getAnioLectivo();
-  let monto = montoBase;
-
-  // Si no se envía monto, se toma del concepto de pensión del año/mes.
-  if (monto === undefined || monto === null || monto === "") {
-    const concepto = await tesoreriaDao.findConceptoPension(anio, mes);
-    if (!concepto) {
-      const error = new Error(
-        `No existe concepto de pensión para el mes ${mes} del año ${anio}`,
-      );
-      error.statusCode = 400;
-      throw error;
-    }
-    monto = concepto.monto_base;
-  }
-
-  const montoFinal = Number(monto);
-  if (!Number.isFinite(montoFinal) || montoFinal <= 0) {
-    const error = new Error("Monto de pensión inválido");
+  if (
+    montoBase !== undefined &&
+    montoBase !== null &&
+    String(montoBase).trim() !== ""
+  ) {
+    const error = new Error(
+      "El monto de la pensión se toma de la configuración de tarifas; no envíe monto_base.",
+    );
     error.statusCode = 400;
+    error.details = { codigo: "MONTO_NO_CONFIGURABLE" };
     throw error;
   }
 
+  const anio = Number(anioLectivo) || getAnioLectivo();
   const total = await tesoreriaDao.generarPensionesMensuales(
     anio,
-    mes,
-    montoFinal,
+    Number(mes),
   );
-  return { total_generados: total, mes, anio_lectivo: anio };
+  return { total_generados: total, mes: Number(mes), anio_lectivo: anio };
 };
 
 const listarBecas = async (filtros) => {
   return await tesoreriaDao.listarBecas(filtros);
 };
 
-const aplicarBeca = async (data) => {
-  if (
-    !data.id_alumno ||
-    !data.tipo ||
-    !data.porcentaje_descuento ||
-    !data.fecha_inicio
-  ) {
+const aplicarBeca = async (data, usuario = null, ip = null) => {
+  if (!data.id_alumno || !data.tipo || !data.fecha_inicio) {
     const error = new Error(
-      "Faltan campos: id_alumno, tipo, porcentaje_descuento, fecha_inicio",
+      "Faltan campos: id_alumno, tipo, fecha_inicio",
     );
     error.statusCode = 400;
     throw error;
   }
-  return await tesoreriaDao.crearBeca(data);
+
+  const montoFijo = Number(data.monto_descuento || 0);
+  const porcentaje = Number(data.porcentaje_descuento || 0);
+  const modalidad = montoFijo > 0 ? "MONTO_FIJO" : "PORCENTAJE";
+  const valor = montoFijo > 0 ? montoFijo : porcentaje;
+  if (valor <= 0) {
+    const error = new Error(
+      "Debe indicar porcentaje_descuento o monto_descuento mayor que cero.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return await becaService.crearBeca(
+    {
+      id_alumno: data.id_alumno,
+      tipo: data.tipo,
+      fecha_inicio: data.fecha_inicio,
+      fecha_fin: data.fecha_fin || null,
+      alcance: data.alcance || "PENSION",
+      modalidad,
+      valor,
+      monto_maximo: data.monto_maximo || null,
+      evidencia: data.evidencia || null,
+      aprobar: Boolean(data.aprobar),
+      motivo: data.motivo || "Registro de beca desde tesorería",
+    },
+    usuario,
+    ip,
+  );
 };
 
 const getEstadisticas = async (anioLectivo, mes) => {

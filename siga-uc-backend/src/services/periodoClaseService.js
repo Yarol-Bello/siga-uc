@@ -4,6 +4,7 @@
  */
 
 const periodoClaseDao = require("../dao/periodoClaseDao");
+const configuracionAnioService = require("./configuracionAnioService");
 const { TIPOS_PERIODO } = require("../config/horarios");
 
 const crearError = (mensaje, statusCode = 400, details = null) => {
@@ -91,8 +92,38 @@ const obtener = async (id) => {
   return periodo;
 };
 
+const validarJornada = async (datos) => {
+  const configuracion = await configuracionAnioService.obtenerEfectiva(
+    datos.anio_lectivo,
+  );
+  if (
+    datos.hora_inicio < configuracion.hora_inicio_jornada ||
+    datos.hora_fin > configuracion.hora_fin_jornada
+  ) {
+    throw crearError(
+      `El período debe estar dentro de la jornada ${configuracion.hora_inicio_jornada.substring(0, 5)}–${configuracion.hora_fin_jornada.substring(0, 5)}.`,
+      400,
+      { codigo: "PERIODO_FUERA_JORNADA" },
+    );
+  }
+  if (datos.tipo === "CLASE") {
+    const inicio = datos.hora_inicio.split(":").map(Number);
+    const fin = datos.hora_fin.split(":").map(Number);
+    const minutos =
+      fin[0] * 60 + fin[1] - (inicio[0] * 60 + inicio[1]);
+    if (minutos < configuracion.duracion_min_bloque) {
+      throw crearError(
+        `El bloque de clase debe durar al menos ${configuracion.duracion_min_bloque} minutos.`,
+        400,
+        { codigo: "DURACION_MINIMA", minimo: configuracion.duracion_min_bloque },
+      );
+    }
+  }
+};
+
 const crear = async (data) => {
   const datos = normalizarDatos(data);
+  await validarJornada(datos);
 
   const ordenExistente = await periodoClaseDao.findByOrden(
     datos.anio_lectivo,
@@ -148,6 +179,7 @@ const actualizar = async (id, data) => {
     activo: data.activo ?? actual.activo,
   });
 
+  await validarJornada(datos);
   const enUso = await periodoClaseDao.contarHorarios(id);
   const cambiaEstructura =
     datos.anio_lectivo !== actual.anio_lectivo ||

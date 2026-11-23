@@ -38,10 +38,14 @@ const leerConceptos = async (anio, client = null) => {
   const result = await ejecutar(
     client,
     `SELECT c.id_concepto, c.nombre, c.monto_base, c.tipo, c.mes,
-            c.anio_lectivo
+            c.anio_lectivo, c.nivel, c.id_grado, c.activo, c.orden,
+            c.vigente_desde, c.vigente_hasta,
+            g.nombre_grado AS grado_nombre, g.seccion AS grado_seccion
      FROM conceptos_pago c
+     LEFT JOIN grados g ON g.id_grado = c.id_grado
      WHERE c.anio_lectivo = $1
-     ORDER BY c.tipo, c.mes NULLS FIRST, c.nombre`,
+       AND c.activo = TRUE
+     ORDER BY c.tipo, c.mes NULLS FIRST, c.nombre, c.id_grado NULLS FIRST`,
     [anio],
   );
   return result.rows;
@@ -197,8 +201,10 @@ const buscarConceptoPorNombre = async ({ anio, nombre }, client = null) => {
 const insertarConcepto = async (concepto, anio, client = null) => {
   const result = await ejecutar(
     client,
-    `INSERT INTO conceptos_pago (nombre, monto_base, tipo, mes, anio_lectivo)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO conceptos_pago (
+       nombre, monto_base, tipo, mes, anio_lectivo,
+       nivel, id_grado, activo, orden, vigente_desde, vigente_hasta
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, $9, $10)
      RETURNING *`,
     [
       concepto.nombre,
@@ -206,6 +212,11 @@ const insertarConcepto = async (concepto, anio, client = null) => {
       concepto.tipo,
       concepto.mes,
       anio,
+      concepto.nivel || null,
+      concepto.id_grado || null,
+      concepto.orden || 0,
+      concepto.vigente_desde || `${anio}-01-01`,
+      concepto.vigente_hasta || null,
     ],
   );
   return result.rows[0];

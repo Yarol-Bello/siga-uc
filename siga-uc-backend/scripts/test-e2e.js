@@ -62,6 +62,10 @@ const MIGRACIONES = [
     "database",
     "migracion_h74_configuracion_base.sql",
   ),
+  path.join(RAIZ_REPO, "database", "migracion_h75_tarifas.sql"),
+  path.join(RAIZ_REPO, "database", "migracion_h76_academico.sql"),
+  path.join(RAIZ_REPO, "database", "migracion_h77_horario_jornada.sql"),
+  path.join(RAIZ_REPO, "database", "migracion_h78_becas.sql"),
 ];
 
 const PUERTO = 3101;
@@ -330,6 +334,19 @@ async function crearAlumno(dni, nombres, apellidos, extra = {}) {
   assert.ok(datos?.data?.id_alumno, "La creación del alumno no devolvió id_alumno");
 
   return datos.data;
+}
+
+async function gradoParaAnio(anio) {
+  const filas = await sql(
+    `SELECT id_grado, nombre_grado, nivel
+     FROM grados
+     WHERE anio_lectivo = $1
+     ORDER BY orden, id_grado
+     LIMIT 1`,
+    [anio],
+  );
+  assert.ok(filas[0], `El año ${anio} no tiene grados`);
+  return filas[0];
 }
 
 async function verificarPdf(ruta, token) {
@@ -1799,7 +1816,7 @@ async function ejecutarPruebas() {
   });
 
   // 20. Configuración table-backed y catálogo de años.
-  await prueba(20, "Año activo desde anios_lectivos y 45 tablas base", async () => {
+  await prueba(20, "Año activo desde anios_lectivos y 48 tablas base", async () => {
     const tablas = await sql(
       `SELECT COUNT(*)::int AS total
        FROM information_schema.tables
@@ -1815,8 +1832,8 @@ async function ejecutarPruebas() {
 
     assert.equal(
       tablas[0].total,
-      45,
-      "Se esperaban 45 tablas base (43 + configuración H74)",
+      48,
+      "Se esperaban 48 tablas base (43 + H74 + H76 + H78)",
     );
     assert.equal(activos.length, 1, "Debe haber exactamente un año ACTIVO");
     assert.equal(Number(activos[0].anio), ANIO, "El año ACTIVO inicial no es el esperado");
@@ -1829,9 +1846,9 @@ async function ejecutarPruebas() {
 
     registrar(
       20,
-      "Año activo desde anios_lectivos y 45 tablas base",
+      "Año activo desde anios_lectivos y 48 tablas base",
       "PASS",
-      `tablas=45, activo=${ANIO}`,
+      `tablas=48, activo=${ANIO}`,
     );
   });
 
@@ -4912,9 +4929,13 @@ async function ejecutarPruebas() {
       });
       await sql(
         `INSERT INTO becas (
-           id_alumno, tipo, porcentaje_descuento, monto_descuento,
+           id_alumno, id_tipo_beca, tipo, porcentaje_descuento, monto_descuento,
            fecha_inicio, fecha_fin, activo
-         ) VALUES ($1, 'SOCIOECONOMICA', 50, NULL, '2025-01-01', NULL, true)`,
+         ) VALUES (
+           $1,
+           (SELECT id_tipo_beca FROM tipos_beca WHERE codigo = 'SOCIOECONOMICA'),
+           'SOCIOECONOMICA', 50, NULL, '2025-01-01', NULL, true
+         )`,
         [alumnoAux.id_alumno],
       );
 
@@ -6981,6 +7002,1820 @@ async function ejecutarPruebas() {
         "Configuración pública refleja el cambio y conserva el año activo",
         "PASS",
         "cambio visible en /configuracion y reversión",
+      );
+    },
+  );
+
+  // 81. Tarifas: listado y RBAC.
+  await prueba(
+    81,
+    "Tarifas: ADMIN/SECRETARIA leen, DOCENTE 403 y alcance visible",
+    async () => {
+      const activo = await sql(
+        `SELECT anio FROM anios_lectivos WHERE estado = 'ACTIVO' LIMIT 1`,
+      );
+      assert.ok(activo[0], "No hay año activo para probar tarifas");
+      ctx.anioTarifas = Number(activo[0].anio);
+
+      const secretaria = await iniciarSesion(
+        "SECRETARIA",
+        process.env.SMOKE_SECRETARIA_DNI || "40596837",
+        process.env.SMOKE_SECRETARIA_PASSWORD || "UC2026*",
+      );
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+
+      const admin = await api(
+        `/configuracion/tarifas?anio=${ctx.anioTarifas}&incluir_inactivos=1`,
+        { token: ctx.adminToken },
+      );
+      const adminDatos = await leerJson(admin);
+      assert.equal(admin.status, 200, detalleHttp(admin, adminDatos.datos));
+      assert.ok(
+        Array.isArray(adminDatos.datos?.data) &&
+          adminDatos.datos.data.length > 0,
+        "El listado de tarifas está vacío",
+      );
+      assert.ok(
+        "id_grado" in adminDatos.datos.data[0] &&
+          "nivel" in adminDatos.datos.data[0] &&
+          "vigente_desde" in adminDatos.datos.data[0],
+        "El listado no expone alcance/vigencia",
+      );
+
+      const secretariaRespuesta = await api(
+        `/configuracion/tarifas?anio=${ctx.anioTarifas}`,
+        { token: secretaria.token },
+      );
+      assert.equal(secretariaRespuesta.status, 200);
+
+      const docenteRespuesta = await api(
+        `/configuracion/tarifas?anio=${ctx.anioTarifas}`,
+        { token: docente.token },
+      );
+      assert.equal(docenteRespuesta.status, 403);
+
+      registrar(
+        81,
+        "Tarifas: ADMIN/SECRETARIA leen, DOCENTE 403 y alcance visible",
+        "PASS",
+        `${adminDatos.datos.data.length} tarifas; RBAC OK`,
+      );
+    },
+  );
+
+  // 82. Tarifa por grado, precedencia y duplicado.
+  await prueba(
+    82,
+    "Tarifas: crea por grado, resuelve grado > global y rechaza duplicado",
+    async () => {
+      const grados = await sql(
+        `SELECT id_grado, nombre_grado, nivel
+         FROM grados
+         WHERE anio_lectivo = $1
+         ORDER BY orden, id_grado
+         LIMIT 2`,
+        [ctx.anioTarifas],
+      );
+      assert.ok(grados.length >= 2, "No hay grados suficientes en el destino");
+      const grado1 = grados[0];
+      const grado2 = grados[1];
+
+      const globalPension = await sql(
+        `SELECT mes, monto_base
+         FROM conceptos_pago
+         WHERE anio_lectivo = $1
+           AND tipo = 'PENSION'
+           AND nivel IS NULL
+           AND id_grado IS NULL
+           AND activo = TRUE
+         ORDER BY mes
+         LIMIT 1`,
+        [ctx.anioTarifas],
+      );
+      assert.ok(
+        globalPension[0],
+        "El año activo no tiene pensión global para probar",
+      );
+      const mes = Number(globalPension[0].mes);
+      const montoGlobal = Number(globalPension[0].monto_base);
+      ctx.mesTarifa = mes;
+
+      const payload = {
+        modo: "crear",
+        nombre: "Pensión E2E por grado",
+        monto_base: 300,
+        tipo: "PENSION",
+        mes,
+        anio_lectivo: ctx.anioTarifas,
+        nivel: null,
+        id_grado: grado1.id_grado,
+        activo: true,
+        descripcion: "Prueba E2E de tarifa por grado",
+        orden: 10,
+        vigente_desde: `${ctx.anioTarifas}-01-01`,
+        vigente_hasta: null,
+      };
+
+      const preview = await api("/configuracion/tarifas/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: payload,
+      });
+      const previewDatos = await leerJson(preview);
+      assert.equal(preview.status, 200, detalleHttp(preview, previewDatos.datos));
+      assert.ok(previewDatos.datos?.data?.preview_hash, "Falta preview_hash");
+      assert.ok(
+        Number.isInteger(
+          Number(previewDatos.datos.data.impacto.alumnos_afectados),
+        ),
+        "El impacto no devolvió el conteo de alumnos",
+      );
+
+      const creada = await api("/configuracion/tarifas", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          ...payload,
+          preview_hash: previewDatos.datos.data.preview_hash,
+          motivo: "Creación E2E de tarifa por grado",
+        },
+      });
+      const creadaDatos = await leerJson(creada);
+      assert.equal(creada.status, 201, detalleHttp(creada, creadaDatos.datos));
+      assert.equal(Number(creadaDatos.datos.data.monto_base), 300);
+      ctx.tarifaGradoId = Number(creadaDatos.datos.data.id_concepto);
+      ctx.grado1Tarifa = grado1.id_grado;
+      ctx.grado2Tarifa = grado2.id_grado;
+
+      const resueltoGrado = await sql(
+        `SELECT monto_base, id_concepto
+         FROM resolver_concepto_pago($1, 'PENSION', $2, $3, $4)`,
+        [
+          ctx.anioTarifas,
+          mes,
+          grado1.id_grado,
+          `${ctx.anioTarifas}-${String(mes).padStart(2, "0")}-01`,
+        ],
+      );
+      assert.equal(Number(resueltoGrado[0]?.monto_base), 300);
+      assert.equal(
+        Number(resueltoGrado[0]?.id_concepto),
+        ctx.tarifaGradoId,
+      );
+
+      const resueltoGlobal = await sql(
+        `SELECT monto_base
+         FROM resolver_concepto_pago($1, 'PENSION', $2, $3, $4)`,
+        [
+          ctx.anioTarifas,
+          mes,
+          grado2.id_grado,
+          `${ctx.anioTarifas}-${String(mes).padStart(2, "0")}-01`,
+        ],
+      );
+      assert.equal(
+        Number(resueltoGlobal[0]?.monto_base),
+        montoGlobal,
+        "El otro grado no usó la tarifa global",
+      );
+
+      const previewDuplicado = await api("/configuracion/tarifas/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: payload,
+      });
+      const previewDuplicadoDatos = await leerJson(previewDuplicado);
+      const duplicado = await api("/configuracion/tarifas", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          ...payload,
+          preview_hash: previewDuplicadoDatos.datos.data.preview_hash,
+          motivo: "Intento duplicado E2E",
+        },
+      });
+      const duplicadoDatos = await leerJson(duplicado);
+      assert.equal(
+        duplicado.status,
+        409,
+        detalleHttp(duplicado, duplicadoDatos.datos),
+      );
+      assert.equal(duplicadoDatos.datos?.errors?.codigo, "TARIFA_DUPLICADA");
+
+      const montoCero = await api("/configuracion/tarifas/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: { ...payload, monto_base: 0, id_grado: grado2.id_grado },
+      });
+      assert.equal(montoCero.status, 400, "El monto 0 debe fallar");
+
+      registrar(
+        82,
+        "Tarifas: crea por grado, resuelve grado > global y rechaza duplicado",
+        "PASS",
+        `id=${ctx.tarifaGradoId}, grado=${grado1.nombre_grado}, global=${montoGlobal}`,
+      );
+    },
+  );
+
+  // 83. Edición de tarifa sin dependencias y auditoría.
+  await prueba(
+    83,
+    "Tarifas: edita sin dependencias, audita y actualiza la resolución",
+    async () => {
+      const preview = await api("/configuracion/tarifas/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_concepto: ctx.tarifaGradoId,
+          modo: "editar",
+          nombre: "Pensión E2E por grado editada",
+          monto_base: 320,
+          tipo: "PENSION",
+          mes: ctx.mesTarifa,
+          anio_lectivo: ctx.anioTarifas,
+          nivel: null,
+          id_grado: ctx.grado1Tarifa,
+          activo: true,
+          descripcion: "Edición E2E",
+          orden: 10,
+          vigente_desde: `${ctx.anioTarifas}-01-01`,
+          vigente_hasta: null,
+        },
+      });
+      const previewDatos = await leerJson(preview);
+      assert.equal(preview.status, 200, detalleHttp(preview, previewDatos.datos));
+
+      const actualizada = await api(
+        `/configuracion/tarifas/${ctx.tarifaGradoId}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            nombre: "Pensión E2E por grado editada",
+            monto_base: 320,
+            tipo: "PENSION",
+            mes: ctx.mesTarifa,
+            anio_lectivo: ctx.anioTarifas,
+            nivel: null,
+            id_grado: ctx.grado1Tarifa,
+            activo: true,
+            descripcion: "Edición E2E",
+            orden: 10,
+            vigente_desde: `${ctx.anioTarifas}-01-01`,
+            vigente_hasta: null,
+            preview_hash: previewDatos.datos.data.preview_hash,
+            motivo: "Edición E2E de tarifa sin dependencias",
+          },
+        },
+      );
+      const actualizadaDatos = await leerJson(actualizada);
+      assert.equal(
+        actualizada.status,
+        200,
+        detalleHttp(actualizada, actualizadaDatos.datos),
+      );
+      assert.equal(Number(actualizadaDatos.datos.data.monto_base), 320);
+
+      const resuelto = await sql(
+        `SELECT monto_base FROM resolver_concepto_pago($1, 'PENSION', $2, $3, $4)`,
+        [
+          ctx.anioTarifas,
+          ctx.mesTarifa,
+          ctx.grado1Tarifa,
+          `${ctx.anioTarifas}-${String(ctx.mesTarifa).padStart(2, "0")}-01`,
+        ],
+      );
+      assert.equal(Number(resuelto[0]?.monto_base), 320);
+
+      const auditoria = await sql(
+        `SELECT accion, motivo FROM bitacora_auditoria
+         WHERE modulo_afectado = $1 AND accion = 'MODIFICAR'
+         ORDER BY id_bitacora DESC LIMIT 1`,
+        ["Configuración"],
+      );
+      assert.equal(auditoria[0]?.motivo, "Edición E2E de tarifa sin dependencias");
+
+      registrar(
+        83,
+        "Tarifas: edita sin dependencias, audita y actualiza la resolución",
+        "PASS",
+        "monto 320, auditoría MODIFICAR",
+      );
+    },
+  );
+
+  // 84. Preview desactualizada.
+  await prueba(
+    84,
+    "Tarifas: preview desactualizada responde 409 y no guarda",
+    async () => {
+      const preview = await api("/configuracion/tarifas/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_concepto: ctx.tarifaGradoId,
+          modo: "editar",
+          monto_base: 330,
+          vigente_desde: `${ctx.anioTarifas}-01-01`,
+        },
+      });
+      const previewDatos = await leerJson(preview);
+      assert.equal(preview.status, 200, detalleHttp(preview, previewDatos.datos));
+
+      await sql(
+        `UPDATE conceptos_pago SET monto_base = 331 WHERE id_concepto = $1`,
+        [ctx.tarifaGradoId],
+      );
+
+      const respuesta = await api(
+        `/configuracion/tarifas/${ctx.tarifaGradoId}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            monto_base: 330,
+            vigente_desde: `${ctx.anioTarifas}-01-01`,
+            preview_hash: previewDatos.datos.data.preview_hash,
+            motivo: "Intento con preview vieja E2E",
+          },
+        },
+      );
+      const datos = await leerJson(respuesta);
+      assert.equal(respuesta.status, 409, detalleHttp(respuesta, datos.datos));
+      assert.equal(datos.datos?.errors?.codigo, "PREVIEW_DESACTUALIZADA");
+
+      registrar(
+        84,
+        "Tarifas: preview desactualizada responde 409 y no guarda",
+        "PASS",
+        "409 PREVIEW_DESACTUALIZADA",
+      );
+    },
+  );
+
+  // 85. Nueva versión y desactivación.
+  await prueba(
+    85,
+    "Tarifas: programa versión, conserva la anterior y permite desactivar",
+    async () => {
+      const preview = await api("/configuracion/tarifas/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_concepto: ctx.tarifaGradoId,
+          modo: "version",
+          monto_base: 350,
+          vigente_desde: `${ctx.anioTarifas}-07-01`,
+        },
+      });
+      const previewDatos = await leerJson(preview);
+      assert.equal(preview.status, 200, detalleHttp(preview, previewDatos.datos));
+
+      const version = await api(
+        `/configuracion/tarifas/${ctx.tarifaGradoId}/version`,
+        {
+          method: "POST",
+          token: ctx.adminToken,
+          body: {
+            monto_base: 350,
+            vigente_desde: `${ctx.anioTarifas}-07-01`,
+            preview_hash: previewDatos.datos.data.preview_hash,
+            motivo: "Programación E2E de nueva versión",
+          },
+        },
+      );
+      const versionDatos = await leerJson(version);
+      assert.equal(version.status, 201, detalleHttp(version, versionDatos.datos));
+      const nuevaId = Number(versionDatos.datos.data.nueva.id_concepto);
+      assert.ok(nuevaId, "La nueva versión no devolvió id");
+      assert.equal(
+        versionDatos.datos.data.anterior.vigente_hasta,
+        `${ctx.anioTarifas}-06-30`,
+      );
+
+      const resueltoAnterior = await sql(
+        `SELECT monto_base FROM resolver_concepto_pago($1, 'PENSION', $2, $3, $4)`,
+        [
+          ctx.anioTarifas,
+          ctx.mesTarifa,
+          ctx.grado1Tarifa,
+          `${ctx.anioTarifas}-${String(ctx.mesTarifa).padStart(2, "0")}-01`,
+        ],
+      );
+      assert.equal(Number(resueltoAnterior[0]?.monto_base), 331);
+
+      const resueltoNuevo = await sql(
+        `SELECT monto_base FROM resolver_concepto_pago($1, 'PENSION', $2, $3, $4)`,
+        [
+          ctx.anioTarifas,
+          ctx.mesTarifa,
+          ctx.grado1Tarifa,
+          `${ctx.anioTarifas}-08-01`,
+        ],
+      );
+      assert.equal(Number(resueltoNuevo[0]?.monto_base), 350);
+
+      const desactivada = await api(
+        `/configuracion/tarifas/${nuevaId}/desactivar`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: { motivo: "Desactivación E2E de la nueva versión" },
+        },
+      );
+      const desactivadaDatos = await leerJson(desactivada);
+      assert.equal(
+        desactivada.status,
+        200,
+        detalleHttp(desactivada, desactivadaDatos.datos),
+      );
+      assert.equal(desactivadaDatos.datos.data.activo, false);
+
+      registrar(
+        85,
+        "Tarifas: programa versión, conserva la anterior y permite desactivar",
+        "PASS",
+        `nueva=${nuevaId}, marzo=331, agosto=350, desactivada`,
+      );
+    },
+  );
+
+  // 86. Generación mensual sin monto arbitrario.
+  await prueba(
+    86,
+    "Tarifas: la generación mensual no acepta monto_base arbitrario",
+    async () => {
+      const respuesta = await api("/tesoreria/pensiones/generar", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          anio: ctx.anioTarifas,
+          mes: 4,
+          monto_base: 999,
+        },
+      });
+      const datos = await leerJson(respuesta);
+      assert.equal(respuesta.status, 400, detalleHttp(respuesta, datos.datos));
+      assert.equal(datos.datos?.errors?.codigo, "MONTO_NO_CONFIGURABLE");
+
+      const conceptos = await api(
+        `/tesoreria/conceptos?anio=${ctx.anioTarifas}`,
+        { token: ctx.adminToken },
+      );
+      const conceptosDatos = await leerJson(conceptos);
+      assert.equal(conceptos.status, 200);
+      assert.ok(
+        conceptosDatos.datos.data.every(
+          (concepto) =>
+            concepto.activo === true && concepto.vigente_hasta === null,
+        ),
+        "La lista de conceptos incluye versiones cerradas o inactivas",
+      );
+
+      registrar(
+        86,
+        "Tarifas: la generación mensual no acepta monto_base arbitrario",
+        "PASS",
+        "400 MONTO_NO_CONFIGURABLE; conceptos vigentes",
+      );
+    },
+  );
+
+  // 87. Catálogo académico: lectura y RBAC.
+  await prueba(
+    87,
+    "Académico: áreas/cursos con activos y RBAC ADMIN/SECRETARIA",
+    async () => {
+      const secretaria = await iniciarSesion(
+        "SECRETARIA",
+        process.env.SMOKE_SECRETARIA_DNI || "40596837",
+        process.env.SMOKE_SECRETARIA_PASSWORD || "UC2026*",
+      );
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+
+      const areas = await api("/configuracion/academico/areas", {
+        token: ctx.adminToken,
+      });
+      const areasDatos = await leerJson(areas);
+      assert.equal(areas.status, 200, detalleHttp(areas, areasDatos.datos));
+      assert.ok(Array.isArray(areasDatos.datos.data));
+      assert.ok(
+        areasDatos.datos.data.every((area) => "activo" in area),
+        "Las áreas no exponen activo",
+      );
+
+      const cursos = await api("/configuracion/academico/cursos", {
+        token: ctx.adminToken,
+      });
+      const cursosDatos = await leerJson(cursos);
+      assert.equal(cursos.status, 200, detalleHttp(cursos, cursosDatos.datos));
+      assert.ok(Array.isArray(cursosDatos.datos.data));
+      assert.ok(
+        cursosDatos.datos.data.every(
+          (curso) =>
+            "activo" in curso &&
+            "total_competencias" in curso &&
+            "total_carga" in curso,
+        ),
+        "Los cursos no exponen activo/dependencias",
+      );
+
+      const secretariaRespuesta = await api(
+        "/configuracion/academico/cursos",
+        { token: secretaria.token },
+      );
+      assert.equal(secretariaRespuesta.status, 200);
+
+      const docenteRespuesta = await api(
+        "/configuracion/academico/cursos",
+        { token: docente.token },
+      );
+      assert.equal(docenteRespuesta.status, 403);
+
+      registrar(
+        87,
+        "Académico: áreas/cursos con activos y RBAC ADMIN/SECRETARIA",
+        "PASS",
+        `${areasDatos.datos.data.length} áreas, ${cursosDatos.datos.data.length} cursos; RBAC OK`,
+      );
+    },
+  );
+
+  // 88. CRUD de área, curso y competencia con motivo.
+  await prueba(
+    88,
+    "Académico: crea área, curso y competencia con auditoría",
+    async () => {
+      const sufijo = Date.now();
+      const nombreArea = `Área E2E ${sufijo}`;
+      const nombreCurso = `Curso E2E ${sufijo}`;
+
+      const area = await api("/configuracion/academico/areas", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          nombre: nombreArea,
+          orden: 99,
+          activo: true,
+          motivo: "Creación E2E de área académica",
+        },
+      });
+      const areaDatos = await leerJson(area);
+      assert.equal(area.status, 201, detalleHttp(area, areaDatos.datos));
+      ctx.areaE2E = areaDatos.datos.data;
+
+      const areaDuplicada = await api("/configuracion/academico/areas", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          nombre: nombreArea,
+          orden: 99,
+          activo: true,
+          motivo: "Duplicado E2E de área",
+        },
+      });
+      assert.equal(areaDuplicada.status, 409);
+
+      const curso = await api("/configuracion/academico/cursos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          nombre_curso: nombreCurso,
+          area_academica: nombreArea,
+          horas_semanales: 2,
+          orden: 99,
+          activo: true,
+          descripcion: "Curso E2E",
+          motivo: "Creación E2E de curso",
+        },
+      });
+      const cursoDatos = await leerJson(curso);
+      assert.equal(curso.status, 201, detalleHttp(curso, cursoDatos.datos));
+      ctx.cursoE2E = cursoDatos.datos.data;
+
+      const competencia = await api(
+        `/configuracion/academico/cursos/${ctx.cursoE2E.id_curso}/competencias`,
+        {
+          method: "POST",
+          token: ctx.adminToken,
+          body: {
+            nombre_competencia: `Competencia E2E ${sufijo}`,
+            orden: 1,
+            activo: true,
+            descripcion: "Competencia E2E",
+            motivo: "Creación E2E de competencia",
+          },
+        },
+      );
+      const competenciaDatos = await leerJson(competencia);
+      assert.equal(
+        competencia.status,
+        201,
+        detalleHttp(competencia, competenciaDatos.datos),
+      );
+      ctx.competenciaE2E = competenciaDatos.datos.data;
+
+      const auditoria = await sql(
+        `SELECT COUNT(*)::int AS total FROM bitacora_auditoria
+         WHERE modulo_afectado = $1 AND accion = 'CREAR'
+           AND descripcion LIKE '%' || $2 || '%'`,
+        ["Configuración", nombreCurso],
+      );
+      assert.ok(auditoria[0].total >= 1, "No se auditó el curso");
+
+      registrar(
+        88,
+        "Académico: crea área, curso y competencia con auditoría",
+        "PASS",
+        `área=${ctx.areaE2E.id_area}, curso=${ctx.cursoE2E.id_curso}, competencia=${ctx.competenciaE2E.id_competencia}`,
+      );
+    },
+  );
+
+  // 89. Guardas de historial y desactivación.
+  await prueba(
+    89,
+    "Académico: bloquea renombrar/eliminar con dependencias y permite desactivar",
+    async () => {
+      const renombrar = await api(
+        `/configuracion/academico/cursos/${ctx.cursoE2E.id_curso}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            nombre_curso: `Curso E2E renombrado ${Date.now()}`,
+            motivo: "Intento E2E de renombrar curso con competencias",
+          },
+        },
+      );
+      const renombrarDatos = await leerJson(renombrar);
+      assert.equal(
+        renombrar.status,
+        409,
+        detalleHttp(renombrar, renombrarDatos.datos),
+      );
+      assert.equal(
+        renombrarDatos.datos?.errors?.codigo,
+        "CURSO_CON_HISTORIAL",
+      );
+
+      const eliminarCurso = await api(
+        `/configuracion/academico/cursos/${ctx.cursoE2E.id_curso}`,
+        {
+          method: "DELETE",
+          token: ctx.adminToken,
+          body: { motivo: "Intento E2E de eliminar curso con competencias" },
+        },
+      );
+      const eliminarCursoDatos = await leerJson(eliminarCurso);
+      assert.equal(eliminarCurso.status, 409);
+      assert.equal(
+        eliminarCursoDatos.datos?.errors?.codigo,
+        "CURSO_CON_DEPENDENCIAS",
+      );
+
+      const desactivar = await api(
+        `/configuracion/academico/cursos/${ctx.cursoE2E.id_curso}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            activo: false,
+            motivo: "Desactivación E2E de curso sin historial",
+          },
+        },
+      );
+      assert.equal(desactivar.status, 200);
+      const activos = await api("/cursos", { token: ctx.adminToken });
+      const activosDatos = await leerJson(activos);
+      assert.ok(
+        !activosDatos.datos.data.some(
+          (curso) => curso.id_curso === ctx.cursoE2E.id_curso,
+        ),
+        "El curso inactivo sigue en el catálogo público",
+      );
+
+      const eliminarCompetencia = await api(
+        `/configuracion/academico/competencias/${ctx.competenciaE2E.id_competencia}`,
+        {
+          method: "DELETE",
+          token: ctx.adminToken,
+          body: { motivo: "Eliminación E2E de competencia sin notas" },
+        },
+      );
+      assert.equal(eliminarCompetencia.status, 200);
+
+      const eliminarCurso2 = await api(
+        `/configuracion/academico/cursos/${ctx.cursoE2E.id_curso}`,
+        {
+          method: "DELETE",
+          token: ctx.adminToken,
+          body: { motivo: "Eliminación E2E de curso sin dependencias" },
+        },
+      );
+      assert.equal(eliminarCurso2.status, 200);
+
+      const eliminarArea = await api(
+        `/configuracion/academico/areas/${ctx.areaE2E.id_area}`,
+        {
+          method: "DELETE",
+          token: ctx.adminToken,
+          body: { motivo: "Eliminación E2E de área sin cursos" },
+        },
+      );
+      assert.equal(eliminarArea.status, 200);
+
+      registrar(
+        89,
+        "Académico: bloquea renombrar/eliminar con dependencias y permite desactivar",
+        "PASS",
+        "409 historial/dependencias; desactivación y limpieza OK",
+      );
+    },
+  );
+
+  // 90. Carga curricular activa/inactiva.
+  await prueba(
+    90,
+    "Carga curricular: activa/desactiva sin borrar y audita",
+    async () => {
+      const cargas = await sql(
+        `SELECT cc.id_carga, cc.id_grado, cc.id_curso
+         FROM carga_curricular cc
+         WHERE cc.anio_lectivo = $1
+           AND NOT EXISTS (
+             SELECT 1 FROM horarios h
+             WHERE h.id_carga = cc.id_carga AND h.estado = 'PUBLICADO'
+           )
+         ORDER BY cc.id_carga
+         LIMIT 1`,
+        [ctx.anioTarifas],
+      );
+      assert.ok(cargas[0], "No hay carga sin horario publicado");
+
+      const idCarga = cargas[0].id_carga;
+      const desactivar = await api(`/carga-curricular/${idCarga}/activo`, {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: {
+          activo: false,
+          motivo: "Desactivación E2E de carga curricular",
+        },
+      });
+      const desactivarDatos = await leerJson(desactivar);
+      assert.equal(
+        desactivar.status,
+        200,
+        detalleHttp(desactivar, desactivarDatos.datos),
+      );
+      assert.equal(desactivarDatos.datos.data.activo, false);
+
+      const activar = await api(`/carga-curricular/${idCarga}/activo`, {
+        method: "PUT",
+        token: ctx.adminToken,
+        body: {
+          activo: true,
+          motivo: "Reactivación E2E de carga curricular",
+        },
+      });
+      const activarDatos = await leerJson(activar);
+      assert.equal(activar.status, 200, detalleHttp(activar, activarDatos.datos));
+      assert.equal(activarDatos.datos.data.activo, true);
+
+      const auditoria = await sql(
+        `SELECT COUNT(*)::int AS total
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = $1
+           AND accion IN ('ACTIVAR', 'DESACTIVAR')
+           AND descripcion LIKE 'Carga curricular%'`,
+        ["Configuración"],
+      );
+      assert.ok(auditoria[0].total >= 2, "No se auditó la carga");
+
+      registrar(
+        90,
+        "Carga curricular: activa/desactiva sin borrar y audita",
+        "PASS",
+        `carga=${idCarga}, desactivada y reactivada`,
+      );
+    },
+  );
+
+  // 91. Jornada: lectura y RBAC.
+  await prueba(
+    91,
+    "Jornada: ADMIN/DOCENTE leen días y límites; sin token 401",
+    async () => {
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+
+      const admin = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+        { token: ctx.adminToken },
+      );
+      const adminDatos = await leerJson(admin);
+      assert.equal(admin.status, 200, detalleHttp(admin, adminDatos.datos));
+      assert.ok(
+        Array.isArray(adminDatos.datos.data.dias_clase) &&
+          adminDatos.datos.data.dias_clase.length > 0,
+        "La jornada no devolvió días",
+      );
+      assert.ok(adminDatos.datos.data.hora_inicio_jornada);
+      assert.ok(adminDatos.datos.data.hora_fin_jornada);
+      assert.ok(adminDatos.datos.data.max_bloques_curso_dia > 0);
+
+      const docenteRespuesta = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+        { token: docente.token },
+      );
+      assert.equal(docenteRespuesta.status, 200);
+
+      const sinToken = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+      );
+      assert.equal(sinToken.status, 401);
+
+      registrar(
+        91,
+        "Jornada: ADMIN/DOCENTE leen días y límites; sin token 401",
+        "PASS",
+        `días=${adminDatos.datos.data.dias_clase.length}, jornada OK`,
+      );
+    },
+  );
+
+  // 92. Jornada: actualización, validaciones y reversión.
+  await prueba(
+    92,
+    "Jornada: actualiza días/jornada, valida y revierte",
+    async () => {
+      const antes = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+        { token: ctx.adminToken },
+      );
+      const antesDatos = await leerJson(antes);
+      const original = antesDatos.datos.data;
+
+      const actualizada = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            dias_clase: [
+              "Lunes",
+              "Martes",
+              "Miércoles",
+              "Jueves",
+              "Viernes",
+              "Sábado",
+            ],
+            hora_inicio_jornada: "07:00",
+            hora_fin_jornada: "18:00",
+            duracion_min_bloque: 40,
+            max_bloques_curso_dia: 3,
+            horas_default_carga: 2,
+            motivo: "Prueba E2E de jornada larga",
+          },
+        },
+      );
+      const actualizadaDatos = await leerJson(actualizada);
+      assert.equal(
+        actualizada.status,
+        200,
+        detalleHttp(actualizada, actualizadaDatos.datos),
+      );
+      assert.ok(
+        actualizadaDatos.datos.data.dias_clase.includes("Sábado"),
+        "No se guardó el sábado",
+      );
+
+      const diasVacios = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            dias_clase: [],
+            hora_inicio_jornada: "07:00",
+            hora_fin_jornada: "18:00",
+            duracion_min_bloque: 40,
+            max_bloques_curso_dia: 3,
+            horas_default_carga: 2,
+            motivo: "Prueba E2E de días vacíos",
+          },
+        },
+      );
+      assert.equal(diasVacios.status, 400);
+
+      const horasInvalidas = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            dias_clase: original.dias_clase,
+            hora_inicio_jornada: "18:00",
+            hora_fin_jornada: "07:00",
+            duracion_min_bloque: 40,
+            max_bloques_curso_dia: 3,
+            horas_default_carga: 2,
+            motivo: "Prueba E2E de horas inválidas",
+          },
+        },
+      );
+      assert.equal(horasInvalidas.status, 400);
+
+      const sinMotivo = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            dias_clase: original.dias_clase,
+            hora_inicio_jornada: original.hora_inicio_jornada,
+            hora_fin_jornada: original.hora_fin_jornada,
+            duracion_min_bloque: original.duracion_min_bloque,
+            max_bloques_curso_dia: original.max_bloques_curso_dia,
+            horas_default_carga: original.horas_default_carga,
+          },
+        },
+      );
+      assert.equal(sinMotivo.status, 400);
+
+      const revertida = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            dias_clase: original.dias_clase,
+            hora_inicio_jornada: original.hora_inicio_jornada.substring(0, 5),
+            hora_fin_jornada: original.hora_fin_jornada.substring(0, 5),
+            duracion_min_bloque: original.duracion_min_bloque,
+            max_bloques_curso_dia: original.max_bloques_curso_dia,
+            horas_default_carga: original.horas_default_carga,
+            motivo: "Reversión de la prueba E2E de jornada",
+          },
+        },
+      );
+      assert.equal(revertida.status, 200);
+
+      registrar(
+        92,
+        "Jornada: actualiza días/jornada, valida y revierte",
+        "PASS",
+        "jornada 07:00–18:00 + sábado; validaciones y reversión",
+      );
+    },
+  );
+
+  // 93. Período fuera de jornada o duración mínima.
+  await prueba(
+    93,
+    "Jornada: rechaza período fuera de jornada o menor a la duración mínima",
+    async () => {
+      const config = await api(
+        `/configuracion/horarios/${ctx.anioTarifas}`,
+        { token: ctx.adminToken },
+      );
+      const configDatos = await leerJson(config);
+      const jornada = configDatos.datos.data;
+
+      const fuera = await api("/horarios/periodos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          anio_lectivo: ctx.anioTarifas,
+          nombre: "Fuera de jornada E2E",
+          orden: 900,
+          hora_inicio: "06:00",
+          hora_fin: "06:20",
+          tipo: "CLASE",
+          activo: true,
+        },
+      });
+      const fueraDatos = await leerJson(fuera);
+      assert.equal(fuera.status, 400, detalleHttp(fuera, fueraDatos.datos));
+      assert.ok(
+        fueraDatos.datos?.errors?.codigo === "PERIODO_FUERA_JORNADA" ||
+          fueraDatos.datos?.errors?.codigo === "DURACION_MINIMA",
+        "El rechazo no indicó jornada o duración",
+      );
+
+      const corto = await api("/horarios/periodos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          anio_lectivo: ctx.anioTarifas,
+          nombre: "Corto E2E",
+          orden: 901,
+          hora_inicio: jornada.hora_inicio_jornada.substring(0, 5),
+          hora_fin: "07:35",
+          tipo: "CLASE",
+          activo: true,
+        },
+      });
+      const cortoDatos = await leerJson(corto);
+      assert.equal(corto.status, 400, detalleHttp(corto, cortoDatos.datos));
+      assert.equal(
+        cortoDatos.datos?.errors?.codigo,
+        "DURACION_MINIMA",
+      );
+
+      registrar(
+        93,
+        "Jornada: rechaza período fuera de jornada o menor a la duración mínima",
+        "PASS",
+        "06:00–06:20 fuera de jornada; bloque de 5 min rechazado",
+      );
+    },
+  );
+
+  // 94. Becas: catálogo, asignaciones y RBAC.
+  await prueba(
+    94,
+    "Becas: ADMIN/SECRETARIA leen tipos y asignaciones; escritura solo ADMIN",
+    async () => {
+      const secretaria = await iniciarSesion(
+        "SECRETARIA",
+        process.env.SMOKE_SECRETARIA_DNI || "40596837",
+        process.env.SMOKE_SECRETARIA_PASSWORD || "UC2026*",
+      );
+      const docente = await iniciarSesion(
+        "DOCENTE",
+        credenciales.DOCENTE[0],
+        credenciales.DOCENTE[1],
+      );
+
+      const tipos = await api("/configuracion/becas/tipos", {
+        token: ctx.adminToken,
+      });
+      const tiposDatos = await leerJson(tipos);
+      assert.equal(tipos.status, 200, detalleHttp(tipos, tiposDatos.datos));
+      assert.ok(
+        tiposDatos.datos.data.some(
+          (tipo) => tipo.codigo === "SOCIOECONOMICA",
+        ),
+        "No está el tipo SOCIOECONOMICA",
+      );
+      assert.ok(
+        tiposDatos.datos.data.every(
+          (tipo) =>
+            "alcance" in tipo &&
+            "modalidad" in tipo &&
+            "permite_combinacion" in tipo,
+        ),
+        "Los tipos no exponen sus reglas",
+      );
+
+      const secretariaTipos = await api("/configuracion/becas/tipos", {
+        token: secretaria.token,
+      });
+      assert.equal(secretariaTipos.status, 200);
+
+      const docenteTipos = await api("/configuracion/becas/tipos", {
+        token: docente.token,
+      });
+      assert.equal(docenteTipos.status, 403);
+
+      const becas = await api(
+        `/configuracion/becas?anio=${ctx.anioTarifas}`,
+        { token: ctx.adminToken },
+      );
+      const becasDatos = await leerJson(becas);
+      assert.equal(becas.status, 200, detalleHttp(becas, becasDatos.datos));
+      assert.ok(Array.isArray(becasDatos.datos.data));
+
+      const escrituraDocente = await api("/configuracion/becas/tipos", {
+        method: "POST",
+        token: docente.token,
+        body: {
+          codigo: "E2E_NO",
+          nombre: "No permitido",
+          alcance: "PENSION",
+          modalidad: "PORCENTAJE",
+          valor_default: 10,
+          motivo: "Intento de escritura de docente",
+        },
+      });
+      assert.equal(escrituraDocente.status, 403);
+
+      const escrituraSecretaria = await api("/configuracion/becas/tipos", {
+        method: "POST",
+        token: secretaria.token,
+        body: {
+          codigo: "E2E_NO_2",
+          nombre: "No permitido",
+          alcance: "PENSION",
+          modalidad: "PORCENTAJE",
+          valor_default: 10,
+          motivo: "Intento de escritura de secretaría",
+        },
+      });
+      assert.equal(escrituraSecretaria.status, 403);
+
+      registrar(
+        94,
+        "Becas: ADMIN/SECRETARIA leen tipos y asignaciones; escritura solo ADMIN",
+        "PASS",
+        `${tiposDatos.datos.data.length} tipos; RBAC OK`,
+      );
+    },
+  );
+
+  // 95. CRUD de tipo de beca y auditoría.
+  await prueba(
+    95,
+    "Becas: crea y edita tipo con motivo, rechaza duplicado y audita",
+    async () => {
+      const sufijo = Date.now();
+      const codigo = `E2E_TIPO_${sufijo}`;
+      const nombre = `Tipo E2E ${sufijo}`;
+
+      const creado = await api("/configuracion/becas/tipos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          codigo,
+          nombre,
+          descripcion: "Tipo creado por la suite E2E",
+          alcance: "PENSION",
+          modalidad: "PORCENTAJE",
+          valor_default: 25,
+          tope_monto: 80,
+          permite_combinacion: true,
+          prioridad: 15,
+          requiere_evidencia: false,
+          requiere_aprobacion: true,
+          activo: true,
+          orden: 90,
+          motivo: "Creación E2E del tipo de beca",
+        },
+      });
+      const creadoDatos = await leerJson(creado);
+      assert.equal(creado.status, 201, detalleHttp(creado, creadoDatos.datos));
+      assert.equal(creadoDatos.datos.data.codigo, codigo);
+      const idTipo = Number(creadoDatos.datos.data.id_tipo_beca);
+      ctx.tipoBecaE2E = idTipo;
+
+      const duplicado = await api("/configuracion/becas/tipos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          codigo,
+          nombre: `${nombre} duplicado`,
+          alcance: "PENSION",
+          modalidad: "PORCENTAJE",
+          valor_default: 10,
+          motivo: "Intento duplicado E2E de tipo",
+        },
+      });
+      const duplicadoDatos = await leerJson(duplicado);
+      assert.equal(duplicado.status, 409, detalleHttp(duplicado, duplicadoDatos.datos));
+
+      const editado = await api(
+        `/configuracion/becas/tipos/${idTipo}`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: {
+            nombre: `${nombre} editado`,
+            activo: false,
+            motivo: "Edición E2E del tipo de beca",
+          },
+        },
+      );
+      const editadoDatos = await leerJson(editado);
+      assert.equal(editado.status, 200, detalleHttp(editado, editadoDatos.datos));
+      assert.equal(editadoDatos.datos.data.activo, false);
+
+      const auditoria = await sql(
+        `SELECT accion, motivo
+         FROM bitacora_auditoria
+         WHERE modulo_afectado = 'Configuración'
+           AND descripcion LIKE $1
+         ORDER BY id_bitacora`,
+        [`%Tipo de beca ${nombre}%`],
+      );
+      assert.ok(
+        auditoria.some((fila) => fila.accion === "CREAR"),
+        "No se auditó la creación del tipo",
+      );
+      assert.ok(
+        auditoria.some((fila) => fila.accion === "MODIFICAR"),
+        "No se auditó la edición del tipo",
+      );
+      assert.ok(
+        auditoria.some((fila) => String(fila.motivo || "").length >= 10),
+        "La auditoría no guardó el motivo",
+      );
+
+      registrar(
+        95,
+        "Becas: crea y edita tipo con motivo, rechaza duplicado y audita",
+        "PASS",
+        `tipo=${idTipo}, duplicado=409, auditoría OK`,
+      );
+    },
+  );
+
+  // 96. Beca 100% de pensión: aplicación y preview.
+  await prueba(
+    96,
+    "Becas: una beca 100% exonera pensiones pendientes y registra aplicaciones",
+    async () => {
+      const sufijo = Date.now();
+      const grado = await gradoParaAnio(ctx.anioTarifas);
+      const alumno = await crearAlumnoPromocionAux({
+        dni: "99998101",
+        nombres: "Beca",
+        apellidos: "Pensión",
+        idGrado: grado.id_grado,
+        anio: ctx.anioTarifas,
+        estado: "PendientePago",
+      });
+      ctx.alumnoBecaPension = Number(alumno.id_alumno);
+
+      await sql(
+        `UPDATE alumnos SET estado_matricula = 'Matriculado' WHERE id_alumno = $1`,
+        [ctx.alumnoBecaPension],
+      );
+      const generadas = await api(
+        `/tesoreria/pensiones/alumno/${ctx.alumnoBecaPension}/generar`,
+        { method: "POST", token: ctx.adminToken },
+      );
+      const generadasDatos = await leerJson(generadas);
+      assert.equal(
+        generadas.status,
+        200,
+        detalleHttp(generadas, generadasDatos.datos),
+      );
+
+      const pensionesAntes = await sql(
+        `SELECT id_pension, id_concepto, mes, monto_base, monto_final, estado
+         FROM pensiones WHERE id_alumno = $1 ORDER BY mes`,
+        [ctx.alumnoBecaPension],
+      );
+      assert.ok(pensionesAntes.length > 0, "No se generaron pensiones E2E");
+
+      const tipo = await api("/configuracion/becas/tipos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          codigo: `E2E_P100_${sufijo}`,
+          nombre: "Beca 100% pensión E2E",
+          alcance: "PENSION",
+          modalidad: "PORCENTAJE",
+          valor_default: 100,
+          permite_combinacion: false,
+          requiere_evidencia: false,
+          requiere_aprobacion: true,
+          activo: true,
+          orden: 91,
+          motivo: "Tipo 100% para prueba E2E",
+        },
+      });
+      const tipoDatos = await leerJson(tipo);
+      assert.equal(tipo.status, 201, detalleHttp(tipo, tipoDatos.datos));
+
+      const hoy = new Date().toISOString().slice(0, 10);
+      const beca = await api("/configuracion/becas", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_alumno: ctx.alumnoBecaPension,
+          id_tipo_beca: tipoDatos.datos.data.id_tipo_beca,
+          alcance: "PENSION",
+          modalidad: "PORCENTAJE",
+          valor: 100,
+          fecha_inicio: hoy,
+          fecha_fin: null,
+          prioridad: 100,
+          evidencia: { detalle: "Resolución E2E de beca 100%" },
+          aprobar: true,
+          motivo: "Aprobación E2E de beca 100% de pensión",
+        },
+      });
+      const becaDatos = await leerJson(beca);
+      assert.equal(beca.status, 201, detalleHttp(beca, becaDatos.datos));
+      ctx.becaPensionId = Number(becaDatos.datos.data.id_beca);
+
+      const pensionesDespues = await sql(
+        `SELECT id_pension, monto_base, descuento, monto_final, estado, id_beca
+         FROM pensiones WHERE id_alumno = $1 ORDER BY mes`,
+        [ctx.alumnoBecaPension],
+      );
+      assert.equal(pensionesDespues.length, pensionesAntes.length);
+      for (const pension of pensionesDespues) {
+        assert.equal(pension.estado, "EXONERADO");
+        assert.equal(Number(pension.monto_final), 0);
+        assert.equal(
+          Number(pension.descuento),
+          Number(pension.monto_base),
+        );
+        assert.equal(Number(pension.id_beca), ctx.becaPensionId);
+      }
+
+      const aplicaciones = await sql(
+        `SELECT COUNT(*)::int AS total
+         FROM aplicaciones_beca WHERE id_beca = $1`,
+        [ctx.becaPensionId],
+      );
+      assert.equal(aplicaciones[0].total, pensionesAntes.length);
+
+      const preview = await api("/configuracion/becas/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_alumno: ctx.alumnoBecaPension,
+          alcance: "PENSION",
+          base: 100,
+          fecha: hoy,
+        },
+      });
+      const previewDatos = await leerJson(preview);
+      assert.equal(preview.status, 200, detalleHttp(preview, previewDatos.datos));
+      assert.equal(Number(previewDatos.datos.data.descuento), 100);
+      assert.equal(Number(previewDatos.datos.data.monto_final), 0);
+      assert.equal(previewDatos.datos.data.aplicaciones.length, 1);
+
+      registrar(
+        96,
+        "Becas: una beca 100% exonera pensiones pendientes y registra aplicaciones",
+        "PASS",
+        `${pensionesAntes.length} pensiones EXONERADO; preview 100%`,
+      );
+    },
+  );
+
+  // 97. Combinación, tope y exclusividad.
+  await prueba(
+    97,
+    "Becas: combina, respeta tope y bloquea no combinables",
+    async () => {
+      const sufijo = Date.now();
+      const grado = await gradoParaAnio(ctx.anioTarifas);
+      const alumno = await crearAlumnoPromocionAux({
+        dni: "99998102",
+        nombres: "Beca",
+        apellidos: "Combinada",
+        idGrado: grado.id_grado,
+        anio: ctx.anioTarifas,
+      });
+      const idAlumno = Number(alumno.id_alumno);
+      const hoy = new Date().toISOString().slice(0, 10);
+
+      const crearTipo = async (codigo, nombre, payload) => {
+        const respuesta = await api("/configuracion/becas/tipos", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: {
+            codigo: `${codigo}_${sufijo}`,
+            nombre,
+            alcance: "PENSION",
+            permite_combinacion: payload.permite_combinacion,
+            requiere_evidencia: false,
+            requiere_aprobacion: true,
+            activo: true,
+            orden: payload.orden,
+            prioridad: payload.prioridad,
+            ...payload,
+            motivo: `Tipo E2E ${nombre}`,
+          },
+        });
+        const datos = await leerJson(respuesta);
+        assert.equal(
+          respuesta.status,
+          201,
+          detalleHttp(respuesta, datos.datos),
+        );
+        return datos.datos.data;
+      };
+
+      const tipoA = await crearTipo("E2E_COMBOA", "Combo A", {
+        modalidad: "PORCENTAJE",
+        valor_default: 20,
+        tope_monto: 10,
+        permite_combinacion: true,
+        prioridad: 30,
+        orden: 92,
+      });
+      const tipoB = await crearTipo("E2E_COMBOB", "Combo B", {
+        modalidad: "MONTO_FIJO",
+        valor_default: 30,
+        tope_monto: null,
+        permite_combinacion: true,
+        prioridad: 20,
+        orden: 93,
+      });
+      const tipoC = await crearTipo("E2E_EXCL", "Exclusiva C", {
+        modalidad: "PORCENTAJE",
+        valor_default: 10,
+        tope_monto: null,
+        permite_combinacion: false,
+        prioridad: 10,
+        orden: 94,
+      });
+
+      const asignar = async (tipo, valor, montoMaximo) => {
+        const respuesta = await api("/configuracion/becas", {
+          method: "POST",
+          token: ctx.adminToken,
+          body: {
+            id_alumno: idAlumno,
+            id_tipo_beca: tipo.id_tipo_beca,
+            alcance: "PENSION",
+            modalidad: tipo.modalidad,
+            valor,
+            monto_maximo: montoMaximo,
+            fecha_inicio: hoy,
+            fecha_fin: null,
+            prioridad: tipo.prioridad,
+            evidencia: { detalle: "Evidencia E2E de combinación" },
+            aprobar: true,
+            motivo: "Asignación E2E de beca combinable",
+          },
+        });
+        const datos = await leerJson(respuesta);
+        assert.equal(
+          respuesta.status,
+          201,
+          detalleHttp(respuesta, datos.datos),
+        );
+        return datos.datos.data;
+      };
+
+      const becaA = await asignar(tipoA, 20, 10);
+      await asignar(tipoB, 30, null);
+      await asignar(tipoC, 10, null);
+
+      const preview = await api("/configuracion/becas/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_alumno: idAlumno,
+          alcance: "PENSION",
+          base: 100,
+          fecha: hoy,
+        },
+      });
+      const previewDatos = await leerJson(preview);
+      assert.equal(preview.status, 200, detalleHttp(preview, previewDatos.datos));
+      assert.equal(
+        Number(previewDatos.datos.data.descuento),
+        40,
+        "No se aplicó tope 10 + monto fijo 30",
+      );
+      assert.equal(Number(previewDatos.datos.data.monto_final), 60);
+      assert.equal(previewDatos.datos.data.aplicaciones.length, 2);
+
+      const anulada = await api(
+        `/configuracion/becas/${becaA.id_beca}/anular`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: { motivo: "Anulación E2E de beca combinable A" },
+        },
+      );
+      const anuladaDatos = await leerJson(anulada);
+      assert.equal(anulada.status, 200, detalleHttp(anulada, anuladaDatos.datos));
+
+      const previewSinA = await api("/configuracion/becas/preview", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_alumno: idAlumno,
+          alcance: "PENSION",
+          base: 100,
+          fecha: hoy,
+        },
+      });
+      const previewSinADatos = await leerJson(previewSinA);
+      assert.equal(Number(previewSinADatos.datos.data.descuento), 30);
+      assert.equal(Number(previewSinADatos.datos.data.monto_final), 70);
+
+      registrar(
+        97,
+        "Becas: combina, respeta tope y bloquea no combinables",
+        "PASS",
+        "20% con tope 10 + fijo 30 = 40; exclusiva omitida; anulación = 30",
+      );
+    },
+  );
+
+  // 98. Pensión pagada no se reprecio; anulación revierte pendientes.
+  await prueba(
+    98,
+    "Becas: los pagos realizados no se reprecian y la anulación revierte pendientes",
+    async () => {
+      const sufijo = Date.now();
+      const grado = await gradoParaAnio(ctx.anioTarifas);
+      const alumno = await crearAlumnoPromocionAux({
+        dni: "99998103",
+        nombres: "Beca",
+        apellidos: "Pago Previo",
+        idGrado: grado.id_grado,
+        anio: ctx.anioTarifas,
+      });
+      const idAlumno = Number(alumno.id_alumno);
+
+      await resetCajaParaPrueba();
+      await abrirCajaPrueba(100);
+
+      const generar = await api(
+        `/tesoreria/pensiones/alumno/${idAlumno}/generar`,
+        { method: "POST", token: ctx.adminToken },
+      );
+      assert.equal(generar.status, 200);
+
+      const pendientes = await sql(
+        `SELECT id_pension, id_concepto, monto_final
+         FROM pensiones
+         WHERE id_alumno = $1 AND estado = 'PENDIENTE'
+         ORDER BY mes LIMIT 1`,
+        [idAlumno],
+      );
+      assert.ok(pendientes[0], "No hay pensión pendiente para pagar");
+      const pensionPagada = pendientes[0];
+      const pagoPension = await api("/tesoreria/pagos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_alumno: idAlumno,
+          id_concepto: pensionPagada.id_concepto,
+          id_pension: pensionPagada.id_pension,
+          monto: Number(pensionPagada.monto_final),
+          forma_pago: "Efectivo",
+        },
+      });
+      const pagoPensionDatos = await leerJson(pagoPension);
+      assert.equal(
+        pagoPension.status,
+        201,
+        detalleHttp(pagoPension, pagoPensionDatos.datos),
+      );
+
+      const tipo = await api("/configuracion/becas/tipos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          codigo: `E2E_PAGADO_${sufijo}`,
+          nombre: "Beca 100% con pago previo E2E",
+          alcance: "PENSION",
+          modalidad: "PORCENTAJE",
+          valor_default: 100,
+          permite_combinacion: false,
+          requiere_evidencia: false,
+          requiere_aprobacion: true,
+          activo: true,
+          orden: 95,
+          motivo: "Tipo E2E para pagos previos",
+        },
+      });
+      const tipoDatos = await leerJson(tipo);
+      assert.equal(tipo.status, 201, detalleHttp(tipo, tipoDatos.datos));
+
+      const hoy = new Date().toISOString().slice(0, 10);
+      const beca = await api("/configuracion/becas", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_alumno: idAlumno,
+          id_tipo_beca: tipoDatos.datos.data.id_tipo_beca,
+          alcance: "PENSION",
+          modalidad: "PORCENTAJE",
+          valor: 100,
+          fecha_inicio: hoy,
+          fecha_fin: null,
+          prioridad: 100,
+          evidencia: { detalle: "Evidencia E2E de pago previo" },
+          aprobar: true,
+          motivo: "Aprobación E2E con pensión ya pagada",
+        },
+      });
+      const becaDatos = await leerJson(beca);
+      assert.equal(beca.status, 201, detalleHttp(beca, becaDatos.datos));
+      const idBeca = Number(becaDatos.datos.data.id_beca);
+
+      const pagada = await sql(
+        `SELECT monto_base, descuento, monto_final, estado
+         FROM pensiones WHERE id_pension = $1`,
+        [pensionPagada.id_pension],
+      );
+      assert.equal(pagada[0].estado, "PAGADO");
+      assert.equal(Number(pagada[0].descuento), 0);
+      assert.equal(
+        Number(pagada[0].monto_final),
+        Number(pagada[0].monto_base),
+        "La pensión pagada fue repreciada",
+      );
+
+      const aplicacionesPagada = await sql(
+        `SELECT COUNT(*)::int AS total
+         FROM aplicaciones_beca WHERE id_pension = $1`,
+        [pensionPagada.id_pension],
+      );
+      assert.equal(aplicacionesPagada[0].total, 0);
+
+      const pendienteDespues = await sql(
+        `SELECT estado, monto_final
+         FROM pensiones
+         WHERE id_alumno = $1 AND id_pension <> $2
+         ORDER BY mes LIMIT 1`,
+        [idAlumno, pensionPagada.id_pension],
+      );
+      assert.equal(pendienteDespues[0]?.estado, "EXONERADO");
+
+      const anulada = await api(
+        `/configuracion/becas/${idBeca}/anular`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: { motivo: "Anulación E2E de beca con pago previo" },
+        },
+      );
+      assert.equal(anulada.status, 200);
+
+      const pagadaFinal = await sql(
+        `SELECT estado, monto_final FROM pensiones WHERE id_pension = $1`,
+        [pensionPagada.id_pension],
+      );
+      assert.equal(pagadaFinal[0].estado, "PAGADO");
+      assert.equal(
+        Number(pagadaFinal[0].monto_final),
+        Number(pagada[0].monto_final),
+      );
+
+      const pendienteFinal = await sql(
+        `SELECT estado, descuento, monto_final
+         FROM pensiones
+         WHERE id_alumno = $1 AND id_pension <> $2
+         ORDER BY mes LIMIT 1`,
+        [idAlumno, pensionPagada.id_pension],
+      );
+      assert.equal(pendienteFinal[0].estado, "PENDIENTE");
+      assert.equal(Number(pendienteFinal[0].descuento), 0);
+      assert.ok(Number(pendienteFinal[0].monto_final) > 0);
+
+      registrar(
+        98,
+        "Becas: los pagos realizados no se reprecian y la anulación revierte pendientes",
+        "PASS",
+        "pensión PAGADO intacta; pendiente EXONERADO → PENDIENTE",
+      );
+    },
+  );
+
+  // 99. Beca de matrícula 100%: exonera y la anulación reactiva.
+  await prueba(
+    99,
+    "Becas: matrícula 100% exonera el pre-ticket y la anulación reactiva el cobro",
+    async () => {
+      const sufijo = Date.now();
+      const grado = await gradoParaAnio(ctx.anioTarifas);
+      const alumno = await crearAlumnoPromocionAux({
+        dni: "99998104",
+        nombres: "Beca",
+        apellidos: "Matrícula",
+        idGrado: grado.id_grado,
+        anio: ctx.anioTarifas,
+        estado: "PendientePago",
+      });
+      const idAlumno = Number(alumno.id_alumno);
+
+      const conceptoMatricula = await sql(
+        `SELECT id_concepto, monto_base
+         FROM conceptos_pago
+         WHERE tipo = 'MATRICULA' AND activo = TRUE
+         ORDER BY anio_lectivo DESC, id_grado NULLS LAST
+         LIMIT 1`,
+      );
+      assert.ok(
+        conceptoMatricula[0],
+        "No hay concepto de matrícula para el pre-ticket E2E",
+      );
+      const montoMatricula = Number(conceptoMatricula[0].monto_base);
+      const preticketAntes = await sql(
+        `INSERT INTO pre_tickets
+           (id_alumno, id_concepto, monto, estado, id_usuario_emite)
+         VALUES ($1, $2, $3, 'PENDIENTE', $4)
+         RETURNING id_preticket, monto, estado`,
+        [
+          idAlumno,
+          conceptoMatricula[0].id_concepto,
+          montoMatricula,
+          ctx.adminId,
+        ],
+      );
+      const alumnoPendiente = await sql(
+        `SELECT estado_matricula FROM alumnos WHERE id_alumno = $1`,
+        [idAlumno],
+      );
+      assert.equal(alumnoPendiente[0].estado_matricula, "PendientePago");
+
+      const tipo = await api("/configuracion/becas/tipos", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          codigo: `E2E_MAT100_${sufijo}`,
+          nombre: "Beca 100% matrícula E2E",
+          alcance: "MATRICULA",
+          modalidad: "PORCENTAJE",
+          valor_default: 100,
+          permite_combinacion: false,
+          requiere_evidencia: false,
+          requiere_aprobacion: true,
+          activo: true,
+          orden: 96,
+          motivo: "Tipo E2E de matrícula 100%",
+        },
+      });
+      const tipoDatos = await leerJson(tipo);
+      assert.equal(tipo.status, 201, detalleHttp(tipo, tipoDatos.datos));
+
+      const hoy = new Date().toISOString().slice(0, 10);
+      const beca = await api("/configuracion/becas", {
+        method: "POST",
+        token: ctx.adminToken,
+        body: {
+          id_alumno: idAlumno,
+          id_tipo_beca: tipoDatos.datos.data.id_tipo_beca,
+          alcance: "MATRICULA",
+          modalidad: "PORCENTAJE",
+          valor: 100,
+          fecha_inicio: hoy,
+          fecha_fin: null,
+          prioridad: 100,
+          evidencia: { detalle: "Evidencia E2E de matrícula" },
+          aprobar: true,
+          motivo: "Aprobación E2E de beca de matrícula",
+        },
+      });
+      const becaDatos = await leerJson(beca);
+      assert.equal(beca.status, 201, detalleHttp(beca, becaDatos.datos));
+      const idBeca = Number(becaDatos.datos.data.id_beca);
+
+      const exonerado = await sql(
+        `SELECT pt.monto, pt.descuento, pt.estado, al.estado_matricula
+         FROM pre_tickets pt
+         INNER JOIN alumnos al ON al.id_alumno = pt.id_alumno
+         WHERE pt.id_preticket = $1`,
+        [preticketAntes[0].id_preticket],
+      );
+      assert.equal(exonerado[0].estado, "EXONERADO");
+      assert.equal(Number(exonerado[0].monto), 0);
+      assert.equal(Number(exonerado[0].descuento), montoMatricula);
+      assert.equal(exonerado[0].estado_matricula, "Matriculado");
+
+      const aplicacion = await sql(
+        `SELECT monto_aplicado FROM aplicaciones_beca
+         WHERE id_beca = $1 AND id_preticket = $2`,
+        [idBeca, preticketAntes[0].id_preticket],
+      );
+      assert.equal(aplicacion.length, 1);
+      assert.equal(Number(aplicacion[0].monto_aplicado), montoMatricula);
+
+      const anulada = await api(
+        `/configuracion/becas/${idBeca}/anular`,
+        {
+          method: "PUT",
+          token: ctx.adminToken,
+          body: { motivo: "Anulación E2E de beca de matrícula" },
+        },
+      );
+      const anuladaDatos = await leerJson(anulada);
+      assert.equal(anulada.status, 200, detalleHttp(anulada, anuladaDatos.datos));
+
+      const reactivado = await sql(
+        `SELECT pt.monto, pt.descuento, pt.estado, al.estado_matricula
+         FROM pre_tickets pt
+         INNER JOIN alumnos al ON al.id_alumno = pt.id_alumno
+         WHERE pt.id_preticket = $1`,
+        [preticketAntes[0].id_preticket],
+      );
+      assert.equal(reactivado[0].estado, "PENDIENTE");
+      assert.equal(Number(reactivado[0].monto), montoMatricula);
+      assert.equal(Number(reactivado[0].descuento), 0);
+      assert.equal(reactivado[0].estado_matricula, "PendientePago");
+
+      registrar(
+        99,
+        "Becas: matrícula 100% exonera el pre-ticket y la anulación reactiva el cobro",
+        "PASS",
+        `S/ ${montoMatricula} → EXONERADO → PENDIENTE; alumno reactivado`,
       );
     },
   );

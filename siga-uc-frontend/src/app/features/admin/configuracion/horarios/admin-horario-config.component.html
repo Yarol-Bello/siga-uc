@@ -1,0 +1,182 @@
+<div class="horario-config-page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Configuración · Horarios</span>
+      <h1>Jornada, días y límites</h1>
+      <p>
+        Defina la jornada del año y los límites que usan el editor y el generador
+        automático. La malla de períodos se edita en Horarios.
+      </p>
+    </div>
+    <div class="head-actions">
+      <app-selector-anio
+        [anios]="anios()"
+        [anioActivo]="anioActivo()"
+        [anio]="anioSeleccionado()"
+        (anioChange)="cambiarAnio($event)"
+      ></app-selector-anio>
+      <a class="btn-soft" routerLink="/admin/horarios">
+        <i class="fa-solid fa-calendar-days"></i>
+        Abrir editor de horarios
+      </a>
+    </div>
+  </div>
+
+  @if (esHistorico()) {
+  <div class="alert alert-warning" role="status">
+    <i class="fa-solid fa-clock-rotate-left"></i>
+    Año histórico: solo lectura. Cambie al año activo para editar la jornada.
+  </div>
+  }
+
+  @if (error()) {
+  <div class="alert alert-danger" role="alert">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+  @if (exito()) {
+  <div class="alert alert-success" role="status">
+    <i class="fa-solid fa-circle-check"></i>
+    {{ exito() }}
+  </div>
+  }
+
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando jornada...</p>
+  </div>
+  }
+
+  @if (!cargando()) {
+  <div class="row g-3">
+    <div class="col-12 col-xl-7">
+      <section class="config-card">
+        <div class="card-title">
+          <i class="fa-solid fa-clock"></i>
+          <div>
+            <h2>Jornada y días</h2>
+            <p>Los cambios estructurales requieren que el horario esté despublicado.</p>
+          </div>
+        </div>
+
+        <div class="dias-grid">
+          @for (dia of diasValidos; track dia) {
+          <label class="dia-check">
+            <input
+              type="checkbox"
+              [checked]="diaMarcado(dia)"
+              (change)="toggleDia(dia, $any($event.target).checked)"
+              [disabled]="esHistorico()"
+            />
+            {{ dia }}
+          </label>
+          }
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-6 col-md-3">
+            <label class="form-label">Inicio</label>
+            <input type="time" class="form-control" [(ngModel)]="form.hora_inicio_jornada" [disabled]="esHistorico()" />
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">Fin</label>
+            <input type="time" class="form-control" [(ngModel)]="form.hora_fin_jornada" [disabled]="esHistorico()" />
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">Duración mín. (min)</label>
+            <input type="number" min="1" max="240" class="form-control" [(ngModel)]="form.duracion_min_bloque" [disabled]="esHistorico()" />
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">Máx. bloques / curso / día</label>
+            <input type="number" min="1" max="20" class="form-control" [(ngModel)]="form.max_bloques_curso_dia" [disabled]="esHistorico()" />
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">Horas default de carga</label>
+            <input type="number" min="1" max="20" class="form-control" [(ngModel)]="form.horas_default_carga" [disabled]="esHistorico()" />
+          </div>
+          <div class="col-12">
+            <div class="notice">
+              <i class="fa-solid fa-circle-info"></i>
+              La jornada actual es <strong>{{ jornadaTexto() }}</strong>. Los períodos activos deben caber dentro de ella.
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-primary" (click)="abrirGuardar()" [disabled]="esHistorico()">
+            <i class="fa-solid fa-floppy-disk"></i>
+            Guardar jornada
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div class="col-12 col-xl-5">
+      <section class="config-card">
+        <div class="card-title">
+          <i class="fa-solid fa-table-list"></i>
+          <div>
+            <h2>Malla actual</h2>
+            <p>{{ periodos().length }} período(s) del año.</p>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table align-middle periodos-table">
+            <thead><tr><th>#</th><th>Período</th><th>Horario</th><th>Tipo</th></tr></thead>
+            <tbody>
+              @for (periodo of periodos(); track periodo.id_periodo) {
+              <tr [class.inactivo]="!periodo.activo">
+                <td>{{ periodo.orden }}</td>
+                <td><strong>{{ periodo.nombre }}</strong></td>
+                <td>{{ periodo.hora_inicio.substring(0,5) }}–{{ periodo.hora_fin.substring(0,5) }}</td>
+                <td><span class="tipo-badge" [ngClass]="'tipo-' + periodo.tipo">{{ periodo.tipo }}</span></td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (periodos().length === 0) {
+        <div class="empty-state"><i class="fa-solid fa-calendar-xmark"></i><p>No hay períodos configurados.</p></div>
+        }
+      </section>
+    </div>
+  </div>
+  }
+</div>
+
+@if (modalGuardar()) {
+<div class="modal-overlay" (click)="cerrarModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div><span class="eyebrow">Confirmar jornada</span><h2>Guardar cambios del año {{ anioSeleccionado() }}</h2></div>
+      <button type="button" class="icon-btn" (click)="cerrarModal()" [disabled]="guardando()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <dl class="summary">
+        <div><dt>Días</dt><dd>{{ form.dias_clase.join(', ') }}</dd></div>
+        <div><dt>Jornada</dt><dd>{{ jornadaTexto() }}</dd></div>
+        <div><dt>Duración mínima</dt><dd>{{ form.duracion_min_bloque }} min</dd></div>
+        <div><dt>Máx. por curso/día</dt><dd>{{ form.max_bloques_curso_dia }}</dd></div>
+      </dl>
+      <p class="modal-intro">
+        Si hay horarios publicados, el cambio se rechazará hasta despublicar. Los límites
+        nuevos no pueden quedar por debajo de bloques ya programados.
+      </p>
+      <label class="form-label">Motivo *</label>
+      <textarea class="form-control" rows="3" maxlength="500" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)" placeholder="Mínimo 10 caracteres"></textarea>
+      <div class="counter">{{ motivo().trim().length }}/500 · mínimo 10</div>
+      @if (errorModal()) { <div class="alert alert-danger mt-2">{{ errorModal() }}</div> }
+    </div>
+    <div class="modal-foot">
+      <button class="btn-soft" type="button" (click)="cerrarModal()" [disabled]="guardando()">Cancelar</button>
+      <button class="btn-primary" type="button" (click)="confirmar()" [disabled]="guardando()">
+        @if (guardando()) { <i class="fa-solid fa-spinner fa-spin"></i> Guardando... } @else { <i class="fa-solid fa-check"></i> Confirmar }
+      </button>
+    </div>
+  </div>
+</div>
+}

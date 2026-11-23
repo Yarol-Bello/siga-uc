@@ -335,10 +335,10 @@ claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de insta
 |---|---|---|---|---|
 | 0 | Diagnóstico, decisiones, línea base. ✅ Cerrada. | — | Bajo | 2–3 días |
 | 1 | Núcleo global/año, auditoría, UI General. ✅ Implementada en local. | 0 | Medio | 5–7 días |
-| 2 | Tarifas, resolución, matrícula/pensiones/promoción, preview. | 1 | Alto | 8–12 días |
-| 3 | Cursos, áreas, competencias, carga, rollover. | 1 | Medio-alto | 5–7 días |
-| 4 | Jornada, días, límites, generador. | 1, 3 | Medio | 5–7 días |
-| 5 | Becas, aprobación, aplicación, combinación. | 1, 2 | Alto | 10–14 días |
+| 2 | Tarifas, resolución, matrícula/pensiones/promoción, preview. ✅ Implementada y E2E. | 1 | Alto | 8–12 días |
+| 3 | Cursos, áreas, competencias, carga, rollover. ✅ Implementada y E2E. | 1 | Medio-alto | 5–7 días |
+| 4 | Jornada, días, límites, generador. ✅ Implementada y E2E. | 1, 3 | Medio | 5–7 días |
+| 5 | Becas, aprobación, aplicación, combinación. ✅ Implementada y E2E. | 1, 2 | Alto | 10–14 días |
 | 6 | Textos, PDF, correo. | 1 | Bajo-medio | 3–4 días |
 | 7 | Pruebas, documentación y despliegue. | Todas | Medio | 4–6 días |
 
@@ -391,9 +391,10 @@ claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de insta
 ### Fase 5
 
 - Catálogo de tipos; asignación/aprobación/evidencia.
-- 100% -> 0 según regla aprobada; 50%, fijo, tope y combinación.
+- 100% -> `EXONERADO` con monto 0; 50%, fijo, tope y combinación.
 - `aplicaciones_beca`; sin montos negativos; pagos intactos.
 - Promoción copia becas y hash.
+- Al anular se recalculan solo cargos pendientes; el pago previo no se repreziza.
 
 ### Fase 6
 
@@ -416,7 +417,7 @@ claro. No editar `siga_uc_completo.sql` a mano; actualizar la secuencia de insta
 |---|---|---|
 | Repreciar cargos históricos | Alto | Pagos/pensiones/pre-tickets conservan monto; no update retroactivo. |
 | Borrado en cascada | Alto | Soft delete; bloqueo con dependencias; tests. |
-| Beca 100% sin flujo | Alto | Definir regla antes de Fase 5; rechazar montos negativos. |
+| Beca 100% sin flujo | Alto | Resuelto en H78: `EXONERADO` con monto 0, aplicaciones y reversión al anular. |
 | Rollover con clave incompleta | Alto | Incluir alcance/vigencia y mapear grado; tests de preview/hash. |
 | Tests E2E con conceptos duplicados | Medio | Ajustar fixtures antes de H75. |
 | Cambio de jornada con horarios publicados | Medio | Bloquear estructura hasta despublicar; preview. |
@@ -485,8 +486,58 @@ base desechable E2E. Idempotente. Crea:
 - UI probada a 768 y 1366 px; a 390 px el componente se adapta, pero el sidebar fijo del
   ADMIN (responsive pausado) limita el ancho. No se modificó el layout por indicación.
 
-**Pendiente:** fases 2–7 (tarifas, cursos, jornada, becas, textos/PDF, endurecimiento y
-despliegue). H74 no se aplicó en Supabase; no se activó 2027.
+**Pendiente:** fases 6–7 (textos/PDF, endurecimiento y despliegue). H74–H78 no se
+aplicaron en Supabase; no se activó 2027.
+
+---
+
+## 15. Estado de implementación (Fase 5 / H78)
+
+**Migración:** `database/migracion_h78_becas.sql`, aplicada en local y en la base
+desechable E2E. Idempotente. Crea:
+
+- `tipos_beca` con alcance, modalidad, valor, tope, combinación, grupo de exclusividad,
+  prioridad, evidencia y aprobación.
+- Columnas de asignación en `becas` (`id_tipo_beca`, `alcance`, `modalidad`, `valor`,
+  `monto_maximo`, `estado`, `motivo`, `evidencia`, `aprobado_por`, fechas, prioridad).
+- `aplicaciones_beca` (pensión o pre-ticket, monto y porcentaje aplicado).
+- `pre_tickets.descuento` y el estado `EXONERADO` para cargos de monto cero.
+
+**Reglas:**
+
+1. Solo ADMIN crea, edita, aprueba, rechaza y anula becas. SECRETARÍA lee tipos y
+   asignaciones.
+2. Una beca nace `SOLICITADA`; si se aprueba, exige motivo (10–500) y evidencia cuando el
+   tipo lo pida.
+3. La aplicación es por fecha y alcance (`MATRICULA`, `PENSION`, `AMBOS`), ordenada por
+   prioridad. Un tipo no combinable excluye a los siguientes; dos becas del mismo grupo de
+   exclusividad no se suman.
+4. Porcentaje o monto fijo, con tope opcional; el descuento nunca deja el cargo negativo.
+5. Al aprobar se recalculan **solo** cargos `PENDIENTE`/`EXONERADO`. Los pagos y cargos
+   `PAGADO`/`ANULADO` no se reprecian.
+6. Una beca del 100% deja pensión o pre-ticket en `EXONERADO` con monto 0. La matrícula
+   exonerada pasa al alumno a `Matriculado`.
+7. Al anular se eliminan las aplicaciones y los cargos pendientes vuelven a `PENDIENTE` con
+   su monto base; si la matrícula deja de estar exonerada, el alumno vuelve a
+   `PendientePago`.
+8. La promoción copia la beca con sus nuevos campos y aplica la beca de matrícula al
+   pre-ticket destino.
+
+**Backend:** `becaDao`, `becaCalculator`, `becaService` y endpoints en
+`/api/configuracion/becas` (tipos, asignaciones, preview y transiciones). El flujo legacy
+`POST /api/tesoreria/becas` se mantiene y delega en el servicio nuevo.
+
+**Frontend:** `/admin/configuracion/becas` con pestañas de asignaciones y tipos, filtros,
+alta/edición, aprobación/rechazo/anulación con motivo y aviso de año histórico.
+
+**Verificación (23/11/2026):**
+
+- H78 aplicada dos veces en local sin error.
+- E2E: **99 PASS, 0 FAIL** (90 previos + 9 de becas).
+- Integridad en base nueva de producción: **34 PASS, 0 FAIL**.
+- Integridad local: **32 PASS, 2 FAIL** de seed (invariantes 4 y 8, conocidos).
+- Smoke: **12 PASS, 0 FAIL**; H47: **4 PASS**.
+- Build Angular y `node --check`: OK.
 
 ---
 

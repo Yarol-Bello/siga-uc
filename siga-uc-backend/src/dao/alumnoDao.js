@@ -5,6 +5,7 @@
 
 const { query, getClient } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
+const becaCalculator = require("../services/becaCalculator");
 
 /**
  * Construir el WHERE dinámico del listado de alumnos.
@@ -79,7 +80,7 @@ const listar = async (filtros = {}) => {
       a.nombres || ' ' || a.apellidos AS nombre_completo,
       a.fecha_nacimiento, a.condicion, a.estado_matricula,
       a.codigo_estudiante, a.anio_lectivo, a.id_grado,
-      g.nombre_grado, g.seccion,
+      g.nombre_grado, g.seccion, g.nivel,
       u.correo_personal,
       a.id_apoderado,
       ap.nombres || ' ' || ap.apellidos AS apoderado_nombre,
@@ -283,17 +284,15 @@ const crear = async (data) => {
 
     const conceptoResult = await client.query(
       `SELECT id_concepto, monto_base
-       FROM conceptos_pago
-       WHERE tipo = 'MATRICULA' AND anio_lectivo = $1
-       ORDER BY id_concepto
-       LIMIT 1`,
-      [anioLectivo],
+       FROM resolver_concepto_pago($1, 'MATRICULA', NULL, $2, CURRENT_DATE)`,
+      [anioLectivo, data.id_grado],
     );
     if (conceptoResult.rows.length === 0) {
       const error = new Error(
-        `No hay concepto de matrícula para el año ${anioLectivo}; ejecute el rollover.`,
+        `No hay concepto de matrícula vigente para el grado seleccionado en el año ${anioLectivo}.`,
       );
       error.statusCode = 400;
+      error.details = { codigo: "MATRICULA_SIN_TARIFA" };
       throw error;
     }
     const conceptoMatricula = conceptoResult.rows[0];
@@ -445,6 +444,21 @@ const crear = async (data) => {
       ],
     );
     idPreticket = preticketResult.rows[0].id_preticket;
+
+    const beca = await becaCalculator.aplicarPreticket(client, {
+      idPreticket,
+      idAlumno: id_alumno,
+      base: Number(conceptoMatricula.monto_base),
+      fecha: new Date().toISOString().slice(0, 10),
+      idUsuario: data.id_usuario_emite || null,
+    });
+
+    if (beca.exonerado) {
+      await client.query(
+        `UPDATE alumnos SET estado_matricula = 'Matriculado' WHERE id_alumno = $1`,
+        [id_alumno],
+      );
+    }
 
     await client.query("COMMIT");
 

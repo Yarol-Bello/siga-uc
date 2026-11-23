@@ -23,6 +23,10 @@ const TITULOS_POR_RUTA: Record<string, string> = {
   '/admin/reportes': 'Reportes y Libretas',
   '/admin/historico': 'Histórico por Estudiante',
   '/admin/configuracion': 'Configuración del Sistema',
+  '/admin/configuracion/tarifas': 'Tarifas y Conceptos',
+  '/admin/configuracion/academico': 'Catálogo Académico',
+  '/admin/configuracion/horarios': 'Horarios y Jornada',
+  '/admin/configuracion/becas': 'Becas',
 };
 
 @Component({

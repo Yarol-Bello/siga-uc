@@ -285,10 +285,10 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
 
 El proyecto **no tiene CI ni tests unitarios**. Desde el 22/11/2026 cuenta con tres suites
 de verificación antes de desplegar: **smoke test** (entorno y RBAC), **integridad**
-(24 invariantes de datos, solo lectura) y **E2E** (80 flujos sobre una base desechable,
+(34 invariantes de datos, solo lectura) y **E2E** (99 flujos sobre una base desechable,
 incluidos los de multi-año H49, rollover 6.2, promociones 6.3, histórico 6.4, pulido
-H59/H62/H65–H69, exportación interna SIAGIE y H71). El resto de la estrategia sigue siendo
-manual y por rol.
+H59/H62/H65–H69, exportación interna SIAGIE, H71 y configuración H74–H78). El resto de la
+estrategia sigue siendo manual y por rol.
 
 ### 4.1 Preparación
 
@@ -468,13 +468,14 @@ cd siga-uc-backend
 npm run test:integridad
 ```
 
-- Verifica **24 invariantes**: 45 tablas base, índices críticos de pagos/boletas, multi-año
+- Verifica **34 invariantes**: 48 tablas base, índices críticos de pagos/boletas, multi-año
   y promociones (`uq_alumno_*_anio`, `uq_anio_activo`, `uq_promocion_*`,
   `uq_politica_*`), pagos/pensiones/boletas coherentes, movimientos de caja, usuarios
   activos asociados, escala AD/A/B/C, alumnos matriculados con usuario activo, matrículas
-  anuales con grado del mismo año, `grados.orden` válido, carga/tutores del mismo año y las
+  anuales con grado del mismo año, `grados.orden` válido, carga/tutores del mismo año,
   invariantes de promociones (una confirmada por origen, destino del año/grado correcto,
-  egresados/retirados sin destino y política única).
+  egresados/retirados sin destino y política única) y H74–H78 (configuración, tarifas,
+  áreas, competencias, carga, becas, aplicaciones y cargos `EXONERADO`).
 - Fuerza `default_transaction_read_only=on`: no escribe nada.
 - Usa `DATABASE_URL` si existe; si no, `DB_*`. Puede ejecutarse contra local, una réplica
   de lectura o producción.
@@ -483,13 +484,12 @@ npm run test:integridad
 - **Cuándo:** después de restaurar un backup, antes de cada despliegue y semanalmente.
   En producción, usar preferentemente una conexión/replica de solo lectura.
 
-> En la base local del 22/11/2026 hay violaciones reales de seed en los invariantes 4 y 8
+> En la base local del 23/11/2026 hay violaciones reales de seed en los invariantes 4 y 8
 > (5 pagos sin INGRESO y 144 pensiones PAGADO sin pago). El invariante 7 solo exige ficha
 > a ESTUDIANTE/DOCENTE; ADMIN y SECRETARIA están exentos. No son fallos de la suite: deben
-> revisarse antes de cargar datos reales. La base local da **19 PASS / 2 FAIL**; una base de
+> revisarse antes de cargar datos reales. La base local da **32 PASS / 2 FAIL**; una base de
 > producción sembrada con `siga_uc.sql` + `seed_produccion.sql` + migraciones (incluidas H49,
-> H73, H59, H71 y H74) da **24 PASS**. En la base local de demo se esperan **22 PASS y 2 FAIL**
-> de seed (pagos sin INGRESO y pensiones PAGADO sin pago).
+> H73, H59, H71, H74–H78) da **34 PASS**.
 
 #### `test:e2e` — base desechable
 
@@ -499,11 +499,11 @@ npm run test:e2e
 ```
 
 - Crea `siga_uc_e2e`, carga `database/siga_uc_completo.sql` y las migraciones en orden
-  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`, `h59`, `h71`, `h74`), arranca el
-  backend en `http://localhost:3101` y ejecuta **80 flujos**: alta/retiro de alumno, matrícula, pensión,
+  (`h32`, `h10_h38`, `h07`, `h45`, `h47`, `h48`, `h61`, `h49`, `h73`, `h59`, `h71`, `h74`,
+  `h75`, `h76`, `h77`, `h78`), arranca el backend en `http://localhost:3101` y ejecuta **99 flujos**: alta/retiro de alumno, matrícula, pensión,
   doble pago, anulación, doble anulación, calificaciones, guardado masivo, PDFs, RBAC,
   auditoría, cierre/reapertura real de actas, bloqueo global, caja con efectivo/Yape (con y
-  sin anulación), PDF de acta ADMIN-only, multi-año (45 tablas, uniques por año, apoderado
+  sin anulación), PDF de acta ADMIN-only, multi-año (48 tablas, uniques por año, apoderado
   compartido, login sin matrícula activa, consultas por año, retiro con matrícula en otro año,
   login con año activo 2027 y pre-tickets/pendientes sin mezclar años), rollover 6.2
   (preview sin escrituras, confirm idempotente, oferta distinta, docente inactivo/sobrecarga,
@@ -523,7 +523,9 @@ npm run test:e2e
   (SIAGIE interno: resumen/RBAC, Excel con todos los cursos y conclusión, aviso interno,
   auditoría `exportaciones_siagie`, endpoint viejo 404 y UI sin portal/análisis simulado) y
   configuración H74 (público con institución, RBAC ADMIN/SECRETARIA, validaciones, update
-  auditado con motivo, idempotencia sin cambios y reflejo en el endpoint público).
+  auditado con motivo, idempotencia sin cambios y reflejo en el endpoint público), tarifas
+  H75, académico H76, jornada H77 y becas H78 (tipos, asignación, aplicación, combinación,
+  tope, pagos intactos, anulación y matrícula exonerada).
 - Al terminar **siempre** detiene el backend y ejecuta `dropdb --force siga_uc_e2e`.
   Si la limpieza falla, imprime los comandos manuales.
 - **Seguridad:** se niega a ejecutar si el nombre de la base no contiene `_e2e`, si es la
@@ -531,7 +533,7 @@ npm run test:e2e
   producción.
 - Requisitos: `createdb`, `dropdb` y `psql` en el `PATH`; `.env` con `DB_*` y `SMOKE_*`;
   puerto `3101` libre. `E2E_DB_NAME` puede cambiarse, pero debe contener `_e2e`.
-- Resultado esperado: **80 PASS, 0 FAIL, 0 SKIP**, exit `0`.
+- Resultado esperado: **99 PASS, 0 FAIL, 0 SKIP**, exit `0`.
 - **Cuándo:** antes de cada despliegue, después de cambiar migraciones o lógica de negocio.
   **Nunca** contra producción ni Supabase.
 
@@ -659,8 +661,8 @@ WHERE m.id_movimiento IS NULL;
 | Mejora | Beneficio |
 |---|---|
 | ~~Smoke test de solo lectura~~ ✅ | Valida entorno, BD, auth, RBAC y PDF antes de desplegar (`npm run smoke`) |
-| ~~Integridad de datos~~ ✅ | 24 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
-| ~~E2E de flujos críticos~~ ✅ | 80 flujos sobre base desechable (`npm run test:e2e`) |
+| ~~Integridad de datos~~ ✅ | 34 invariantes de solo lectura sobre cualquier base (`npm run test:integridad`) |
+| ~~E2E de flujos críticos~~ ✅ | 99 flujos sobre base desechable (`npm run test:e2e`) |
 | Tests unitarios de services | Validar reglas sin BD |
 | Tests de integración de endpoints | Contratos y permisos |
 | Tests E2E de UI (Playwright/Cypress) | Flujos por rol en el navegador |

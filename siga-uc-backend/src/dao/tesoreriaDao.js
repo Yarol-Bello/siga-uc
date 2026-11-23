@@ -5,16 +5,29 @@
 
 const { query, getClient } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
+const becaCalculator = require("../services/becaCalculator");
 
 // ============================================================
 // CONCEPTOS DE PAGO
 // ============================================================
 const listarConceptos = async (anioLectivo = getAnioLectivo()) => {
   const sql = `
-    SELECT id_concepto, nombre, monto_base, tipo, mes, anio_lectivo
-    FROM conceptos_pago
-    WHERE anio_lectivo = $1
-    ORDER BY tipo, mes NULLS FIRST
+    SELECT
+      c.id_concepto, c.nombre, c.monto_base, c.tipo, c.mes, c.anio_lectivo,
+      c.nivel, c.id_grado, c.activo, c.vigente_desde, c.vigente_hasta,
+      c.descripcion, c.orden,
+      g.nombre_grado, g.seccion
+    FROM conceptos_pago c
+    LEFT JOIN grados g ON g.id_grado = c.id_grado
+    WHERE c.anio_lectivo = $1
+      AND c.activo = TRUE
+      AND c.vigente_hasta IS NULL
+      AND (
+        c.vigente_desde <= CURRENT_DATE
+        OR c.anio_lectivo > EXTRACT(YEAR FROM CURRENT_DATE)::int
+      )
+    ORDER BY c.tipo, c.mes NULLS FIRST, c.nivel NULLS FIRST,
+             c.id_grado NULLS FIRST, c.id_concepto
   `;
   const result = await query(sql, [anioLectivo]);
   return result.rows;
@@ -90,6 +103,17 @@ const listarPreTickets = async (filtros = {}) => {
   `;
   const result = await query(sql, params);
   return result.rows;
+};
+
+const findPreTicketPendiente = async (idAlumno, idConcepto) => {
+  const result = await query(
+    `SELECT * FROM pre_tickets
+     WHERE id_alumno = $1 AND id_concepto = $2 AND estado = 'PENDIENTE'
+     ORDER BY fecha_emision DESC
+     LIMIT 1`,
+    [idAlumno, idConcepto],
+  );
+  return result.rows[0] || null;
 };
 
 const findPreTicketById = async (id) => {
@@ -364,41 +388,65 @@ const anularPago = async (id, data) => {
  * @returns {Promise<number>} Cantidad de pensiones creadas.
  */
 const generarPensionesAlumno = async (id_alumno, client = null) => {
-  const ejecutar = client ? client.query.bind(client) : query;
+  const propio = !client;
+  const ejecutar = client ? client.query.bind(client) : null;
+  const conexion = client || (await getClient());
 
-  const sql = `
-    INSERT INTO pensiones (
-      id_alumno, anio_lectivo, mes, monto_base, descuento, monto_final, estado
-    )
-    SELECT
-      a.id_alumno,
-      a.anio_lectivo,
-      c.mes,
-      c.monto_base,
-      COALESCE(b.monto_descuento, 0),
-      c.monto_base - COALESCE(b.monto_descuento, 0),
-      'PENDIENTE'
-    FROM alumnos a
-    INNER JOIN conceptos_pago c
-      ON c.anio_lectivo = a.anio_lectivo
-     AND c.tipo = 'PENSION'
-    LEFT JOIN LATERAL (
-      SELECT monto_descuento
-      FROM becas
-      WHERE id_alumno = a.id_alumno
-        AND activo = TRUE
-      LIMIT 1
-    ) b ON TRUE
-    WHERE a.id_alumno = $1
-      AND a.estado_matricula = 'Matriculado'
-      AND c.mes >= EXTRACT(MONTH FROM a.fecha_creacion)::int
-    ON CONFLICT (id_alumno, anio_lectivo, mes)
-    DO UPDATE SET estado = 'PENDIENTE'
-    WHERE pensiones.estado = 'ANULADO'
-  `;
+  try {
+    if (propio) await conexion.query("BEGIN");
 
-  const result = await ejecutar(sql, [id_alumno]);
-  return result.rowCount;
+    const sql = `
+      INSERT INTO pensiones (
+        id_alumno, anio_lectivo, mes, monto_base, descuento,
+        monto_final, estado, id_concepto
+      )
+      SELECT
+        a.id_alumno,
+        a.anio_lectivo,
+        m.mes,
+        r.monto_base,
+        0,
+        r.monto_base,
+        'PENDIENTE',
+        r.id_concepto
+      FROM alumnos a
+      CROSS JOIN LATERAL generate_series(1, 12) AS m(mes)
+      CROSS JOIN LATERAL (
+        SELECT *
+        FROM resolver_concepto_pago(
+          a.anio_lectivo,
+          'PENSION',
+          m.mes,
+          a.id_grado,
+          make_date(a.anio_lectivo, m.mes, 1)
+        )
+      ) r
+      WHERE a.id_alumno = $1
+        AND a.estado_matricula = 'Matriculado'
+        AND m.mes >= EXTRACT(MONTH FROM a.fecha_creacion)::int
+      ON CONFLICT (id_alumno, anio_lectivo, mes)
+      DO UPDATE SET estado = 'PENDIENTE'
+      WHERE pensiones.estado = 'ANULADO'
+    `;
+
+    const result = await (ejecutar
+      ? ejecutar(sql, [id_alumno])
+      : conexion.query(sql, [id_alumno]));
+
+    await becaCalculator.aplicarPensionesAlumno(
+      conexion,
+      id_alumno,
+      null,
+    );
+
+    if (propio) await conexion.query("COMMIT");
+    return result.rowCount;
+  } catch (error) {
+    if (propio) await conexion.query("ROLLBACK");
+    throw error;
+  } finally {
+    if (propio) conexion.release();
+  }
 };
 
 /**
@@ -583,7 +631,7 @@ const listarPensionesAlumno = async (id_alumno, anioLectivo = getAnioLectivo()) 
       c.id_concepto,
       c.nombre AS concepto_nombre, c.mes AS concepto_mes
     FROM pensiones p
-    LEFT JOIN conceptos_pago c ON c.tipo = 'PENSION' AND c.mes = p.mes AND c.anio_lectivo = p.anio_lectivo
+    LEFT JOIN conceptos_pago c ON c.id_concepto = p.id_concepto
     WHERE p.id_alumno = $1 AND p.anio_lectivo = $2
     ORDER BY p.mes
   `;
@@ -597,7 +645,7 @@ const listarPensionesAlumno = async (id_alumno, anioLectivo = getAnioLectivo()) 
 const findPensionById = async (id) => {
   const sql = `
     SELECT id_pension, id_alumno, anio_lectivo, mes, monto_base, descuento,
-           monto_final, estado, id_beca
+           monto_final, estado, id_beca, id_concepto
     FROM pensiones
     WHERE id_pension = $1
     LIMIT 1
@@ -612,7 +660,7 @@ const findPensionById = async (id) => {
 const findPensionPorAlumnoMes = async (id_alumno, anioLectivo, mes) => {
   const sql = `
     SELECT id_pension, id_alumno, anio_lectivo, mes, monto_base, descuento,
-           monto_final, estado, id_beca
+           monto_final, estado, id_beca, id_concepto
     FROM pensiones
     WHERE id_alumno = $1 AND anio_lectivo = $2 AND mes = $3
     LIMIT 1
@@ -621,32 +669,50 @@ const findPensionPorAlumnoMes = async (id_alumno, anioLectivo, mes) => {
   return result.rows[0] || null;
 };
 
-const generarPensionesMensuales = async (anioLectivo, mes, montoBase) => {
+const generarPensionesMensuales = async (anioLectivo, mes) => {
   const client = await getClient();
   try {
     await client.query("BEGIN");
 
-    // Insertar pensión para todos los alumnos matriculados si no existe
+    // Insertar pensión para todos los alumnos matriculados si no existe.
+    // El monto y el concepto se resuelven por alumno/grado/fecha.
     const sql = `
-      INSERT INTO pensiones (id_alumno, anio_lectivo, mes, monto_base, descuento, monto_final, estado)
-      SELECT 
-        a.id_alumno, $1, $2, $3,
-        COALESCE(
-          (SELECT monto_descuento FROM becas WHERE id_alumno = a.id_alumno AND activo = TRUE LIMIT 1), 
-          0
-        ),
-        $3 - COALESCE(
-          (SELECT monto_descuento FROM becas WHERE id_alumno = a.id_alumno AND activo = TRUE LIMIT 1), 
-          0
-        ),
-        'PENDIENTE'
+      INSERT INTO pensiones (
+        id_alumno, anio_lectivo, mes, monto_base, descuento,
+        monto_final, estado, id_concepto
+      )
+      SELECT
+        a.id_alumno,
+        $1,
+        $2,
+        r.monto_base,
+        0,
+        r.monto_base,
+        'PENDIENTE',
+        r.id_concepto
       FROM alumnos a
+      CROSS JOIN LATERAL (
+        SELECT *
+        FROM resolver_concepto_pago(
+          $1,
+          'PENSION',
+          $2,
+          a.id_grado,
+          make_date($1::INT, $2::INT, 1)
+        )
+      ) r
       WHERE a.estado_matricula = 'Matriculado' AND a.anio_lectivo = $1
         AND a.fecha_creacion < (make_date($1::INT, $2::INT, 1) + INTERVAL '1 month')
       ON CONFLICT (id_alumno, anio_lectivo, mes) DO NOTHING
       RETURNING id_pension
     `;
-    const result = await client.query(sql, [anioLectivo, mes, montoBase]);
+    const result = await client.query(sql, [anioLectivo, mes]);
+    await becaCalculator.aplicarPensionesMes(
+      client,
+      anioLectivo,
+      mes,
+      null,
+    );
     await client.query("COMMIT");
     return result.rowCount;
   } catch (error) {
@@ -692,24 +758,6 @@ const listarBecas = async (filtros = {}) => {
   return result.rows;
 };
 
-const crearBeca = async (data) => {
-  const sql = `
-    INSERT INTO becas (
-      id_alumno, tipo, porcentaje_descuento, monto_descuento, fecha_inicio, fecha_fin, activo
-    ) VALUES ($1, $2, $3, $4, $5, $6, TRUE)
-    RETURNING *
-  `;
-  const result = await query(sql, [
-    data.id_alumno,
-    data.tipo,
-    data.porcentaje_descuento,
-    data.monto_descuento || 0,
-    data.fecha_inicio,
-    data.fecha_fin || null,
-  ]);
-  return result.rows[0];
-};
-
 // ============================================================
 // ESTADÍSTICAS
 // ============================================================
@@ -751,6 +799,7 @@ module.exports = {
   // Pre-tickets
   listarPreTickets,
   findPreTicketById,
+  findPreTicketPendiente,
   crearPreTicket,
   // Pagos
   listarPagos,
@@ -765,7 +814,6 @@ module.exports = {
   generarPensionesMensuales,
   // Becas
   listarBecas,
-  crearBeca,
   // Estadísticas
   getEstadisticasMes,
   getPendientesCobro,

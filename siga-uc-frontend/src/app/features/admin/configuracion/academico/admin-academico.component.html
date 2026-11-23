@@ -1,0 +1,252 @@
+<div class="academico-page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Configuración · Académico</span>
+      <h1>Áreas, cursos y competencias</h1>
+      <p>
+        Mantenga el catálogo sin borrar historial. Desactive cursos o competencias
+        cuando tengan carga, horarios, notas o asistencia.
+      </p>
+    </div>
+    <label class="check-inline">
+      <input
+        type="checkbox"
+        [ngModel]="incluirInactivos()"
+        (ngModelChange)="incluirInactivos.set($event); cargarTodo()"
+      />
+      Incluir inactivos
+    </label>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-danger" role="alert">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+  @if (exito()) {
+  <div class="alert alert-success" role="status">
+    <i class="fa-solid fa-circle-check"></i>
+    {{ exito() }}
+  </div>
+  }
+
+  <div class="subnav">
+    <button type="button" [class.active]="seccion() === 'areas'" (click)="cambiarSeccion('areas')">
+      <i class="fa-solid fa-layer-group"></i> Áreas
+    </button>
+    <button type="button" [class.active]="seccion() === 'cursos'" (click)="cambiarSeccion('cursos')">
+      <i class="fa-solid fa-book"></i> Cursos
+    </button>
+    <button type="button" [class.active]="seccion() === 'competencias'" (click)="cambiarSeccion('competencias')">
+      <i class="fa-solid fa-list-check"></i> Competencias
+    </button>
+  </div>
+
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando catálogo académico...</p>
+  </div>
+  }
+
+  @if (!cargando() && seccion() === 'areas') {
+  <section class="config-card">
+    <div class="card-head">
+      <div>
+        <h2>Áreas académicas</h2>
+        <p>Catálogo usado por los cursos y reportes.</p>
+      </div>
+      <button type="button" class="btn-primary" (click)="abrirNuevaArea()">
+        <i class="fa-solid fa-plus"></i> Nueva área
+      </button>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle config-table">
+        <thead><tr><th>Área</th><th>Orden</th><th>Cursos</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+        <tbody>
+          @for (area of areas(); track area.id_area) {
+          <tr [class.row-inactiva]="!area.activo">
+            <td><strong>{{ area.nombre }}</strong></td>
+            <td>{{ area.orden }}</td>
+            <td>{{ area.total_cursos }}</td>
+            <td><span class="estado-badge" [class.inactiva]="!area.activo">{{ area.activo ? 'Activa' : 'Inactiva' }}</span></td>
+            <td class="text-end acciones">
+              <button type="button" class="icon-btn" title="Editar" (click)="abrirEditarArea(area)"><i class="fa-solid fa-pen"></i></button>
+              <button type="button" class="icon-btn danger" title="Eliminar" (click)="abrirEliminar('area', area)" [disabled]="!puedeEliminarArea(area)"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (areas().length === 0) {
+    <div class="empty-state"><i class="fa-solid fa-layer-group"></i><p>No hay áreas registradas.</p></div>
+    }
+  </section>
+  }
+
+  @if (!cargando() && seccion() === 'cursos') {
+  <section class="config-card">
+    <div class="card-head">
+      <div>
+        <h2>Cursos</h2>
+        <p>Un curso con historial no se renombra; se desactiva y se crea otro.</p>
+      </div>
+      <button type="button" class="btn-primary" (click)="abrirNuevoCurso()">
+        <i class="fa-solid fa-plus"></i> Nuevo curso
+      </button>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle config-table">
+        <thead><tr><th>Curso</th><th>Área</th><th class="text-center">Horas</th><th class="text-center">Competencias</th><th class="text-center">Uso</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+        <tbody>
+          @for (curso of cursos(); track curso.id_curso) {
+          <tr [class.row-inactiva]="!curso.activo">
+            <td><strong>{{ curso.nombre_curso }}</strong>@if (curso.descripcion) {<small class="descripcion">{{ curso.descripcion }}</small>}</td>
+            <td>{{ curso.area_academica }}</td>
+            <td class="text-center">{{ curso.horas_semanales || '—' }}</td>
+            <td class="text-center">{{ curso.total_competencias }}</td>
+            <td class="text-center">
+              @if (totalDependenciasCurso(curso) > 0) {
+              <span class="uso-badge" [title]="'Carga: ' + curso.total_carga + ', horarios: ' + curso.total_horarios + ', notas: ' + curso.total_calificaciones + ', asistencia: ' + curso.total_asistencias">
+                {{ totalDependenciasCurso(curso) }}
+              </span>
+              } @else { <span class="text-muted">—</span> }
+            </td>
+            <td><span class="estado-badge" [class.inactiva]="!curso.activo">{{ curso.activo ? 'Activo' : 'Inactivo' }}</span></td>
+            <td class="text-end acciones">
+              <button type="button" class="icon-btn" title="Editar" (click)="abrirEditarCurso(curso)"><i class="fa-solid fa-pen"></i></button>
+              <button type="button" class="icon-btn" title="Competencias" (click)="seleccionarCurso(curso)"><i class="fa-solid fa-list-check"></i></button>
+              <button type="button" class="icon-btn danger" title="Eliminar" (click)="abrirEliminar('curso', curso)" [disabled]="!puedeEliminarCurso(curso)"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (cursos().length === 0) {
+    <div class="empty-state"><i class="fa-solid fa-book"></i><p>No hay cursos registrados.</p></div>
+    }
+  </section>
+  }
+
+  @if (!cargando() && seccion() === 'competencias') {
+  <section class="config-card">
+    <div class="card-head">
+      <div>
+        <h2>Competencias</h2>
+        <p>
+          @if (cursoSeleccionado()) {
+          Curso: <strong>{{ cursoSeleccionado().nombre_curso }}</strong>
+          } @else {
+          Seleccione un curso desde la pestaña Cursos.
+          }
+        </p>
+      </div>
+      <button type="button" class="btn-primary" (click)="abrirNuevaCompetencia()" [disabled]="!cursoSeleccionado()">
+        <i class="fa-solid fa-plus"></i> Nueva competencia
+      </button>
+    </div>
+    @if (!cursoSeleccionado()) {
+    <div class="empty-state"><i class="fa-solid fa-hand-pointer"></i><p>Seleccione un curso para ver sus competencias.</p></div>
+    } @else {
+    <div class="table-responsive">
+      <table class="table align-middle config-table">
+        <thead><tr><th>Orden</th><th>Competencia</th><th class="text-center">Notas</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+        <tbody>
+          @for (competencia of competencias(); track competencia.id_competencia) {
+          <tr [class.row-inactiva]="!competencia.activo">
+            <td>{{ competencia.orden }}</td>
+            <td><strong>{{ competencia.nombre_competencia }}</strong>@if (competencia.descripcion) {<small class="descripcion">{{ competencia.descripcion }}</small>}</td>
+            <td class="text-center">{{ competencia.calificaciones }}</td>
+            <td><span class="estado-badge" [class.inactiva]="!competencia.activo">{{ competencia.activo ? 'Activa' : 'Inactiva' }}</span></td>
+            <td class="text-end acciones">
+              <button type="button" class="icon-btn" title="Editar" (click)="abrirEditarCompetencia(competencia)"><i class="fa-solid fa-pen"></i></button>
+              <button type="button" class="icon-btn danger" title="Eliminar" (click)="abrirEliminar('competencia', competencia)" [disabled]="!puedeEliminarCompetencia(competencia)"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (competencias().length === 0) {
+    <div class="empty-state"><i class="fa-solid fa-list-check"></i><p>Este curso no tiene competencias.</p></div>
+    }
+    }
+  </section>
+  }
+</div>
+
+@if (modalArea()) {
+<div class="modal-overlay" (click)="modalArea.set(false)">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-head"><div><span class="eyebrow">Área académica</span><h2>{{ editandoArea() ? 'Editar área' : 'Nueva área' }}</h2></div><button type="button" class="icon-btn" (click)="modalArea.set(false)"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="row g-3">
+        <div class="col-12 col-md-8"><label class="form-label">Nombre *</label><input class="form-control" maxlength="50" [(ngModel)]="formArea.nombre" /></div>
+        <div class="col-6 col-md-2"><label class="form-label">Orden</label><input type="number" min="0" class="form-control" [(ngModel)]="formArea.orden" /></div>
+        <div class="col-6 col-md-2 d-flex align-items-end"><label class="check-inline"><input type="checkbox" [(ngModel)]="formArea.activo" /> Activa</label></div>
+        <div class="col-12"><label class="form-label">Motivo *</label><textarea class="form-control" rows="2" maxlength="500" [(ngModel)]="formArea.motivo" placeholder="Mínimo 10 caracteres"></textarea></div>
+      </div>
+      @if (errorArea()) { <div class="alert alert-danger mt-2">{{ errorArea() }}</div> }
+    </div>
+    <div class="modal-foot"><button class="btn-soft" type="button" (click)="modalArea.set(false)">Cancelar</button><button class="btn-primary" type="button" (click)="guardarArea()" [disabled]="guardando()">Guardar</button></div>
+  </div>
+</div>
+}
+
+@if (modalCurso()) {
+<div class="modal-overlay" (click)="modalCurso.set(false)">
+  <div class="modal-card modal-wide" (click)="$event.stopPropagation()">
+    <div class="modal-head"><div><span class="eyebrow">Curso</span><h2>{{ editandoCurso() ? 'Editar curso' : 'Nuevo curso' }}</h2></div><button type="button" class="icon-btn" (click)="modalCurso.set(false)"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="row g-3">
+        <div class="col-12 col-md-7"><label class="form-label">Nombre del curso *</label><input class="form-control" maxlength="100" [(ngModel)]="formCurso.nombre_curso" /></div>
+        <div class="col-12 col-md-5"><label class="form-label">Área *</label><select class="form-select" [(ngModel)]="formCurso.area_academica"><option value="">Seleccione</option>@for (area of areas(); track area.id_area) {<option [value]="area.nombre">{{ area.nombre }}</option>}</select></div>
+        <div class="col-6 col-md-3"><label class="form-label">Horas semanales</label><input type="number" min="1" max="99" class="form-control" [(ngModel)]="formCurso.horas_semanales" /></div>
+        <div class="col-6 col-md-3"><label class="form-label">Orden</label><input type="number" min="0" class="form-control" [(ngModel)]="formCurso.orden" /></div>
+        <div class="col-6 col-md-3 d-flex align-items-end"><label class="check-inline"><input type="checkbox" [(ngModel)]="formCurso.activo" /> Activo</label></div>
+        <div class="col-12"><label class="form-label">Descripción</label><textarea class="form-control" rows="2" maxlength="250" [(ngModel)]="formCurso.descripcion"></textarea></div>
+        <div class="col-12"><label class="form-label">Motivo *</label><textarea class="form-control" rows="2" maxlength="500" [(ngModel)]="formCurso.motivo" placeholder="Mínimo 10 caracteres"></textarea></div>
+      </div>
+      @if (errorCurso()) { <div class="alert alert-danger mt-2">{{ errorCurso() }}</div> }
+    </div>
+    <div class="modal-foot"><button class="btn-soft" type="button" (click)="modalCurso.set(false)">Cancelar</button><button class="btn-primary" type="button" (click)="guardarCurso()" [disabled]="guardando()">Guardar</button></div>
+  </div>
+</div>
+}
+
+@if (modalCompetencia()) {
+<div class="modal-overlay" (click)="modalCompetencia.set(false)">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-head"><div><span class="eyebrow">Competencia</span><h2>{{ editandoCompetencia() ? 'Editar competencia' : 'Nueva competencia' }}</h2></div><button type="button" class="icon-btn" (click)="modalCompetencia.set(false)"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="row g-3">
+        <div class="col-12"><label class="form-label">Nombre *</label><input class="form-control" maxlength="250" [(ngModel)]="formCompetencia.nombre_competencia" /></div>
+        <div class="col-6"><label class="form-label">Orden *</label><input type="number" min="1" class="form-control" [(ngModel)]="formCompetencia.orden" /></div>
+        <div class="col-6 d-flex align-items-end"><label class="check-inline"><input type="checkbox" [(ngModel)]="formCompetencia.activo" /> Activa</label></div>
+        <div class="col-12"><label class="form-label">Descripción</label><textarea class="form-control" rows="2" maxlength="250" [(ngModel)]="formCompetencia.descripcion"></textarea></div>
+        <div class="col-12"><label class="form-label">Motivo *</label><textarea class="form-control" rows="2" maxlength="500" [(ngModel)]="formCompetencia.motivo" placeholder="Mínimo 10 caracteres"></textarea></div>
+      </div>
+      @if (errorCompetencia()) { <div class="alert alert-danger mt-2">{{ errorCompetencia() }}</div> }
+    </div>
+    <div class="modal-foot"><button class="btn-soft" type="button" (click)="modalCompetencia.set(false)">Cancelar</button><button class="btn-primary" type="button" (click)="guardarCompetencia()" [disabled]="guardando()">Guardar</button></div>
+  </div>
+</div>
+}
+
+@if (modalEliminar() && entidadEliminar()) {
+<div class="modal-overlay" (click)="modalEliminar.set(false)">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-head"><div><span class="eyebrow">Eliminar</span><h2>{{ entidadEliminar()!.nombre }}</h2></div><button type="button" class="icon-btn" (click)="modalEliminar.set(false)"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <p class="modal-intro">Solo se elimina si no tiene historial. Si está en uso, desactívelo.</p>
+      <label class="form-label">Motivo *</label>
+      <textarea class="form-control" rows="3" maxlength="500" [ngModel]="motivoEliminar()" (ngModelChange)="motivoEliminar.set($event)" placeholder="Mínimo 10 caracteres"></textarea>
+      @if (errorEliminar()) { <div class="alert alert-danger mt-2">{{ errorEliminar() }}</div> }
+    </div>
+    <div class="modal-foot"><button class="btn-soft" type="button" (click)="modalEliminar.set(false)">Cancelar</button><button class="btn-danger" type="button" (click)="confirmarEliminar()" [disabled]="guardando()">Eliminar</button></div>
+  </div>
+</div>
+}

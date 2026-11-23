@@ -30,6 +30,7 @@ export class SecretariaHorariosComponent implements OnInit {
   anioSeleccionado = signal(this.anioActivo());
   gradoSeleccionado = signal<number | null>(null);
   grados = signal<GradoHorario[]>([]);
+  dias = signal<string[]>(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']);
   periodos = signal<PeriodoClase[]>([]);
   bloques = signal<HorarioBloque[]>([]);
   resumen = signal({ total: 0, publicados: 0, borradores: 0 });
@@ -91,6 +92,15 @@ export class SecretariaHorariosComponent implements OnInit {
       .listar(this.anioSeleccionado(), idGrado)
       .subscribe({
         next: (res) => {
+          this.dias.set(
+            res?.data?.dias_clase || [
+              'Lunes',
+              'Martes',
+              'Miércoles',
+              'Jueves',
+              'Viernes',
+            ],
+          );
           this.periodos.set(res?.data?.periodos || []);
           this.bloques.set(res?.data?.bloques || []);
           this.resumen.set(

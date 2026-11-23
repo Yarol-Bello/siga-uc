@@ -1,0 +1,510 @@
+<div class="tarifas-page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Configuración · Tarifas</span>
+      <h1>Tarifas y conceptos de pago</h1>
+      <p>
+        Defina montos por año, nivel o grado, con vigencia y vista previa de impacto.
+        Los pagos y cargos ya generados no se reprecian automáticamente.
+      </p>
+    </div>
+    <div class="head-actions">
+      <app-selector-anio
+        [anios]="anios()"
+        [anioActivo]="anioActivo()"
+        [anio]="anioSeleccionado()"
+        (anioChange)="cambiarAnio($event)"
+      ></app-selector-anio>
+      <button
+        type="button"
+        class="btn-primary"
+        (click)="abrirNueva()"
+        [disabled]="esHistorico()"
+      >
+        <i class="fa-solid fa-plus"></i>
+        Nueva tarifa
+      </button>
+    </div>
+  </div>
+
+  @if (esHistorico()) {
+  <div class="alert alert-warning" role="status">
+    <i class="fa-solid fa-clock-rotate-left"></i>
+    Año histórico: solo lectura. Cambie al año activo para editar tarifas.
+  </div>
+  }
+
+  @if (error()) {
+  <div class="alert alert-danger" role="alert">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+
+  @if (exito()) {
+  <div class="alert alert-success" role="status">
+    <i class="fa-solid fa-circle-check"></i>
+    {{ exito() }}
+  </div>
+  }
+
+  <section class="config-card">
+    <div class="filters">
+      <div>
+        <label class="form-label" for="tipoFiltro">Tipo</label>
+        <select
+          id="tipoFiltro"
+          class="form-select"
+          [ngModel]="tipoFiltro()"
+          (ngModelChange)="tipoFiltro.set($event)"
+        >
+          <option value="">Todos</option>
+          <option value="MATRICULA">Matrícula</option>
+          <option value="PENSION">Pensión</option>
+          <option value="OTROS">Otros</option>
+        </select>
+      </div>
+      <label class="check-inline">
+        <input
+          type="checkbox"
+          [ngModel]="incluirInactivos()"
+          (ngModelChange)="incluirInactivos.set($event); cargar()"
+        />
+        Incluir inactivas
+      </label>
+      <span class="count-badge">{{ tarifasFiltradas().length }} tarifa(s)</span>
+    </div>
+
+    @if (cargando()) {
+    <div class="loading-state">
+      <i class="fa-solid fa-spinner fa-spin"></i>
+      <p>Cargando tarifas...</p>
+    </div>
+    }
+
+    @if (!cargando()) {
+    <div class="table-responsive">
+      <table class="table align-middle tarifas-table">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Mes</th>
+            <th>Alcance</th>
+            <th>Concepto</th>
+            <th class="text-end">Monto</th>
+            <th>Vigencia</th>
+            <th class="text-center">Uso</th>
+            <th>Estado</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (tarifa of tarifasFiltradas(); track tarifa.id_concepto) {
+          <tr [class.row-inactiva]="!tarifa.activo">
+            <td><span class="tipo-badge" [ngClass]="'tipo-' + tarifa.tipo">{{ tipoTexto(tarifa.tipo) }}</span></td>
+            <td>{{ mesTexto(tarifa) }}</td>
+            <td>{{ alcanceTexto(tarifa) }}</td>
+            <td>
+              <strong>{{ tarifa.nombre }}</strong>
+              @if (tarifa.descripcion) {
+              <small class="descripcion">{{ tarifa.descripcion }}</small>
+              }
+            </td>
+            <td class="text-end monto">S/ {{ montoTexto(tarifa) }}</td>
+            <td class="vigencia">
+              {{ tarifa.vigente_desde }}
+              <span>→</span>
+              {{ tarifa.vigente_hasta || 'abierta' }}
+            </td>
+            <td class="text-center">
+              @if (totalDependencias(tarifa) > 0) {
+              <span class="uso-badge" [title]="'Pagos: ' + tarifa.pagos + ', pre-tickets: ' + tarifa.pretickets + ', pensiones: ' + tarifa.pensiones">
+                {{ totalDependencias(tarifa) }}
+              </span>
+              } @else {
+              <span class="text-muted">—</span>
+              }
+            </td>
+            <td>
+              <span class="estado-badge" [class.inactiva]="!tarifa.activo">
+                {{ tarifa.activo ? 'Activa' : 'Inactiva' }}
+              </span>
+            </td>
+            <td class="text-end acciones">
+              @if (!esHistorico()) {
+              <button
+                type="button"
+                class="icon-btn"
+                title="Editar"
+                (click)="abrirEditar(tarifa)"
+                [disabled]="!puedeEditar(tarifa)"
+              >
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button
+                type="button"
+                class="icon-btn"
+                title="Programar nueva versión"
+                (click)="abrirVersion(tarifa)"
+              >
+                <i class="fa-solid fa-code-branch"></i>
+              </button>
+              <button
+                type="button"
+                class="icon-btn danger"
+                title="Desactivar"
+                (click)="abrirDesactivar(tarifa)"
+                [disabled]="!tarifa.activo"
+              >
+                <i class="fa-solid fa-ban"></i>
+              </button>
+              } @else {
+              <i class="fa-solid fa-lock text-muted" title="Año histórico"></i>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (tarifasFiltradas().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-money-bill-wave"></i>
+      <p>No hay tarifas para los filtros seleccionados.</p>
+    </div>
+    }
+    }
+  </section>
+</div>
+
+@if (modalFormulario()) {
+<div class="modal-overlay" (click)="cerrarFormulario()">
+  <div class="modal-card modal-wide" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">
+          {{ modo() === 'crear' ? 'Nueva tarifa' : modo() === 'version' ? 'Nueva versión' : 'Editar tarifa' }}
+        </span>
+        <h2>{{ modo() === 'version' ? 'Programar cambio de monto' : 'Datos de la tarifa' }}</h2>
+      </div>
+      <button type="button" class="icon-btn" (click)="cerrarFormulario()" [disabled]="guardando()" aria-label="Cerrar">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      @if (modo() === 'version') {
+      <div class="notice">
+        <i class="fa-solid fa-circle-info"></i>
+        Se cerrará la versión actual el día anterior y se creará una nueva desde la fecha indicada.
+        Los cargos ya generados conservan su monto.
+      </div>
+      }
+
+      <div class="row g-3">
+        <div class="col-12 col-md-5">
+          <label class="form-label" for="tipo">Tipo <span class="req">*</span></label>
+          <select
+            id="tipo"
+            name="tipo"
+            class="form-select"
+            [(ngModel)]="form.tipo"
+            (ngModelChange)="cambiarTipo()"
+            [disabled]="modo() !== 'crear'"
+          >
+            <option value="MATRICULA">Matrícula</option>
+            <option value="PENSION">Pensión</option>
+            <option value="OTROS">Otros</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="mes">Mes</label>
+          <select
+            id="mes"
+            name="mes"
+            class="form-select"
+            [(ngModel)]="form.mes"
+            [disabled]="form.tipo !== 'PENSION' || modo() !== 'crear'"
+          >
+            <option [ngValue]="null">—</option>
+            @for (m of meses; track m.num) {
+            <option [ngValue]="m.num">{{ m.nombre }}</option>
+            }
+          </select>
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label" for="alcance">Alcance <span class="req">*</span></label>
+          <select
+            id="alcance"
+            name="alcance"
+            class="form-select"
+            [(ngModel)]="form.alcance"
+            (ngModelChange)="cambiarAlcance()"
+            [disabled]="modo() !== 'crear'"
+          >
+            <option value="GLOBAL">Todos</option>
+            <option value="NIVEL">Por nivel</option>
+            <option value="GRADO">Por grado</option>
+          </select>
+        </div>
+
+        @if (form.alcance === 'NIVEL') {
+        <div class="col-12 col-md-5">
+          <label class="form-label" for="nivel">Nivel <span class="req">*</span></label>
+          <select id="nivel" name="nivel" class="form-select" [(ngModel)]="form.nivel" [disabled]="modo() !== 'crear'">
+            <option [ngValue]="null">Seleccione</option>
+            @for (nivel of niveles(); track nivel) {
+            <option [ngValue]="nivel">{{ nivel }}</option>
+            }
+          </select>
+        </div>
+        }
+        @if (form.alcance === 'GRADO') {
+        <div class="col-12 col-md-7">
+          <label class="form-label" for="id_grado">Grado <span class="req">*</span></label>
+          <select id="id_grado" name="id_grado" class="form-select" [(ngModel)]="form.id_grado" [disabled]="modo() !== 'crear'">
+            <option [ngValue]="null">Seleccione</option>
+            @for (grado of grados(); track grado.id_grado) {
+            <option [ngValue]="grado.id_grado">
+              {{ grado.nombre_grado }} {{ grado.seccion }}
+            </option>
+            }
+          </select>
+        </div>
+        }
+
+        <div class="col-12 col-lg-8">
+          <label class="form-label" for="nombre">Nombre del concepto <span class="req">*</span></label>
+          <input
+            id="nombre"
+            name="nombre"
+            class="form-control"
+            maxlength="100"
+            [(ngModel)]="form.nombre"
+            placeholder="Matrícula Escolar 2026"
+          />
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label" for="monto_base">Monto (S/) <span class="req">*</span></label>
+          <input
+            id="monto_base"
+            name="monto_base"
+            type="number"
+            min="0.01"
+            step="0.01"
+            class="form-control"
+            [(ngModel)]="form.monto_base"
+          />
+        </div>
+        <div class="col-6 col-lg-2">
+          <label class="form-label" for="orden">Orden</label>
+          <input id="orden" name="orden" type="number" min="0" class="form-control" [(ngModel)]="form.orden" />
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label class="form-label" for="vigente_desde">Vigente desde <span class="req">*</span></label>
+          <input
+            id="vigente_desde"
+            name="vigente_desde"
+            type="date"
+            class="form-control"
+            [(ngModel)]="form.vigente_desde"
+            [disabled]="modo() === 'editar'"
+          />
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label" for="vigente_hasta">Vigente hasta</label>
+          <input
+            id="vigente_hasta"
+            name="vigente_hasta"
+            type="date"
+            class="form-control"
+            [(ngModel)]="form.vigente_hasta"
+          />
+        </div>
+        <div class="col-12 col-md-4 d-flex align-items-end">
+          <label class="check-inline">
+            <input type="checkbox" name="activo" [(ngModel)]="form.activo" [disabled]="modo() === 'version'" />
+            Activa
+          </label>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label" for="descripcion">Descripción</label>
+          <textarea
+            id="descripcion"
+            name="descripcion"
+            class="form-control"
+            rows="2"
+            maxlength="250"
+            [(ngModel)]="form.descripcion"
+          ></textarea>
+        </div>
+      </div>
+
+      @if (errorLocal()) {
+      <div class="alert alert-warning mt-3" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        {{ errorLocal() }}
+      </div>
+      }
+    </div>
+
+    <div class="modal-foot">
+      <button type="button" class="btn-soft" (click)="cerrarFormulario()" [disabled]="guardando()">
+        Cancelar
+      </button>
+      <button type="button" class="btn-primary" (click)="solicitarPreview()" [disabled]="guardando()">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        Calculando...
+        } @else {
+        <i class="fa-solid fa-eye"></i>
+        Ver impacto y continuar
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+@if (modalPreview() && preview()) {
+<div class="modal-overlay" (click)="cerrarPreview()">
+  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">Confirmar cambio</span>
+        <h2>Impacto de la tarifa</h2>
+      </div>
+      <button type="button" class="icon-btn" (click)="cerrarPreview()" [disabled]="guardando()" aria-label="Cerrar">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <dl class="summary-grid">
+        <div>
+          <dt>Alumnos afectados</dt>
+          <dd>{{ preview()!.impacto.alumnos_afectados }}</dd>
+        </div>
+        <div>
+          <dt>Pensiones pendientes</dt>
+          <dd>{{ preview()!.impacto.pensiones_pendientes }}</dd>
+        </div>
+        <div>
+          <dt>Pre-tickets pendientes</dt>
+          <dd>{{ preview()!.impacto.pretickets_pendientes }}</dd>
+        </div>
+        <div>
+          <dt>Pagos realizados</dt>
+          <dd>{{ preview()!.impacto.pagos_realizados }}</dd>
+        </div>
+      </dl>
+
+      <div class="preview-line">
+        <span>Propuesta</span>
+        <strong>{{ preview()!.propuesta.nombre }} · S/ {{ preview()!.propuesta.monto_base.toFixed(2) }}</strong>
+      </div>
+
+      @for (advertencia of preview()!.advertencias; track advertencia.codigo) {
+      <div class="alert alert-warning" role="status">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        {{ advertencia.mensaje }}
+      </div>
+      }
+
+      <label class="form-label" for="motivo">
+        Motivo del cambio <span class="req">*</span>
+      </label>
+      <textarea
+        id="motivo"
+        name="motivo"
+        class="form-control"
+        rows="3"
+        maxlength="500"
+        [ngModel]="motivo()"
+        (ngModelChange)="motivo.set($event)"
+        placeholder="Explique por qué cambia la tarifa (mínimo 10 caracteres)"
+      ></textarea>
+      <div class="counter">{{ motivo().trim().length }}/500 · mínimo 10</div>
+
+      @if (errorModal()) {
+      <div class="alert alert-danger" role="alert">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorModal() }}
+      </div>
+      }
+    </div>
+
+    <div class="modal-foot">
+      <button type="button" class="btn-soft" (click)="cerrarPreview()" [disabled]="guardando()">
+        Volver
+      </button>
+      <button type="button" class="btn-primary" (click)="confirmarPreview()" [disabled]="guardando()">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        Guardando...
+        } @else {
+        <i class="fa-solid fa-check"></i>
+        Confirmar y guardar
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+@if (modalDesactivar() && tarifaDesactivar()) {
+<div class="modal-overlay" (click)="cerrarDesactivar()">
+  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">Desactivar tarifa</span>
+        <h2>{{ tarifaDesactivar()!.nombre }}</h2>
+      </div>
+      <button type="button" class="icon-btn" (click)="cerrarDesactivar()" [disabled]="guardando()" aria-label="Cerrar">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-intro">
+        La tarifa dejará de usarse para nuevas generaciones. Los pagos y cargos existentes
+        se conservan.
+      </p>
+      <label class="form-label" for="motivoDesactivar">Motivo <span class="req">*</span></label>
+      <textarea
+        id="motivoDesactivar"
+        name="motivoDesactivar"
+        class="form-control"
+        rows="3"
+        maxlength="500"
+        [ngModel]="motivoDesactivar()"
+        (ngModelChange)="motivoDesactivar.set($event)"
+        placeholder="Mínimo 10 caracteres"
+      ></textarea>
+      <div class="counter">{{ motivoDesactivar().trim().length }}/500 · mínimo 10</div>
+      @if (errorModal()) {
+      <div class="alert alert-danger" role="alert">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorModal() }}
+      </div>
+      }
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn-soft" (click)="cerrarDesactivar()" [disabled]="guardando()">
+        Cancelar
+      </button>
+      <button type="button" class="btn-danger" (click)="confirmarDesactivar()" [disabled]="guardando()">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        Desactivando...
+        } @else {
+        <i class="fa-solid fa-ban"></i>
+        Desactivar tarifa
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}

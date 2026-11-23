@@ -19,6 +19,7 @@ export class DocenteHorarioComponent implements OnInit {
 
   cargando = signal(true);
   error = signal<string | null>(null);
+  dias = signal<string[]>(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']);
   periodos = signal<PeriodoClase[]>([]);
   bloques = signal<HorarioBloque[]>([]);
   anio = signal<number | null>(null);
@@ -38,6 +39,7 @@ export class DocenteHorarioComponent implements OnInit {
         this.anio.set(data?.anio || null);
         this.docente.set(data?.docente || '');
         this.publicado.set(Boolean(data?.publicado));
+        this.dias.set(data?.dias_clase || this.dias());
         this.periodos.set(data?.periodos || []);
         this.bloques.set(data?.bloques || []);
         this.cargando.set(false);

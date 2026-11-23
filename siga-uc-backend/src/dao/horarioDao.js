@@ -103,6 +103,7 @@ const getCarga = async (idCarga, client = null) => {
        cc.id_personal,
        cc.anio_lectivo,
        cc.horas_asignadas,
+       cc.activo,
        g.nombre_grado,
        g.seccion,
        g.nivel,
@@ -389,7 +390,8 @@ const faltantesPublicacion = async (
      INNER JOIN usuarios u ON u.id_usuario = per.id_usuario
      LEFT JOIN horarios h ON h.id_carga = cc.id_carga
      WHERE cc.anio_lectivo = $1
-       AND ($2::int IS NULL OR cc.id_grado = $2)
+       AND cc.activo = TRUE
+        AND ($2::int IS NULL OR cc.id_grado = $2)
      GROUP BY
        cc.id_carga, cc.id_grado, g.id_grado, g.nombre_grado, g.seccion,
        cc.id_curso, c.nombre_curso, cc.id_personal,
@@ -475,7 +477,8 @@ const listarCargasGeneracion = async (
      INNER JOIN personal per ON per.id_personal = cc.id_personal
      INNER JOIN usuarios u ON u.id_usuario = per.id_usuario
      WHERE cc.anio_lectivo = $1
-       AND ($2::int IS NULL OR cc.id_grado = $2)
+       AND cc.activo = TRUE
+        AND ($2::int IS NULL OR cc.id_grado = $2)
      ORDER BY cc.id_personal, cc.id_grado, c.nombre_curso`,
     [anio, idGrado, horasDefault],
   );

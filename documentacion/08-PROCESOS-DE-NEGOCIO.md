@@ -637,13 +637,23 @@ En la UI de Secretaría, el detalle del alumno muestra:
 sin pensiones → aviso + **Generar pensiones**; todas pagadas → **Al día**; con
 pendientes → el flujo de cobro actual.
 
-### P13.4 Becas
+### P13.4 Becas (H78)
 
-1. `POST /api/tesoreria/becas` (solo ADMIN).
-2. Valida alumno, tipo, porcentaje y fecha inicio.
-3. Inserta beca activa.
-4. Se aplica en la próxima generación de pensiones.
-5. No recalcula pensiones ya generadas.
+1. ADMIN crea o reutiliza un tipo en `/api/configuracion/becas/tipos` (alcance, modalidad,
+   valor, tope, combinación, grupo, prioridad, evidencia y aprobación).
+2. ADMIN registra la asignación en `/api/configuracion/becas`; puede quedar `SOLICITADA` o
+   aprobarse en el mismo acto. Aprobar exige motivo (10–500) y evidencia si el tipo la pide.
+3. Al aprobar, `becaCalculator` calcula las becas vigentes por fecha y alcance, ordenadas por
+   prioridad, aplicando tope, exclusividad y combinación.
+4. Solo se recalculan cargos `PENDIENTE`/`EXONERADO`; los `PAGADO`/`ANULADO` no cambian.
+5. Una beca del 100% deja pensión o pre-ticket en `EXONERADO` con monto 0. La matrícula
+   exonerada marca al alumno como `Matriculado`.
+6. Cada aplicación queda en `aplicaciones_beca`; la generación de pensiones y la promoción
+   aplican las becas nuevas.
+7. Al anular, se eliminan las aplicaciones y los cargos pendientes vuelven a `PENDIENTE` con
+   su monto base; si la matrícula deja de estar exenta, el alumno vuelve a `PendientePago`.
+8. `POST /api/tesoreria/becas` se conserva como adaptador legacy del mismo servicio; no crea
+   becas sin tipo.
 
 ---
 

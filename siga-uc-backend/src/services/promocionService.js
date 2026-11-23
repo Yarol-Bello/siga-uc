@@ -11,6 +11,7 @@ const crypto = require("crypto");
 const promocionDao = require("../dao/promocionDao");
 const anioLectivoDao = require("../dao/anioLectivoDao");
 const politicaPromocionService = require("./politicaPromocionService");
+const becaCalculator = require("./becaCalculator");
 const { getClient } = require("../config/database");
 
 const RESULTADOS = new Set([
@@ -293,10 +294,23 @@ const calcularPreview = async (
 
   const gradosOrigen = await promocionDao.listarGrados(anioO, client);
   const gradosDestino = await promocionDao.listarGrados(anioD, client);
-  const conceptoMatricula = await promocionDao.obtenerConceptoMatricula(
-    anioD,
-    client,
-  );
+
+  const conceptosMatriculaPorGrado = new Map();
+  for (const grado of gradosDestino) {
+    const concepto = await promocionDao.obtenerConceptoMatricula(
+      anioD,
+      grado.id_grado,
+      client,
+    );
+    if (concepto) {
+      conceptosMatriculaPorGrado.set(Number(grado.id_grado), {
+        id_concepto: Number(concepto.id_concepto),
+        monto: aNumero(concepto.monto_base),
+      });
+    }
+  }
+  const conceptoMatricula =
+    conceptosMatriculaPorGrado.values().next().value || null;
 
   if (gradosDestino.length === 0) {
     throw crearError(
@@ -437,11 +451,21 @@ const calcularPreview = async (
     if (!becasMap.has(idAlumno)) becasMap.set(idAlumno, []);
     becasMap.get(idAlumno).push({
       id_beca: Number(beca.id_beca),
+      id_tipo_beca: Number(beca.id_tipo_beca),
       tipo: beca.tipo,
       porcentaje_descuento: aNumero(beca.porcentaje_descuento),
       monto_descuento:
         beca.monto_descuento === null ? null : aNumero(beca.monto_descuento),
       fecha_fin: beca.fecha_fin,
+      alcance: beca.alcance,
+      modalidad: beca.modalidad,
+      valor: aNumero(beca.valor),
+      monto_maximo:
+        beca.monto_maximo === null ? null : aNumero(beca.monto_maximo),
+      motivo: beca.motivo,
+      evidencia: beca.evidencia,
+      grupo_exclusividad: beca.grupo_exclusividad,
+      prioridad: Number(beca.prioridad || 0),
     });
   }
 
@@ -884,6 +908,9 @@ const calcularPreview = async (
       motivo_retiro: alumno.motivo_retiro,
       colegio_destino: alumno.colegio_destino,
       id_grado_destino: idGradoDestinoFinal,
+      concepto_matricula: idGradoDestinoFinal
+        ? conceptosMatriculaPorGrado.get(Number(idGradoDestinoFinal)) || null
+        : null,
       resultado_sugerido: resultadoSugerido,
       resultado_final: resultadoFinal,
       es_override: esOverride,
@@ -944,11 +971,26 @@ const calcularPreview = async (
       mensaje: "No hay matrículas para los filtros seleccionados.",
     });
   }
-  if (!conceptoMatricula) {
+  if (conceptosMatriculaPorGrado.size === 0) {
     advertenciasGlobales.push({
       codigo: "SIN_CONCEPTO_MATRICULA",
       mensaje: `El año destino ${anioD} no tiene concepto MATRICULA; los promovidos quedarán Matriculado en lugar de PendientePago.`,
     });
+  } else {
+    const gradosSinConcepto = alumnosPreview
+      .filter(
+        (alumno) =>
+          RESULTADOS_CON_DESTINO.has(alumno.resultado_final) &&
+          alumno.id_grado_destino &&
+          !alumno.concepto_matricula,
+      )
+      .map((alumno) => `${alumno.nombre_grado} ${alumno.seccion}`);
+    if (gradosSinConcepto.length > 0) {
+      advertenciasGlobales.push({
+        codigo: "CONCEPTO_MATRICULA_PARCIAL",
+        mensaje: `Algunos grados destino no tienen tarifa MATRICULA vigente: ${[...new Set(gradosSinConcepto)].join(", ")}. Esos alumnos quedarán Matriculado sin pre-ticket.`,
+      });
+    }
   }
 
   const bloqueados = alumnosPreview.filter((alumno) => alumno.bloqueado).length;
@@ -991,12 +1033,13 @@ const calcularPreview = async (
           Number(grado.orden),
         ])
         .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
-      matricula: conceptoMatricula
-        ? {
-            id_concepto: Number(conceptoMatricula.id_concepto),
-            monto: aNumero(conceptoMatricula.monto_base).toFixed(2),
-          }
-        : null,
+      matriculas_por_grado: [...conceptosMatriculaPorGrado.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([idGrado, concepto]) => [
+          idGrado,
+          Number(concepto.id_concepto),
+          aNumero(concepto.monto).toFixed(2),
+        ]),
     },
     decisiones: normalizarDecisiones(decisiones),
     alumnos: alumnosPreview
@@ -1007,6 +1050,12 @@ const calcularPreview = async (
         apellidos: alumno.apellidos,
         id_grado_origen: alumno.id_grado_origen,
         id_grado_destino: alumno.id_grado_destino,
+        concepto_matricula: alumno.concepto_matricula
+          ? [
+              Number(alumno.concepto_matricula.id_concepto),
+              aNumero(alumno.concepto_matricula.monto).toFixed(2),
+            ]
+          : null,
         estado_matricula: alumno.estado_matricula,
         condicion: alumno.condicion,
         fecha_retiro: alumno.fecha_retiro,
@@ -1026,8 +1075,17 @@ const calcularPreview = async (
         deuda: alumno.deuda.monto,
         becas: alumno.becas.map((beca) => [
           beca.id_beca,
+          beca.id_tipo_beca,
           beca.tipo,
+          beca.alcance,
+          beca.modalidad,
+          beca.valor,
           beca.porcentaje_descuento,
+          beca.monto_descuento,
+          beca.monto_maximo,
+          beca.fecha_fin,
+          beca.grupo_exclusividad,
+          beca.prioridad,
         ]),
         bloqueos: alumno.bloqueos.map((bloqueo) => bloqueo.codigo).sort(),
       }))
@@ -1063,13 +1121,20 @@ const calcularPreview = async (
     copiar_becas: Boolean(copiarBecas),
     destino: {
       nombre: destinoAnio?.nombre || `Año ${anioD}`,
-      tiene_matricula: Boolean(conceptoMatricula),
+      tiene_matricula: conceptosMatriculaPorGrado.size > 0,
       concepto_matricula: conceptoMatricula
         ? {
             id_concepto: Number(conceptoMatricula.id_concepto),
-            monto: aNumero(conceptoMatricula.monto_base),
+            monto: aNumero(conceptoMatricula.monto),
           }
         : null,
+      matriculas_por_grado: [...conceptosMatriculaPorGrado.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([idGrado, concepto]) => ({
+          id_grado: idGrado,
+          id_concepto: Number(concepto.id_concepto),
+          monto: aNumero(concepto.monto),
+        })),
       grados: gradosDestino.map((grado) => ({
         id_grado: Number(grado.id_grado),
         nombre_grado: grado.nombre_grado,
@@ -1244,7 +1309,6 @@ const confirmar = async (data = {}, idUsuario = null) => {
       );
     }
 
-    const conceptoMatricula = preview.destino.concepto_matricula;
     const promociones = [];
     const conteos = {
       PROMOVIDO: 0,
@@ -1305,6 +1369,7 @@ const confirmar = async (data = {}, idUsuario = null) => {
 
       let idAlumnoDestino = null;
       let idGradoDestino = alumno.id_grado_destino;
+      const conceptoMatricula = alumno.concepto_matricula || null;
 
       if (
         RESULTADOS_CON_DESTINO.has(alumno.resultado_final) &&
@@ -1334,8 +1399,9 @@ const confirmar = async (data = {}, idUsuario = null) => {
 
         await promocionDao.insertarExpediente(idAlumnoDestino, client);
 
+        let preticketMatricula = null;
         if (conceptoMatricula) {
-          await promocionDao.insertarPreticket(
+          preticketMatricula = await promocionDao.insertarPreticket(
             {
               id_alumno: idAlumnoDestino,
               id_concepto: conceptoMatricula.id_concepto,
@@ -1352,10 +1418,19 @@ const confirmar = async (data = {}, idUsuario = null) => {
             const nueva = await promocionDao.copiarBeca(
               {
                 id_alumno: idAlumnoDestino,
+                id_tipo_beca: beca.id_tipo_beca,
                 tipo: beca.tipo,
                 porcentaje_descuento: beca.porcentaje_descuento,
                 monto_descuento: beca.monto_descuento,
                 fecha_fin: beca.fecha_fin,
+                alcance: beca.alcance,
+                modalidad: beca.modalidad,
+                valor: beca.valor,
+                monto_maximo: beca.monto_maximo,
+                motivo: beca.motivo,
+                evidencia: beca.evidencia,
+                grupo_exclusividad: beca.grupo_exclusividad,
+                prioridad: beca.prioridad,
               },
               client,
             );
@@ -1364,6 +1439,28 @@ const confirmar = async (data = {}, idUsuario = null) => {
         }
         metadata.becas_copiadas = becasCopiadas;
         conteos.becas_copiadas += becasCopiadas.length;
+
+        if (preticketMatricula && conceptoMatricula) {
+          const aplicacion = await becaCalculator.aplicarPreticket(client, {
+            idPreticket: preticketMatricula.id_preticket,
+            idAlumno: idAlumnoDestino,
+            base: conceptoMatricula.monto,
+            fecha: new Date().toISOString().slice(0, 10),
+            idUsuario,
+          });
+          if (aplicacion.exonerado) {
+            await client.query(
+              `UPDATE alumnos SET estado_matricula = 'Matriculado' WHERE id_alumno = $1`,
+              [idAlumnoDestino],
+            );
+          }
+          metadata.concepto_matricula = {
+            id_concepto: conceptoMatricula.id_concepto,
+            monto_base: conceptoMatricula.monto,
+            descuento: aplicacion.descuento,
+            monto_final: aplicacion.monto_final,
+          };
+        }
 
         const promocion = await promocionDao.crearPromocion(
           {

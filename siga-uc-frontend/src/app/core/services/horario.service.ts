@@ -40,6 +40,7 @@ export interface HorarioBloque {
 
 export interface ListadoHorarios {
   anio: number;
+  dias_clase: string[];
   periodos: PeriodoClase[];
   bloques: HorarioBloque[];
   resumen: {
@@ -51,6 +52,7 @@ export interface ListadoHorarios {
 
 export interface MiHorario {
   anio: number;
+  dias_clase: string[];
   alcance: 'DOCENTE' | 'ESTUDIANTE';
   id_personal?: number;
   docente?: string;

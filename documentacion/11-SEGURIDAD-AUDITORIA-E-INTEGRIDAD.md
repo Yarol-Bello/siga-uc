@@ -182,6 +182,8 @@ sequenceDiagram
 | SIAGIE interno | ✅ | `EXPORTAR` (`SIAGIE`) |
 | Horarios: crear/editar/eliminar | ✅ | `CREAR` / `MODIFICAR` / `ELIMINAR` (`Horarios`) |
 | Horarios: publicar/despublicar/generar | ✅ | `PUBLICAR` / `DESPUBLICAR` / `GENERAR` (`Horarios`) |
+| Configuración, tarifas, académico y jornada | ✅ | `CREAR` / `MODIFICAR` / `ELIMINAR` (`Configuración`) con `motivo` y antes/después |
+| Becas: tipo, asignación, aprobación, rechazo y anulación | ✅ | `CREAR` / `MODIFICAR` / `APROBAR` / `RECHAZADA` / `ANULADA` (`Configuración`) con `motivo` y evidencia |
 
 Los eventos de seguridad y dinero se insertan **después** del COMMIT del negocio. Un fallo de
 auditoría se registra en consola y nunca revierte la operación (`auditoriaService.registrar`

@@ -11,7 +11,7 @@
  * Conexión: usa DATABASE_URL si existe; si no, DB_HOST/DB_PORT/DB_USER/
  * DB_PASSWORD/DB_NAME. Las credenciales nunca se imprimen.
  *
- * Códigos de salida: 0 si las 24 invariantes pasan; 1 si hay algún FAIL.
+ * Códigos de salida: 0 si las 30 invariantes pasan; 1 si hay algún FAIL.
  */
 
 "use strict";
@@ -70,6 +70,8 @@ const TABLAS_ESPERADAS = [
   "alumnos_riesgo",
   "aperturas_caja",
   "apoderados",
+  "aplicaciones_beca",
+  "areas_academicas",
   "asistencia_alumnos",
   "asistencia_personal",
   "becas",
@@ -107,6 +109,7 @@ const TABLAS_ESPERADAS = [
   "recuperacion_password",
   "resumen_asistencia_curso",
   "roles",
+  "tipos_beca",
   "tutores_grado",
   "usuarios",
 ];
@@ -198,10 +201,10 @@ async function main() {
     return;
   }
 
-  // 1. Las 45 tablas base del esquema existen.
+  // 1. Las 48 tablas base del esquema existen.
   await verificarInvariante(
     1,
-    "Las 45 tablas esperadas existen",
+    "Las 48 tablas esperadas existen",
     `
       SELECT q.*, COUNT(*) OVER() AS _total
       FROM (
@@ -705,6 +708,203 @@ async function main() {
            OR c.horas_default_carga <= 0
       ) q
       ORDER BY q.anio
+      LIMIT 5
+    `,
+  );
+
+  // 25. H75: tarifas con monto, mes o vigencia inválidos.
+  await verificarInvariante(
+    25,
+    "Tarifas con monto, mes o vigencia inválidos",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT id_concepto, nombre, monto_base, tipo, mes,
+               vigente_desde, vigente_hasta
+        FROM conceptos_pago
+        WHERE monto_base <= 0
+           OR (tipo = 'PENSION' AND mes IS NULL)
+           OR (vigente_hasta IS NOT NULL AND vigente_hasta < vigente_desde)
+      ) q
+      ORDER BY q.id_concepto
+      LIMIT 5
+    `,
+  );
+
+  // 26. H75: pensión sin concepto de tarifa.
+  await verificarInvariante(
+    26,
+    "Pensión sin concepto de tarifa",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT p.id_pension, p.id_alumno, p.anio_lectivo, p.mes, p.estado
+        FROM pensiones p
+        WHERE p.id_concepto IS NULL
+      ) q
+      ORDER BY q.id_pension
+      LIMIT 5
+    `,
+  );
+
+  // 27. H75: tarifa abierta duplicada por alcance.
+  await verificarInvariante(
+    27,
+    "Tarifa abierta duplicada por alcance",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT anio_lectivo, tipo, mes, nivel, id_grado, COUNT(*)::int AS total
+        FROM conceptos_pago
+        WHERE activo = TRUE AND vigente_hasta IS NULL
+          AND tipo IN ('MATRICULA', 'PENSION')
+        GROUP BY anio_lectivo, tipo, mes, nivel, id_grado
+        HAVING COUNT(*) > 1
+      ) q
+      ORDER BY q.anio_lectivo, q.tipo
+      LIMIT 5
+    `,
+  );
+
+  // 28. H76: curso con área fuera del catálogo.
+  await verificarInvariante(
+    28,
+    "Curso con área fuera del catálogo",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT c.id_curso, c.nombre_curso, c.area_academica
+        FROM cursos c
+        WHERE NOT EXISTS (
+          SELECT 1 FROM areas_academicas a WHERE a.nombre = c.area_academica
+        )
+      ) q
+      ORDER BY q.id_curso
+      LIMIT 5
+    `,
+  );
+
+  // 29. H76: competencia con orden duplicado.
+  await verificarInvariante(
+    29,
+    "Competencia con orden duplicado por curso",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT id_curso, orden, COUNT(*)::int AS total
+        FROM competencias
+        GROUP BY id_curso, orden
+        HAVING COUNT(*) > 1
+      ) q
+      ORDER BY q.id_curso, q.orden
+      LIMIT 5
+    `,
+  );
+
+  // 30. H76: carga con horas inválidas.
+  await verificarInvariante(
+    30,
+    "Carga curricular con horas inválidas",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT id_carga, id_grado, id_curso, horas_asignadas
+        FROM carga_curricular
+        WHERE horas_asignadas IS NOT NULL AND horas_asignadas <= 0
+      ) q
+      ORDER BY q.id_carga
+      LIMIT 5
+    `,
+  );
+
+  // 31. H78: tipo de beca con reglas inválidas.
+  await verificarInvariante(
+    31,
+    "Tipos de beca con reglas inválidas",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT id_tipo_beca, codigo, alcance, modalidad,
+               valor_default, tope_monto
+        FROM tipos_beca
+        WHERE alcance NOT IN ('MATRICULA', 'PENSION', 'AMBOS')
+           OR modalidad NOT IN ('PORCENTAJE', 'MONTO_FIJO')
+           OR valor_default < 0
+           OR (modalidad = 'PORCENTAJE' AND valor_default > 100)
+           OR (tope_monto IS NOT NULL AND tope_monto < 0)
+      ) q
+      ORDER BY q.id_tipo_beca
+      LIMIT 5
+    `,
+  );
+
+  // 32. H78: beca aprobada con valor o vigencia inválidos.
+  await verificarInvariante(
+    32,
+    "Becas con valor o vigencia inválidos",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT id_beca, id_alumno, id_tipo_beca, estado, valor,
+               modalidad, fecha_inicio, fecha_fin
+        FROM becas
+        WHERE id_tipo_beca IS NULL
+           OR alcance NOT IN ('MATRICULA', 'PENSION', 'AMBOS')
+           OR modalidad NOT IN ('PORCENTAJE', 'MONTO_FIJO')
+           OR valor <= 0
+           OR (modalidad = 'PORCENTAJE' AND valor > 100)
+           OR (fecha_fin IS NOT NULL AND fecha_fin < fecha_inicio)
+           OR estado NOT IN ('SOLICITADA', 'APROBADA', 'RECHAZADA', 'ANULADA')
+      ) q
+      ORDER BY q.id_beca
+      LIMIT 5
+    `,
+  );
+
+  // 33. H78: el descuento debe coincidir con las aplicaciones registradas.
+  await verificarInvariante(
+    33,
+    "Descuentos sin aplicaciones de beca consistentes",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT 'PENSION' AS origen, p.id_pension AS id,
+               p.descuento, COALESCE(SUM(ab.monto_aplicado), 0) AS aplicado
+        FROM pensiones p
+        LEFT JOIN aplicaciones_beca ab ON ab.id_pension = p.id_pension
+        WHERE p.descuento > 0
+        GROUP BY p.id_pension, p.descuento
+        HAVING ABS(p.descuento - COALESCE(SUM(ab.monto_aplicado), 0)) > 0.01
+        UNION ALL
+        SELECT 'PRETICKET' AS origen, pt.id_preticket AS id,
+               pt.descuento, COALESCE(SUM(ab.monto_aplicado), 0) AS aplicado
+        FROM pre_tickets pt
+        LEFT JOIN aplicaciones_beca ab ON ab.id_preticket = pt.id_preticket
+        WHERE pt.descuento > 0
+        GROUP BY pt.id_preticket, pt.descuento
+        HAVING ABS(pt.descuento - COALESCE(SUM(ab.monto_aplicado), 0)) > 0.01
+      ) q
+      ORDER BY q.origen, q.id
+      LIMIT 5
+    `,
+  );
+
+  // 34. H78: EXONERADO debe tener monto cero.
+  await verificarInvariante(
+    34,
+    "Cargos EXONERADO con monto distinto de cero",
+    `
+      SELECT q.*, COUNT(*) OVER() AS _total
+      FROM (
+        SELECT 'PENSION' AS origen, id_pension AS id, monto_final AS monto
+        FROM pensiones
+        WHERE estado = 'EXONERADO' AND monto_final <> 0
+        UNION ALL
+        SELECT 'PRETICKET' AS origen, id_preticket AS id, monto
+        FROM pre_tickets
+        WHERE estado = 'EXONERADO' AND monto <> 0
+      ) q
+      ORDER BY q.origen, q.id
       LIMIT 5
     `,
   );

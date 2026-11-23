@@ -16,15 +16,15 @@ El backup `siga_uc_backup.sql` no se versiona.
 | Multi-año | `anios_lectivos` | 1 |
 | Promociones | `promociones`, `politicas_promocion` | 2 |
 | Configuración | `configuracion_institucional`, `configuracion_anio` | 2 |
-| Curricular | `grados`, `cursos`, `competencias`, `carga_curricular`, `tutores_grado`, `horarios`, `periodos_clase`, `escala_calificacion` | 8 |
+| Curricular | `grados`, `cursos`, `competencias`, `carga_curricular`, `tutores_grado`, `horarios`, `periodos_clase`, `escala_calificacion`, `areas_academicas` | 9 |
 | Alumnos | `apoderados`, `alumnos`, `expediente_alumno` | 3 |
 | Asistencia | `asistencia_alumnos`, `resumen_asistencia_curso` | 2 |
 | Calificaciones | `calificaciones`, `notas_finales_area`, `conclusiones_descriptivas`, `actas_bimestrales`, `libretas` | 5 |
-| Tesorería | `conceptos_pago`, `becas`, `pensiones`, `pre_tickets`, `pagos`, `boletas_electronicas` | 6 |
+| Tesorería | `conceptos_pago`, `tipos_beca`, `becas`, `aplicaciones_beca`, `pensiones`, `pre_tickets`, `pagos`, `boletas_electronicas` | 8 |
 | Caja | `cajas`, `aperturas_caja`, `movimientos_caja`, `cierres_caja` | 4 |
 | SIAGIE | `exportaciones_siagie`, `estado_carga_docentes` | 2 |
 | Reportes | `cuadro_merito`, `alumnos_riesgo` | 2 |
-| **Total** | | **45** |
+| **Total** | | **48** |
 
 > **Tablas de solo estructura / históricas:** `resumen_asistencia_curso`, `libretas`,
 > `cuadro_merito`, `alumnos_riesgo` y `estado_carga_docentes` existen en el esquema, pero el
@@ -316,25 +316,41 @@ numeric(5,2) · UNIQUE (`id_alumno`, `bimestre`, `anio_lectivo`).
 
 #### `conceptos_pago`
 `id_concepto` PK · `nombre` varchar(100) · `monto_base` numeric(10,2) · `tipo` CHECK
-`MATRICULA/PENSION/OTROS` · `mes` integer CHECK 1–12 (nullable) · `anio_lectivo`.
+`MATRICULA/PENSION/OTROS` · `mes` integer CHECK 1–12 (nullable) · `anio_lectivo` · `nivel`,
+`id_grado`, `activo`, `orden`, `vigente_desde`, `vigente_hasta` (H75). La función
+`resolver_concepto_pago` aplica grado > nivel > global y la vigencia.
+
+#### `tipos_beca` (H78)
+`id_tipo_beca` PK · `codigo` UNIQUE · `nombre` · `descripcion` · `alcance` CHECK
+`MATRICULA/PENSION/AMBOS` · `modalidad` CHECK `PORCENTAJE/MONTO_FIJO` · `valor_default` ·
+`tope_monto` · `permite_combinacion` · `grupo_exclusividad` · `prioridad` ·
+`requiere_evidencia` · `requiere_aprobacion` · `activo` · `orden` · auditoría.
 
 #### `becas`
-`id_beca` PK · `id_alumno` FK → `alumnos` ON DELETE CASCADE · `tipo` CHECK
-`SOCIOECONOMICA/HERMANOS/EXCELENCIA` · `porcentaje_descuento` numeric(5,2) CHECK 0–100 ·
-`monto_descuento` numeric(10,2) · `fecha_inicio` date · `fecha_fin` date · `activo` boolean
-default `true`.
+`id_beca` PK · `id_alumno` FK → `alumnos` ON DELETE CASCADE · `id_tipo_beca` FK →
+`tipos_beca` ON DELETE RESTRICT · `tipo` (código legacy) · `porcentaje_descuento` CHECK 0–100 ·
+`monto_descuento` · `fecha_inicio` · `fecha_fin` · `activo` · `alcance`, `modalidad`, `valor`,
+`monto_maximo`, `estado` (`SOLICITADA/APROBADA/RECHAZADA/ANULADA`), `motivo`, `evidencia`
+jsonb, `aprobado_por`, `fecha_aprobacion`, `grupo_exclusividad`, `prioridad` (H78).
+
+#### `aplicaciones_beca` (H78)
+`id_aplicacion` PK · `id_beca` FK → `becas` ON DELETE RESTRICT · `id_pension` o
+`id_preticket` (exactamente uno) · `monto_aplicado` · `porcentaje_aplicado` · `creado_por` ·
+`creado_en` · UNIQUE por beca/pensión y beca/pre-ticket.
 
 #### `pensiones`
 `id_pension` PK · `id_alumno` FK → `alumnos` ON DELETE CASCADE · `anio_lectivo` · `mes`
 CHECK 1–12 · `monto_base` · `descuento` default 0 · `monto_final` · `estado` CHECK
-`PAGADO/PENDIENTE/ANULADO` default `PENDIENTE` · `id_beca` FK → `becas` ON DELETE SET NULL · UNIQUE
-(`id_alumno`, `anio_lectivo`, `mes`). Las pensiones `ANULADO` no se cobran y pueden
-volver a `PENDIENTE` al regenerar el cronograma (H45).
+`PAGADO/PENDIENTE/ANULADO/EXONERADO` default `PENDIENTE` · `id_beca` FK → `becas` ON DELETE
+SET NULL · `id_concepto` (H75) · UNIQUE (`id_alumno`, `anio_lectivo`, `mes`). Las pensiones
+`ANULADO` no se cobran y pueden volver a `PENDIENTE` al regenerar el cronograma (H45).
+`EXONERADO` representa un cargo en 0 por beca, sin pago que lo respalde (H78).
 
 #### `pre_tickets`
 `id_preticket` PK · `id_alumno` FK → `alumnos` ON DELETE CASCADE · `id_concepto` FK →
-`conceptos_pago` ON DELETE CASCADE · `monto` · `estado` CHECK `PENDIENTE/PAGADO/ANULADO` ·
-`fecha_emision` · `fecha_pago` · `id_usuario_emite` FK → `usuarios` ON DELETE SET NULL.
+`conceptos_pago` ON DELETE CASCADE · `monto` · `descuento` (H78) · `estado` CHECK
+`PENDIENTE/PAGADO/ANULADO/EXONERADO` · `fecha_emision` · `fecha_pago` · `id_usuario_emite`
+FK → `usuarios` ON DELETE SET NULL.
 
 #### `pagos`
 `id_pago` PK · `id_alumno` FK → `alumnos` ON DELETE CASCADE · `id_preticket` FK → `pre_tickets`
@@ -444,7 +460,7 @@ Lunes–Viernes · `hora_inicio_jornada`, `hora_fin_jornada` · `duracion_min_bl
 
 > H74 crea una fila por año existente y toma la jornada de `periodos_clase` cuando H47 está
 > aplicada. El trigger `trg_anio_configuracion` crea la fila al insertar un año nuevo. La
-> edición de jornada y límites se habilita en la Fase 4.
+> jornada, los días y los límites se editan desde `/admin/configuracion/horarios` (H77).
 
 ---
 
@@ -473,13 +489,14 @@ Lunes–Viernes · `hora_inicio_jornada`, `hora_fin_jornada` · `duracion_min_bl
 | `cajas` | `estado` | ABIERTA, CERRADA |
 | `movimientos_caja` | `tipo` | INGRESO, EGRESO, APERTURA |
 | `cierres_caja` | `estado` | CUADRADO, SOBRANTE, FALTANTE |
-| `horarios` | `dia_semana` | Lunes … Viernes |
+| `horarios` | `dia_semana` | Lunes … Domingo (H77) |
 | `periodos_clase` | `tipo` | CLASE, RECREO, ALMUERZO |
 | `periodos_clase` | `hora_fin` | > `hora_inicio` |
 | `horarios` | `estado` | BORRADOR, PUBLICADO |
 | `actas_bimestrales` | `estado` | ABIERTO, CERRADO |
-| `becas` | `tipo` | SOCIOECONOMICA, HERMANOS, EXCELENCIA |
-| `becas` | `porcentaje_descuento` | 0–100 |
+| `becas` | `estado` | SOLICITADA, APROBADA, RECHAZADA, ANULADA |
+| `becas` | `alcance` / `modalidad` | MATRICULA/PENSION/AMBOS · PORCENTAJE/MONTO_FIJO |
+| `becas` | `porcentaje_descuento` / `valor` | 0–100 |
 | `credenciales_qr` | `tipo` | ESTUDIANTE, DOCENTE, ADMIN, SECRETARIA |
 
 ---
@@ -563,8 +580,8 @@ duplicación de lógica. El movimiento de caja solo lo crea el trigger.
 Trigger **AFTER INSERT** en `anios_lectivos`. Inserta una fila default en
 `configuracion_anio` para el año nuevo (`dias_clase` Lunes–Viernes, duración 45, máximos 2)
 con `ON CONFLICT DO NOTHING`. Así el rollover y cualquier alta de año no quedan sin
-configuración. La jornada (`hora_inicio_jornada`/`hora_fin_jornada`) se completa en la
-Fase 4.
+configuración. H77 completa la jornada (`07:30`/`14:30`) y amplía los días válidos a
+lunes–domingo.
 
 ---
 

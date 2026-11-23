@@ -53,6 +53,7 @@ export class AdminHorariosComponent implements OnInit {
   anioSeleccionado = signal(this.anioActivo());
   gradoSeleccionado = signal<number | null>(null);
   grados = signal<GradoHorario[]>([]);
+  dias = signal<string[]>(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']);
   periodos = signal<PeriodoClase[]>([]);
   bloques = signal<HorarioBloque[]>([]);
   cargas = signal<CargaHorario[]>([]);
@@ -89,7 +90,7 @@ export class AdminHorariosComponent implements OnInit {
   private formBloqueVacio(): FormBloque {
     return {
       id_carga: null,
-      dia_semana: 'Lunes',
+      dia_semana: this.dias()[0] || 'Lunes',
       id_periodo: null,
       aula: '',
     };
@@ -172,6 +173,15 @@ export class AdminHorariosComponent implements OnInit {
       ),
     }).subscribe({
       next: ({ horario, cargas }) => {
+        this.dias.set(
+          horario?.data?.dias_clase || [
+            'Lunes',
+            'Martes',
+            'Miércoles',
+            'Jueves',
+            'Viernes',
+          ],
+        );
         this.periodos.set(horario?.data?.periodos || []);
         this.bloques.set(horario?.data?.bloques || []);
         this.resumen.set(
@@ -228,7 +238,7 @@ export class AdminHorariosComponent implements OnInit {
     this.bloqueEditando.set(null);
     this.formBloque = {
       id_carga: null,
-      dia_semana: 'Lunes',
+      dia_semana: this.dias()[0] || 'Lunes',
       id_periodo: periodo.id_periodo,
       aula: '',
     };

@@ -4,7 +4,7 @@
       <thead>
         <tr>
           <th class="col-hora">Hora</th>
-          @for (dia of DIAS; track dia) {
+          @for (dia of dias(); track dia) {
           <th>{{ dia }}</th>
           }
         </tr>
@@ -17,7 +17,7 @@
             <strong>{{ periodo.nombre }}</strong>
             <small>{{ hora(periodo) }}</small>
           </td>
-          <td colspan="5" class="especial-cell">
+          <td [attr.colspan]="dias().length" class="especial-cell">
             <span class="badge-especial" [class.almuerzo]="periodo.tipo === 'ALMUERZO'">
               <i
                 class="fa-solid"
@@ -34,7 +34,7 @@
             <strong>{{ periodo.nombre }}</strong>
             <small>{{ hora(periodo) }}</small>
           </td>
-          @for (dia of DIAS; track dia) {
+          @for (dia of dias(); track dia) {
           <td
             class="celda-clase"
             [class.celda-editable]="puedeEditar()"

@@ -169,6 +169,30 @@ const getTutor = async (req, res) => {
   }
 };
 
+const cambiarActivo = async (req, res) => {
+  try {
+    const data = await cargaCurricularService.cambiarActivo(
+      req.params.id,
+      req.body || {},
+      req.usuario,
+      req.ip,
+    );
+    return response.success(
+      res,
+      200,
+      data.activo ? "Carga activada" : "Carga desactivada",
+      data,
+    );
+  } catch (error) {
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
+  }
+};
+
 module.exports = {
   listar,
   obtener,
@@ -179,4 +203,5 @@ module.exports = {
   eliminar,
   asignarTutor,
   getTutor,
+  cambiarActivo,
 };

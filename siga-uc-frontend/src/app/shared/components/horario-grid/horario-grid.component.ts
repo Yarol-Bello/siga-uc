@@ -19,7 +19,7 @@ export interface CeldaHorario {
   styleUrl: './horario-grid.component.scss',
 })
 export class HorarioGridComponent {
-  readonly DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+  dias = input<string[]>(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']);
 
   periodos = input<PeriodoClase[]>([]);
   bloques = input<HorarioBloque[]>([]);

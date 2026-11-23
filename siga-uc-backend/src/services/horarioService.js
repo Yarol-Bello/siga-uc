@@ -8,12 +8,8 @@ const { getAnioLectivo } = require("../config/academico");
 const horarioDao = require("../dao/horarioDao");
 const periodoClaseDao = require("../dao/periodoClaseDao");
 const { generarHorario } = require("./horarioGenerator");
-const {
-  DIAS_SEMANA,
-  ESTADOS_HORARIO,
-  HORAS_DEFAULT_CARGA,
-  MAX_BLOQUES_CURSO_DIA,
-} = require("../config/horarios");
+const configuracionAnioService = require("./configuracionAnioService");
+const { ESTADOS_HORARIO, MAX_BLOQUES_CURSO_DIA } = require("../config/horarios");
 
 const crearError = (mensaje, statusCode = 400, details = null) => {
   const error = new Error(mensaje);
@@ -128,9 +124,11 @@ const listar = async (filtros = {}) => {
     estado,
   });
   const periodos = await periodoClaseDao.listarPorAnio(anio);
+  const configuracion = await configuracionAnioService.obtenerEfectiva(anio);
 
   return {
     anio,
+    dias_clase: configuracion.dias_clase,
     periodos,
     bloques,
     resumen: {
@@ -173,10 +171,12 @@ const miHorario = async (usuario) => {
       estado: "PUBLICADO",
     });
     const periodos = await periodoClaseDao.listarPorAnio(anio);
+    const configuracion = await configuracionAnioService.obtenerEfectiva(anio);
 
     return {
       anio,
       alcance: "DOCENTE",
+      dias_clase: configuracion.dias_clase,
       id_personal: usuario.id_personal,
       docente: usuario.nombre_completo || null,
       publicado: bloques.length > 0,
@@ -207,10 +207,12 @@ const miHorario = async (usuario) => {
       estado: "PUBLICADO",
     });
     const periodos = await periodoClaseDao.listarPorAnio(anio);
+    const configuracion = await configuracionAnioService.obtenerEfectiva(anio);
 
     return {
       anio,
       alcance: "ESTUDIANTE",
+      dias_clase: configuracion.dias_clase,
       id_alumno: alumno.id_alumno,
       id_grado: alumno.id_grado,
       grado: alumno.nombre_grado,
@@ -238,6 +240,13 @@ const prepararBloque = async (
   if (!carga) {
     throw crearError("Carga curricular no encontrada.", 404);
   }
+  if (carga.activo === false) {
+    throw crearError(
+      "La carga curricular está inactiva; actívela antes de programar horarios.",
+      400,
+      { codigo: "CARGA_INACTIVA" },
+    );
+  }
 
   const anio = Number(carga.anio_lectivo);
   if (anio !== getAnioLectivo()) {
@@ -247,10 +256,11 @@ const prepararBloque = async (
     throw crearError("El grado de la carga no corresponde al año lectivo.");
   }
 
+  const configuracion = await configuracionAnioService.obtenerEfectiva(anio);
   const diaSemana = String(data.dia_semana || "").trim();
-  if (!DIAS_SEMANA.includes(diaSemana)) {
+  if (!configuracion.dias_clase.includes(diaSemana)) {
     throw crearError(
-      `El día debe ser uno de: ${DIAS_SEMANA.join(", ")}.`,
+      `El día debe ser uno de: ${configuracion.dias_clase.join(", ")}.`,
     );
   }
 
@@ -281,6 +291,7 @@ const prepararBloque = async (
     id_curso: carga.id_curso,
     id_personal: carga.id_personal,
     anio_lectivo: anio,
+    max_bloques_curso_dia: configuracion.max_bloques_curso_dia,
     dia_semana: diaSemana,
     id_periodo: periodo.id_periodo,
     periodo_nombre: periodo.nombre,
@@ -347,14 +358,17 @@ const validarConflictos = async (client, bloque, excluirId = null) => {
     diaSemana: bloque.dia_semana,
     excluirId,
   });
-  if (bloquesCursoDia >= MAX_BLOQUES_CURSO_DIA) {
+  const maximo = Number(
+    bloque.max_bloques_curso_dia || MAX_BLOQUES_CURSO_DIA,
+  );
+  if (bloquesCursoDia >= maximo) {
     throw crearError(
-      `El curso ${bloque.nombre_curso} ya tiene ${MAX_BLOQUES_CURSO_DIA} bloques el ${bloque.dia_semana}.`,
+      `El curso ${bloque.nombre_curso} ya tiene ${maximo} bloques el ${bloque.dia_semana}.`,
       409,
       {
         codigo: "MAX_CURSO_DIA",
         tipo: "MAX_CURSO_DIA",
-        maximo: MAX_BLOQUES_CURSO_DIA,
+        maximo,
         programados: bloquesCursoDia,
       },
     );
@@ -522,6 +536,7 @@ const publicar = async (data, usuario) => {
   }
   const idGrado = parseFiltro(data.id_grado, "id_grado");
   const permitirParcial = normalizarBooleano(data.permitir_parcial);
+  const configuracion = await configuracionAnioService.obtenerEfectiva(anio);
 
   return await conTransaccion(async (client) => {
     await bloquearAnio(client, anio);
@@ -534,7 +549,7 @@ const publicar = async (data, usuario) => {
     const faltantes = await horarioDao.faltantesPublicacion(client, {
       anio,
       idGrado,
-      horasDefault: HORAS_DEFAULT_CARGA,
+      horasDefault: configuracion.horas_default_carga,
     });
 
     if (faltantes.length > 0 && !permitirParcial) {
@@ -606,6 +621,7 @@ const generar = async (data, usuario) => {
     }
   }
   const semilla = seed || Math.floor(Math.random() * 2147483646) + 1;
+  const configuracion = await configuracionAnioService.obtenerEfectiva(anio);
 
   return await conTransaccion(async (client) => {
     await bloquearAnio(client, anio);
@@ -613,7 +629,7 @@ const generar = async (data, usuario) => {
     const cargas = await horarioDao.listarCargasGeneracion(client, {
       anio,
       idGrado,
-      horasDefault: HORAS_DEFAULT_CARGA,
+      horasDefault: configuracion.horas_default_carga,
     });
 
     if (cargas.length === 0) {
@@ -655,7 +671,7 @@ const generar = async (data, usuario) => {
       idsGrados,
     });
 
-    const capacidad = periodos.length * DIAS_SEMANA.length;
+    const capacidad = periodos.length * configuracion.dias_clase.length;
     const externosPorDocente = new Map();
     for (const bloque of bloquesExternos) {
       externosPorDocente.set(
@@ -767,9 +783,9 @@ const generar = async (data, usuario) => {
     const resultado = generarHorario({
       cargas,
       periodos,
-      dias: DIAS_SEMANA,
+      dias: configuracion.dias_clase,
       bloquesExternos,
-      maxPorCursoDia: MAX_BLOQUES_CURSO_DIA,
+      maxPorCursoDia: configuracion.max_bloques_curso_dia,
       seed: semilla,
     });
 

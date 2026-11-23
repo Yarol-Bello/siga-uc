@@ -130,7 +130,9 @@ Leyenda: ✅ permitido · ❌ denegado · 👁 solo lectura · 🔒 solo sus pro
 | Nota final: calcular | ✅ | ❌ | ✅ | ❌ |
 | Tesorería: consultar | ✅ | ✅ | ✅ | ✅ |
 | Tesorería: pre-ticket / pago / generar pensiones | ✅ | ✅ | ❌ | ❌ |
-| Becas: aplicar | ✅ | ❌ | ❌ | ❌ |
+| Becas: aplicar / aprobar / anular | ✅ | ❌ | ❌ | ❌ |
+| Configuración: leer tarifas, académico, jornada y becas | ✅ | ❌ | ✅ | ❌ |
+| Configuración: escribir tarifas, académico, jornada y becas | ✅ | ❌ | ❌ | ❌ |
 | Caja: consultar | ✅ | ✅ | ✅ | ✅ |
 | Caja: aperturar / egreso / cerrar | ✅ | ✅ | ❌ | ❌ |
 | Reportes: cuadro de mérito / riesgo / asistencia | ✅ | ❌ | ✅ | ❌ |

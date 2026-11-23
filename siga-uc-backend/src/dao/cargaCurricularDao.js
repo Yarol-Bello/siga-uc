@@ -42,6 +42,8 @@ const listar = async (filtros = {}) => {
       cc.id_carga,
       cc.anio_lectivo,
       cc.horas_asignadas,
+      cc.activo,
+      cc.observacion,
       g.id_grado,
       g.nombre_grado,
       g.seccion,
@@ -107,6 +109,8 @@ const listarPorGrado = async (id_grado) => {
     SELECT 
       cc.id_carga,
       cc.horas_asignadas,
+      cc.activo,
+      cc.observacion,
       c.id_curso,
       c.nombre_curso,
       c.area_academica,
@@ -292,6 +296,39 @@ const asignarTutor = async (data) => {
   }
 };
 
+const contarHistorialAcademico = async (
+  { idCurso, idGrado, anio },
+  client = null,
+) => {
+  const result = await ejecutar(
+    client,
+    `SELECT
+       (SELECT COUNT(*)::int
+        FROM calificaciones c
+        INNER JOIN alumnos a ON a.id_alumno = c.id_alumno
+        WHERE c.id_curso = $1 AND a.id_grado = $2 AND c.anio_lectivo = $3) AS calificaciones,
+       (SELECT COUNT(*)::int
+        FROM notas_finales_area nf
+        INNER JOIN alumnos a ON a.id_alumno = nf.id_alumno
+        WHERE nf.id_curso = $1 AND a.id_grado = $2 AND nf.anio_lectivo = $3) AS notas`,
+    [idCurso, idGrado, anio],
+  );
+  return result.rows[0] || { calificaciones: 0, notas: 0 };
+};
+
+const cambiarActivo = async (id, activo, idUsuario, client) => {
+  const result = await client.query(
+    `UPDATE carga_curricular SET
+       activo = $2,
+       actualizado_por = $3,
+       fecha_actualizacion = now()
+     WHERE id_carga = $1
+     RETURNING *`,
+    [id, activo, idUsuario || null],
+  );
+  return result.rows[0] || null;
+};
+
 module.exports = {
   listar,
   findById,
@@ -305,4 +342,6 @@ module.exports = {
   actualizar,
   eliminar,
   asignarTutor,
+  cambiarActivo,
+  contarHistorialAcademico,
 };

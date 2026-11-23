@@ -178,13 +178,25 @@ const listarBecas = async ({ anio, idsAlumnos = [] }, client = null) => {
     `SELECT
        b.id_beca,
        b.id_alumno,
+       b.id_tipo_beca,
        b.tipo,
        b.porcentaje_descuento,
        b.monto_descuento,
        b.fecha_inicio,
        b.fecha_fin,
-       b.activo
+       b.activo,
+       b.alcance,
+       b.modalidad,
+       b.valor,
+       b.monto_maximo,
+       b.estado,
+       b.motivo,
+       b.evidencia,
+       b.grupo_exclusividad,
+       b.prioridad,
+       t.codigo AS tipo_codigo
      FROM becas b
+     INNER JOIN tipos_beca t ON t.id_tipo_beca = b.id_tipo_beca
      INNER JOIN alumnos a ON a.id_alumno = b.id_alumno
      WHERE a.anio_lectivo = $1
        AND b.id_alumno = ANY($2::int[])
@@ -454,15 +466,16 @@ const insertarExpediente = async (idAlumno, client) => {
   return result.rows[0];
 };
 
-const obtenerConceptoMatricula = async (anio, client = null) => {
+const obtenerConceptoMatricula = async (
+  anio,
+  idGrado = null,
+  client = null,
+) => {
   const result = await ejecutar(
     client,
     `SELECT id_concepto, monto_base
-     FROM conceptos_pago
-     WHERE tipo = 'MATRICULA' AND anio_lectivo = $1
-     ORDER BY id_concepto
-     LIMIT 1`,
-    [anio],
+     FROM resolver_concepto_pago($1, 'MATRICULA', NULL, $2, CURRENT_DATE)`,
+    [anio, idGrado],
   );
   return result.rows[0] || null;
 };
@@ -481,16 +494,43 @@ const insertarPreticket = async (data, client) => {
 const copiarBeca = async (data, client) => {
   const result = await client.query(
     `INSERT INTO becas (
-       id_alumno, tipo, porcentaje_descuento, monto_descuento,
-       fecha_inicio, fecha_fin, activo
-     ) VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, true)
+       id_alumno, id_tipo_beca, tipo, porcentaje_descuento, monto_descuento,
+       fecha_inicio, fecha_fin, activo, alcance, modalidad, valor,
+       monto_maximo, estado, motivo, evidencia, fecha_aprobacion,
+       grupo_exclusividad, prioridad
+     ) VALUES (
+       $1,
+       COALESCE(
+         $2::int,
+         (SELECT id_tipo_beca FROM tipos_beca
+          WHERE upper(codigo) = upper($3) LIMIT 1)
+       ),
+       $3, $4, $5, CURRENT_DATE, $6, true,
+       COALESCE($7, 'PENSION'), COALESCE($8, 'PORCENTAJE'),
+       COALESCE(
+         NULLIF($9::numeric, 0),
+         NULLIF($5::numeric, 0),
+         NULLIF($4::numeric, 0),
+         0
+       ),
+       $10, 'APROBADA', $11, $12::jsonb, NOW(), $13, $14
+     )
      RETURNING *`,
     [
       data.id_alumno,
+      data.id_tipo_beca,
       data.tipo,
       data.porcentaje_descuento,
       data.monto_descuento,
       data.fecha_fin || null,
+      data.alcance,
+      data.modalidad,
+      data.valor,
+      data.monto_maximo,
+      data.motivo,
+      data.evidencia ? JSON.stringify(data.evidencia) : null,
+      data.grupo_exclusividad,
+      data.prioridad,
     ],
   );
   return result.rows[0];

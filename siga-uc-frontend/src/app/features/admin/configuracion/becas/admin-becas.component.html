@@ -1,0 +1,623 @@
+<div class="becas-page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Configuración · Becas</span>
+      <h1>Becas y descuentos</h1>
+      <p>
+        Defina tipos de beca, asígnelas por alumno y apruébelas con evidencia y motivo.
+        Al aprobar se recalcularán solo los cargos pendientes; los pagos realizados no
+        se reprecian.
+      </p>
+    </div>
+    <div class="head-actions">
+      <app-selector-anio
+        [anios]="anios()"
+        [anioActivo]="anioActivo()"
+        [anio]="anioSeleccionado()"
+        (anioChange)="cambiarAnio($event)"
+      ></app-selector-anio>
+      @if (vista() === 'asignaciones') {
+      <button
+        type="button"
+        class="btn-primary"
+        (click)="abrirNuevaBeca()"
+        [disabled]="esHistorico()"
+      >
+        <i class="fa-solid fa-plus"></i>
+        Nueva beca
+      </button>
+      } @else {
+      <button type="button" class="btn-primary" (click)="abrirNuevoTipo()">
+        <i class="fa-solid fa-plus"></i>
+        Nuevo tipo
+      </button>
+      }
+    </div>
+  </div>
+
+  <div class="sub-tabs" role="tablist" aria-label="Secciones de becas">
+    <button
+      type="button"
+      role="tab"
+      [class.active]="vista() === 'asignaciones'"
+      [attr.aria-selected]="vista() === 'asignaciones'"
+      (click)="vista.set('asignaciones')"
+    >
+      <i class="fa-solid fa-user-graduate"></i>
+      Asignaciones
+      <span class="tab-count">{{ becas().length }}</span>
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [class.active]="vista() === 'tipos'"
+      [attr.aria-selected]="vista() === 'tipos'"
+      (click)="vista.set('tipos')"
+    >
+      <i class="fa-solid fa-tags"></i>
+      Tipos de beca
+      <span class="tab-count">{{ tipos().length }}</span>
+    </button>
+  </div>
+
+  @if (esHistorico()) {
+  <div class="alert alert-warning" role="status">
+    <i class="fa-solid fa-clock-rotate-left"></i>
+    Año histórico: las asignaciones son de solo lectura. Cambie al año activo para
+    registrar o aprobar becas.
+  </div>
+  }
+
+  @if (error()) {
+  <div class="alert alert-danger" role="alert">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    {{ error() }}
+  </div>
+  }
+  @if (exito()) {
+  <div class="alert alert-success" role="status">
+    <i class="fa-solid fa-circle-check"></i>
+    {{ exito() }}
+  </div>
+  }
+
+  @if (cargando()) {
+  <div class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Cargando becas...</p>
+  </div>
+  } @else if (vista() === 'asignaciones') {
+  <section class="config-card">
+    <div class="filters">
+      <div class="filter-search">
+        <label class="form-label" for="busquedaBeca">Alumno</label>
+        <input
+          id="busquedaBeca"
+          type="search"
+          class="form-control"
+          placeholder="DNI, nombres o apellidos"
+          [ngModel]="busqueda()"
+          (ngModelChange)="busqueda.set($event)"
+        />
+      </div>
+      <div>
+        <label class="form-label" for="filtroEstado">Estado</label>
+        <select
+          id="filtroEstado"
+          class="form-select"
+          [ngModel]="filtroEstado()"
+          (ngModelChange)="filtroEstado.set($event)"
+        >
+          <option value="">Todos</option>
+          <option value="SOLICITADA">Solicitada</option>
+          <option value="APROBADA">Aprobada</option>
+          <option value="RECHAZADA">Rechazada</option>
+          <option value="ANULADA">Anulada</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="filtroTipoBeca">Tipo</label>
+        <select
+          id="filtroTipoBeca"
+          class="form-select"
+          [ngModel]="filtroTipo()"
+          (ngModelChange)="filtroTipo.set($event)"
+        >
+          <option value="">Todos</option>
+          @for (tipo of tipos(); track tipo.id_tipo_beca) {
+          <option [value]="tipo.id_tipo_beca">{{ tipo.nombre }}</option>
+          }
+        </select>
+      </div>
+      <span class="count-badge">{{ becasFiltradas().length }} beca(s)</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle becas-table">
+        <thead>
+          <tr>
+            <th>Alumno</th>
+            <th>Tipo</th>
+            <th>Alcance</th>
+            <th>Valor</th>
+            <th>Vigencia</th>
+            <th>Estado</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (beca of becasFiltradas(); track beca.id_beca) {
+          <tr>
+            <td>
+              <strong>{{ beca.apellidos }}, {{ beca.nombres }}</strong>
+              <small>DNI {{ beca.dni }}</small>
+            </td>
+            <td>{{ beca.tipo_nombre || nombreTipo(beca.id_tipo_beca) }}</td>
+            <td><span class="alcance-badge">{{ beca.alcance }}</span></td>
+            <td><strong>{{ etiquetaBeca(beca) }}</strong></td>
+            <td class="fechas">
+              {{ beca.fecha_inicio | date: 'dd/MM/yyyy' }}
+              @if (beca.fecha_fin) { – {{ beca.fecha_fin | date: 'dd/MM/yyyy' }} }
+            </td>
+            <td>
+              <span class="estado-badge" [ngClass]="estadoClase(beca.estado)">
+                {{ beca.estado }}
+              </span>
+            </td>
+            <td class="text-end acciones">
+              @if (beca.estado === 'SOLICITADA') {
+              <button
+                type="button"
+                class="btn-icon aprobar"
+                title="Aprobar"
+                (click)="abrirAccion(beca, 'aprobar')"
+                [disabled]="esHistorico()"
+              >
+                <i class="fa-solid fa-check"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon rechazar"
+                title="Rechazar"
+                (click)="abrirAccion(beca, 'rechazar')"
+                [disabled]="esHistorico()"
+              >
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon"
+                title="Editar"
+                (click)="abrirEditarBeca(beca)"
+                [disabled]="esHistorico()"
+              >
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              } @else if (beca.estado === 'APROBADA') {
+              <button
+                type="button"
+                class="btn-icon anular"
+                title="Anular"
+                (click)="abrirAccion(beca, 'anular')"
+                [disabled]="esHistorico()"
+              >
+                <i class="fa-solid fa-ban"></i>
+              </button>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (becasFiltradas().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-hand-holding-heart"></i>
+      <p>No hay becas registradas para los filtros seleccionados.</p>
+    </div>
+    }
+  </section>
+  } @else {
+  <section class="config-card">
+    <div class="table-responsive">
+      <table class="table align-middle tipos-table">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Alcance</th>
+            <th>Valor</th>
+            <th>Tope</th>
+            <th>Combinable</th>
+            <th>Prioridad</th>
+            <th>Estado</th>
+            <th>Becas</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (tipo of tipos(); track tipo.id_tipo_beca) {
+          <tr [class.inactivo]="!tipo.activo">
+            <td><code>{{ tipo.codigo }}</code></td>
+            <td>
+              <strong>{{ tipo.nombre }}</strong>
+              @if (tipo.descripcion) { <small>{{ tipo.descripcion }}</small> }
+            </td>
+            <td><span class="alcance-badge">{{ tipo.alcance }}</span></td>
+            <td>
+              {{ tipo.modalidad === 'PORCENTAJE' ? 'Porcentaje' : 'Monto fijo' }}
+              · <strong>{{ etiquetaValor(tipo) }}</strong>
+            </td>
+            <td>
+              {{ tipo.tope_monto === null ? '—' : ('S/ ' + (tipo.tope_monto |
+              number: '1.2-2')) }}
+            </td>
+            <td>
+              <span class="si-no" [class.si]="tipo.permite_combinacion">
+                {{ tipo.permite_combinacion ? 'Sí' : 'No' }}
+              </span>
+            </td>
+            <td>{{ tipo.prioridad }}</td>
+            <td>
+              <span class="estado-badge" [class.estado-aprobada]="tipo.activo" [class.estado-anulada]="!tipo.activo">
+                {{ tipo.activo ? 'ACTIVO' : 'INACTIVO' }}
+              </span>
+            </td>
+            <td>{{ tipo.total_becas ?? 0 }}</td>
+            <td class="text-end">
+              <button type="button" class="btn-icon" title="Editar" (click)="abrirEditarTipo(tipo)">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (tipos().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-tags"></i>
+      <p>No hay tipos de beca configurados.</p>
+    </div>
+    }
+  </section>
+  }
+</div>
+
+@if (modalBeca()) {
+<div class="modal-overlay" (click)="cerrarModalBeca()">
+  <div class="modal-card modal-lg" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">{{ becaEditando() ? 'Editar solicitud' : 'Nueva beca' }}</span>
+        <h2>{{ becaEditando() ? 'Actualizar beca' : 'Registrar beca' }} · {{ anioSeleccionado() }}</h2>
+      </div>
+      <button type="button" class="icon-btn" (click)="cerrarModalBeca()" [disabled]="guardando()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label">Buscar alumno</label>
+          <input
+            type="search"
+            class="form-control"
+            placeholder="DNI, nombres o apellidos"
+            [ngModel]="busquedaAlumno()"
+            (ngModelChange)="busquedaAlumno.set($event)"
+            [disabled]="!!becaEditando()"
+          />
+        </div>
+        <div class="col-12">
+          <label class="form-label">Alumno *</label>
+          <select class="form-select" [(ngModel)]="formBeca.id_alumno" [disabled]="!!becaEditando()">
+            <option [ngValue]="null">Seleccione un alumno</option>
+            @for (alumno of alumnosFiltrados(); track alumno.id_alumno) {
+            <option [ngValue]="alumno.id_alumno">
+              {{ alumno.apellidos }}, {{ alumno.nombres }} · DNI {{ alumno.dni }}
+            </option>
+            }
+          </select>
+          <div class="hint">{{ alumnosFiltrados().length }} alumno(s) disponible(s)</div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label class="form-label">Tipo de beca *</label>
+          <select
+            class="form-select"
+            [ngModel]="formBeca.id_tipo_beca"
+            (ngModelChange)="formBeca.id_tipo_beca = $event; alCambiarTipoBeca()"
+          >
+            <option [ngValue]="null">Seleccione un tipo</option>
+            @for (tipo of tiposActivos(); track tipo.id_tipo_beca) {
+            <option [ngValue]="tipo.id_tipo_beca">
+              {{ tipo.nombre }} ({{ tipo.codigo }})
+            </option>
+            }
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label">Alcance</label>
+          <select class="form-select" [(ngModel)]="formBeca.alcance">
+            <option value="PENSION">Pensión</option>
+            <option value="MATRICULA">Matrícula</option>
+            <option value="AMBOS">Ambos</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label">Prioridad</label>
+          <input type="number" class="form-control" [(ngModel)]="formBeca.prioridad" />
+        </div>
+
+        <div class="col-6 col-md-4">
+          <label class="form-label">Modalidad</label>
+          <select class="form-select" [(ngModel)]="formBeca.modalidad">
+            <option value="PORCENTAJE">Porcentaje</option>
+            <option value="MONTO_FIJO">Monto fijo</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label">
+            Valor {{ formBeca.modalidad === 'PORCENTAJE' ? '(%)' : '(S/)' }} *
+          </label>
+          <input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="formBeca.valor" />
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label">Tope del descuento (S/)</label>
+          <input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="formBeca.monto_maximo" />
+        </div>
+
+        <div class="col-6">
+          <label class="form-label">Vigente desde *</label>
+          <input type="date" class="form-control" [(ngModel)]="formBeca.fecha_inicio" />
+        </div>
+        <div class="col-6">
+          <label class="form-label">Vigente hasta</label>
+          <input type="date" class="form-control" [(ngModel)]="formBeca.fecha_fin" />
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Evidencia</label>
+          <textarea
+            class="form-control"
+            rows="2"
+            maxlength="1000"
+            placeholder="Resolución, informe socioeconómico, carta o detalle de sustento"
+            [(ngModel)]="formBeca.evidencia_detalle"
+          ></textarea>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Motivo *</label>
+          <textarea
+            class="form-control"
+            rows="2"
+            maxlength="500"
+            placeholder="Mínimo 10 caracteres"
+            [(ngModel)]="formBeca.motivo"
+          ></textarea>
+        </div>
+
+        <div class="col-12">
+          <label class="check-inline">
+            <input type="checkbox" [(ngModel)]="formBeca.aprobar" />
+            Registrar y aprobar ahora (aplica a cargos pendientes)
+          </label>
+        </div>
+      </div>
+
+      @if (errorBeca()) {
+      <div class="alert alert-danger mt-3">{{ errorBeca() }}</div>
+      }
+    </div>
+    <div class="modal-foot">
+      <button class="btn-soft" type="button" (click)="cerrarModalBeca()" [disabled]="guardando()">
+        Cancelar
+      </button>
+      <button class="btn-primary" type="button" (click)="guardarBeca()" [disabled]="guardando()">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-floppy-disk"></i>
+        {{ becaEditando() ? 'Guardar cambios' : 'Registrar beca' }}
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+@if (modalTipo()) {
+<div class="modal-overlay" (click)="cerrarModalTipo()">
+  <div class="modal-card modal-lg" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">{{ tipoEditando() ? 'Editar tipo' : 'Nuevo tipo' }}</span>
+        <h2>{{ tipoEditando() ? 'Actualizar tipo de beca' : 'Crear tipo de beca' }}</h2>
+      </div>
+      <button type="button" class="icon-btn" (click)="cerrarModalTipo()" [disabled]="guardando()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <label class="form-label">Código *</label>
+          <input type="text" class="form-control" maxlength="50" [(ngModel)]="formTipo.codigo" />
+        </div>
+        <div class="col-12 col-md-8">
+          <label class="form-label">Nombre *</label>
+          <input type="text" class="form-control" maxlength="150" [(ngModel)]="formTipo.nombre" />
+        </div>
+        <div class="col-12">
+          <label class="form-label">Descripción</label>
+          <textarea class="form-control" rows="2" [(ngModel)]="formTipo.descripcion"></textarea>
+        </div>
+
+        <div class="col-6 col-md-4">
+          <label class="form-label">Alcance</label>
+          <select class="form-select" [(ngModel)]="formTipo.alcance">
+            <option value="PENSION">Pensión</option>
+            <option value="MATRICULA">Matrícula</option>
+            <option value="AMBOS">Ambos</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label">Modalidad</label>
+          <select class="form-select" [(ngModel)]="formTipo.modalidad">
+            <option value="PORCENTAJE">Porcentaje</option>
+            <option value="MONTO_FIJO">Monto fijo</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label">Valor por defecto</label>
+          <input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="formTipo.valor_default" />
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label">Tope por defecto (S/)</label>
+          <input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="formTipo.tope_monto" />
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label">Prioridad</label>
+          <input type="number" class="form-control" [(ngModel)]="formTipo.prioridad" />
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label">Orden</label>
+          <input type="number" min="0" class="form-control" [(ngModel)]="formTipo.orden" />
+        </div>
+        <div class="col-12">
+          <label class="form-label">Grupo de exclusividad</label>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Opcional: dos becas del mismo grupo no se combinan"
+            [(ngModel)]="formTipo.grupo_exclusividad"
+          />
+        </div>
+
+        <div class="col-12">
+          <div class="checks-grid">
+            <label class="check-inline">
+              <input type="checkbox" [(ngModel)]="formTipo.permite_combinacion" />
+              Permite combinarse con otras becas
+            </label>
+            <label class="check-inline">
+              <input type="checkbox" [(ngModel)]="formTipo.requiere_evidencia" />
+              Exige evidencia para aprobar
+            </label>
+            <label class="check-inline">
+              <input type="checkbox" [(ngModel)]="formTipo.requiere_aprobacion" />
+              Requiere aprobación
+            </label>
+            <label class="check-inline">
+              <input type="checkbox" [(ngModel)]="formTipo.activo" />
+              Activo
+            </label>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Motivo *</label>
+          <textarea
+            class="form-control"
+            rows="2"
+            maxlength="500"
+            placeholder="Mínimo 10 caracteres"
+            [(ngModel)]="formTipo.motivo"
+          ></textarea>
+        </div>
+      </div>
+
+      @if (errorTipo()) {
+      <div class="alert alert-danger mt-3">{{ errorTipo() }}</div>
+      }
+    </div>
+    <div class="modal-foot">
+      <button class="btn-soft" type="button" (click)="cerrarModalTipo()" [disabled]="guardando()">
+        Cancelar
+      </button>
+      <button class="btn-primary" type="button" (click)="guardarTipo()" [disabled]="guardando()">
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Guardando...
+        } @else {
+        <i class="fa-solid fa-floppy-disk"></i>
+        {{ tipoEditando() ? 'Guardar cambios' : 'Crear tipo' }}
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+@if (modalAccion()) {
+<div class="modal-overlay" (click)="cerrarModalAccion()">
+  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div>
+        <span class="eyebrow">Confirmar acción</span>
+        <h2>
+          {{ accion() === 'aprobar' ? 'Aprobar' : accion() === 'rechazar' ? 'Rechazar' : 'Anular' }}
+          beca
+        </h2>
+      </div>
+      <button type="button" class="icon-btn" (click)="cerrarModalAccion()" [disabled]="guardando()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      @if (becaAccion(); as beca) {
+      <dl class="summary">
+        <div><dt>Alumno</dt><dd>{{ beca.apellidos }}, {{ beca.nombres }}</dd></div>
+        <div><dt>Tipo</dt><dd>{{ beca.tipo_nombre || nombreTipo(beca.id_tipo_beca) }}</dd></div>
+        <div><dt>Valor</dt><dd>{{ etiquetaBeca(beca) }}</dd></div>
+        <div><dt>Estado actual</dt><dd>{{ beca.estado }}</dd></div>
+      </dl>
+      }
+      <p class="modal-intro">
+        @if (accion() === 'aprobar') {
+        La beca se aplicará a las pensiones y pre-tickets de matrícula pendientes. Los
+        cargos pagados no cambian.
+        } @else if (accion() === 'anular') {
+        Se retirará el descuento de los cargos pendientes. Si la matrícula estaba
+        exonerada, volverá a quedar pendiente de pago.
+        } @else {
+        La solicitud quedará rechazada y no se aplicará ningún descuento.
+        }
+      </p>
+      <label class="form-label">Motivo *</label>
+      <textarea
+        class="form-control"
+        rows="3"
+        maxlength="500"
+        [ngModel]="motivoAccion()"
+        (ngModelChange)="motivoAccion.set($event)"
+        placeholder="Mínimo 10 caracteres"
+      ></textarea>
+      <div class="counter">{{ motivoAccion().trim().length }}/500 · mínimo 10</div>
+      @if (errorAccion()) {
+      <div class="alert alert-danger mt-2">{{ errorAccion() }}</div>
+      }
+    </div>
+    <div class="modal-foot">
+      <button class="btn-soft" type="button" (click)="cerrarModalAccion()" [disabled]="guardando()">
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-primary"
+        [class.btn-danger]="accion() !== 'aprobar'"
+        (click)="confirmarAccion()"
+        [disabled]="guardando()"
+      >
+        @if (guardando()) {
+        <i class="fa-solid fa-spinner fa-spin"></i> Procesando...
+        } @else {
+        <i class="fa-solid fa-check"></i> Confirmar
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}

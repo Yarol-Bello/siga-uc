@@ -5,6 +5,7 @@
 
 const cargaCurricularDao = require("../dao/cargaCurricularDao");
 const horarioDao = require("../dao/horarioDao");
+const auditoriaService = require("./auditoriaService");
 const { getClient } = require("../config/database");
 const { getAnioLectivo } = require("../config/academico");
 
@@ -329,6 +330,26 @@ const eliminar = async (id) => {
       throw crearError("Carga curricular no encontrada.", 404);
     }
 
+    const historial = await cargaCurricularDao.contarHistorialAcademico(
+      {
+        idCurso: actual.id_curso,
+        idGrado: actual.id_grado,
+        anio: actual.anio_lectivo,
+      },
+      client,
+    );
+    if (
+      Number(historial.calificaciones || 0) +
+        Number(historial.notas || 0) >
+      0
+    ) {
+      throw crearError(
+        "La carga tiene calificaciones o notas finales. Desactívela en lugar de eliminarla.",
+        409,
+        { codigo: "CARGA_CON_HISTORIAL", ...historial },
+      );
+    }
+
     const horarios = await horarioDao.contarPorCarga(id, client);
     if (horarios.publicados > 0) {
       throw crearError(
@@ -359,6 +380,62 @@ const asignarTutor = async (data) => {
   return await cargaCurricularDao.asignarTutor(data);
 };
 
+const cambiarActivo = async (id, data, usuario = null, ip = null) => {
+  const activo =
+    data.activo === true ||
+    data.activo === "true" ||
+    data.activo === 1 ||
+    data.activo === "1";
+  const motivo = String(data.motivo || "").trim();
+  if (motivo.length < 10) {
+    throw crearError("El motivo debe tener al menos 10 caracteres.", 400, {
+      codigo: "MOTIVO_REQUERIDO",
+    });
+  }
+
+  const actual = await obtener(id);
+  if (Number(actual.anio_lectivo) !== getAnioLectivo()) {
+    throw crearError("Solo se puede cambiar la carga del año lectivo activo.");
+  }
+
+  return await conTransaccion(async (client) => {
+    await bloquearAnio(client, actual.anio_lectivo);
+    const bloqueada = await cargaCurricularDao.findByIdForUpdate(id, client);
+    if (!bloqueada) throw crearError("Carga curricular no encontrada.", 404);
+
+    if (!activo) {
+      const horarios = await horarioDao.contarPorCarga(id, client);
+      if (Number(horarios.publicados || 0) > 0) {
+        throw crearError(
+          "Despublique el horario antes de desactivar la carga.",
+          409,
+          { codigo: "HORARIO_PUBLICADO", publicados: horarios.publicados },
+        );
+      }
+    }
+
+    const actualizada = await cargaCurricularDao.cambiarActivo(
+      id,
+      activo,
+      usuario?.id_usuario || null,
+      client,
+    );
+
+    await auditoriaService.registrarEnTransaccion(client, {
+      id_usuario: usuario?.id_usuario || null,
+      modulo: "Configuración",
+      accion: activo ? "ACTIVAR" : "DESACTIVAR",
+      descripcion: `Carga curricular ${actual.nombre_curso} de ${actual.nombre_grado} ${actual.seccion}`,
+      anterior: actual,
+      nuevo: actualizada,
+      motivo,
+      ip,
+    });
+
+    return actualizada;
+  });
+};
+
 module.exports = {
   listar,
   obtener,
@@ -369,4 +446,5 @@ module.exports = {
   actualizar,
   eliminar,
   asignarTutor,
+  cambiarActivo,
 };

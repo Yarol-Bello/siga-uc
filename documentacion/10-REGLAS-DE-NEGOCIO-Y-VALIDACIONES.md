@@ -204,8 +204,8 @@ top = 10
 | RN-81 | Mes de pensión 1–12 | BD `CHECK` | — |
 | RN-82 | Una pensión por alumno, año y mes | BD `UNIQUE` | `DO NOTHING`, salvo `ANULADO` que vuelve a `PENDIENTE` (H45) |
 | RN-83 | Solo se generan pensiones para matriculados | Query | — |
-| RN-84 | La beca activa descuenta `monto_descuento` | Query de generación | Primera beca activa |
-| RN-85 | `monto_final = monto_base - descuento` | Query | — |
+| RN-84 | La beca aprobada descuenta según su alcance, modalidad, valor, tope y prioridad | `becaCalculator` | H78; no usa la primera beca activa a ciegas |
+| RN-85 | `monto_final = monto_base - descuento` | Query | `EXONERADO` cuando queda en 0 (H78) |
 | RN-86 | Formas de pago: Efectivo, Yape, Plin, Interbank, BCP, BBVA | BD `CHECK` | — |
 | RN-87 | Pago nace `PAGADO` | DAO | — |
 | RN-88 | Boleta `B001-XXXXXX` con número máximo + 1 | DAO | Concurrencia riesgosa |
@@ -221,6 +221,15 @@ top = 10
 | RN-98 | El retiro anula todos los `pre_tickets PENDIENTE` | `alumnoDao.retirar` | Los `PAGADO` no se tocan |
 | RN-99 | Una pensión `ANULADO` no se puede cobrar | `tesoreriaService.registrarPago` | 400 “La pensión está anulada.” |
 | RN-100 | Al regenerar el cronograma, una pensión `ANULADO` vuelve a `PENDIENTE` | `tesoreriaDao.generarPensionesAlumno` | No cambia montos ni descuentos |
+| RN-101 | Solo ADMIN crea, edita, aprueba, rechaza y anula becas; SECRETARÍA lee | `configuracionRoutes` | DOCENTE/ESTUDIANTE 403 |
+| RN-102 | Aprobar exige motivo de 10–500 y evidencia si el tipo la requiere | `becaService` | 400 `EVIDENCIA_REQUERIDA` |
+| RN-103 | Una beca se aplica por fecha y alcance; prioridad descendente | `becaCalculator.calcular` | MATRICULA/PENSION/AMBOS |
+| RN-104 | Un tipo no combinable excluye a los siguientes; el grupo de exclusividad impide sumar dos becas | `becaCalculator.calcular` | — |
+| RN-105 | El descuento nunca deja el cargo negativo; el tope limita el monto | `becaCalculator.calcular` | — |
+| RN-106 | Solo se recalculan cargos `PENDIENTE`/`EXONERADO` | `becaCalculator` | `PAGADO`/`ANULADO` intactos |
+| RN-107 | 100% deja pensión o pre-ticket `EXONERADO` en 0; matrícula exonera y marca `Matriculado` | `becaCalculator` | H78 |
+| RN-108 | Anular borra aplicaciones y devuelve pendientes a `PENDIENTE`; si la matrícula deja de estar exenta, vuelve a `PendientePago` | `becaService.revertirCobros` | H78 |
+| RN-109 | La promoción copia los campos H78 de la beca y aplica la beca de matrícula al pre-ticket destino | `promocionService` | `copiar_becas` |
 
 ## 11. Caja
 

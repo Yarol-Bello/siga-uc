@@ -21,7 +21,7 @@
 | Router | Prefijo | Endpoints | Rol de escritura |
 |---|---|---|---|
 | `authRoutes.js` | `/api/auth` | 9 | ADMIN para reset por DNI |
-| `configuracionRoutes.js` | `/api/configuracion` | 3 | Público GET; ADMIN/SECRETARÍA lectura admin; ADMIN escritura |
+| `configuracionRoutes.js` | `/api/configuracion` | 34 | Público GET; ADMIN/SECRETARÍA lectura; ADMIN escritura |
 | `academicoRoutes.js` | `/api` | 7 | Solo lectura |
 | `alumnoRoutes.js` | `/api/alumnos` | 6 | ADMIN/SECRETARIA |
 | `personalRoutes.js` | `/api/personal` | 8 | ADMIN |
@@ -40,7 +40,7 @@
 | Controlador | Métodos | Notas |
 |---|---|---|
 | `authController.js` | `login`, `perfil`, `verify`, `logout`, `resetPassword`, `solicitarRecuperacion`, `validarToken`, `restablecerPassword`, `cambiarPassword` | `validationResult` en login y cambio de contraseña; recuperación delega a `recuperacionService` |
-| `configuracionController.js` | `obtenerPublica`, `obtenerAdmin`, `actualizarInstitucional` | Año + institución pública; configuración completa; update con motivo y auditoría transaccional |
+| `configuracionController.js` | `obtenerPublica`, `obtenerAdmin`, `actualizarInstitucional`, tarifas, académico, jornada y becas | H74–H78: configuración, tarifas, catálogo, jornada y becas con motivo/auditoría |
 | `academicoController.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion` | Solo lectura |
 | `horarioController.js` | `listarPeriodos`, CRUD de períodos, `listar`, `miHorario`, CRUD de bloques, `generar`, `publicar`, `despublicar` | H47; ADMIN/SECRETARIA/DOCENTE/ESTUDIANTE según ruta |
 | `alumnoController.js` | `listar`, `obtener`, `buscarPorDni`, `crear`, `actualizar`, `retirar` | Filtros por `id_grado`, estado, búsqueda, año, `limit`, `solo_activos` y paginación (`page`/`pageSize`) |
@@ -55,12 +55,16 @@
 | `siagieController.js` | `obtenerResumen`, `exportarInterno` | Valida año/grado/bimestre, audita y descarga el Excel interno |
 | `notificacionController.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Siempre limita al usuario autenticado |
 
-### 1.4 Servicios (26)
+### 1.4 Servicios (30)
 
 | Servicio | Métodos principales | Reglas que concentra |
 |---|---|---|
 | `authService.js` | `login`, `verificarToken`, `getPerfil`, `resetPassword`, `cambiarPassword` | Usuario activo, bcrypt, JWT, info adicional por rol, QR en perfil, cambio de contraseña con verificación de la actual |
 | `configuracionService.js` | `obtenerConfiguracionPublica`, `obtenerConfiguracionAdmin`, `actualizarInstitucion` | H74: institución única, validaciones, motivo, auditoría en transacción, fallback sin migración |
+| `conceptoPagoService.js` | `listar`, `obtener`, `preview`, `crear`, `actualizar`, `programarVersion`, `desactivar` | H75: alcance, vigencia, colisiones, impacto y auditoría |
+| `configuracionAnioService.js` | `obtener`, `actualizar` | H77: días/jornada/límites, horarios publicados y auditoría |
+| `becaService.js` | `listarTipos`, `crearTipo`, `actualizarTipo`, `listarBecas`, `crearBeca`, `actualizarBeca`, `aprobarBeca`, `rechazarBeca`, `anularBeca`, `previewBeca` | H78: estados, evidencia, motivo, aplicación y auditoría |
+| `becaCalculator.js` | `calcular`, `aplicarPension`, `aplicarPreticket`, `aplicarPensionesAlumno`, `aplicarPensionesMes` | H78: prioridad, tope, exclusividad, combinación, `EXONERADO` y pagos intactos |
 | `academicoService.js` | `listarGrados`, `obtenerGrado`, `listarCursos`, `obtenerCurso`, `listarCompetencias`, `listarEscalaCalificacion` | 404 si no existe; agrega tutor/competencias |
 | `horarioService.js` | `listar`, `miHorario`, CRUD de bloques, `generar`, `publicar`, `despublicar` | Alcance por token, conflictos, publicación y auditoría |
 | `periodoClaseService.js` | `listar`, `crear`, `actualizar`, `eliminar` | Malla por año, sin solapes |
@@ -82,12 +86,15 @@
 | `recuperacionService.js` | `solicitarRecuperacion`, `validarToken`, `restablecerPassword` | Token 32 bytes, 2 h, un uso, no revelar existencia |
 | `emailService.js` | `verificarConexion`, `enviarCorreo`, `enviarNotificacion` | Resend; plantilla guindo/dorado |
 
-### 1.5 DAOs (23)
+### 1.5 DAOs (26)
 
 | DAO | Entidades / operaciones | Consultas destacadas |
 |---|---|---|
 | `usuarioDao.js` | `usuarios`, `roles`, `alumnos`, `personal`, `credenciales_qr`, `recuperacion_password` | `findByDni`, `findByCorreo`, `findByDniOCorreo`, `findById`, `getCredencialQR`, reset/actualizar password |
 | `configuracionDao.js` | `configuracion_institucional`, `configuracion_anio`, `anios_lectivos` | Institución única, años, bloqueo `FOR UPDATE` y actualización |
+| `configuracionAnioDao.js` | `configuracion_anio`, `periodos_clase` | Lectura/actualización de jornada y validación de períodos |
+| `conceptoPagoDao.js` | `conceptos_pago`, `pensiones`, `pre_tickets` | Resolución por grado/nivel/fecha, impacto y versiones |
+| `becaDao.js` | `tipos_beca`, `becas`, `aplicaciones_beca`, `pensiones`, `pre_tickets` | Catálogo, aplicables, aplicaciones y recálculo de cargos |
 | `alumnoDao.js` | `apoderados`, `usuarios`, `alumnos`, `expediente_alumno`, `credenciales_qr` | Listado con filtros, búsqueda `unaccent` por DNI/nombre completo, `LIMIT` opcional y `LIMIT/OFFSET` con `contar`; código `EST-XXX`, matrícula transaccional, retiro |
 | `personalDao.js` | `usuarios`, `personal`, `credenciales_qr` | Listado con rol, creación transaccional, cese/reactivación, reset |
 | `gradoDao.js` | `grados`, `alumnos`, `tutores_grado` | Grados con conteo y tutor |

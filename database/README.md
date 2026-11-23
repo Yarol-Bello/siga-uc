@@ -8,9 +8,10 @@ I.E.P. Unión Científica.
 ### A. Desarrollo / demostración
 
 `siga_uc_completo.sql` es un **dump completo**: crea el esquema (40 tablas) y, tras aplicar
-las migraciones H49, H73 y H74, queda en **45 tablas base** (46 en local con `horarios_h47_backup`), funciones,
-triggers, índices y carga los **datos ficticios de demostración** (21 alumnos, apoderados,
-pagos y pensiones de ejemplo). **Nunca debe usarse como base de producción.**
+las migraciones H49, H73, H74, H76 y H78, queda en **48 tablas base** (49 en local con
+`horarios_h47_backup`), funciones, triggers, índices y carga los **datos ficticios de
+demostración** (21 alumnos, apoderados, pagos y pensiones de ejemplo). **Nunca debe usarse
+como base de producción.**
 
 ```powershell
 createdb -U postgres siga_uc
@@ -27,6 +28,10 @@ psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h75_tarifas.sql
+psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
+psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
+psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -50,6 +55,10 @@ psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
 psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h75_tarifas.sql
+psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
+psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
+psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 ```
 
 > **H49:** antes de ejecutar la migración, editar `_param_anio` en
@@ -86,7 +95,7 @@ caja, bitácora ni becas.
 | Archivo | Uso |
 |---|---|
 | `siga_uc_completo.sql` | **Solo desarrollo/demo**: esquema + datos ficticios + funciones/índices. No usar en producción. |
-| `siga_uc.sql` | **Esquema base** (40 tablas, sin datos); H49/H73 lo llevan a 43. Primer paso de una instalación de producción. |
+| `siga_uc.sql` | **Esquema base** (40 tablas, sin datos); H49/H73/H74/H76/H78 lo llevan a 48. Primer paso de una instalación de producción. |
 | `seed_produccion.sql` | **Catálogos y configuración** para producción + admin inicial. Requiere `-v anio_lectivo=YYYY -v admin_password=...`. |
 | `migracion_*.sql` | Parches **idempotentes** para bases existentes. Se aplican en orden después del esquema o de la migración anterior. |
 | `migracion_h32_anulacion_pagos.sql` | Añade campos de anulación en `pagos` y `ANULADO` en `boletas_electronicas`. |
@@ -101,6 +110,10 @@ caja, bitácora ni becas.
 | `migracion_h59_observaciones_personal.sql` | Agrega `personal.observaciones` (H59). Idempotente; no cambia el número de tablas. |
 | `migracion_h71_retirados_historicos.sql` | Backfill H71: congela el expediente de los alumnos `Retirado` y desactiva al usuario solo si no conserva otra matrícula no retirada. Idempotente; no toca alumnos no retirados. |
 | `migracion_h74_configuracion_base.sql` | Crea `configuracion_institucional` (una fila), `configuracion_anio` (una por año), el trigger que crea la configuración de años nuevos y `bitacora_auditoria.motivo`. Requiere H49; toma la jornada de `periodos_clase` si H47 está aplicada. Idempotente; no toca tarifas, cursos, becas ni horarios. |
+| `migracion_h75_tarifas.sql` | Amplía `conceptos_pago` con nivel, grado, vigencia, estado y orden; crea `resolver_concepto_pago` y respalda `id_concepto` en pensiones/pre-tickets. Requiere H74. Idempotente. |
+| `migracion_h76_academico.sql` | Crea `areas_academicas` y agrega activo/orden/timestamps a cursos, competencias y carga curricular. Requiere H74. Idempotente. |
+| `migracion_h77_horario_jornada.sql` | Amplía los días válidos a lunes–domingo y valida períodos contra la jornada y la duración mínima configuradas. Requiere H47 y H74. Idempotente. |
+| `migracion_h78_becas.sql` | Crea `tipos_beca` y `aplicaciones_beca`, amplía `becas` y `pre_tickets.descuento`, y agrega `EXONERADO` a pensión/pre-ticket. Requiere H74 y H75. Idempotente. |
 | `rollback_h73_promociones.sql` | Solo base desechable: elimina `promociones` y `politicas_promocion`. En producción se restaura el backup. |
 | `rollback_h49_multianio_base.sql` | Solo para base desechable: restaura los UNIQUE globales y elimina `anios_lectivos`/`grados.orden`. Aborta si hay varias matrículas por persona o promociones con filas. |
 | `preparar_anio_lectivo.sql` | Utilidad **histórica y parcial**: solo copia conceptos `MATRICULA`/`PENSION` y períodos. No crea grados, carga ni tutores. La reemplaza la pantalla ADMIN de 6.2 (años lectivos y rollover). |
@@ -109,7 +122,7 @@ caja, bitácora ni becas.
 ## Verificación
 
 ```sql
--- 45 tablas base (después de H49, H73 y H74; 46 en local con horarios_h47_backup)
+-- 48 tablas base (después de H49, H73, H74, H76 y H78; 49 en local con horarios_h47_backup)
 SELECT COUNT(*) FROM information_schema.tables
 WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 

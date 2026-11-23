@@ -33,6 +33,11 @@ router.post(
   verificarRol("ADMIN"),
   cargaCurricularController.asignarTutor,
 );
+router.put(
+  "/:id/activo",
+  verificarRol("ADMIN"),
+  cargaCurricularController.cambiarActivo,
+);
 router.put("/:id", verificarRol("ADMIN"), cargaCurricularController.actualizar);
 router.delete(
   "/:id",

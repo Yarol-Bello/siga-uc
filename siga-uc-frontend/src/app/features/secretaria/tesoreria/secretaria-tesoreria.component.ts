@@ -27,6 +27,10 @@ interface ConceptoPago {
   tipo: string;
   mes: number | null;
   anio_lectivo: number;
+  nivel?: string | null;
+  id_grado?: number | null;
+  nombre_grado?: string | null;
+  seccion?: string | null;
 }
 
 interface ConceptoDisponible {
@@ -44,7 +48,9 @@ interface AlumnoConPensiones {
   apellidos: string;
   nombre_completo: string;
   codigo_estudiante: string;
+  id_grado: number;
   nombre_grado: string;
+  nivel?: string | null;
   estado_matricula: string;
   pensiones: Pension[];
   estado_general: string;
@@ -100,9 +106,6 @@ export class SecretariaTesoreriaComponent implements OnInit {
   alumnos = signal<AlumnoConPensiones[]>([]);
   preTickets = signal<PreTicket[]>([]);
   conceptosPago = signal<ConceptoPago[]>([]);
-  conceptoMatricula = computed(
-    () => this.conceptosPago().find((c) => c.tipo === 'MATRICULA') || null,
-  );
 
   // Filtros
   busqueda = signal('');
@@ -361,7 +364,12 @@ export class SecretariaTesoreriaComponent implements OnInit {
       return;
     }
 
-    const matricula = this.conceptoMatricula();
+    const matricula = this.obtenerConceptoMatricula(alumno);
+    const preticketMatricula = this.preTickets().find(
+      (pt) =>
+        pt.id_alumno === alumno.id_alumno &&
+        pt.concepto_tipo === 'MATRICULA',
+    );
     const esMatricula =
       tipoConcepto === 'MATRICULA' ||
       (tipoConcepto === undefined &&
@@ -381,13 +389,23 @@ export class SecretariaTesoreriaComponent implements OnInit {
     let idPensionFinal: number | null = null;
 
     if (esMatricula) {
-      idConceptoFinal = idConcepto ?? matricula?.id_concepto ?? null;
-      conceptoFinal = concepto || matricula?.nombre || '';
-      montoFinal = monto ?? Number(matricula?.monto_base || 0);
+      idConceptoFinal =
+        idConcepto ??
+        preticketMatricula?.id_concepto ??
+        matricula?.id_concepto ??
+        null;
+      conceptoFinal =
+        concepto ||
+        preticketMatricula?.concepto_nombre ||
+        matricula?.nombre ||
+        '';
+      montoFinal =
+        monto ??
+        Number(preticketMatricula?.monto ?? matricula?.monto_base ?? 0);
 
       if (!idConceptoFinal || !conceptoFinal || montoFinal <= 0) {
         alert(
-          `No hay un concepto de matrícula configurado para el año lectivo ${this.anioSeleccionado()}.`,
+          `No hay un concepto de matrícula configurado para el grado del alumno en el año lectivo ${this.anioSeleccionado()}.`,
         );
         return;
       }
@@ -418,6 +436,29 @@ export class SecretariaTesoreriaComponent implements OnInit {
   /**
    * Solo devuelve pensiones pendientes que tengan concepto asociado.
    */
+  private obtenerConceptoMatricula(
+    alumno: AlumnoConPensiones,
+  ): ConceptoPago | null {
+    const conceptos = this.conceptosPago().filter(
+      (c) => c.tipo === 'MATRICULA',
+    );
+    return (
+      conceptos.find(
+        (c) => Number(c.id_grado) === Number(alumno.id_grado),
+      ) ||
+      conceptos.find(
+        (c) =>
+          !c.id_grado &&
+          c.nivel &&
+          alumno.nivel &&
+          c.nivel === alumno.nivel,
+      ) ||
+      conceptos.find((c) => !c.id_grado && !c.nivel) ||
+      conceptos[0] ||
+      null
+    );
+  }
+
   private obtenerConceptosDisponibles(
     alumno: AlumnoConPensiones,
   ): ConceptoDisponible[] {
@@ -439,9 +480,23 @@ export class SecretariaTesoreriaComponent implements OnInit {
     this.conceptoCobro.set(nombre);
 
     if (this.esCobroMatricula()) {
-      const matricula = this.conceptoMatricula();
-      this.montoCobro.set(Number(matricula?.monto_base || 0));
-      this.idConceptoSeleccionado.set(matricula?.id_concepto ?? null);
+      const alumno = this.alumnoSeleccionado();
+      const preticket = alumno
+        ? this.preTickets().find(
+            (pt) =>
+              pt.id_alumno === alumno.id_alumno &&
+              pt.concepto_tipo === 'MATRICULA',
+          )
+        : null;
+      const matricula = alumno
+        ? this.obtenerConceptoMatricula(alumno)
+        : null;
+      this.montoCobro.set(
+        Number(preticket?.monto ?? matricula?.monto_base ?? 0),
+      );
+      this.idConceptoSeleccionado.set(
+        preticket?.id_concepto ?? matricula?.id_concepto ?? null,
+      );
       this.idPensionSeleccionada.set(null);
       return;
     }

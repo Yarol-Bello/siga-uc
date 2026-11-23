@@ -124,6 +124,11 @@ psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
+psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h75_tarifas.sql
+psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
+psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
+psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -145,6 +150,11 @@ psql -U postgres -d siga_uc -f database/migracion_h49_multianio_base.sql
 psql -U postgres -d siga_uc -f database/migracion_h73_promociones.sql
 psql -U postgres -d siga_uc -f database/migracion_h59_observaciones_personal.sql
 psql -U postgres -d siga_uc -f database/migracion_h71_retirados_historicos.sql
+psql -U postgres -d siga_uc -f database/migracion_h74_configuracion_base.sql
+psql -U postgres -d siga_uc -f database/migracion_h75_tarifas.sql
+psql -U postgres -d siga_uc -f database/migracion_h76_academico.sql
+psql -U postgres -d siga_uc -f database/migracion_h77_horario_jornada.sql
+psql -U postgres -d siga_uc -f database/migracion_h78_becas.sql
 # ...y las migraciones futuras, en orden.
 ```
 
@@ -611,7 +621,7 @@ Crear una tarea diaria a las 02:00:
 | `siga-uc-frontend/src/environments/environment.prod.ts` | API producción |
 | `siga-uc-frontend/angular.json` | Build, budgets, fileReplacements |
 | `database/siga_uc_completo.sql` | Demo: esquema + datos ficticios; no usar en producción |
-| `database/siga_uc.sql` | Esquema base para producción (40 tablas, sin datos; H49 lo lleva a 41 y H73 a 43) |
+| `database/siga_uc.sql` | Esquema base para producción (40 tablas, sin datos; H49/H73/H74/H76/H78 lo llevan a 48) |
 | `database/seed_produccion.sql` | Catálogos + admin inicial; requiere `-v anio_lectivo=YYYY -v admin_password=...` |
 | `database/migracion_h45_pensiones_anuladas.sql` | Añade `ANULADO` a pensiones y regulariza deuda futura de retirados |
 | `database/migracion_h47_horarios.sql` | Crea `periodos_clase`, reemplaza `horarios` y agrega restricciones/triggers de horarios |
@@ -621,6 +631,11 @@ Crear una tarea diaria a las 02:00:
 | `database/migracion_h73_promociones.sql` | Crea `politicas_promocion` y `promociones`; requiere H49 y se aplica antes de operar 6.3 |
 | `database/migracion_h59_observaciones_personal.sql` | Agrega `personal.observaciones`; aplicar antes de desplegar el código que la lee (H59) |
 | `database/migracion_h71_retirados_historicos.sql` | Backfill H71: congela expedientes de retirados y desactiva usuarios sin otra matrícula vigente; idempotente |
+| `database/migracion_h74_configuracion_base.sql` | Configuración institucional/año y motivo de auditoría; requiere H49 |
+| `database/migracion_h75_tarifas.sql` | Tarifas por nivel/grado con vigencia y resolución; requiere H74 |
+| `database/migracion_h76_academico.sql` | Áreas académicas y activo/orden en cursos, competencias y carga; requiere H74 |
+| `database/migracion_h77_horario_jornada.sql` | Días lunes–domingo, jornada y duración mínima; requiere H47/H74 |
+| `database/migracion_h78_becas.sql` | Tipos de beca, aplicaciones, descuento y `EXONERADO`; requiere H74/H75 |
 | `database/rollback_h59_observaciones_personal.sql` | Solo bases desechables: elimina `personal.observaciones` y sus datos |
 | `database/rollback_h73_promociones.sql` | Solo bases desechables: elimina las tablas de promoción |
 | `database/preparar_anio_lectivo.sql` | Utilidad histórica y parcial (conceptos + períodos); la UI de 6.2 la reemplaza |

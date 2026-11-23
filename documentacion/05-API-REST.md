@@ -3,7 +3,7 @@
 **Base URL local:** `http://localhost:3000` · **Prefijo:** `/api`
 **Formato:** JSON (excepto la exportación interna SIAGIE, que responde un `.xlsx`)
 **Autenticación:** `Authorization: Bearer <JWT>` en todos los endpoints privados
-**Total verificado:** **131 endpoints** - 72 GET, 36 POST, 18 PUT, 5 DELETE.
+**Total verificado:** **163 endpoints** - 80 GET, 45 POST, 30 PUT, 8 DELETE.
 
 ---
 
@@ -162,13 +162,61 @@ Reglas verificadas:
 - No se agrega `TRASLADADO`: un traslado es `RETIRADO` + `alumnos.condicion='Traslado'` y
   `metadata.retiro.motivo='TRASLADO'`.
 
-### 2.3 Configuración — `/api/configuracion` (H74/Fase 1)
+### 2.3 Configuración — `/api/configuracion` (H74–H78 / Fases 1–5)
 
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
 | GET | `/api/configuracion` | Público | Año activo + institución pública segura. Si H74 no está aplicada, devuelve `institucion: null` y no falla. |
 | GET | `/api/configuracion/admin` | ADMIN/SECRETARIA | Configuración institucional completa + filas de `configuracion_anio` |
 | PUT | `/api/configuracion/institucional` | ADMIN | Actualiza la configuración global. Exige `motivo` (10–500) y audita antes/después |
+
+**Tarifas (H75):**
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/configuracion/tarifas?anio&tipo&incluir_inactivos` | ADMIN/SECRETARIA | Conceptos con alcance, vigencia y dependencias |
+| GET | `/api/configuracion/tarifas/:id` | ADMIN/SECRETARIA | Detalle de una tarifa |
+| POST | `/api/configuracion/tarifas/preview` | ADMIN | Impacto y `preview_hash`; no escribe |
+| POST | `/api/configuracion/tarifas` | ADMIN | Crea una tarifa con `preview_hash` y motivo |
+| PUT | `/api/configuracion/tarifas/:id` | ADMIN | Edita sin dependencias; si las tiene, `409` |
+| POST | `/api/configuracion/tarifas/:id/version` | ADMIN | Cierra la anterior y programa una nueva versión |
+| PUT | `/api/configuracion/tarifas/:id/desactivar` | ADMIN | Desactiva con motivo y auditoría |
+
+**Académico (H76):**
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET/POST | `/api/configuracion/academico/areas` | ADMIN/SECRETARIA · ADMIN | Catálogo de áreas; alta con motivo |
+| PUT/DELETE | `/api/configuracion/academico/areas/:id` | ADMIN | Editar o borrar sin dependencias |
+| GET/POST | `/api/configuracion/academico/cursos` | ADMIN/SECRETARIA · ADMIN | Cursos, incluidos inactivos; alta con motivo |
+| PUT/DELETE | `/api/configuracion/academico/cursos/:id` | ADMIN | Editar; borrar sin historial |
+| GET/POST | `/api/configuracion/academico/cursos/:idCurso/competencias` | ADMIN/SECRETARIA · ADMIN | Competencias del curso |
+| PUT/DELETE | `/api/configuracion/academico/competencias/:id` | ADMIN | Editar; borrar sin notas |
+
+**Horarios y jornada (H77):**
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/configuracion/horarios/:anio` | Autenticado | Días, jornada, duración mínima, máximos y horas default |
+| PUT | `/api/configuracion/horarios/:anio` | ADMIN | Actualiza la estructura; exige motivo y horario despublicado |
+
+**Becas (H78):**
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/configuracion/becas/tipos?incluir_inactivos` | ADMIN/SECRETARIA | Catálogo de tipos con reglas y uso |
+| POST | `/api/configuracion/becas/tipos` | ADMIN | Crea un tipo con motivo |
+| PUT | `/api/configuracion/becas/tipos/:id` | ADMIN | Edita o desactiva un tipo |
+| GET | `/api/configuracion/becas?anio&estado&id_tipo_beca` | ADMIN/SECRETARIA | Asignaciones por alumno y año |
+| POST | `/api/configuracion/becas/preview` | ADMIN | Calcula descuento por becas vigentes; no escribe |
+| POST | `/api/configuracion/becas` | ADMIN | Registra una beca (`aprobar` opcional) con motivo |
+| PUT | `/api/configuracion/becas/:id` | ADMIN | Edita una beca sin aplicaciones |
+| PUT | `/api/configuracion/becas/:id/aprobar` | ADMIN | Aprueba, aplica a pendientes y audita |
+| PUT | `/api/configuracion/becas/:id/rechazar` | ADMIN | Rechaza una solicitud con motivo |
+| PUT | `/api/configuracion/becas/:id/anular` | ADMIN | Anula, recalcula pendientes y audita |
+
+> El flujo legacy `GET/POST /api/tesoreria/becas` se conserva; el `POST` delega en el
+> servicio nuevo y no crea becas sin tipo.
 
 Reglas:
 
@@ -709,7 +757,7 @@ contraseñas.
 
 | Módulo | Endpoints |
 |---|---|
-| Generales / Configuración (H74) | 5 |
+| Generales / Configuración (H74–H78) | 34 |
 | Años lectivos (6.2) | 5 |
 | Promociones (6.3) | 8 |
 | Auth | 9 |
@@ -726,14 +774,14 @@ contraseñas.
 | Auditoría | 8 |
 | SIAGIE interno | 2 |
 | Notificaciones | 8 |
-| **Total** | **131** |
+| **Total** | **163** |
 
 | Verbo | Cantidad |
 |---|---|
-| GET | 72 |
-| POST | 36 |
-| PUT | 18 |
-| DELETE | 5 |
+| GET | 80 |
+| POST | 45 |
+| PUT | 30 |
+| DELETE | 8 |
 
 Acceso: el detalle exacto está en la columna **Acceso** de cada tabla. Con H47 se retiró
 el endpoint abierto `/api/horarios/grado/:id_grado` y se agregaron 12 endpoints de horarios.
@@ -742,7 +790,7 @@ consolidado histórico por DNI. En el cierre de demo, SIAGIE pasó de un `POST`
 `multipart/form-data` (plantilla) a dos `GET`: `resumen` y `exportar` interno.
 
 > El mapeo previo (`docs/MAPEO_ENDPOINTS.txt`) indicaba 43/48; ese conteo era impreciso.
-> El conteo vigente es 131 (72 GET, 36 POST, 18 PUT, 5 DELETE).
+> El conteo vigente es 163 (80 GET, 45 POST, 30 PUT, 8 DELETE), tras H75–H78.
 
 ---
 

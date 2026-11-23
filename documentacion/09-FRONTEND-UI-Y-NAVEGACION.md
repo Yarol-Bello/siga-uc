@@ -43,7 +43,11 @@ index.html
 | `admin/anios-lectivos` | `AdminAniosLectivosComponent` | hereda | Admin |
 | `admin/promociones` | `AdminPromocionesComponent` | hereda | Admin |
 | `admin/auditoria` | `AdminAuditoriaComponent` | hereda | Admin |
-| `admin/configuracion` | `AdminConfiguracionComponent` | hereda | Admin |
+| `admin/configuracion` | `AdminConfiguracionLayoutComponent` | hereda | Admin |
+| `admin/configuracion/tarifas` | `AdminTarifasComponent` | hereda | Admin |
+| `admin/configuracion/academico` | `AdminAcademicoComponent` | hereda | Admin |
+| `admin/configuracion/horarios` | `AdminHorarioConfigComponent` | hereda | Admin |
+| `admin/configuracion/becas` | `AdminBecasComponent` | hereda | Admin |
 | `docente` | `DocenteLayoutComponent` | `authGuard`, `roleGuard(['DOCENTE'])` | Docente |
 | `docente/horario` | `DocenteHorarioComponent` | hereda | Docente |
 | `docente/notas` | `DocenteNotasComponent` | hereda | Docente |
@@ -289,6 +293,10 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 | `AdminReportesComponent` | `GET /grados?anio=`, `GET /alumnos?anio=`, `GET /anios-lectivos` (selector 6.4), `GET /reportes/cuadro-merito/:id?bimestre=&anio=`, `/alumnos-riesgo/:id?bimestre=&anio=`, `/libreta/:id?bimestre=&anio=`, `/libreta/:id/pdf?bimestre=&anio=`; selector de bimestre 1-4 también en libretas (H51); deep link `?anio=&dni=&grado=&bimestre=` abre la libreta; mérito/riesgo se imprimen con vista aislada y libreta descarga PDF de backend (H58) |
 | `AdminAuditoriaComponent` | `GET /auditoria?page=&pageSize=`, `/actas`, `/modulos`, `/estadisticas`, `POST /actas/cerrar`, `POST /actas/:id/reabrir`, `GET /actas/:id/pdf`; tarjeta de cierre, badge global, modal de reapertura (H48); muestra el `motivo` de configuración |
 | `AdminConfiguracionComponent` | `GET /configuracion/admin`, `PUT /configuracion/institucional`; formulario general con confirmación y motivo; tabla de años en solo lectura (H74/Fase 1) |
+| `AdminTarifasComponent` | `GET /configuracion/tarifas`, `GET /grados`, `POST /configuracion/tarifas/preview`, `POST/PUT /configuracion/tarifas`, `POST /:id/version`, `PUT /:id/desactivar`; alcance global/nivel/grado y vigencia (H75) |
+| `AdminAcademicoComponent` | `GET/POST/PUT/DELETE /configuracion/academico/areas`, `/cursos`, `/cursos/:id/competencias`; activo/inactivo y guardas de borrado (H76) |
+| `AdminHorarioConfigComponent` | `GET/PUT /configuracion/horarios/:anio`, `GET /horarios/periodos`; días, jornada, duración mínima y máximos (H77) |
+| `AdminBecasComponent` | `GET/POST/PUT /configuracion/becas/tipos`, `GET/POST/PUT /configuracion/becas`, `POST /preview`, `PUT /:id/aprobar`, `/rechazar`, `/anular`; asignaciones y tipos con motivo (H78) |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id`; botones Asistencia/Notas navegan con `id_curso` e `id_grado` (H53) |
 | `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53) |
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53), usa `parseFechaLocal`/`diaSemanaLocal` y muestra el día en español (H61); bloquea observación sin P/T/F con error inline (H60) |

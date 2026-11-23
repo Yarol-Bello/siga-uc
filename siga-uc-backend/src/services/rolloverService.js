@@ -19,6 +19,7 @@ const {
 } = require("./anioLectivoService");
 
 const DIAS_SEMANA = 5;
+const configuracionAnioService = require("./configuracionAnioService");
 const TIPOS_BASE = new Set(["MATRICULA", "PENSION"]);
 const VERSION_HASH = 1;
 
@@ -35,12 +36,28 @@ const aHoras = (valor) =>
 const claveGrado = (grado) =>
   `${String(grado.nombre_grado).trim()}|${String(grado.seccion).trim()}`;
 
+const claveAlcanceConcepto = (concepto) => {
+  if (concepto.id_grado) {
+    return `G:${String(concepto.grado_nombre || "").trim()}|${String(
+      concepto.grado_seccion || "",
+    ).trim()}`;
+  }
+  if (concepto.nivel) {
+    return `N:${String(concepto.nivel).trim()}`;
+  }
+  return "GLOBAL";
+};
+
 const claveConceptoBase = (concepto) =>
-  `${concepto.tipo}|${concepto.mes === null || concepto.mes === undefined ? "" : Number(concepto.mes)}`;
+  `${concepto.tipo}|${
+    concepto.mes === null || concepto.mes === undefined
+      ? ""
+      : Number(concepto.mes)
+  }|${claveAlcanceConcepto(concepto)}`;
 
 const claveConcepto = (concepto) =>
   concepto.tipo === "OTROS"
-    ? `OTROS|${String(concepto.nombre).trim()}`
+    ? `OTROS|${String(concepto.nombre).trim()}|${claveAlcanceConcepto(concepto)}`
     : claveConceptoBase(concepto);
 
 const nombreConceptoDestino = (concepto, anioOrigen, anioDestino) =>
@@ -346,6 +363,9 @@ const leerContexto = async ({
       anioDestino,
     ),
     monto_destino: aMonto(concepto.monto_base),
+    vigente_desde_destino: concepto.vigente_desde
+      ? `${anioDestino}${String(concepto.vigente_desde).slice(4, 10)}`
+      : `${anioDestino}-01-01`,
   }));
 
   const conceptosDestinoComparables =
@@ -390,6 +410,11 @@ const leerContexto = async ({
       tipo: concepto.tipo,
       mes: concepto.mes,
       monto_base: concepto.monto_destino,
+      nivel: concepto.nivel || null,
+      id_grado: concepto.id_grado || null,
+      grado_nombre: concepto.grado_nombre || null,
+      grado_seccion: concepto.grado_seccion || null,
+      vigente_desde: concepto.vigente_desde_destino,
       estado,
     });
   }
@@ -622,7 +647,11 @@ const leerContexto = async ({
     periodosDestinoClase.length > 0
       ? periodosDestinoClase.length
       : periodosOrigenClase.length;
-  const capacidadHoraria = periodosBaseCapacidad * DIAS_SEMANA;
+  const configuracionDestino =
+    await configuracionAnioService.obtenerEfectiva(anioDestino);
+  const diasBaseCapacidad =
+    configuracionDestino.dias_clase?.length || DIAS_SEMANA;
+  const capacidadHoraria = periodosBaseCapacidad * diasBaseCapacidad;
 
   const horasPorDocente = new Map();
   for (const carga of cargaOrigen) {
@@ -657,7 +686,7 @@ const leerContexto = async ({
     bloqueos.push(
       bloqueo(
         "DOCENTE_SOBRECAPACIDAD",
-        `Hay docentes que superan la capacidad de ${periodosBaseCapacidad} períodos × ${DIAS_SEMANA} días = ${capacidadHoraria} h.`,
+        `Hay docentes que superan la capacidad de ${periodosBaseCapacidad} períodos × ${diasBaseCapacidad} días = ${capacidadHoraria} h.`,
         docentesSobrecargados,
       ),
     );
@@ -992,12 +1021,34 @@ const clonarOferta = async (client, contexto, idUsuario) => {
       continue;
     }
 
+    let idGradoDestino = null;
+    if (concepto.id_grado) {
+      const grado = contexto.mapas.grados.get(
+        `${String(concepto.grado_nombre || "").trim()}|${String(
+          concepto.grado_seccion || "",
+        ).trim()}`,
+      );
+      if (!grado) {
+        throw crearError(
+          `No se pudo mapear el grado de la tarifa ${concepto.nombre} al año ${anioDestino}.`,
+          422,
+          { codigo: "CONCEPTO_SIN_GRADO_DESTINO" },
+        );
+      }
+      idGradoDestino = grado.id_grado;
+    }
+
     const insertado = await rolloverDao.insertarConcepto(
       {
         nombre: concepto.nombre_destino,
         monto_base: concepto.monto_base,
         tipo: concepto.tipo,
         mes: concepto.mes,
+        nivel: concepto.nivel || null,
+        id_grado: idGradoDestino,
+        orden: concepto.orden || 0,
+        vigente_desde: concepto.vigente_desde_destino,
+        vigente_hasta: null,
       },
       anioDestino,
       client,

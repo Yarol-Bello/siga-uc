@@ -127,9 +127,46 @@ export const routes: Routes = [
       {
         path: 'configuracion',
         loadComponent: () =>
-          import('./features/admin/configuracion/admin-configuracion.component').then(
-            (m) => m.AdminConfiguracionComponent,
+          import('./features/admin/configuracion/admin-configuracion-layout.component').then(
+            (m) => m.AdminConfiguracionLayoutComponent,
           ),
+        children: [
+          {
+            path: '',
+            loadComponent: () =>
+              import('./features/admin/configuracion/admin-configuracion.component').then(
+                (m) => m.AdminConfiguracionComponent,
+              ),
+          },
+          {
+            path: 'tarifas',
+            loadComponent: () =>
+              import('./features/admin/configuracion/tarifas/admin-tarifas.component').then(
+                (m) => m.AdminTarifasComponent,
+              ),
+          },
+          {
+            path: 'academico',
+            loadComponent: () =>
+              import('./features/admin/configuracion/academico/admin-academico.component').then(
+                (m) => m.AdminAcademicoComponent,
+              ),
+          },
+          {
+            path: 'horarios',
+            loadComponent: () =>
+              import('./features/admin/configuracion/horarios/admin-horario-config.component').then(
+                (m) => m.AdminHorarioConfigComponent,
+              ),
+          },
+          {
+            path: 'becas',
+            loadComponent: () =>
+              import('./features/admin/configuracion/becas/admin-becas.component').then(
+                (m) => m.AdminBecasComponent,
+              ),
+          },
+        ],
       },
       {
         path: 'tesoreria',

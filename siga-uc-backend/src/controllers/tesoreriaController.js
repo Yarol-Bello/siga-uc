@@ -249,7 +249,12 @@ const generarPensionesMes = async (req, res) => {
       data,
     );
   } catch (error) {
-    return response.error(res, error.statusCode || 500, error.message);
+    return response.error(
+      res,
+      error.statusCode || 500,
+      error.message,
+      error.details || null,
+    );
   }
 };
 
@@ -273,7 +278,11 @@ const listarBecas = async (req, res) => {
 
 const aplicarBeca = async (req, res) => {
   try {
-    const data = await tesoreriaService.aplicarBeca(req.body);
+    const data = await tesoreriaService.aplicarBeca(
+      req.body,
+      req.usuario,
+      req.ip,
+    );
     return response.success(res, 201, "Beca aplicada", data);
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);

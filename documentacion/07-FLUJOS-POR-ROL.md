@@ -358,8 +358,8 @@ pantalla pasa a **solo lectura** y oculta las escrituras.
 
 **Limitaciones visibles:**
 - Solo ofrece Oct/Nov/Dic en el modal de cobro (aunque el backend soporta cualquier mes).
-- No hay UI para crear pre-tickets, generar pensiones, aplicar becas ni ver estadísticas
-  detalladas.
+- No hay UI de Secretaría para crear pre-tickets, generar pensiones ni ver estadísticas
+  detalladas. Las becas y tarifas se administran en `/admin/configuracion` (ADMIN).
 - El mapeo de conceptos está en el frontend y puede romperse si cambian IDs.
 
 ### 2.4 Cuadre de caja (`/secretaria/caja`)

@@ -135,6 +135,7 @@
   </div>
 
   <app-horario-grid
+    [dias]="dias()"
     [periodos]="periodos()"
     [bloques]="bloques()"
     [puedeEditar]="puedeEditar()"
@@ -263,7 +264,7 @@
         <div class="form-group">
           <label>Día *</label>
           <select [(ngModel)]="formBloque.dia_semana">
-            @for (dia of ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']; track dia) {
+            @for (dia of dias(); track dia) {
             <option [ngValue]="dia">{{ dia }}</option>
             }
           </select>
