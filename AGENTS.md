@@ -329,8 +329,12 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   de la carga curricular del grado/año, notas finales y conclusión descriptiva. No hay
   portal MINEDU, plantilla oficial ni carga de archivos. El aviso visible es
   "Exportación interna. No es una exportación oficial a SIAGIE/MINEDU."
-- Algunos IDs de conceptos de tesorería y los meses Oct–Dic siguen hardcodeados en el
-  frontend.
+- Los **IDs de conceptos** de tesorería ya se resuelven por tipo y por pre-ticket; la
+  tabla de pensiones aún muestra 12 meses fijos y el mensaje “hasta diciembre”. El módulo
+  de configuración reemplazará esos supuestos por tarifas y calendarios administrables.
+- **Módulo de configuración (Fase 0):** el diseño está en
+  `documentacion/20-MODULO-CONFIGURACION.md`. No hay CRUD de conceptos, cursos,
+  competencias ni becas todavía; no confundir el diseño con funcionalidad existente.
 - Si `requiere_cambio_password = TRUE`, la API bloquea los módulos y el frontend redirige a
   `/cambiar-password`.
 - Sí hay suites automatizadas: `npm run smoke` (11), `npm run test:integridad` (21) y
@@ -358,6 +362,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Trazabilidad UI→BD | `documentacion/14-MATRIZ-TRAZABILIDAD.md` |
 | Hallazgos y roadmap | `documentacion/15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` |
 | Guion de demo y checklist | `documentacion/17-GUION-DEMOSTRACION.md` |
+| Auditoría de producción 22/11/2026 | `documentacion/18-AUDITORIA-PRODUCCION-2026-11-22.md` |
+| Diseño multi-año y promoción | `documentacion/19-DISENO-MULTIANIO-Y-PROMOCION.md` |
+| Módulo de configuración (diseño y fases) | `documentacion/20-MODULO-CONFIGURACION.md` |
 
 ---
 

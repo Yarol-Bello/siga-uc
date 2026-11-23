@@ -6,7 +6,7 @@
 |---|---|
 | Repositorio | `https://github.com/Yarol-Bello/siga-uc.git` (rama `main`) |
 | Ruta local analizada | `C:\Users\yarol\Documents\Proyectos\siga-uc` |
-| Fecha de verificación | 19/11/2026 |
+| Fecha de verificación | 23/11/2026 |
 | Fuente de verdad | El código y `database/siga_uc.sql` |
 | Alcance de esta carpeta | Mapeo funcional, técnico, de datos, de roles y de procesos |
 
@@ -24,7 +24,7 @@
 | Entender capas, patrones y ciclo de una petición | `02-ARQUITECTURA-Y-PATRONES.md` |
 | Ubicar archivos, controladores, servicios y DAOs | `03-ESTRUCTURA-Y-CLASES.md` |
 | Conocer las 43 tablas, relaciones, triggers y seeds | `04-BASE-DE-DATOS.md` |
-| Consumir o auditar la API (127 endpoints) | `05-API-REST.md` |
+| Consumir o auditar la API (129 endpoints) | `05-API-REST.md` |
 | Ver roles, usuarios semilla y matriz de permisos | `06-USUARIOS-ROLES-Y-PERMISOS.md` |
 | Reproducir el recorrido completo de cada rol | `07-FLUJOS-POR-ROL.md` |
 | Entender un proceso de negocio de inicio a fin | `08-PROCESOS-DE-NEGOCIO.md` |
@@ -37,6 +37,9 @@
 | Ver hallazgos, riesgos y mejoras priorizadas | `15-HALLAZGOS-RIESGOS-Y-MEJORAS.md` |
 | Consultar el `AGENTS.md` anterior (histórico) | `16-ANEXO-AGENTS-ANTERIOR.md` |
 | Preparar la demo y el checklist de aprobación | `17-GUION-DEMOSTRACION.md` |
+| Auditar la producción del 22/11/2026 | `18-AUDITORIA-PRODUCCION-2026-11-22.md` |
+| Entender el diseño multi-año y promoción | `19-DISENO-MULTIANIO-Y-PROMOCION.md` |
+| Diseñar el módulo de configuración y ajustes | `20-MODULO-CONFIGURACION.md` |
 
 ---
 
@@ -46,15 +49,15 @@
 |---|---|
 | Roles | 4 (`ADMIN`, `DOCENTE`, `SECRETARIA`, `ESTUDIANTE`) |
 | Paneles frontend | 4 + autenticación |
-| Tablas PostgreSQL | 40 |
-| Funciones + triggers | 15 objetos (8 funciones, 7 triggers) |
-| Endpoints REST | 114 (64 GET, 32 POST, 14 PUT, 4 DELETE) |
-| Routers backend | 15 |
-| Controladores backend | 15 |
-| Servicios backend | 22 |
-| DAOs backend | 18 |
-| Archivos backend | 80 JS |
-| Archivos frontend | 134 (56 TypeScript) |
+| Tablas PostgreSQL | 43 base (44 en local con `horarios_h47_backup`) |
+| Funciones + triggers | 11 objetos en el esquema base; H47/H48 agregan triggers |
+| Endpoints REST | 129 (71 GET, 36 POST, 17 PUT, 5 DELETE) |
+| Routers backend | 17 |
+| Controladores backend | 17 |
+| Servicios backend | 26 |
+| DAOs backend | 22 |
+| Archivos backend | 97 JS |
+| Archivos frontend | 147 (62 TypeScript) |
 | Transacciones de negocio | Matrícula, pago+boleta, cierre de caja, carga masiva, asignación de tutor |
 | Autenticación | JWT (8 h) + bcrypt (coste 10) |
 | Correo transaccional | Resend (API HTTP), con degradación no bloqueante |
@@ -73,8 +76,9 @@
 4. **La documentación histórica está desactualizada** en varios puntos: decía 26 tablas, 17
    servicios, 16 DAOs, 14 controladores y Nodemailer/SMTP. El estado real está en estos
    documentos y en el código.
-5. **No existen tests automatizados ni CI/CD**. La validación es manual con
-   `docs/GUIA_TESTEO.md`.
+5. **Sí existen suites automatizadas locales**: `npm run smoke` (11), `npm run
+   test:integridad` (21 en base nueva), `npm run test:e2e` (75, base desechable) y
+   `npm run test:h47-generador` (4). No hay CI/CD ni Docker.
 
 ---
 
