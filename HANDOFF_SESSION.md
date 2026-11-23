@@ -3,12 +3,16 @@
 > **Fecha:** 23/11/2026
 > **Fase:** demostración y aprobación. **No es producción real.**
 > **Código funcional:** `e010362` (zona horaria, KPI de tesorería, responsive y seed v2).
-> **Render:** auto-deploy al push de `main`; verificar `/api/health` (`commit` y
-> `zona_horaria`).
+> **Render:** **verificado** con `d9b24fe`; `/api/health` devuelve
+> `zona_horaria: "America/Lima"` y `commit` nuevo.
 > **Supabase demo:** sigue con el **seed v1** hasta ejecutar el refresh con credenciales.
 > **Demo local v2:** base `siga_uc_h81` con 432 pagos y notas por perfil.
 > **HEAD documental:** ver `git log -1`.
 > **Repo:** `https://github.com/Yarol-Bello/siga-uc.git` · rama `main`.
+
+> **Cierre de esta sesión:** la demo, el build y el deploy ya fueron verificados. La próxima
+> sesión **no debe volver a revisar módulos, ni ejecutar smoke/E2E/integridad**. Solo debe
+> ejecutar el refresh de datos de Supabase si recibe credenciales.
 
 ---
 
@@ -20,7 +24,8 @@ SIGA-UC está funcional y desplegado en la demo:
 |---|---|
 | Frontend | https://siga-uc-web.onrender.com |
 | Backend | https://siga-uc-api-prod.onrender.com/api |
-| Health | OK, `database: "ok"`, `zona_horaria` y `commit` |
+| Render desplegado | `d9b24fe` (verificado el 23/11/2026) |
+| Health | OK, `database: "ok"`, `zona_horaria: "America/Lima"`, `commit` |
 | Supabase | `siga-uc-prod` (us-west-2), 48 tablas, H74–H80, seed v1 |
 | Año activo | 2026 |
 | 2027 | No activo |
@@ -157,6 +162,11 @@ Estudiantes `72000002`–`72000075`: contraseña `UC<DNI>`.
 | `npm run uat:verify` en `siga_uc_h81` (seed v2) | **22 PASS, 0 FAIL** |
 | `npm run uat:verify` contra Supabase (seed v1) | **22 PASS, 0 FAIL** |
 | Build Angular | OK (warning de budget inicial) |
+| Render producción | `d9b24fe`; health OK, `zona_horaria: "America/Lima"`, login de los 3 roles y KPI con deuda de pensiones |
+| Frontend producción | drawer y matriz de pensiones verificados a 375 px y 1280 px |
+
+> **No repetir estas suites en la próxima sesión.** Ya están verdes y el deploy está
+> confirmado. Solo se vuelven a ejecutar si se cambia código o si el usuario lo pide.
 
 Pruebas nuevas de H80:
 
@@ -209,8 +219,9 @@ Health: `GET http://localhost:3000/api/health`.
    siguen +5 h. Se corrigen con el refresh del seed o con un script de normalización
    respaldado. En Supabase conviene además
    `ALTER DATABASE postgres SET timezone = 'America/Lima';` si el pooler es transaccional.
-4. **Verificar Render** después del push: `/api/health` debe devolver `commit` nuevo y
-   `zona_horaria: "America/Lima"`; luego correr smoke contra la URL de producción.
+4. ✅ **Render verificado** el 23/11/2026 con `d9b24fe`: health con `zona_horaria` y
+   `commit`, login de los 3 roles y KPI de tesorería con la deuda de pensiones. **No
+   repetir esta verificación en la próxima sesión.**
 5. **SIAGIE oficial** (solo si el colegio lo pide):
    - obtener la plantilla oficial de SIAGIE;
    - mapear áreas/cursos/competencias;
@@ -251,50 +262,28 @@ Copiar y pegar:
 
 ```text
 Estás retomando SIGA-UC, el Sistema Integrado de Gestión Académica de la
-I.E.P. Unión Científica (Huancayo, Perú). Es una demo funcional, no producción
-real. Lee primero AGENTS.md y HANDOFF_SESSION.md; luego consulta
-documentacion/21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md si el trabajo es de SIAGIE.
+I.E.P. Unión Científica (Huancayo, Perú). Es una demo funcional, no producción real.
+Lee AGENTS.md y HANDOFF_SESSION.md.
 
-ESTADO ACTUAL
-- Repo: https://github.com/Yarol-Bello/siga-uc.git, rama main.
-- Código funcional: e010362 (H74–H80 + bloque demo v2). Verificar el commit real en
-  `GET /api/health` (`commit`) tras el deploy de Render.
-- Frontend: https://siga-uc-web.onrender.com
-- Backend: https://siga-uc-api-prod.onrender.com/api (health OK, `zona_horaria`).
-- Supabase demo `siga-uc-prod`: 48 tablas, H74–H80, 2026 ACTIVO, 2027 no activo,
-  0 promociones, 1 acta ABIERTO, 75 alumnos, 6 docentes activos, 55 carga,
-  145 horarios, 750 pensiones, 113 pagos (seed v1), 3 becas y 3,300 conclusiones.
-- Demo local v2 en `siga_uc_h81`: 432 pagos de marzo a noviembre, 357 pensiones pagadas,
-  386 pendientes, 7 exoneradas, S/ 95,625 de deuda, notas por perfil (28/75 con una C).
-- Demo v2: zona horaria forzada a America/Lima por conexión, KPI de tesorería con
-  pensiones, responsive ADMIN/SECRETARÍA/DOCENTE y cabeceras dinámicas.
-- H80: conclusiones con nivel + avance + dificultad + sugerencia y código/hash interno
-  SIAGIE. El código es interno, NO el oficial de SIAGIE.
-- Tests: E2E 102, integridad 36 (UAT y h81), setup 5, smoke 12, uat:verify 22 (h81 y
-  Supabase v1), build Angular OK.
-- El ADMIN de Supabase conserva su contraseña real; UC2026* solo funciona en local.
-  DOCENTE 73000001 / Docente2026*; ESTUDIANTE 72000001 / UC72000001;
-  SECRETARIA 73000007 / Secretaria2026*.
+La sesión anterior ya cerró la demo y la verificó. NO vuelvas a revisar módulos, ni a
+ejecutar smoke/E2E/integridad, ni a recorrer la demo; eso ya está hecho y solo consume
+tiempo. Tampoco vuelvas a desplegar si no hay cambios de código.
 
-PENDIENTE INMEDIATO
-- Refrescar Supabase al seed v2 y limpiar las 4 cajas UAT: requiere la DATABASE_URL o
-  la contraseña actual del proyecto.
-- Normalizar los timestamps viejos (+5 h) o rehacer el seed. Los registros nuevos ya
-  salen correctos.
-- Verificar Render: health con `commit` nuevo y `zona_horaria: America/Lima`.
+ESTADO
+- Render: d9b24fe desplegado y verificado; /api/health responde database ok,
+  zona_horaria America/Lima y commit d9b24fe.
+- Supabase demo: sigue con el seed v1 (113 pagos, 39 pagadas, 10 exoneradas).
+- Local: siga_uc_h81 tiene el seed v2 validado (432 pagos y notas por perfil).
+
+ÚNICO PENDIENTE
+Refrescar los datos de Supabase al seed v2, normalizar los timestamps viejos (+5 h) y
+limpiar las 4 aperturas/cierres de la verificación UAT. Para eso necesitas la
+DATABASE_URL actual de Supabase (session pooler, puerto 5432) o una contraseña temporal
+del ADMIN. Si no tienes credenciales, pídelas y detente; no modifiques datos a ciegas.
 
 REGLAS
-- No activar 2027, no confirmar promociones y no cargar datos reales de menores.
-- No tocar la carpeta INFORME/ (es documentación del usuario y no está trackeada).
-- Mantener MVC + DAO, SQL parametrizado, transacciones, respuestas uniformes y roles.
-- Antes de cambios de esquema, leer database/README.md y documentacion/04.
-- Si el pedido es SIAGIE oficial, pedir primero la plantilla oficial; no inventar
-  códigos de SIAGIE.
-
-TAREA DE ESTA SESIÓN
-1. Verificar git status, health de Render y estado de Supabase sin modificar datos.
-2. Revisar la demo: conclusiones, SIAGIE interno, tesorería, caja, notas y reportes.
-3. Si hay credenciales, refrescar Supabase al seed v2 y normalizar timestamps.
-4. Si se implementa algo: migración idempotente, backend, frontend, tests,
-   documentación y commit atómico en español.
+- No activar 2027 ni confirmar promociones.
+- No cargar datos reales de menores.
+- No tocar INFORME/.
+- Si el pedido es SIAGIE oficial, pedir primero la plantilla oficial.
 ```

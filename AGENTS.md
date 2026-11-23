@@ -399,6 +399,11 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - **Responsive:** ADMIN, SECRETARÍA y DOCENTE usan drawer lateral por debajo de 900 px,
   overlay, cierre con Escape/navegación y cabeceras dinámicas por ruta. La matriz de
   pensiones es compacta y fija DNI/Estudiante; a 1280 px ya muestra los 12 meses.
+- **Cierre 23/11/2026:** Render quedó verificado con `d9b24fe` (health OK,
+  `zona_horaria: America/Lima`), el frontend responsive está desplegado y las suites
+  smoke 12, integridad 36, E2E 102 y uat:verify 22 están verdes. **La próxima sesión no
+  debe re-revisar la demo ni repetir esas suites**: solo falta refrescar los datos de
+  Supabase al seed v2, normalizar los timestamps viejos y limpiar las 4 cajas UAT.
 - **Becas (H78):** el catálogo `tipos_beca` define alcance, modalidad, tope, combinación,
   grupo de exclusividad, prioridad, evidencia y aprobación. Una beca aprobada se aplica a
   cargos `PENDIENTE`/`EXONERADO`; una beca del 100% deja el cargo `EXONERADO` en 0. Los
