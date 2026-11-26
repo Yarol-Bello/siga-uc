@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap, catchError, throwError } from 'rxjs';
+import { Observable, tap, catchError, throwError, finalize, retry, timeout, timer } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   LoginRequest,
@@ -28,20 +28,76 @@ export class AuthService {
   private usuarioActual = signal<Usuario | null>(this.getUsuarioFromStorage());
   public usuario = this.usuarioActual.asReadonly();
 
+  // Estado visible mientras Render despierta el backend.
+  private esperandoServidorState = signal(false);
+  readonly esperandoServidor = this.esperandoServidorState.asReadonly();
+  private mensajeConexionState = signal<string | null>(null);
+  readonly mensajeConexion = this.mensajeConexionState.asReadonly();
+
   /**
-   * Login del usuario
+   * Login del usuario.
+   * Si Render está en cold start, muestra un mensaje y reintenta solo ante
+   * errores de red o respuestas 502/503/504. Nunca reintenta 401/403.
    */
   login(credentials: LoginRequest): Observable<any> {
+    this.esperandoServidorState.set(false);
+    this.mensajeConexionState.set(null);
+
+    const aviso = window.setTimeout(() => {
+      this.esperandoServidorState.set(true);
+      this.mensajeConexionState.set(
+        'El servidor está despertando. Esto puede tardar hasta 60 segundos...'
+      );
+    }, 4000);
+
     return this.http.post<any>(`${this.API_URL}/login`, credentials).pipe(
+      timeout(75000),
+      retry({
+        count: 2,
+        delay: (error, retryCount) => {
+          if (!this.esErrorColdStart(error)) {
+            return throwError(() => error);
+          }
+          this.esperandoServidorState.set(true);
+          this.mensajeConexionState.set(
+            `El servidor está despertando. Reintentando ${retryCount} de 2...`
+          );
+          return timer(5000);
+        },
+      }),
       tap((response) => {
         if (response.success && response.data) {
           this.guardarSesion(response.data.token, response.data.usuario);
         }
       }),
       catchError((error) => {
-        console.error('❌ Error en login:', error);
+        console.error('❌ Error en login:', error?.status || error?.name);
+        if (this.esErrorColdStart(error)) {
+          return throwError(
+            () =>
+              new Error(
+                'El servidor no respondió después de varios intentos. Espere un momento y vuelva a intentar.'
+              )
+          );
+        }
         return throwError(() => error);
+      }),
+      finalize(() => {
+        window.clearTimeout(aviso);
+        this.esperandoServidorState.set(false);
+        this.mensajeConexionState.set(null);
       })
+    );
+  }
+
+  private esErrorColdStart(error: any): boolean {
+    const status = Number(error?.status);
+    return (
+      status === 0 ||
+      status === 502 ||
+      status === 503 ||
+      status === 504 ||
+      error?.name === 'TimeoutError'
     );
   }
 

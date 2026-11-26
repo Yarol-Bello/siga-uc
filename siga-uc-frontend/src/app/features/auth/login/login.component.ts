@@ -28,6 +28,8 @@ import { environment } from '../../../../environments/environment';
 export class LoginComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
+  readonly esperandoServidor = this.authService.esperandoServidor;
+  readonly mensajeConexion = this.authService.mensajeConexion;
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
@@ -97,7 +99,10 @@ export class LoginComponent {
       },
       error: (error) => {
         this.cargando.set(false);
-        const msg = error.error?.message || 'Error al iniciar sesión. Verifique sus credenciales.';
+        const msg =
+          error.error?.message ||
+          error.message ||
+          'Error al iniciar sesión. Verifique sus credenciales.';
         this.errorMensaje.set(msg);
       },
       complete: () => {

@@ -36,6 +36,14 @@
     </div>
     }
 
+    <!-- Aviso de cold start de Render -->
+    @if (esperandoServidor() && mensajeConexion()) {
+    <div class="alert alert-info" role="status" aria-live="polite">
+      <i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i>
+      {{ mensajeConexion() }}
+    </div>
+    }
+
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
       <!-- Campo DNI -->
       <div class="form-group">
@@ -88,7 +96,7 @@
       <button type="submit" class="btn-submit" [disabled]="cargando()">
         @if (cargando()) {
         <i class="fa-solid fa-spinner fa-spin"></i>
-        <span>Ingresando...</span>
+        <span>{{ esperandoServidor() ? 'Conectando...' : 'Ingresando...' }}</span>
         } @else {
         <span>Ingresar al Sistema</span>
         <i class="fa-solid fa-arrow-right"></i>

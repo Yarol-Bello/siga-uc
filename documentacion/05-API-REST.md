@@ -74,7 +74,7 @@ Error:
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
 | GET | `/` | Público | Bienvenida + versión |
-| GET | `/api/health` | Público | Health check (`app`, `version`, `environment`, `timestamp`) |
+| GET | `/api/health` | Público | Health check siempre 200 (`status`, `dbReady`, `database`, `zona_horaria`, `commit`, `timestamp`) |
 | GET | `/api/configuracion` | Público | Año activo (`anio_lectivo`) + institución pública segura (nombre, logo, moneda, símbolo, zona horaria, locale) |
 
 ### 2.1 Años lectivos y rollover — `/api/anios-lectivos` (5; lectura ADMIN/SECRETARIA, escritura ADMIN)

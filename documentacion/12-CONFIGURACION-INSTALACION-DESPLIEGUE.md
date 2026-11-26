@@ -89,8 +89,8 @@ TZ=America/Lima
 > `env.js` exige `JWT_SECRET` y, si no hay `DATABASE_URL`, las `DB_*`. En producción además
 > exige `FRONTEND_URL` y un `JWT_SECRET` de al menos 32 caracteres y distinto de los valores
 > de ejemplo. `TZ` **no** se aplica desde JavaScript: debe definirse como variable de entorno
-> del proceso (Render > Environment). El healthcheck consulta la BD y devuelve `503` si no
-> responde.
+> del proceso (Render > Environment). El healthcheck siempre responde 200 e informa
+> `status`/`dbReady`; no reinicia el contenedor cuando la BD tarda en despertar.
 
 ---
 
@@ -321,13 +321,17 @@ Esperado:
 
 ```text
 🚀 Iniciando SIGA-UC Backend...
-✅ Conectado a PostgreSQL - Base de datos: siga_uc
-✅ Test de conexión exitoso
 🌐 Servidor: http://localhost:3000
 📊 Health check: http://localhost:3000/api/health
+✅ Conectado a PostgreSQL - Base de datos: siga_uc
+✅ Test de conexión exitoso
+📅 Año lectivo activo: 2026 (fuente: tabla)
 ```
 
-El servidor arranca aunque la BD falle o el correo no esté configurado; muestra advertencias.
+El puerto se abre antes de las consultas iniciales. Mientras la BD y el año activo se cargan,
+`/api/health` responde 200 con `status: "starting"` y las rutas de negocio 503
+`SERVICE_STARTING`. Si la BD falla, el backend reintenta en segundo plano y el health
+informa `status: "degraded"`, sin que Render reinicie el contenedor.
 
 ### Scripts
 
@@ -401,10 +405,13 @@ Debe estar `Running`.
    - `TZ=America/Lima` como variable del proceso
    - `RESEND_API_KEY`
    - `EMAIL_FROM`
-6. Health check: `/api/health` (consulta `SELECT 1` con timeout de 2 s). Devuelve
+6. Health check: `/api/health` (consulta `SELECT 1` con timeout de 2 s). **Siempre responde
+   200**; devuelve `status` (`starting`/`ok`/`degraded`), `dbReady`, `database`,
    `zona_horaria` (`America/Lima` cuando el pool aplicó el `SET TIME ZONE`) y `commit`
-   (`RENDER_GIT_COMMIT` en Render) para verificar el despliegue.
-7. El servidor escucha en `0.0.0.0` y usa `process.env.PORT`.
+   (`RENDER_GIT_COMMIT` en Render) para verificar el despliegue. No usar el 200 como
+   sinónimo de listo: comprobar `dbReady: true`.
+7. El servidor escucha en `0.0.0.0` y usa `process.env.PORT`. El puerto se abre antes de
+   `testConnection()`, `cargarAnioActivo()` y el aviso de primera configuración.
 
 **CORS:** `app.js` permite `localhost:4200`, `localhost:3000` y `process.env.FRONTEND_URL`.
 Configurar el dominio real en `FRONTEND_URL`.
@@ -639,7 +646,7 @@ Crear una tarea diaria a las 02:00:
 | CORS bloqueado | Dominio no permitido | Ajustar `FRONTEND_URL` |
 | SIAGIE sin notas | No hay `notas_finales_area` | Calcular notas finales |
 | Fecha desfasada | Zona horaria | `TZ=America/Lima` en el entorno del proceso (Render), no en JS |
-| `/api/health` responde 503 | La BD no responde en 2 s | Revisar credenciales, SSL (`DB_SSL`/`sslmode`) y conectividad |
+| `/api/health` responde 200 con `status: "degraded"` | La BD no responde en 2 s | Revisar credenciales, SSL (`DB_SSL`/`sslmode`) y conectividad; el backend reintenta solo |
 
 ---
 

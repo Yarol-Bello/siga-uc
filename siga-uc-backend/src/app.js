@@ -28,6 +28,14 @@ const response = require("./utils/response");
 // Crear aplicación Express
 const app = express();
 
+// Estado de arranque. El puerto se abre antes de las consultas iniciales
+// para que Render detecte el servicio; /api/health siempre responde 200.
+let startupPhase = "starting";
+const REINTENTO_ARRANQUE_MS = 5000;
+const MAX_REINTENTOS_ARRANQUE = 12;
+let reintentoArranque = null;
+let intentosArranque = 0;
+
 // Detrás de proxy (Render) para que rate-limit use la IP real
 if (env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
@@ -89,25 +97,32 @@ if (env.NODE_ENV === "production") {
 // RUTAS
 // ============================================================
 
-// Ruta de health check
+// Ruta de health check. Responde 200 incluso mientras la base se está
+// inicializando para que Render no reinicie el contenedor por un falso 503.
 app.get("/api/health", async (req, res) => {
   const baseDatosOk = await checkDatabase(2000);
+  const appLista = startupPhase === "ok";
+  const estado = appLista && !baseDatosOk ? "degraded" : startupPhase;
+  const listo = appLista && baseDatosOk;
 
-  if (!baseDatosOk) {
-    return res.status(503).json({
-      success: false,
-      message: "Servicio no disponible: base de datos sin conexión",
-      errors: null,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  const mensaje =
+    estado === "ok"
+      ? "SIGA-UC API funcionando correctamente"
+      : estado === "starting"
+        ? "SIGA-UC API iniciando; base de datos en preparación"
+        : "SIGA-UC API disponible; base de datos no disponible";
 
-  return response.success(res, 200, "SIGA-UC API funcionando correctamente", {
+  return response.success(res, 200, mensaje, {
     app: env.APP.NAME,
     version: env.APP.VERSION,
     environment: env.NODE_ENV,
-    database: "ok",
-    zona_horaria: getZonaHorariaSesion(),
+    status: estado,
+    dbReady: listo,
+    // "ok" solo cuando terminó la inicialización; antes se informa "starting"
+    // aunque la conexión física ya responda.
+    database: listo ? "ok" : baseDatosOk ? "starting" : "unavailable",
+    zona_horaria:
+      getZonaHorariaSesion() || env.TZ || "America/Lima",
     commit:
       process.env.RENDER_GIT_COMMIT ||
       process.env.GIT_COMMIT ||
@@ -122,6 +137,28 @@ app.get("/", (req, res) => {
   response.success(res, 200, `Bienvenido a ${env.APP.NAME} API`, {
     version: env.APP.VERSION,
     documentation: "/api/health",
+  });
+});
+
+// Mientras el backend termina de conectarse a la base, las rutas de negocio
+// responden 503 con un código claro. El frontend reintenta el login y el
+// health check sigue en 200 para no reiniciar el contenedor.
+app.use((req, res, next) => {
+  if (startupPhase === "ok") return next();
+
+  return res.status(503).json({
+    success: false,
+    message:
+      startupPhase === "starting"
+        ? "El servicio está iniciando. Intente nuevamente en unos segundos."
+        : "El servicio no tiene base de datos disponible. Contacte al administrador.",
+    errors: {
+      codigo:
+        startupPhase === "starting"
+          ? "SERVICE_STARTING"
+          : "SERVICE_DEGRADED",
+    },
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -270,15 +307,41 @@ const cerrarServidor = (codigo = 0, motivo = "señal") => {
   }
 };
 
-const startServer = async () => {
-  try {
-    console.log("\n🚀 Iniciando SIGA-UC Backend...\n");
+const programarReintentoArranque = () => {
+  if (reintentoArranque || startupPhase === "ok") return;
 
+  if (intentosArranque >= MAX_REINTENTOS_ARRANQUE) {
+    console.error(
+      "⚠️ Se agotaron los reintentos de conexión. La API seguirá en modo degradado.",
+    );
+    return;
+  }
+
+  reintentoArranque = setTimeout(() => {
+    reintentoArranque = null;
+    intentosArranque += 1;
+    console.log(
+      `🔄 Reintentando conexión con la base (${intentosArranque}/${MAX_REINTENTOS_ARRANQUE})...`,
+    );
+    void inicializarDependencias();
+  }, REINTENTO_ARRANQUE_MS);
+
+  // El reintento no debe impedir que el proceso termine por SIGTERM.
+  if (typeof reintentoArranque.unref === "function") {
+    reintentoArranque.unref();
+  }
+};
+
+const inicializarDependencias = async () => {
+  try {
     const dbConnected = await testConnection();
 
     if (!dbConnected) {
-      console.error("\n⚠️  El servidor arrancará pero sin conexión a la BD.");
+      startupPhase = "degraded";
+      console.error("\n⚠️  El servidor está escuchando, pero sin conexión a la BD.");
       console.error("   Verifica las credenciales en el archivo .env\n");
+      programarReintentoArranque();
+      return;
     }
 
     // El año activo se carga una vez al arrancar. La tabla manda sobre .env.
@@ -287,15 +350,40 @@ const startServer = async () => {
       `   📅 Año lectivo activo: ${anioActivo.anio} (fuente: ${anioActivo.fuente})`,
     );
 
+    startupPhase = "ok";
+    intentosArranque = 0;
+
+    if (reintentoArranque) {
+      clearTimeout(reintentoArranque);
+      reintentoArranque = null;
+    }
+
     // Aviso de primera configuración. Si H79 no está aplicada, no bloquea.
     try {
       const setupService = require("./services/setupService");
       await setupService.anunciarTokenSiPendiente();
     } catch (error) {
-      console.warn("⚠️ No se pudo verificar la configuración inicial:", error.message);
+      console.warn(
+        "⚠️ No se pudo verificar la configuración inicial:",
+        error.message,
+      );
     }
+  } catch (error) {
+    startupPhase = "degraded";
+    console.error(
+      "⚠️ No se pudieron completar las tareas de arranque:",
+      error.message,
+    );
+    programarReintentoArranque();
+  }
+};
 
-    // Arrancar el servidor PRIMERO (sin esperar a Resend)
+const startServer = () => {
+  try {
+    console.log("\n🚀 Iniciando SIGA-UC Backend...\n");
+
+    // El puerto se abre antes de las consultas iniciales. Render detecta el
+    // servicio de inmediato y /api/health responde 200 con status "starting".
     server = app.listen(PORT, "0.0.0.0", () => {
       console.log("═══════════════════════════════════════════════════");
       console.log(`   🎓 ${env.APP.NAME} v${env.APP.VERSION}`);
@@ -306,6 +394,10 @@ const startServer = async () => {
       console.log(`   🕐 Zona horaria: ${env.TZ}`);
       console.log(`   💾 BD:           ${describirConexion()}`);
       console.log("═══════════════════════════════════════════════════\n");
+
+      // Las consultas iniciales siguen en segundo plano. El health check
+      // informa "starting" hasta que terminen.
+      void inicializarDependencias();
 
       // Verificar conexión con Resend en SEGUNDO PLANO (no bloquea el arranque)
       setTimeout(async () => {
@@ -318,6 +410,11 @@ const startServer = async () => {
           console.warn("   El servidor sigue funcionando, solo sin correos.\n");
         }
       }, 5000); // espera 5 segundos antes de verificar Resend
+    });
+
+    server.on("error", (error) => {
+      console.error("❌ Error del servidor HTTP:", error.message);
+      process.exit(1);
     });
   } catch (error) {
     console.error("❌ Error al iniciar el servidor:", error.message);

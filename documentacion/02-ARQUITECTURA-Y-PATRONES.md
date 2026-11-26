@@ -136,8 +136,11 @@ Notas:
 4. Registra 14 routers.
 5. Define `GET /`, `GET /api/health` y `GET /api/configuracion`.
 6. Define 404 global y manejador de errores.
-7. `testConnection()` informa si la BD responde.
-8. Escucha en `0.0.0.0:PORT` (por defecto 3000).
+7. Escucha en `0.0.0.0:PORT` (por defecto 3000) **antes** de consultar la BD.
+8. En segundo plano ejecuta `testConnection()`, `cargarAnioActivo()` y el aviso de primera
+   configuración. Mientras tanto `/api/health` responde 200 con `status: "starting"` y las
+   rutas de negocio 503 `SERVICE_STARTING`; al terminar, `status: "ok"` y `dbReady: true`.
+   Si la BD falla, reintenta cada 5 s (hasta 12 veces) y el health informa `degraded`.
 9. Verifica el correo en segundo plano; un fallo no impide arrancar.
 
 ### 2.6 Transacciones

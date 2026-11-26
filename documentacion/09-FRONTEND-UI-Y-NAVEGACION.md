@@ -120,14 +120,18 @@ una ruta interna válida; si no, navega al dashboard del rol (H72).
 
 | Método / propiedad | Efecto |
 |---|---|
-| `anioLectivo` | Signal con el año lectivo activo; fallback `new Date().getFullYear()` |
+| `anioLectivo` | Signal con el año lectivo activo; usa el último año cacheado en `localStorage` (`siga_uc_anio_lectivo`) o el año calendario como fallback inmediato |
 | `institucion` | Signal con los datos públicos de H74: nombre, logo, moneda, símbolo, zona horaria y locale |
 | `nombreInstitucion`, `moneda`, `simboloMoneda`, `zonaHoraria` | Computed con fallback seguro |
-| `cargar()` | `GET /api/configuracion`; se ejecuta en `provideAppInitializer` antes de renderizar las vistas |
+| `cargar()` | `GET /api/configuracion`; se ejecuta en segundo plano desde `provideAppInitializer` y no bloquea el render del login |
 | `recargar()` | Vuelve a cargar la configuración pública después de guardar ajustes |
 
 > El año lectivo no se define en `environment.ts` ni en componentes: se obtiene del backend al
 > iniciar la app. Cambiarlo en 2027 solo requiere actualizar `ANIO_LECTIVO` y reiniciar el API.
+>
+> `index.html` incluye un splash CSS dentro de `<app-root>` que desaparece al montar Angular.
+> `loginSetupGuard` espera como máximo 1.5 s por `/api/setup/status`; si la API está despertando
+> o falla, deja abrir `/login` en lugar de bloquear la pantalla.
 
 `Usuario`:
 

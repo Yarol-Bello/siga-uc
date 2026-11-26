@@ -14,7 +14,11 @@ import { ConfiguracionService } from './core/services/configuracion.service';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideAppInitializer(() => inject(ConfiguracionService).cargar()),
+    // La configuración se carga en segundo plano: el login debe renderizar
+    // aunque Render esté despertando o la API tarde en responder.
+    provideAppInitializer(() => {
+      void inject(ConfiguracionService).cargar();
+    }),
     provideRouter(routes),
     provideHttpClient(withInterceptors([authInterceptor])),
   ],

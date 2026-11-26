@@ -23,9 +23,24 @@ Respuesta esperada:
 {
   "success": true,
   "message": "SIGA-UC API funcionando correctamente",
-  "data": { "app": "SIGA-UC", "version": "1.0.0", "environment": "production", "database": "ok", "timestamp": "..." }
+  "data": {
+    "app": "SIGA-UC",
+    "version": "1.0.0",
+    "environment": "production",
+    "status": "ok",
+    "dbReady": true,
+    "database": "ok",
+    "zona_horaria": "America/Lima",
+    "commit": "...",
+    "timestamp": "..."
+  }
 }
 ```
+
+> `/api/health` **siempre responde 200**. Durante el arranque devuelve
+> `status: "starting"` y `dbReady: false`; si la BD no responde, `status: "degraded"`.
+> Render no debe reiniciar el contenedor por un 503. Para monitoreo, considerar listo solo
+> cuando `dbReady: true`.
 
 ### 1.3 Monitoreo mínimo
 

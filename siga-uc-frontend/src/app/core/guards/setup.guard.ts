@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { catchError, map, of } from 'rxjs';
+import { catchError, map, of, timeout } from 'rxjs';
 import { SetupService } from '../services/setup.service';
 
 /**
@@ -12,6 +12,7 @@ export const loginSetupGuard: CanActivateFn = () => {
   const router = inject(Router);
 
   return setup.estado().pipe(
+    timeout(1500),
     map((respuesta) =>
       respuesta?.data?.requiere_setup && respuesta.data.setup_disponible
         ? router.createUrlTree(['/setup'])
