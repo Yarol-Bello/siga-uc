@@ -367,8 +367,9 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   rankea; el promedio no se calcula sobre notas parciales.
 - **Recuperación de contraseña:** usa `correo_personal || correo_institucional`. Si Resend
   rechaza el envío, la API responde `{ tieneCorreo: true, enviado: false }` y la UI pide
-  contactar al administrador. `onboarding@resend.dev` solo entrega al dueño de la cuenta;
-  para todos los usuarios se debe verificar un dominio y usar un `EMAIL_FROM` propio.
+  contactar al administrador. Render ya tiene `RESEND_API_KEY` y `EMAIL_FROM`; el envío al
+  dueño de la cuenta está verificado. `onboarding@resend.dev` solo entrega al dueño de la
+  cuenta; para todos los usuarios se debe verificar un dominio y usar un `EMAIL_FROM` propio.
 - Los **IDs de conceptos** de tesorería ya se resuelven por tipo y por pre-ticket; la
   tabla de pensiones aún muestra 12 meses fijos y el mensaje “hasta diciembre”. El módulo
   de configuración reemplazará esos supuestos por tarifas y calendarios administrables.

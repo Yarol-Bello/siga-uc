@@ -500,6 +500,8 @@ tiene otro nombre.
 6. Si el envío falla, la API registra el error y responde
    `{ tieneCorreo: true, enviado: false }`; la UI muestra “No se pudo enviar el correo”.
    No se debe devolver un falso “enviado”.
+7. **Estado Render (27/11/2026):** `RESEND_API_KEY` y `EMAIL_FROM` ya están configurados;
+   el envío al dueño de la cuenta se verificó. Falta verificar un dominio para el resto.
 
 **Limitación:** el remitente `onboarding@resend.dev` solo puede enviar al correo dueño de
 la cuenta de Resend en modo prueba. Para que cualquier alumno, docente o usuario reciba

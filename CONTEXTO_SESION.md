@@ -33,9 +33,10 @@ I.E.P. Unión Científica (Huancayo, Perú). **No es producción real.**
   recuperación y mérito verificados.
 - **Recuperación de contraseña:** si Resend falla, la API responde
   `{ tieneCorreo: true, enviado: false }` y la UI pide contactar al administrador.
-  **En producción sigue en `enviado: false`**: falta configurar en Render un dominio
-  verificado de Resend, `EMAIL_FROM` con ese dominio y una `RESEND_API_KEY` válida.
-  Es acción del usuario, no código pendiente.
+  **Render ya tiene `RESEND_API_KEY` y `EMAIL_FROM`**; el envío al dueño de Resend está
+  verificado (`76543211` → `enviado: true`, correo recibido y enlace correcto).
+  **Falta un dominio verificado** para entregar a cualquier alumno/docente; mientras
+  `EMAIL_FROM` use `onboarding@resend.dev`, solo llega al dueño de la cuenta.
 - **Cuadro de mérito:** solo rankea alumnos con nota final en todos los cursos de
   `carga_curricular` del grado/bimestre/año. Un alumno con una sola nota ya no aparece.
 
@@ -47,8 +48,9 @@ I.E.P. Unión Científica (Huancayo, Perú). **No es producción real.**
 - **Mérito:** `reporteDao.getCuadroMerito` cuenta cursos distintos de la carga y exige
   `total_cursos = total_cursos_carga`; agrega `total_cursos_carga` a la respuesta.
 - **UI:** nota de integridad, `n/total cursos` junto al nombre y estado vacío actualizado.
-- **Pruebas:** fallo simulado de Resend → `enviado:false`; envío real local OK; mérito con
-  11/11 cursos devuelve 2 alumnos y excluye incompletos; con 1 nota devuelve 0.
+- **Pruebas:** fallo simulado de Resend → `enviado:false`; envío real local OK; envío real
+  en Render al dueño de la cuenta OK (correo recibido y enlace a `siga-uc-web.onrender.com`);
+  mérito con 11/11 cursos devuelve 2 alumnos y excluye incompletos; con 1 nota devuelve 0.
   Build Angular y smoke 12/12 OK. Sin migración.
 
 ## 4. Lo anterior implementado (docente + caja + H81, ya probado)
@@ -119,6 +121,7 @@ Base de datos y documentación:
   dejar los datos como están por ahora.
 - No volver a proponer el refresh del seed v2 hasta el cierre final.
 - No volver a revisar la demo ni repetir las suites.
-- No volver a diagnosticar la recuperación ni el mérito: ya están corregidos. Si el correo
-  sigue sin llegar, es configuración de Resend en Render, no código.
+- No volver a diagnosticar la recuperación ni el mérito: ya están corregidos. Render ya
+  tiene la key y el remitente; si un alumno/docente no recibe el correo, falta verificar un
+  dominio en Resend, no tocar el código.
 - El cuadro de mérito no debe volver a promediar notas parciales: exigir todos los cursos.

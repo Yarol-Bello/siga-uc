@@ -96,10 +96,15 @@ Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron **INACTIVOS**.
 - **Diagnóstico:** `emailService.verificarConexion()` advierte si `EMAIL_FROM` sigue usando
   `onboarding@resend.dev`. Ese remitente de prueba **solo entrega al correo dueño de la
   cuenta Resend**; para alumnos, docentes y secretaría se requiere un dominio verificado.
-- **Producción:** con `07f5bac` desplegado, `POST /api/auth/recuperar-password` para el
-  alumno `76543211` responde `200` con `{ tieneCorreo: true, enviado: false }`. La lógica
-  ya reporta la verdad; **falta configurar Resend en Render** (API key válida y
-  `EMAIL_FROM` con dominio verificado). No es un bug de código pendiente.
+- **Producción (27/11/2026):** Render **no tenía** `RESEND_API_KEY` ni `EMAIL_FROM`. Se
+  agregaron una key de envío y `EMAIL_FROM=SIGA-UC <onboarding@resend.dev>`, y se redeployó.
+  Prueba real con el alumno `76543211`: `POST /api/auth/recuperar-password` responde
+  `{ tieneCorreo: true, enviado: true }`; Gmail recibió el correo a las 9:47 y el enlace
+  apunta a `https://siga-uc-web.onrender.com/reset-password?token=...`. **La entrega y el
+  enlace están verificados.**
+- **Pendiente para todos los usuarios:** la cuenta Resend no tiene ningún dominio
+  verificado. `onboarding@resend.dev` solo entrega al correo dueño de la cuenta; falta
+  verificar un dominio y cambiar `EMAIL_FROM`. No es un bug de código.
 - **Mérito:** `getCuadroMerito` toma los cursos de `carga_curricular` del grado/año, cuenta
   cursos distintos con nota y solo rankea a quien tiene nota final en **todos**. Un alumno
   con una sola nota ya no aparece primero.
@@ -223,7 +228,8 @@ Estudiantes `72000002`–`72000075`: contraseña `UC<DNI>`.
 | Frontend producción | `main-DST4JNBS.js`; aviso de fallo de correo y nota de mérito |
 | Recuperación — envío real (local) | OK; Resend devolvió message ID |
 | Recuperación — fallo (local) | Con key inválida responde `{ tieneCorreo: true, enviado: false }`; la UI pide contactar al administrador |
-| Recuperación — producción | `76543211` responde `enviado: false`; **falta configurar Resend en Render** |
+| Recuperación — producción | `76543211` responde `enviado: true`; correo recibido y enlace correcto (solo dueño de Resend) |
+| Resend — dominio | **Sin dominio verificado**; falta para entregar a alumnos/docentes |
 | Mérito — backend local | 2 alumnos con 11/11 cursos; incompletos excluidos; con 1 nota, 0 filas |
 | Mérito — UI local | Nota visible, `11/11 cursos`, 2 filas y estado vacío correcto |
 | `npm run smoke` local (27/11/2026) | **12 PASS, 0 FAIL, 0 SKIP** |
@@ -289,13 +295,11 @@ Health: `GET http://localhost:3000/api/health`.
    `dbReady: true` y `zona_horaria: "America/Lima"`; frontend `main-DST4JNBS.js` con
    recuperación honesta y mérito completo. **No repetir la revisión de módulos ni las
    suites.**
-5. ⛔ **Correo de recuperación en producción — acción del usuario:** la API ya reporta
-   `enviado: false`, pero Render no puede entregar porque su configuración de Resend no
-   sirve para destinatarios arbitrarios. Hay que:
+5. ⛔ **Correo para todos los usuarios — acción del usuario:** Render ya tiene
+   `RESEND_API_KEY` y `EMAIL_FROM`, y el envío al dueño de la cuenta está verificado. La
+   cuenta Resend **no tiene dominios**. Para alumnos, docentes y secretaría hay que:
    - verificar un dominio en Resend (DNS: SPF/DKIM);
-   - usar `EMAIL_FROM=SIGA-UC <no-reply@dominio-verificado>`;
-   - cargar una `RESEND_API_KEY` válida en Render;
-   - confirmar `FRONTEND_URL=https://siga-uc-web.onrender.com`;
+   - cambiar `EMAIL_FROM=SIGA-UC <no-reply@dominio-verificado>` en Render;
    - redeploy del backend y probar con un correo real de alumno/docente.
    Sin dominio verificado, `onboarding@resend.dev` solo entrega al dueño de la cuenta.
 6. **SIAGIE oficial** (solo si el colegio lo pide):
