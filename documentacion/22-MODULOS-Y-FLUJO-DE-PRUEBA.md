@@ -247,6 +247,7 @@ Navegador
 **Sirve para:** convertir los datos en documentos de gestión.
 
 - Libreta PDF por bimestre.
+- Cuadro de mérito: solo alumnos con nota final en todos los cursos de la carga.
 - Reportes de mérito y riesgo.
 - Consolidado histórico por DNI.
 - Actas y reportes de aula.

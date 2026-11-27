@@ -32,6 +32,7 @@ interface CuadroMerito {
   codigo_estudiante: string;
   dni: string;
   total_cursos: string;
+  total_cursos_carga: string;
   total_ad: string;
   total_a: string;
   total_b: string;

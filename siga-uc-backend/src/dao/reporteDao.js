@@ -78,37 +78,59 @@ const getAlumnosRiesgo = async (id_grado, bimestre, anioLectivo = getAnioLectivo
  */
 const getCuadroMerito = async (id_grado, bimestre, anioLectivo = getAnioLectivo()) => {
   const sql = `
-    WITH notas_alumno AS (
+    WITH carga AS (
+      SELECT COUNT(DISTINCT cc.id_curso)::int AS total_cursos
+      FROM carga_curricular cc
+      WHERE cc.id_grado = $1
+        AND cc.anio_lectivo = $3
+    ),
+    notas_alumno AS (
       SELECT 
         a.id_alumno,
         a.nombres || ' ' || a.apellidos AS nombre_completo,
         a.codigo_estudiante,
         a.dni,
-        COUNT(nf.id_nota_final) AS total_cursos,
-        COUNT(*) FILTER (WHERE nf.nota_final = 'AD') AS total_ad,
-        COUNT(*) FILTER (WHERE nf.nota_final = 'A') AS total_a,
-        COUNT(*) FILTER (WHERE nf.nota_final = 'B') AS total_b,
-        COUNT(*) FILTER (WHERE nf.nota_final = 'C') AS total_c,
+        COUNT(DISTINCT nf.id_curso)::int AS total_cursos,
+        COUNT(DISTINCT nf.id_curso) FILTER (WHERE nf.nota_final = 'AD')::int AS total_ad,
+        COUNT(DISTINCT nf.id_curso) FILTER (WHERE nf.nota_final = 'A')::int AS total_a,
+        COUNT(DISTINCT nf.id_curso) FILTER (WHERE nf.nota_final = 'B')::int AS total_b,
+        COUNT(DISTINCT nf.id_curso) FILTER (WHERE nf.nota_final = 'C')::int AS total_c,
         -- Puntaje ponderado: AD=4, A=3, B=2, C=1
         SUM(CASE nf.nota_final WHEN 'AD' THEN 4 WHEN 'A' THEN 3 WHEN 'B' THEN 2 WHEN 'C' THEN 1 ELSE 0 END) AS puntaje_total,
         ROUND(
           SUM(CASE nf.nota_final WHEN 'AD' THEN 4 WHEN 'A' THEN 3 WHEN 'B' THEN 2 WHEN 'C' THEN 1 ELSE 0 END)::decimal 
-          / NULLIF(COUNT(nf.id_nota_final), 0), 
+          / NULLIF(COUNT(DISTINCT nf.id_curso), 0),
           2
         ) AS promedio_ponderado
       FROM alumnos a
       LEFT JOIN notas_finales_area nf ON nf.id_alumno = a.id_alumno 
-        AND nf.bimestre = $2 AND nf.anio_lectivo = $3
+        AND nf.bimestre = $2
+        AND nf.anio_lectivo = $3
+        AND EXISTS (
+          SELECT 1
+          FROM carga_curricular cc
+          WHERE cc.id_curso = nf.id_curso
+            AND cc.id_grado = a.id_grado
+            AND cc.anio_lectivo = $3
+        )
       WHERE a.id_grado = $1
         AND a.estado_matricula = 'Matriculado'
         AND a.anio_lectivo = $3
       GROUP BY a.id_alumno, a.nombres, a.apellidos, a.codigo_estudiante, a.dni
     )
     SELECT 
-      ROW_NUMBER() OVER (ORDER BY promedio_ponderado DESC NULLS LAST, total_ad DESC) AS puesto,
-      *
-    FROM notas_alumno
-    WHERE total_cursos > 0
+      ROW_NUMBER() OVER (
+        ORDER BY promedio_ponderado DESC NULLS LAST,
+                 total_ad DESC,
+                 na.total_cursos DESC,
+                 nombre_completo
+      ) AS puesto,
+      na.*,
+      carga.total_cursos AS total_cursos_carga
+    FROM notas_alumno na
+    CROSS JOIN carga
+    WHERE carga.total_cursos > 0
+      AND na.total_cursos = carga.total_cursos
     ORDER BY puesto
     LIMIT 10
   `;

@@ -29,6 +29,14 @@ const verificarConexion = async () => {
         "RESEND_API_KEY no está configurada en las variables de entorno",
       );
     }
+    if (FROM_EMAIL.includes("onboarding@resend.dev")) {
+      console.warn(
+        "⚠️ EMAIL_FROM usa onboarding@resend.dev: Resend en modo prueba solo entrega al correo dueño de la cuenta.",
+      );
+      console.warn(
+        "   Para enviar a cualquier usuario, verifique un dominio en Resend y use EMAIL_FROM=no-reply@tudominio.com.",
+      );
+    }
     console.log("✅ Servicio de correo (Resend) configurado correctamente");
     return true;
   } catch (error) {

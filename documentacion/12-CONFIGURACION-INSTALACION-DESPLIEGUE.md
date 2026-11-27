@@ -488,14 +488,23 @@ tiene otro nombre.
 ## 8. Correo con Resend
 
 1. Crear cuenta en Resend.
-2. Verificar dominio o usar el remitente de pruebas.
-3. Generar API key.
-4. Configurar `RESEND_API_KEY` y `EMAIL_FROM`.
-5. `emailService.verificarConexion()` solo comprueba que la key exista, no hace ping real.
-6. Si falla, las notificaciones se guardan y el correo se omite.
+2. Verificar un dominio propio (por ejemplo, `tudominio.com`) y usar un remitente
+   `SIGA-UC <no-reply@tudominio.com>`.
+3. Generar API key con permiso de envío.
+4. Configurar en Render y en local:
+   - `RESEND_API_KEY`
+   - `EMAIL_FROM`
+   - `FRONTEND_URL=https://siga-uc-web.onrender.com`
+5. `emailService.verificarConexion()` comprueba la key y advierte si el remitente sigue
+   siendo `onboarding@resend.dev`. No hace un ping real a Resend.
+6. Si el envío falla, la API registra el error y responde
+   `{ tieneCorreo: true, enviado: false }`; la UI muestra “No se pudo enviar el correo”.
+   No se debe devolver un falso “enviado”.
 
-**Limitación:** el remitente `onboarding@resend.dev` solo puede enviar a correos autorizados
-en modo prueba. Para producción, verificar dominio.
+**Limitación:** el remitente `onboarding@resend.dev` solo puede enviar al correo dueño de
+la cuenta de Resend en modo prueba. Para que cualquier alumno, docente o usuario reciba
+el enlace, se debe verificar un dominio y configurar `EMAIL_FROM` con ese dominio.
+Revisar también spam/promociones y la bandeja del correo registrado en `usuarios`.
 
 > `app.js` conserva el mensaje histórico “SMTP verificado correctamente” aunque el servicio
 > real sea Resend. No es un error funcional, solo nomenclatura heredada.

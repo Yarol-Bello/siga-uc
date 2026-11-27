@@ -123,6 +123,11 @@
       <span class="badge-count" style="background: #F59E0B;">Top 10</span>
     </div>
 
+    <p class="merito-note">
+      <i class="fa-solid fa-circle-info"></i>
+      Solo se incluyen estudiantes con nota final en todos los cursos del grado.
+    </p>
+
     <div class="table-responsive">
       <table>
         <thead>
@@ -142,7 +147,12 @@
           <tr [class.top-3]="esTop3(item.puesto)">
             <td style="font-size: 1.2rem; text-align: center;">{{ getMedalla(item.puesto) }}</td>
             <td><span class="codigo">{{ item.codigo_estudiante }}</span></td>
-            <td><strong>{{ item.nombre_completo }}</strong></td>
+            <td>
+              <strong>{{ item.nombre_completo }}</strong>
+              <small class="cursos-evaluados">
+                {{ item.total_cursos }}/{{ item.total_cursos_carga }} cursos
+              </small>
+            </td>
             <td style="text-align: center;"><span class="badge-literal nota-ad">{{ item.total_ad }}</span></td>
             <td style="text-align: center;"><span class="badge-literal nota-a">{{ item.total_a }}</span></td>
             <td style="text-align: center;"><span class="badge-literal nota-b">{{ item.total_b }}</span></td>
@@ -160,7 +170,7 @@
     <div class="empty-state">
       <i class="fa-solid fa-trophy"></i>
       <h3>Sin datos de mérito</h3>
-      <p>No hay notas finales registradas para este bimestre.</p>
+      <p>Aún no hay estudiantes con nota final en todos los cursos del grado para este bimestre.</p>
     </div>
     }
   </div>

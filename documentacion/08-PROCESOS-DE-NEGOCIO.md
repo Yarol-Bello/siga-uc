@@ -493,9 +493,10 @@ si no      → C
 - Filtra alumnos `Matriculado` del grado.
 - Toma `notas_finales_area` del bimestre/año.
 - Pondera: AD=4, A=3, B=2, C=1.
-- Promedio = suma / cantidad de cursos con nota.
-- Ordena por promedio DESC y cantidad de AD DESC.
-- Devuelve top 10 con puesto.
+- Exige nota final en **todos** los cursos de `carga_curricular` del grado.
+- Promedio = suma / cantidad de cursos de la carga.
+- Ordena por promedio DESC, cantidad de AD DESC y cursos DESC.
+- Devuelve top 10 con puesto; los alumnos con notas incompletas no se rankean.
 - No persiste en `cuadro_merito`.
 
 ### P11.3 Alumnos en riesgo

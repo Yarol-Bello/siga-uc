@@ -177,16 +177,20 @@ else: C
 
 ```text
 puntaje = AD*4 + A*3 + B*2 + C*1
+cursos_con_nota = cursos de la carga del grado con nota final
 promedio = puntaje / cursos_con_nota
-orden = promedio DESC, total_ad DESC
-top = 10
+orden = promedio DESC, total_ad DESC, cursos DESC
+top = 10, solo si cursos_con_nota = total de cursos de la carga
 ```
+
+> Un alumno con una sola nota **no entra al cuadro de mérito**. El ranking compara
+> poblaciones equivalentes: todos los cursos de la carga del grado en el bimestre.
 
 ## 9. Reportes
 
 | ID | Regla | Dónde | Detalle |
 |---|---|---|---|
-| RN-74 | Cuadro de mérito solo alumnos matriculados | `reporteDao` | — |
+| RN-74 | Cuadro de mérito solo alumnos matriculados | `reporteDao` | Solo con nota final en todos los cursos de la carga del grado |
 | RN-75 | Mérito top 10 | `LIMIT 10` | — |
 | RN-76 | Riesgo = 2+ cursos distintos con C | `HAVING >= 2` | No cuenta competencias |
 | RN-77 | Libreta combina notas, conclusión y asistencia | `reporteDao` | No persiste |

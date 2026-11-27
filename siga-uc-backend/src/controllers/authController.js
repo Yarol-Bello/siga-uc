@@ -163,7 +163,16 @@ const solicitarRecuperacion = async (req, res) => {
         res,
         200,
         "No tiene un correo registrado. Contacte al Administrador para restablecer su contraseña.",
-        { tieneCorreo: false },
+        { tieneCorreo: false, enviado: false },
+      );
+    }
+
+    if (resultado.enviado === false) {
+      return response.success(
+        res,
+        200,
+        "No se pudo enviar el correo de recuperación. Contacte al Administrador.",
+        { tieneCorreo: true, enviado: false },
       );
     }
 
@@ -171,7 +180,7 @@ const solicitarRecuperacion = async (req, res) => {
       res,
       200,
       "Si el usuario existe, se ha enviado un correo con las instrucciones.",
-      { tieneCorreo: true },
+      { tieneCorreo: true, enviado: true },
     );
   } catch (error) {
     console.error("❌ Error en recuperación:", error);

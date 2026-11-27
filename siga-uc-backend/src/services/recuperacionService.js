@@ -105,11 +105,23 @@ const solicitarRecuperacion = async (identificador) => {
     </html>
   `;
 
-  await emailService.enviarCorreo({
+  const envio = await emailService.enviarCorreo({
     to: correoDestino,
     subject: "[SIGA-UC] Recuperación de Contraseña",
     html,
   });
+
+  if (!envio?.success) {
+    console.error(
+      "❌ No se pudo enviar el correo de recuperación:",
+      envio?.error || "sin detalle",
+    );
+    return {
+      enviado: false,
+      tieneCorreo: true,
+      error: envio?.error || "No se pudo enviar el correo",
+    };
+  }
 
   return { enviado: true, tieneCorreo: true };
 };

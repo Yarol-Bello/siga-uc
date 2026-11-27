@@ -312,9 +312,10 @@ personal (DOCENTE/SECRETARIA). Un estudiante **sin matrícula en el año activo 
 sesión** (`matricula_activa=false`), pero los endpoints académicos que resuelven su propia
 matrícula responden `403` con `errors.codigo = "SIN_MATRICULA_ACTIVA"`.
 
-**Recuperación:** token aleatorio de 64 hex, expira en 2 h, un solo uso, invalida tokens
-anteriores. Respuesta genérica; si el usuario existe pero no tiene correo devuelve
-`{ tieneCorreo: false }`.
+**Recuperación:** token aleatorio de 64 hex, expira en 2 h, un solo uso, invalida
+tokens anteriores. Respuesta genérica; si el usuario existe pero no tiene correo devuelve
+`{ tieneCorreo: false }`. Si Resend no acepta el envío devuelve
+`{ tieneCorreo: true, enviado: false }` y la UI pide contactar al administrador.
 
 ---
 
@@ -617,7 +618,7 @@ alumno no existe y `400` si no está `Matriculado`. Audita `CREAR` en `Tesorerí
 | # | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|---|
 | 77 | GET | `/api/reportes/dashboard?anio=` | ADMIN/SECRETARIA | KPIs ejecutivos |
-| 78 | GET | `/api/reportes/cuadro-merito/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Top 10 por promedio ponderado |
+| 78 | GET | `/api/reportes/cuadro-merito/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Top 10 por promedio ponderado, solo alumnos con nota final en todos los cursos de la carga |
 | 79 | GET | `/api/reportes/alumnos-riesgo/:id_grado?bimestre=&anio=` | ADMIN/DOCENTE | Alumnos con 2+ cursos en C |
 | 80 | GET | `/api/reportes/resumen-asistencia/:id_grado?anio=` | ADMIN/DOCENTE | Asistencia por alumno |
 | 81 | GET | `/api/reportes/libreta/:id_alumno?bimestre=&anio=` | Autenticado | Libreta completa |

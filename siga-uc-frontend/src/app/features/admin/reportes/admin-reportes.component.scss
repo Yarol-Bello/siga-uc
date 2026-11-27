@@ -201,6 +201,27 @@ tr.top-3 td {
   font-size: 0.82rem;
 }
 
+.merito-note {
+  margin: 0;
+  padding: 10px 24px;
+  background: #fffbeb;
+  border-bottom: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 0.8rem;
+
+  i {
+    margin-right: 6px;
+  }
+}
+
+.cursos-evaluados {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 .badge-literal {
   font-weight: 800;
   font-size: 0.78rem;

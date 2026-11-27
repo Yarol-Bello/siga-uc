@@ -174,6 +174,11 @@ export class LoginComponent {
               '⚠️ No tiene un correo registrado en el sistema.\n\n' +
                 'Por favor, contacte al Administrador para que restablezca su contraseña.',
             );
+          } else if (res.data?.enviado === false) {
+            alert(
+              '⚠️ No se pudo enviar el correo de recuperación.\n\n' +
+                'Verifique la configuración de correo o contacte al Administrador.',
+            );
           } else {
             alert(
               '✅ Solicitud enviada exitosamente.\n\n' +

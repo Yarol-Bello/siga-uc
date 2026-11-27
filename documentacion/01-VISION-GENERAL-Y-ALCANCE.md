@@ -94,7 +94,7 @@ monousuario en secretaría. Esto producía:
 
 - Dashboard ejecutivo con KPIs.
 - Libreta imprimible por alumno/bimestre.
-- Cuadro de mérito (top 10 por promedio ponderado).
+- Cuadro de mérito (top 10 por promedio ponderado, solo con notas completas del grado).
 - Alumnos en riesgo (2+ cursos con `C`).
 - Resumen de asistencia por grado.
 - Auditoría de avance de carga de notas por docente.
