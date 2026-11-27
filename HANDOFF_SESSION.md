@@ -2,9 +2,11 @@
 
 > **Fecha:** 27/11/2026
 > **Fase:** demostración y aprobación. **No es producción real.**
-> **Código funcional:** `2864531` (caja con historial paginado y búsqueda por DNI).
-> **Render:** **verificado** con `2864531`; `/api/health` devuelve `status: "ok"`,
-> `dbReady: true`, `database: "ok"`, `zona_horaria: "America/Lima"` y el commit del HEAD.
+> **Código funcional:** frontend `65429f9` (fix docente: conclusiones por `id_carga` y
+> búsqueda de alumnos); backend `2864531` (caja paginada y búsqueda de pagos).
+> **Render:** backend verificado con `2864531`; frontend verificado con `65429f9`.
+> `/api/health` devuelve `status: "ok"`, `dbReady: true`, `database: "ok"`,
+> `zona_horaria: "America/Lima"` y el commit del backend.
 > **Supabase demo:** se deja con el **seed v1 a propósito**; el borrado total será al
 > cierre final, cuando el usuario lo pida.
 > **Demo local v2:** base `siga_uc_h81` con 432 pagos y notas por perfil.
@@ -27,7 +29,7 @@ SIGA-UC está funcional y desplegado en la demo:
 |---|---|
 | Frontend | https://siga-uc-web.onrender.com |
 | Backend | https://siga-uc-api-prod.onrender.com/api |
-| Render desplegado | `2864531` (verificado el 27/11/2026; commits documentales posteriores) |
+| Render desplegado | Backend `2864531` · Frontend `65429f9` (27/11/2026) |
 | Health | OK, `status: "ok"`, `dbReady: true`, `database: "ok"`, `zona_horaria: "America/Lima"`, `commit` |
 | Supabase | `siga-uc-prod` (us-west-2), 48 tablas, H74–H80, seed v1 |
 | Año activo | 2026 |
@@ -75,6 +77,15 @@ Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron **INACTIVOS**.
 - Cada fila muestra fecha de pago, DNI, comprobante, monto, medio, estado y permite
   descargar la boleta PDF.
 - Sin migración: H81 ya tiene los índices de pagos.
+
+### 2.0.1 Docente — conclusiones y búsqueda de alumnos (27/11/2026)
+
+- El selector de Conclusiones usa `id_carga`, no `id_curso`. Un mismo curso se repite
+  en varios grados; con `id_curso` el sistema cargaba el primer grado de ese curso y
+  ocultaba al alumno matriculado en otra sección.
+- Notas y Conclusiones incluyen búsqueda local por DNI, nombre o código, contador de
+  resultados y estado vacío con opción de limpiar.
+- Verificado con selector de Álgebra en 1ro–4to y un alumno nuevo en 3ro; build Angular OK.
 
 ### 2.1 H80
 
@@ -184,8 +195,9 @@ Estudiantes `72000002`–`72000075`: contraseña `UC<DNI>`.
 | `npm run uat:verify` contra Supabase (seed v1) | **22 PASS, 0 FAIL** |
 | Build Angular | OK (warning de budget inicial) |
 | Render producción | `2864531`; caja paginada; health OK con `status`/`dbReady` |
-| Frontend producción | `main-V4ESQCE6.js`; caja paginada y búsqueda por DNI verificadas |
+| Frontend producción | `main-6YLMUYLV.js`; caja paginada y búsqueda por DNI verificadas |
 | Caja producción | 116 pagos, 10/página; búsqueda DNI `72000059`: 3 pagos; PDF OK |
+| Docente producción | `65429f9`; selector `id_carga` corregido y búsqueda DNI/nombre verificada |
 | Rendimiento H81 | Tesorería: **1 petición**, 25 filas/página; Personal paginado; Caja 10 pagos/página con búsqueda |
 
 > **No repetir estas suites en la próxima sesión.** Ya están verdes y el deploy está
@@ -242,9 +254,10 @@ Health: `GET http://localhost:3000/api/health`.
    final. No ejecutar normalizaciones ni cambios de datos ahora. Si en el futuro se
    reactiva el refresh, aplicar `database/migracion_h81_rendimiento_paginacion.sql` y
    `ALTER DATABASE postgres SET timezone = 'America/Lima';` si el pooler es transaccional.
-4. ✅ **Render desplegado y verificado** con `2864531`: health OK con `status: "ok"` y
-   `dbReady: true`, `zona_horaria: "America/Lima"`; caja paginada con búsqueda por DNI
-   verificada en producción. **No repetir la revisión de módulos ni las suites.**
+4. ✅ **Render desplegado y verificado**: backend `2864531` con health `status: "ok"`,
+   `dbReady: true` y `zona_horaria: "America/Lima"`; frontend `65429f9` con caja paginada,
+   búsqueda por DNI y conclusiones del grado correcto. **No repetir la revisión de módulos
+   ni las suites.**
 5. **SIAGIE oficial** (solo si el colegio lo pide):
    - obtener la plantilla oficial de SIAGIE;
    - mapear áreas/cursos/competencias;
@@ -297,8 +310,8 @@ NO reanalices el repo, NO leas AGENTS.md, HANDOFF_SESSION.md ni documentacion/ c
 Lee solo CONTEXTO_SESION.md (una página) si necesitas el detalle.
 
 ESTADO
-- main = 2864531; Render verificado; /api/health: status ok, dbReady true, database ok,
-  zona_horaria America/Lima.
+- main = 65429f9 (frontend) / 2864531 (backend); Render verificado; /api/health:
+  status ok, dbReady true, database ok, zona_horaria America/Lima.
 - Demo funcional y suites verdes; no las repitas.
 - Supabase se queda con el seed v1 A PROPÓSITO. NO refrescar datos, NO pedir
   DATABASE_URL ni contraseñas, NO ejecutar demo:reset/uat:seed ahora.
@@ -306,6 +319,8 @@ ESTADO
 - H81 ya está resuelto: /api/tesoreria/pensiones/padron (25/página, una petición),
   /api/personal?page= y /api/tesoreria/pagos?page=&pageSize=&search=&anio=
   (10/página, búsqueda por DNI). No volver a revisarlo.
+- Docente: los selectores de curso usan id_carga, no id_curso. Notas y Conclusiones
+  ya tienen búsqueda por DNI/nombre/código. No volver a revisarlo.
 
 ARCHIVOS QUE SE ESTÁN USANDO
 - Backend: src/config/database.js, src/dao/tesoreriaDao.js, src/dao/personalDao.js,

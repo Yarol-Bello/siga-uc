@@ -12,9 +12,9 @@ I.E.P. Unión Científica (Huancayo, Perú). **No es producción real.**
 - Frontend: https://siga-uc-web.onrender.com
 - Backend: https://siga-uc-api-prod.onrender.com/api
 - Repo: `https://github.com/Yarol-Bello/siga-uc.git`, rama `main`
-- Código desplegado y verificado: **`2864531`** (caja paginada y búsqueda de pagos por
-  DNI). Los commits documentales posteriores pueden cambiar el `commit` del health; no
-  comparar el hash si solo cambió documentación.
+- Código desplegado y verificado: frontend **`65429f9`** (fix docente y búsqueda de
+  alumnos); backend **`2864531`** (caja paginada y pagos por DNI). El `commit` del health
+  corresponde al backend; no comparar con el hash del frontend.
 - Health: `status: "ok"`, `dbReady: true`, `database: "ok"`, `zona_horaria: "America/Lima"`.
 
 ## 2. Estado actual (no re-verificar)
@@ -28,10 +28,13 @@ I.E.P. Unión Científica (Huancayo, Perú). **No es producción real.**
   iniciará desde 0.
 - **Local:** `siga_uc_h81` tiene el seed v2 validado (75 alumnos, 750 pensiones,
   ~423–432 pagos, 3,300 notas, 3,300 conclusiones). No es la base de Supabase.
-- **Render:** desplegó `2864531`; el backend y el frontend de caja quedaron verificados.
+- **Render:** backend `2864531` y frontend `65429f9`; caja y conclusiones verificadas.
 
-## 3. Lo último implementado (caja paginada + H81, ya probado)
+## 3. Lo último implementado (docente + caja + H81, ya probado)
 
+- **Docente:** Conclusiones usa `id_carga` para seleccionar el grado correcto; antes
+  `id_curso` repetía el primer grado del mismo curso y ocultaba alumnos de otra sección.
+  Notas y Conclusiones buscan por DNI, nombre o código y muestran contador/estado vacío.
 - `GET /api/tesoreria/pagos?page=&pageSize=&search=&anio=`: historial paginado; `search`
   acepta DNI, nombres o código; `anio=todos` incluye años anteriores. `data` sigue siendo
   un arreglo y `pagination` lleva `total`/`totalPages`.
