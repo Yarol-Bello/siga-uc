@@ -2,9 +2,9 @@
 
 > **Fecha:** 27/11/2026
 > **Fase:** demostración y aprobación. **No es producción real.**
-> **Código funcional:** `07f5bac` (recuperación de contraseña con error real y cuadro de
-> mérito solo con notas completas; incluye el fix docente `65429f9` y la caja `2864531`).
-> **Render:** backend verificado con `07f5bac5`; frontend con `main-DST4JNBS.js`.
+> **Código funcional:** `039c57e` (relay Gmail sin dominio, recuperación y notificaciones por
+> campanita + correo; incluye `07f5bac` con mérito y recuperación honesta).
+> **Render:** backend verificado con `039c57e`; frontend con `main-B6UDX76Y.js`.
 > `/api/health` devuelve `status: "ok"`, `dbReady: true`, `database: "ok"`,
 > `zona_horaria: "America/Lima"` y el commit del backend.
 > **Supabase demo:** se deja con el **seed v1 a propósito**; el borrado total será al
@@ -29,7 +29,7 @@ SIGA-UC está funcional y desplegado en la demo:
 |---|---|
 | Frontend | https://siga-uc-web.onrender.com |
 | Backend | https://siga-uc-api-prod.onrender.com/api |
-| Render desplegado | Backend `07f5bac5` · Frontend `main-DST4JNBS.js` (27/11/2026) |
+| Render desplegado | Backend `039c57e` · Frontend `main-B6UDX76Y.js` (27/11/2026) |
 | Health | OK, `status: "ok"`, `dbReady: true`, `database: "ok"`, `zona_horaria: "America/Lima"`, `commit` |
 | Supabase | `siga-uc-prod` (us-west-2), 48 tablas, H74–H80, seed v1 |
 | Año activo | 2026 |
@@ -102,9 +102,9 @@ Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron **INACTIVOS**.
   `{ tieneCorreo: true, enviado: true }`; Gmail recibió el correo a las 9:47 y el enlace
   apunta a `https://siga-uc-web.onrender.com/reset-password?token=...`. **La entrega y el
   enlace están verificados.**
-- **Pendiente para todos los usuarios:** la cuenta Resend no tiene ningún dominio
-  verificado. `onboarding@resend.dev` solo entrega al correo dueño de la cuenta; falta
-  verificar un dominio y cambiar `EMAIL_FROM`. No es un bug de código.
+- **Resend sin dominio:** la cuenta Resend no tiene dominio verificado; ese camino solo
+  entregaba al dueño. Se resolvió con el relay Gmail de 2.0.3. Resend queda como respaldo
+  para cuando el colegio tenga dominio.
 - **Mérito:** `getCuadroMerito` toma los cursos de `carga_curricular` del grado/año, cuenta
   cursos distintos con nota y solo rankea a quien tiene nota final en **todos**. Un alumno
   con una sola nota ya no aparece primero.
@@ -116,6 +116,26 @@ Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron **INACTIVOS**.
   borraron; la base local quedó como estaba.
 - **Sin migración.** Documentación actualizada en `01`, `05`, `08`, `09`, `10`, `12`, `22` y
   `AGENTS.md`.
+
+### 2.0.3 Gmail relay y notificaciones por campanita + correo (27/11/2026)
+
+- **Problema:** Resend solo entregaba al dueño de la cuenta porque `onboarding@resend.dev`
+  es un remitente de prueba. El usuario no quiere comprar dominio.
+- **Solución:** relay HTTPS con Google Apps Script (`scripts/gmail-relay.gs`). El backend
+  llama a la app web con `GMAIL_RELAY_URL` y `GMAIL_RELAY_SECRET`; el script envía con
+  `GmailApp.sendEmail`. No usa SMTP ni requiere dominio.
+- **Prioridad:** `emailService` usa Gmail relay si está configurado; si no, Resend. Gmail
+  gratuito limita a **100 destinatarios por día**.
+- **Notificaciones:** `crearMasivo` guarda todas las filas en `notificaciones` y envía el
+  lote por Gmail relay (máximo 40 por llamada). La campanita siempre conserva el mensaje.
+  La respuesta incluye `correos_enviados`, `correos_fallidos`, `correos_sin_destino` y
+  `correos_error`; el dashboard del ADMIN muestra ambos canales y advierte si algún correo
+  falló.
+- **Producción:** backend `039c57e`, frontend `main-B6UDX76Y.js`. Logs de Render:
+  “Servicio de correo (Gmail relay) configurado correctamente”.
+- **Pruebas:** recuperación de `76543211` → `enviado:true` y correo recibido a las 12:42;
+  lote local a dos destinatarios → 2/2; notificación local → 1 guardada y 1 correo.
+- **Sin migración ni cambios en Supabase.**
 
 ### 2.1 H80
 
@@ -224,12 +244,15 @@ Estudiantes `72000002`–`72000075`: contraseña `UC<DNI>`.
 | `npm run uat:verify` en `siga_uc_h81` (seed v2) | **22 PASS, 0 FAIL** |
 | `npm run uat:verify` contra Supabase (seed v1) | **22 PASS, 0 FAIL** |
 | Build Angular | OK (warning de budget inicial) |
-| Render producción | `07f5bac5`; recuperación y mérito desplegados; health OK con `status`/`dbReady` |
-| Frontend producción | `main-DST4JNBS.js`; aviso de fallo de correo y nota de mérito |
-| Recuperación — envío real (local) | OK; Resend devolvió message ID |
+| Render producción | `039c57e`; Gmail relay y notificaciones desplegados; health OK con `status`/`dbReady` |
+| Frontend producción | `main-B6UDX76Y.js`; aviso de correos y nota de mérito |
+| Recuperación — envío real (local) | OK; Resend devolvió message ID y Gmail relay envió |
 | Recuperación — fallo (local) | Con key inválida responde `{ tieneCorreo: true, enviado: false }`; la UI pide contactar al administrador |
-| Recuperación — producción | `76543211` responde `enviado: true`; correo recibido y enlace correcto (solo dueño de Resend) |
-| Resend — dominio | **Sin dominio verificado**; falta para entregar a alumnos/docentes |
+| Recuperación — producción | `76543211` responde `enviado: true`; correo recibido por Gmail a las 12:42 y enlace correcto |
+| Resend — dominio | **Sin dominio verificado**; el Gmail relay cubre el envío a cualquier correo |
+| Gmail relay — lote local | 2/2 correos a destinatarios distintos; restantes 94 |
+| Gmail relay — producción | Logs: “Servicio de correo (Gmail relay) configurado correctamente”; límite 100/día |
+| Notificación — campanita + correo | Prueba local: 1 guardada, 1 correo enviado, 0 fallidos |
 | Mérito — backend local | 2 alumnos con 11/11 cursos; incompletos excluidos; con 1 nota, 0 filas |
 | Mérito — UI local | Nota visible, `11/11 cursos`, 2 filas y estado vacío correcto |
 | `npm run smoke` local (27/11/2026) | **12 PASS, 0 FAIL, 0 SKIP** |
@@ -291,17 +314,15 @@ Health: `GET http://localhost:3000/api/health`.
    final. No ejecutar normalizaciones ni cambios de datos ahora. Si en el futuro se
    reactiva el refresh, aplicar `database/migracion_h81_rendimiento_paginacion.sql` y
    `ALTER DATABASE postgres SET timezone = 'America/Lima';` si el pooler es transaccional.
-4. ✅ **Render desplegado y verificado**: backend `07f5bac5` con health `status: "ok"`,
-   `dbReady: true` y `zona_horaria: "America/Lima"`; frontend `main-DST4JNBS.js` con
-   recuperación honesta y mérito completo. **No repetir la revisión de módulos ni las
-   suites.**
-5. ⛔ **Correo para todos los usuarios — acción del usuario:** Render ya tiene
-   `RESEND_API_KEY` y `EMAIL_FROM`, y el envío al dueño de la cuenta está verificado. La
-   cuenta Resend **no tiene dominios**. Para alumnos, docentes y secretaría hay que:
-   - verificar un dominio en Resend (DNS: SPF/DKIM);
-   - cambiar `EMAIL_FROM=SIGA-UC <no-reply@dominio-verificado>` en Render;
-   - redeploy del backend y probar con un correo real de alumno/docente.
-   Sin dominio verificado, `onboarding@resend.dev` solo entrega al dueño de la cuenta.
+4. ✅ **Render desplegado y verificado**: backend `039c57e` con health `status: "ok"`,
+   `dbReady: true` y `zona_horaria: "America/Lima"`; frontend `main-B6UDX76Y.js` con
+   Gmail relay, recuperación honesta, notificaciones por campanita + correo y mérito
+   completo. **No repetir la revisión de módulos ni las suites.**
+5. ✅ **Correo sin dominio — resuelto para la demo:** Gmail relay configurado en Render
+   (`GMAIL_RELAY_URL`, `GMAIL_RELAY_SECRET`) y verificado. Envía desde Gmail a cualquier
+   destinatario, sin comprar dominio, con límite de **100 destinatarios/día**. Resend queda
+   como respaldo. Para producción con más volumen, verificar un dominio y usar Resend.
+   No es necesario comprar dominio para la demo.
 6. **SIAGIE oficial** (solo si el colegio lo pide):
    - obtener la plantilla oficial de SIAGIE;
    - mapear áreas/cursos/competencias;
@@ -330,9 +351,13 @@ Health: `GET http://localhost:3000/api/health`.
 - `siga-uc-backend/scripts/demo-reset.js` — limpieza demo previa al seed.
 - `siga-uc-backend/scripts/smoke.js` — health, RBAC y desfase horario.
 - `siga-uc-backend/src/dao/reporteDao.js` — `getCuadroMerito` exige notas completas.
-- `siga-uc-backend/src/services/recuperacionService.js` — recuperación y fallo de Resend.
-- `siga-uc-backend/src/services/emailService.js` — Resend y advertencia de remitente.
+- `siga-uc-backend/src/services/gmailRelayService.js` — relay Gmail por Apps Script.
+- `siga-uc-backend/src/services/emailService.js` — Gmail relay, Resend y plantillas.
+- `siga-uc-backend/src/services/notificacionService.js` — campanita + correo en lote.
+- `siga-uc-backend/scripts/gmail-relay.gs` — código de la app web de Gmail.
+- `siga-uc-backend/src/services/recuperacionService.js` — recuperación y fallo de envío.
 - `siga-uc-frontend/src/app/features/auth/login/login.component.ts` — aviso de recuperación.
+- `siga-uc-frontend/src/app/features/admin/dashboard/dashboard.component.ts` — resultado de notificación.
 - `siga-uc-frontend/src/app/features/admin/reportes/` — cuadro de mérito y nota de cursos.
 - `siga-uc-backend/src/dao/tesoreriaDao.js` — `listarPadronPensiones`.
 - `siga-uc-backend/src/dao/personalDao.js` — `listarPaginado`.
@@ -359,7 +384,7 @@ NO reanalices el repo, NO leas AGENTS.md, HANDOFF_SESSION.md ni documentacion/ c
 Lee solo CONTEXTO_SESION.md (una página) si necesitas el detalle.
 
 ESTADO
-- main = 07f5bac; Render verificado (backend 07f5bac5, frontend main-DST4JNBS.js);
+- main = 039c57e; Render verificado (backend 039c57e, frontend main-B6UDX76Y.js);
   /api/health: status ok, dbReady true, database ok, zona_horaria America/Lima.
 - Demo funcional y suites verdes; no las repitas.
 - Supabase se queda con el seed v1 A PROPÓSITO. NO refrescar datos, NO pedir
@@ -370,18 +395,23 @@ ESTADO
   (10/página, búsqueda por DNI). No volver a revisarlo.
 - Docente: los selectores de curso usan id_carga, no id_curso. Notas y Conclusiones
   ya tienen búsqueda por DNI/nombre/código. No volver a revisarlo.
-- Recuperación: la API ya distingue envío real de fallo (enviado true/false). En
-  producción responde enviado=false porque Resend en Render no tiene dominio/key
-  válidos. Es configuración, no código. El usuario debe verificar dominio y cargar
-  RESEND_API_KEY + EMAIL_FROM en Render.
+- Correo: Gmail relay configurado en Render (GMAIL_RELAY_URL/GMAIL_RELAY_SECRET),
+  sin dominio y con límite de 100 destinatarios/día. Resend queda como respaldo.
+  Recuperación y notificaciones usan el relay. No volver a diagnosticarlo.
+- Notificaciones: crearMasivo guarda en campanita y envía correo en lote; devuelve
+  correos_enviados/fallidos/sin_destino. No volver a revisarlo.
 - Mérito: solo alumnos con nota final en todos los cursos de carga_curricular. Un
   alumno con una sola nota no se rankea. No volver a revisarlo.
 
 ARCHIVOS QUE SE ESTÁN USANDO
-- Backend: src/config/database.js, src/dao/tesoreriaDao.js, src/dao/personalDao.js,
+- Backend: src/services/gmailRelayService.js, src/services/emailService.js,
+  src/services/notificacionService.js, scripts/gmail-relay.gs,
+  src/config/database.js, src/dao/tesoreriaDao.js, src/dao/personalDao.js,
   src/controllers/tesoreriaController.js, src/controllers/personalController.js,
   src/routes/tesoreriaRoutes.js, scripts/{uat-seed,uat-verify,smoke,demo-reset}.js.
-- Frontend: features/secretaria/tesoreria/, features/admin/personal/,
+- Frontend: features/admin/dashboard/dashboard.component.ts,
+  features/auth/login/login.component.ts, features/admin/reportes/,
+  features/secretaria/tesoreria/, features/admin/personal/,
   features/secretaria/caja/, features/{admin,secretaria,docente}/layout/,
   shared/components/{sidebar,sidebar-secretaria,sidebar-docente,header}/.
 - BD: database/migracion_h81_rendimiento_paginacion.sql,

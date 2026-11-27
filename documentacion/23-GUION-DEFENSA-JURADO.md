@@ -23,7 +23,7 @@ Si el jurado olvida todo lo demás, debe quedarse con estas cinco ideas:
 4. **La seguridad es proporcional al riesgo.** JWT, bcrypt, roles, ownership, rate limiting,
    Helmet, CORS, auditoría y transacciones; conocemos las brechas y tenemos un plan.
 5. **Es una demo honesta.** No hay datos reales de menores, el SIAGIE es interno y el correo
-   necesita un dominio verificado. Sabemos qué falta y por qué.
+   usa un relay de Gmail con límite diario. Sabemos qué falta y por qué.
 
 > **Frase de cierre interna:** “No vengo a decir que el sistema es perfecto; vengo a
 > demostrar que resuelve el problema, que está bien estructurado y que sé qué falta para
@@ -154,7 +154,8 @@ Deja que la pregunta respire dos segundos. No la respondas tú.
 
 - SIAGIE **oficial** (solo exportación interna).
 - Datos reales de menores (solo demo ficticia).
-- Correo a cualquier destinatario (falta dominio verificado de Resend).
+- Correo a cualquier destinatario: Gmail relay activo; límite de 100 destinatarios/día.
+  Un dominio verificado + Resend queda para producción con más volumen.
 - MFA, refresh tokens, cookies HttpOnly.
 - CI/CD, Docker, pruebas de carga formales.
 - Backups automáticos garantizados en el plan gratuito (hay script manual).
@@ -196,7 +197,7 @@ Deja que la pregunta respire dos segundos. No la respondas tú.
 | Base de datos | PostgreSQL | 18.4 | Datos relacionales, transacciones | ACID, constraints, SQL potente |
 | SQL | Crudo parametrizado | — | DAOs | Control y rendimiento |
 | Auth | JWT + bcrypt | 8 h / coste 10 | Sesión y contraseñas | Simple y suficiente para el dominio |
-| Correo | Resend (API HTTP) | 6.x | Recuperación y notificaciones | Sin SMTP, fácil en Render |
+| Correo | Gmail relay (Apps Script) + Resend | — | Recuperación y notificaciones | Sin dominio; Gmail 100/día; Resend con dominio |
 | Excel | ExcelJS | 4.x | Exportación interna | Control de hojas/columnas |
 | PDF | PDFKit | 0.21 | Libretas y boletas | Sin servicio externo |
 | QR | qrcode | 1.5 | Asistencia | Generación en frontend |
@@ -293,15 +294,19 @@ permite cambiarlo sin tocar controllers/services.
 institucionales simples. **Costo asumido:** no hay MFA ni refresh token; el token vive en
 `localStorage` (riesgo XSS). Son mejoras de siguiente fase, no secretos.
 
-### 3.7. Resend: por qué
+### 3.7. Correo: Gmail relay (actual) y Resend (futuro)
 
-- Render puede bloquear o limitar SMTP; una API HTTP es más simple y observable.
-- Resend devuelve ID de mensaje y errores claros.
-- El código ya distingue `enviado: true/false`; no miente al usuario.
+- **Gmail relay:** una app web de Google Apps Script envía con `GmailApp.sendEmail` y el
+  backend la llama por HTTPS. No requiere dominio, no usa SMTP y funciona en Render.
+- **Resend:** queda como respaldo y es la opción recomendada cuando el colegio tenga un
+  dominio verificado. Su plan gratuito alcanza para miles de correos al mes.
+- **Límite actual:** Gmail gratuito permite **100 destinatarios por día**. Es suficiente
+  para la demo y notificaciones pequeñas; no es un servicio masivo.
+- El código distingue `enviado: true/false`; no miente al usuario.
 
-**Por qué no Nodemailer/SMTP:** más configuración, problemas de puertos, menos trazabilidad.
-**Limitación actual:** Resend exige un dominio verificado para enviar a cualquier usuario;
-`onboarding@resend.dev` solo entrega al dueño de la cuenta. Es configuración, no código.
+**Por qué no Nodemailer/SMTP:** Render puede bloquear o limitar puertos SMTP, Gmail exige
+contraseña de aplicación y el diagnóstico es menos claro. La app web de Apps Script evita
+ese problema y mantiene el envío dentro de Google.
 
 ### 3.8. ExcelJS + PDFKit: por qué
 
@@ -647,7 +652,8 @@ sistema recomienda; el humano confirma.
 ### 5.11. Resiliencia y errores honestos
 
 - Health check 200 durante arranque; frontend reintenta cold start.
-- Correo: si Resend falla, la API responde `enviado:false`; la UI pide contactar al admin.
+- Correo: si el Gmail relay falla o se agota la cuota, la API responde `enviado:false`; la
+  UI pide contactar al admin y la notificación sigue en la campanita.
 - Migraciones ausentes: `503` con código claro, no 500 genérico.
 - Transacciones con rollback.
 
@@ -720,8 +726,8 @@ sistema recomienda; el humano confirma.
 - Invalida tokens anteriores.
 - Rate limit en solicitud y validación.
 - Enlace a `FRONTEND_URL/reset-password?token=...`.
-- Si Resend falla, la API responde `{ tieneCorreo: true, enviado: false }`; la UI pide
-  contactar al administrador.
+- Si el Gmail relay falla o se agota la cuota, la API responde
+  `{ tieneCorreo: true, enviado: false }`; la UI pide contactar al administrador.
 - **Limitación:** el token se guarda en texto plano y viaja en query string; una mejora es
   hashearlo y usar un enlace de un solo uso con POST.
 
@@ -769,7 +775,8 @@ sistema recomienda; el humano confirma.
 ### 6.9. Secretos y entornos
 
 - `.env` no se versiona; `.env.example` documenta variables.
-- Render guarda `JWT_SECRET`, `DB_*`, `RESEND_API_KEY`, `FRONTEND_URL`.
+- Render guarda `JWT_SECRET`, `DB_*`, `RESEND_API_KEY`, `GMAIL_RELAY_URL`,
+  `GMAIL_RELAY_SECRET` y `FRONTEND_URL`.
 - `env.js` aborta en producción si falta `JWT_SECRET` o es débil.
 - No se imprimen contraseñas ni tokens en logs.
 - Rotar `JWT_SECRET` invalida todas las sesiones (efecto deseado en incidente).
@@ -794,7 +801,7 @@ sistema recomienda; el humano confirma.
 > “No digo que sea 100% seguro, porque eso no existe. Digo que tiene controles
 > proporcionales al riesgo: contraseñas hasheadas, JWT, roles, ownership, rate limiting,
 > HTTPS, CORS, SQL parametrizado, transacciones y auditoría. También sé cuáles son las
-> brechas: token en localStorage, falta MFA y el dominio de correo. Tengo un plan para
+> brechas: token en localStorage, falta MFA y el límite diario del correo. Tengo un plan para
 > cerrarlas. Y los datos reales de menores no están cargados.”
 
 ### 6.12. Lo que no debes decir
@@ -803,7 +810,7 @@ sistema recomienda; el humano confirma.
 - “Los datos están encriptados” (si no lo están a nivel de aplicación).
 - “Es producción real.”
 - “Es SIAGIE oficial.”
-- “El correo funciona para todos” (hoy solo para el dueño de Resend).
+- "El correo no tiene límite" (hoy son 100 destinatarios/día en Gmail gratuito).
 - “No hay riesgos.”
 
 ---
@@ -830,7 +837,7 @@ sistema recomienda; el humano confirma.
 | Exposición | Claridad y seguridad | Guion, demo, Q&A | “Historia + evidencia” |
 | Conclusiones y futuro | Autocrítica | Brechas y roadmap | “Sé qué sigue” |
 | Bibliografía / referencias | Rigor | Docs oficiales de Angular, PostgreSQL, OWASP, MINEDU | “No inventé las reglas” |
-| Recomendaciones | Visión | Dominio, MFA, CI/CD, SIAGIE oficial | “Esto es lo siguiente” |
+| Recomendaciones | Visión | Gmail relay, dominio/Resend, MFA, CI/CD, SIAGIE oficial | "Esto es lo siguiente" |
 
 ### 7.1. Evidencia que puedes abrir en segundos
 
@@ -952,7 +959,7 @@ sistema recomienda; el humano confirma.
 - Si falla Render: usa backend local + frontend local.
 - Si falla un usuario: ten otro de respaldo.
 - Si falla el QR: muestra la tabla de asistencia.
-- Si falla el correo: explica el dominio y muestra el mensaje de error controlado.
+- Si falla el correo: explica el límite de Gmail y muestra el mensaje de error controlado.
 - Si te quedas sin tiempo: salta a mérito y cierre.
 
 ### 8.6. Frases de transición
@@ -966,7 +973,8 @@ sistema recomienda; el humano confirma.
 
 > “En resumen: SIGA-UC convierte un proceso disperso en un flujo trazable. No prometo que
 > sea perfecto; prometo que es honesto. Los datos de menores no están cargados, el SIAGIE
-> es interno y el correo necesita un dominio. Lo que sí está: matrícula, notas, asistencia,
+> es interno y el correo usa Gmail con límite diario. Lo que sí está: matrícula, notas,
+> asistencia,
 > tesorería, reportes, seguridad y auditoría funcionando. La pregunta no es si el colegio
 > puede seguir con Excel; es cuánto le cuesta seguir con Excel.”
 
@@ -995,62 +1003,72 @@ sistema recomienda; el humano confirma.
 
 ---
 
-## 9. Correo de recuperación: estado, alternativas y decisión
+## 9. Correo: Gmail relay, alternativas y decisión
 
 ### 9.1. Estado real (dilo con transparencia)
 
-- El código usa **Resend** (API HTTP), no SMTP.
-- Render ya tiene `RESEND_API_KEY` y `EMAIL_FROM`.
-- El envío al **dueño de la cuenta Resend** está verificado: el correo llega y el enlace
-  apunta a `https://siga-uc-web.onrender.com/reset-password?token=...`.
-- La cuenta **no tiene un dominio verificado**. Por eso `onboarding@resend.dev` solo
-  entrega al dueño; para alumnos/docentes falta un dominio.
-- Si el envío falla, la API responde `{ tieneCorreo: true, enviado: false }` y la UI pide
-  contactar al administrador. **No hay falso éxito.**
-- Existe un fallback: **ADMIN puede restablecer la contraseña** por DNI
-  (`PUT /api/auth/reset-password`), previa verificación de identidad.
+- El envío usa **Gmail relay** (Google Apps Script) y Resend queda como respaldo.
+- **No requiere dominio.** El relay envía desde la cuenta Gmail a cualquier destinatario.
+- Límite de Gmail gratuito: **100 destinatarios por día**.
+- Render tiene `GMAIL_RELAY_URL` y `GMAIL_RELAY_SECRET`; los logs confirman el relay.
+- La recuperación de `76543211` respondió `enviado:true` y el correo llegó a Gmail.
+- Si el relay falla o se agota la cuota, la API responde `enviado:false`; la notificación
+  sigue en la campanita y el ADMIN puede resetear la clave.
+- Resend sigue configurado como respaldo; para usarlo se necesita un dominio verificado.
 
-### 9.2. Por qué Resend exige un dominio
+### 9.2. Por qué Gmail relay y no Resend test
 
-Para enviar a cualquier destinatario, Resend pide verificar un dominio con registros DNS
-(SPF, DKIM y, opcionalmente, DMARC). Eso evita suplantación y mejora la entrega. No es un
-capricho del código: es una regla del proveedor.
+- `onboarding@resend.dev` solo entrega al dueño de la cuenta Resend. No sirve para
+  alumnos, docentes ni secretaría.
+- El Gmail relay usa la cuenta Gmail real; Gmail autentica SPF/DKIM por nosotros.
+- No se compra dominio, pero se asume el límite de 100/día y que el remitente visible es
+  la cuenta Gmail.
 
 ### 9.3. Alternativas (comparación)
 
-| Alternativa | Cómo funciona | Costo | Tiempo | Entrega | ¿Recomendada? |
-|---|---|---|---|---|---|
-| **Dominio propio + Resend** | Comprar/verificar dominio; SPF/DKIM/DMARC | Dominio ~S/ 40–70/año | 1–2 h | Alta | **Sí, producción** |
-| **Dominio del colegio** | Subdominio `sistema.colegio.edu.pe` | S/ 0 | Depende de DNS | Alta | **Sí, si el colegio lo tiene** |
-| Resend test sender | `onboarding@resend.dev` | S/ 0 | 0 | Solo dueño | Solo demo |
-| SendGrid | API; dominio autenticado | Free tier | 1–2 h | Alta | Alternativa |
-| Mailgun | API; dominio | Free trial | 1–2 h | Alta | Alternativa |
-| Amazon SES | API; sandbox → producción | Muy bajo | 1–2 días | Alta | Escala |
-| Brevo | API/SMTP; dominio | Free tier | 1–2 h | Alta | Alternativa |
-| Postmark | API; enfoque transaccional | Pagado | 1 h | Muy alta | Si hay presupuesto |
-| Gmail SMTP + app password | SMTP con cuenta Gmail | S/ 0 | 30 min | Baja/riesgosa | **No** |
-| Reset por ADMIN | Presencial, valida identidad | S/ 0 | Inmediato | N/A | **Fallback** |
-| SMS/WhatsApp OTP | Twilio/Meta | Por mensaje | Días | Alta | Futuro |
-| Preguntas secretas | Conocimiento | S/ 0 | 0 | Baja | **No** |
+| Alternativa | Cómo funciona | Costo | Límite | ¿Recomendada? |
+|---|---|---|---|---|
+| **Gmail relay (actual)** | Apps Script + `GmailApp.sendEmail` | S/ 0 | 100/día | **Sí, demo** |
+| **Dominio + Resend** | Verificar DNS; SPF/DKIM/DMARC | Dominio ~S/ 40–70/año | 3,000/mes free | **Sí, producción** |
+| Dominio del colegio | Subdominio `sistema.colegio.edu.pe` | S/ 0 | Según plan | Sí, si existe |
+| Resend test sender | `onboarding@resend.dev` | S/ 0 | Solo dueño | No |
+| Gmail SMTP | Contraseña de aplicación | S/ 0 | Cientos/día | No (SMTP/Render) |
+| SendGrid / Mailgun / Brevo | API; dominio autenticado | Free tier | Varía | Alternativa |
+| Amazon SES | API; sandbox → producción | Muy bajo | Varía | Escala |
+| Postmark | API transaccional | Pagado | Alto | Si hay presupuesto |
+| Reset por ADMIN | Presencial, valida identidad | S/ 0 | N/A | **Fallback** |
+| SMS/WhatsApp OTP | Twilio/Meta | Por mensaje | Alto | Futuro |
+| Preguntas secretas | Conocimiento | S/ 0 | Bajo | **No** |
 
 ### 9.4. Recomendación
 
 **Para la demo:**
 
-1. Mantén `onboarding@resend.dev`.
-2. Si el jurado pide ver el correo, envíalo al correo dueño de la cuenta (el tuyo).
-3. Si el jurado pregunta por un alumno, explica el dominio y muestra el mensaje controlado.
-4. Ten a mano el reset por ADMIN como fallback.
+1. Usa el Gmail relay (ya está configurado).
+2. Prueba con dos o tres Gmail distintos.
+3. Si se agota la cuota diaria, usa el reset por ADMIN.
+4. No prometas correo masivo ilimitado.
 
 **Para producción:**
 
-1. Verifica un dominio (del colegio o uno comprado).
-2. Configura `EMAIL_FROM=SIGA-UC <no-reply@tudominio.com>`.
+1. Si el volumen supera 100/día, verifica un dominio (del colegio o comprado).
+2. Configura `EMAIL_FROM=SIGA-UC <no-reply@tudominio.com>` y Resend.
 3. Agrega SPF/DKIM/DMARC.
-4. Redeploy y prueba con 3 usuarios reales (alumno, docente, secretaría).
-5. Monitorea logs de Resend y rebotes.
+4. Redeploy y prueba con alumnos, docentes y secretaría.
+5. Monitorea logs y rebotes.
 
-### 9.5. Checklist de implementación del dominio
+### 9.5. Checklist del Gmail relay (actual)
+
+- [ ] App web de Apps Script publicada como “Yo” y acceso “Cualquiera”.
+- [ ] Ideal: cuenta Gmail dedicada a SIGA-UC, no la personal.
+- [ ] `GMAIL_RELAY_URL` y `GMAIL_RELAY_SECRET` en Render.
+- [ ] Probar recuperación con un Gmail real.
+- [ ] Probar notificación masiva y verificar campanita + correo.
+- [ ] Revisar la cuota diaria si hay muchos envíos.
+- [ ] Rotar el secreto si se filtra.
+- [ ] No exponer el secreto en el frontend ni en logs.
+
+### 9.6. Checklist de dominio + Resend (futuro)
 
 - [ ] Elegir dominio/subdominio.
 - [ ] Acceder al DNS (Cloudflare, Namecheap, GoDaddy, etc.).
@@ -1063,26 +1081,26 @@ capricho del código: es una regla del proveedor.
 - [ ] Revisar spam y logs.
 - [ ] Documentar en `documentacion/12`.
 
-### 9.6. Guion para el jurado
+### 9.7. Guion para el jurado
 
-> “El correo es el único punto que depende de un dominio. Resend exige verificar un dominio
-> para enviar a cualquier usuario; el remitente de pruebas solo llega al dueño. El código ya
-> está listo: si el envío falla, la API responde `enviado:false` y la UI pide contactar al
-> administrador. Para producción, el colegio debe verificar su dominio; es un trámite de
-> DNS, no un cambio de arquitectura. Mientras tanto, el ADMIN puede resetear la clave
-> validando identidad.”
+> “No compramos dominio. Usamos un relay de Gmail con Google Apps Script: el backend llama
+> por HTTPS, Gmail envía y funciona con cualquier destinatario. Tiene un límite de 100
+> correos por día, suficiente para la demo. Si el correo falla, la API lo dice y la
+> notificación queda en la campanita. Para producción con más volumen, el colegio verifica
+> su dominio y usa Resend; el código ya está preparado.”
 
-### 9.7. Si preguntan “¿por qué no usas Gmail?”
+### 9.8. Si preguntan “¿por qué no usas Gmail SMTP?”
 
-> “Gmail SMTP tiene límites, puede bloquear puertos en Render, expone la cuenta y no da
-> trazabilidad de entrega. Para un colegio, un dominio propio con SPF/DKIM es más serio y
-> sostenible.”
+> “Usamos Gmail, pero por Apps Script, no por SMTP. Así evitamos puertos bloqueados,
+> contraseñas de aplicación y problemas de Render. El costo es el límite de 100/día y que
+> el remitente visible es la cuenta Gmail.”
 
-### 9.8. Si preguntan “¿por qué no WhatsApp?”
+**Si preguntan “¿por qué no WhatsApp?”:**
 
 > “WhatsApp es excelente para notificar, pero para recuperación requiere API de negocio,
-> costo por mensaje y datos de teléfono verificados. Es una fase posterior; el correo con
-> dominio es más simple y ya está integrado.”
+> costo por mensaje y datos de teléfono verificados. Es una fase posterior; el correo actual
+> ya está integrado.”
+
 
 ### 9.9. Buenas prácticas de correo (aunque no las implementes todas)
 
@@ -1272,7 +1290,7 @@ capricho del código: es una regla del proveedor.
 **31. ¿Cómo proteges los datos de los alumnos?**
 > Roles y ownership en la API, contraseñas hasheadas, JWT, HTTPS, CORS, rate limiting,
 > auditoría y datos de demo ficticios. Los datos reales de menores no están cargados.
-> También conozco las brechas: token en localStorage, falta MFA y dominio de correo.
+> También conozco las brechas: token en localStorage, falta MFA y el límite diario del correo.
 
 **32. ¿Un alumno puede ver las notas de otro?**
 > No debería: `checkAlumnoPropio` valida que el `id_alumno` sea suyo; si no, 403. La UI
@@ -1423,8 +1441,8 @@ capricho del código: es una regla del proveedor.
 ### 10.8. Limitaciones y ética
 
 **63. ¿Qué no está terminado?**
-> Dominio de correo, MFA, cookies HttpOnly, CI/CD, backups automáticos, SIAGIE oficial y
-> pruebas de carga. Están documentados y priorizados.
+> Dominio/Resend para producción, MFA, cookies HttpOnly, CI/CD, backups automáticos, SIAGIE
+> oficial y pruebas de carga. Están documentados y priorizados.
 
 **64. ¿Por qué deberían aprobarlo si faltan cosas?**
 > Porque el núcleo funciona, está probado y resuelve el problema. Un proyecto serio no es el
@@ -1432,8 +1450,8 @@ capricho del código: es una regla del proveedor.
 > reales de menores.
 
 **65. ¿Qué harías con más tiempo?**
-> 1) Dominio y correo; 2) MFA y cookies HttpOnly; 3) CI/CD y backups; 4) cálculo automático
-> de nota final; 5) SIAGIE oficial; 6) pruebas de carga y accesibilidad.
+> 1) Dominio/Resend si el volumen lo exige; 2) MFA y cookies HttpOnly; 3) CI/CD y backups;
+> 4) cálculo automático de nota final; 5) SIAGIE oficial; 6) pruebas de carga y accesibilidad.
 
 **66. ¿Qué riesgo ético ves?**
 > Usar datos de menores sin consentimiento o exponerlos. Por eso la demo es ficticia y el
@@ -1453,9 +1471,11 @@ capricho del código: es una regla del proveedor.
 > No existe 100%. Tiene controles proporcionales y brechas conocidas con plan. No vendo
 > humo.
 
-**70. “¿Por qué el correo no llega a todos?”**
-> Porque Resend exige un dominio verificado; el remitente de prueba solo llega al dueño. El
-> código ya reporta el fallo y el ADMIN puede resetear. Es configuración, no arquitectura.
+**70. "¿Por qué el correo no llega a todos?"**
+> Hoy sí llega a cualquier Gmail mediante el relay, con un límite de 100 destinatarios por
+> día. Si se agota la cuota o el relay falla, la API devuelve `enviado:false`, la
+> notificación queda en la campanita y el ADMIN puede resetear la clave. Para volumen alto,
+> el siguiente paso es dominio + Resend.
 
 **71. “¿Por qué no usaste la última tecnología X?”**
 > Porque la tecnología debe ajustarse al problema, al equipo y al plazo. Elegí un stack
@@ -1549,7 +1569,7 @@ capricho del código: es una regla del proveedor.
 | “El sistema recomienda; el humano decide.” | “El sistema decide solo.” |
 | “Los datos de menores no están cargados.” | “Tenemos datos de alumnos.” |
 | “Es SIAGIE interno, no oficial.” | “Exporta a SIAGIE.” |
-| “El correo necesita un dominio.” | “El correo funciona para todos.” |
+| "El Gmail relay envía a cualquier correo." | "El correo no tiene límite." |
 | “No hice prueba de carga.” | “Soporta cualquier cantidad.” |
 | “La UI oculta, la API manda.” | “La seguridad está en el frontend.” |
 | “No lo medí; lo estimaría.” | Inventar una métrica. |
@@ -1650,7 +1670,7 @@ SIGA-UC
 - 75 alumnos demo, 750 pensiones, 3,300 notas
 - Innovación: mérito justo, promoción con hash, SIAGIE interno, becas, QR
 - Seguridad: Helmet, CORS, rate limit, auditoría; brechas: localStorage, MFA, dominio
-- Correo: Resend; falta dominio verificado; ADMIN reset como fallback
+- Correo: Gmail relay; 100/día; Resend/dominio para producción; ADMIN reset como fallback
 - Frase: “No es un CRUD; es una sola fuente de verdad con reglas y trazabilidad.”
 ```
 
@@ -1678,7 +1698,7 @@ SIGA-UC
 | 503 | Backend arrancando | Esperar o usar local |
 | Cold start | Render free | Abrir 2 min antes |
 | Sin datos | Año incorrecto | Cambiar selector de año |
-| Correo no llega | Sin dominio | Explicar limitación; admin reset |
+| Correo no llega | Cuota Gmail 100/día o secreto | Revisar cuota/relay; admin reset |
 | PDF no descarga | Bloqueo del navegador | Permitir descargas |
 | QR no lee | Cámara/resolución | Usar código manual o tabla |
 

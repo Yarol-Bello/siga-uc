@@ -785,8 +785,10 @@ Tipos de destinatario:
   `400` con `"El rol <id> no existe. Para estudiantes use TODOS, GRADO o ALUMNO."`.
 - También acepta el formato anterior `{ destinos: [id_usuario,...], asunto, cuerpo }`.
 
-**Respuesta masiva (sin cambios):** `total_destinatarios`, `total_guardadas`,
-`correos_enviados`, `correos_fallidos`, `correos_sin_destino` y `total_enviadas`.
+**Respuesta masiva:** `total_destinatarios`, `total_guardadas`, `correos_enviados`,
+`correos_fallidos`, `correos_sin_destino`, `correos_error` y `total_enviadas`. La
+notificación siempre se guarda en la campanita; el correo se envía por Gmail relay y, si
+falla, se reporta sin revertir el guardado.
 
 **Auditoría:** cada envío masivo registra `accion = ENVIAR` en `bitacora_auditoria` con
 `tipo`, `total` y, cuando el tipo es `ROL`, `rol_nombre`. No se incluyen tokens ni

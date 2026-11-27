@@ -17,12 +17,13 @@ datos de menores.
 | Render gratuito | Render Starter o Supabase pago |
 | Supabase gratuito | Datos reales de alumnos, apoderados o personal |
 | Datos ficticios o de prueba | Servidores del colegio o de la empresa |
-| Notificaciones en la campanita | Pasarelas de pago |
-| Smoke, integridad y E2E | Prometer correos reales a apoderados |
+| Notificaciones en la campanita y correo | Pasarelas de pago |
+| Smoke, integridad y E2E | Enviar más de 100 correos en un día |
 
-**Correo:** el remitente sigue siendo `SIGA-UC <onboarding@resend.dev>`. En modo prueba
-Resend solo entrega al correo dueño de la cuenta. La notificación **sí** se guarda y se ve
-en la campanita; el modal muestra el aviso de modo prueba.
+**Correo:** el sistema usa un Gmail relay (Google Apps Script) configurado en Render. Envía
+desde la cuenta Gmail a cualquier destinatario, sin dominio, con límite de **100
+destinatarios por día**. Si se agota la cuota o el relay falla, la notificación **sí** se
+guarda en la campanita y la UI muestra el aviso. Resend queda como respaldo.
 
 **Datos:** solo ficticios. Al terminar la demo, la base de prueba se puede recrear
 (ver sección 8).

@@ -299,7 +299,7 @@ ADMIN escribe; SECRETARIA lee tarifas, académico, horarios y becas.
 
 - Buzón con no leídas.
 - Envío a todos, grado o alumno.
-- Correo real vía Resend.
+- Correo real vía Gmail relay (Resend de respaldo); límite Gmail 100/día.
 - ADMIN/SECRETARIA envían; DOCENTE recibe 403 si intenta enviar.
 
 **Qué probar:** enviar, recibir, marcar leída y verificar correo si está configurado.

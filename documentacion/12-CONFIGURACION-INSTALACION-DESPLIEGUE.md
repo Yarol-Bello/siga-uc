@@ -485,7 +485,35 @@ tiene otro nombre.
 
 ---
 
-## 8. Correo con Resend
+## 8. Correo transaccional
+
+El sistema puede enviar correos por dos proveedores. El orden de prioridad es:
+
+1. **Gmail relay** si `GMAIL_RELAY_URL` y `GMAIL_RELAY_SECRET` están configurados.
+2. **Resend** si `RESEND_API_KEY` está configurado.
+3. Si no hay ninguno, la notificación se guarda en la campanita y el correo se omite.
+
+### 8.1 Gmail relay (sin dominio, estado actual de la demo)
+
+Sirve para enviar desde una cuenta Gmail a cualquier destinatario sin comprar un dominio.
+
+- Código del relay: `siga-uc-backend/scripts/gmail-relay.gs`.
+- Se crea una app web en Google Apps Script, se ejecuta como el dueño de la cuenta y se
+  publica con acceso “Cualquiera”. El backend la llama por HTTPS con un secreto.
+- Variables en Render/local:
+  - `GMAIL_RELAY_URL` (URL `/exec`)
+  - `GMAIL_RELAY_SECRET` (secreto largo)
+- Límite de Gmail gratuito: **100 destinatarios por día**. No es un servicio de correo
+  masivo; es un puente para pruebas y volúmenes pequeños.
+- El remitente visible es la cuenta Gmail configurada; los destinatarios pueden ser Gmail,
+  Outlook, Yahoo o cualquier correo válido.
+- **Seguridad:** la app web solicita permisos de Gmail (enviar/leer). Para producción se
+  recomienda una cuenta Gmail dedicada al sistema, no la personal. El secreto del relay no
+  debe exponerse en el frontend ni en logs.
+- Si se supera la cuota o el relay falla, la API devuelve `enviado:false` y la notificación
+  sigue en la campanita. El ADMIN puede restablecer contraseñas manualmente.
+
+### 8.2 Resend (recomendado para producción con dominio)
 
 1. Crear cuenta en Resend.
 2. Verificar un dominio propio (por ejemplo, `tudominio.com`) y usar un remitente
@@ -495,21 +523,32 @@ tiene otro nombre.
    - `RESEND_API_KEY`
    - `EMAIL_FROM`
    - `FRONTEND_URL=https://siga-uc-web.onrender.com`
-5. `emailService.verificarConexion()` comprueba la key y advierte si el remitente sigue
-   siendo `onboarding@resend.dev`. No hace un ping real a Resend.
+5. `emailService.verificarConexion()` comprueba la configuración y advierte si el remitente
+   sigue siendo `onboarding@resend.dev`. No hace un ping real a Resend.
 6. Si el envío falla, la API registra el error y responde
    `{ tieneCorreo: true, enviado: false }`; la UI muestra “No se pudo enviar el correo”.
    No se debe devolver un falso “enviado”.
-7. **Estado Render (27/11/2026):** `RESEND_API_KEY` y `EMAIL_FROM` ya están configurados;
-   el envío al dueño de la cuenta se verificó. Falta verificar un dominio para el resto.
 
-**Limitación:** el remitente `onboarding@resend.dev` solo puede enviar al correo dueño de
-la cuenta de Resend en modo prueba. Para que cualquier alumno, docente o usuario reciba
-el enlace, se debe verificar un dominio y configurar `EMAIL_FROM` con ese dominio.
-Revisar también spam/promociones y la bandeja del correo registrado en `usuarios`.
+**Limitación de Resend:** el remitente `onboarding@resend.dev` solo puede enviar al correo
+dueño de la cuenta en modo prueba. Para que cualquier alumno, docente o usuario reciba el
+enlace, se debe verificar un dominio y configurar `EMAIL_FROM` con ese dominio.
 
-> `app.js` conserva el mensaje histórico “SMTP verificado correctamente” aunque el servicio
-> real sea Resend. No es un error funcional, solo nomenclatura heredada.
+### 8.3 Notificaciones: campanita + correo
+
+- `POST /api/notificaciones/masivo` guarda una fila por destinatario en `notificaciones`.
+- Luego envía el correo en lote: Gmail relay si está configurado; Resend como respaldo.
+- La respuesta incluye `total_guardadas`, `correos_enviados`, `correos_fallidos`,
+  `correos_sin_destino` y `correos_error`.
+- La campanita siempre conserva la notificación aunque el correo falle.
+- La UI del ADMIN muestra ambos resultados y advierte si algún correo no salió.
+
+### 8.4 Estado Render (27/11/2026)
+
+- Gmail relay configurado y verificado en producción.
+- Resend queda como respaldo; no hay dominio verificado.
+- El límite de 100 destinatarios/día aplica al correo Gmail.
+- Revisar spam/promociones y la bandeja del correo registrado en `usuarios`.
+
 
 ---
 

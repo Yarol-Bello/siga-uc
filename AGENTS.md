@@ -29,7 +29,7 @@ tesorería, caja, reportes, SIAGIE, notificaciones y auditoría.
 | Backend | Node.js 20 + Express 5 (CommonJS) |
 | Base de datos | PostgreSQL 18.4 (`pgcrypto`, `unaccent`, `uuid-ossp`) |
 | Auth | JWT 8 h + bcrypt coste 10 |
-| Correo | **Resend** (API HTTP), no Nodemailer/SMTP |
+| Correo | Gmail relay (Apps Script, sin dominio) + Resend (API HTTP); no SMTP |
 | Excel | ExcelJS (exportación interna de calificaciones) |
 | PDF | PDFKit + fuentes estándar (libretas) |
 | SQL | Crudo parametrizado (sin ORM) |
@@ -146,7 +146,9 @@ cd siga-uc-backend
 npm run backup   # genera backups/backup_siga_uc_YYYY-MM-DD_HH-mm-ss.sql
 ```
 
-> `.env.example` ya usa Resend (`RESEND_API_KEY` y `EMAIL_FROM`). No hay SMTP ni Nodemailer.
+> `.env.example` incluye Gmail relay (`GMAIL_RELAY_URL`, `GMAIL_RELAY_SECRET`) y Resend
+> (`RESEND_API_KEY`, `EMAIL_FROM`) como respaldo. No hay SMTP ni Nodemailer. El relay tiene
+> prioridad; Gmail gratuito limita a 100 destinatarios/día.
 
 ---
 
@@ -365,11 +367,14 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - **Cuadro de mérito:** solo incluye alumnos `Matriculado` con nota final en **todos** los
   cursos de `carga_curricular` del grado/bimestre/año. Un alumno con una sola nota no se
   rankea; el promedio no se calcula sobre notas parciales.
-- **Recuperación de contraseña:** usa `correo_personal || correo_institucional`. Si Resend
-  rechaza el envío, la API responde `{ tieneCorreo: true, enviado: false }` y la UI pide
-  contactar al administrador. Render ya tiene `RESEND_API_KEY` y `EMAIL_FROM`; el envío al
-  dueño de la cuenta está verificado. `onboarding@resend.dev` solo entrega al dueño de la
-  cuenta; para todos los usuarios se debe verificar un dominio y usar un `EMAIL_FROM` propio.
+- **Recuperación de contraseña y notificaciones:** usan `correo_personal || correo_institucional`.
+  El envío pasa por un relay de Gmail (Google Apps Script) configurado en Render con
+  `GMAIL_RELAY_URL` y `GMAIL_RELAY_SECRET`; Resend queda como respaldo. No requiere dominio,
+  pero Gmail gratuito limita a **100 destinatarios por día**. Si el correo falla, la API
+  responde `{ tieneCorreo: true, enviado: false }`, la notificación sigue en la campanita y
+  el ADMIN puede restablecer la contraseña. Para volumen o producción se recomienda verificar
+  un dominio y usar Resend con `EMAIL_FROM` propio. El código del relay está en
+  `siga-uc-backend/scripts/gmail-relay.gs`.
 - Los **IDs de conceptos** de tesorería ya se resuelven por tipo y por pre-ticket; la
   tabla de pensiones aún muestra 12 meses fijos y el mensaje “hasta diciembre”. El módulo
   de configuración reemplazará esos supuestos por tarifas y calendarios administrables.

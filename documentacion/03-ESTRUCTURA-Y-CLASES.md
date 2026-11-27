@@ -85,9 +85,10 @@
 | `actaPdfService.js` | `generarActaPdf` | PDFKit, acta landscape, matriz real, watermark para borrador |
 | `auditoriaService.js` | `listarBitacora`, `obtenerBitacora`, `listarModulos`, `listarActas`, `cerrarActa`, `reabrirActa`, `getEstadisticas` | Valida bimestre/año/grado; periodo canónico; 404/409; motivo de reapertura |
 | `siagieService.js` | `obtenerResumen`, `generarExcelInterno`, `verificarExportacion` | Cursos de la carga, notas/conclusiones estructuradas, workbook con aviso interno, código/hash y auditoría |
-| `notificacionService.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Correo no bloqueante, propiedad del destinatario; el masivo resuelve TODOS/GRADO/ALUMNO y cuenta correos enviados/fallidos |
+| `notificacionService.js` | `listar`, `obtener`, `contarNoLeidas`, `crear`, `crearMasivo`, `marcarLeida`, `marcarTodasLeidas`, `eliminar` | Correo no bloqueante, propiedad del destinatario; el masivo resuelve TODOS/GRADO/ALUMNO, guarda en campanita y envía por Gmail relay/Resend contando enviados/fallidos |
 | `recuperacionService.js` | `solicitarRecuperacion`, `validarToken`, `restablecerPassword` | Token 32 bytes, 2 h, un uso, no revelar existencia |
-| `emailService.js` | `verificarConexion`, `enviarCorreo`, `enviarNotificacion` | Resend; plantilla guindo/dorado |
+| `emailService.js` | `verificarConexion`, `enviarCorreo`, `enviarNotificacion`, `enviarNotificacionLote` | Gmail relay con prioridad; Resend como respaldo; plantilla guindo/dorado |
+| `gmailRelayService.js` | `estaConfigurado`, `enviarLote` | Llama por HTTPS a la app web de Apps Script; máximo 40 mensajes por lote |
 
 ### 1.5 DAOs (27)
 
@@ -120,7 +121,7 @@
 
 | Archivo | Uso |
 |---|---|
-| `emailService.js` | Resend; `RESEND_API_KEY`, `EMAIL_FROM`; interfaz compatible con la versión Nodemailer |
+| `emailService.js` | Gmail relay (`GMAIL_RELAY_URL`, `GMAIL_RELAY_SECRET`) y Resend (`RESEND_API_KEY`, `EMAIL_FROM`); interfaz compatible con la versión Nodemailer |
 | `response.js` | Respuestas uniformes; `success` agrega `pagination` cuando se pasa |
 | `authMiddleware.js` | Seguridad por token/rol |
 
