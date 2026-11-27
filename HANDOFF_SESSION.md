@@ -2,9 +2,9 @@
 
 > **Fecha:** 27/11/2026
 > **Fase:** demostración y aprobación. **No es producción real.**
-> **Código funcional:** frontend `65429f9` (fix docente: conclusiones por `id_carga` y
-> búsqueda de alumnos); backend `2864531` (caja paginada y búsqueda de pagos).
-> **Render:** backend verificado con `2864531`; frontend verificado con `65429f9`.
+> **Código funcional:** `07f5bac` (recuperación de contraseña con error real y cuadro de
+> mérito solo con notas completas; incluye el fix docente `65429f9` y la caja `2864531`).
+> **Render:** backend verificado con `07f5bac5`; frontend con `main-DST4JNBS.js`.
 > `/api/health` devuelve `status: "ok"`, `dbReady: true`, `database: "ok"`,
 > `zona_horaria: "America/Lima"` y el commit del backend.
 > **Supabase demo:** se deja con el **seed v1 a propósito**; el borrado total será al
@@ -29,7 +29,7 @@ SIGA-UC está funcional y desplegado en la demo:
 |---|---|
 | Frontend | https://siga-uc-web.onrender.com |
 | Backend | https://siga-uc-api-prod.onrender.com/api |
-| Render desplegado | Backend `2864531` · Frontend `65429f9` (27/11/2026) |
+| Render desplegado | Backend `07f5bac5` · Frontend `main-DST4JNBS.js` (27/11/2026) |
 | Health | OK, `status: "ok"`, `dbReady: true`, `database: "ok"`, `zona_horaria: "America/Lima"`, `commit` |
 | Supabase | `siga-uc-prod` (us-west-2), 48 tablas, H74–H80, seed v1 |
 | Año activo | 2026 |
@@ -86,6 +86,31 @@ Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron **INACTIVOS**.
 - Notas y Conclusiones incluyen búsqueda local por DNI, nombre o código, contador de
   resultados y estado vacío con opción de limpiar.
 - Verificado con selector de Álgebra en 1ro–4to y un alumno nuevo en 3ro; build Angular OK.
+
+### 2.0.2 Recuperación de contraseña y cuadro de mérito (27/11/2026)
+
+- **Recuperación:** `recuperacionService` ahora espera y revisa el resultado de
+  `emailService.enviarCorreo()`. Si Resend rechaza el envío, la API responde
+  `{ tieneCorreo: true, enviado: false }` y la UI pide contactar al administrador; ya no
+  se muestra un falso “correo enviado”.
+- **Diagnóstico:** `emailService.verificarConexion()` advierte si `EMAIL_FROM` sigue usando
+  `onboarding@resend.dev`. Ese remitente de prueba **solo entrega al correo dueño de la
+  cuenta Resend**; para alumnos, docentes y secretaría se requiere un dominio verificado.
+- **Producción:** con `07f5bac` desplegado, `POST /api/auth/recuperar-password` para el
+  alumno `76543211` responde `200` con `{ tieneCorreo: true, enviado: false }`. La lógica
+  ya reporta la verdad; **falta configurar Resend en Render** (API key válida y
+  `EMAIL_FROM` con dominio verificado). No es un bug de código pendiente.
+- **Mérito:** `getCuadroMerito` toma los cursos de `carga_curricular` del grado/año, cuenta
+  cursos distintos con nota y solo rankea a quien tiene nota final en **todos**. Un alumno
+  con una sola nota ya no aparece primero.
+- **UI de mérito:** nota “Solo se incluyen estudiantes con nota final en todos los cursos
+  del grado”, detalle `n/total cursos` junto al nombre y estado vacío actualizado.
+- **Pruebas:** con 11/11 cursos cargados temporalmente, el DAO devolvió 2 alumnos y excluyó
+  a los incompletos; con una sola nota devolvió 0 filas. La UI se verificó con datos
+  simulados (nota, `11/11 cursos`, 2 filas y estado vacío). Los 22 registros temporales se
+  borraron; la base local quedó como estaba.
+- **Sin migración.** Documentación actualizada en `01`, `05`, `08`, `09`, `10`, `12`, `22` y
+  `AGENTS.md`.
 
 ### 2.1 H80
 
@@ -194,8 +219,14 @@ Estudiantes `72000002`–`72000075`: contraseña `UC<DNI>`.
 | `npm run uat:verify` en `siga_uc_h81` (seed v2) | **22 PASS, 0 FAIL** |
 | `npm run uat:verify` contra Supabase (seed v1) | **22 PASS, 0 FAIL** |
 | Build Angular | OK (warning de budget inicial) |
-| Render producción | `2864531`; caja paginada; health OK con `status`/`dbReady` |
-| Frontend producción | `main-6YLMUYLV.js`; caja paginada y búsqueda por DNI verificadas |
+| Render producción | `07f5bac5`; recuperación y mérito desplegados; health OK con `status`/`dbReady` |
+| Frontend producción | `main-DST4JNBS.js`; aviso de fallo de correo y nota de mérito |
+| Recuperación — envío real (local) | OK; Resend devolvió message ID |
+| Recuperación — fallo (local) | Con key inválida responde `{ tieneCorreo: true, enviado: false }`; la UI pide contactar al administrador |
+| Recuperación — producción | `76543211` responde `enviado: false`; **falta configurar Resend en Render** |
+| Mérito — backend local | 2 alumnos con 11/11 cursos; incompletos excluidos; con 1 nota, 0 filas |
+| Mérito — UI local | Nota visible, `11/11 cursos`, 2 filas y estado vacío correcto |
+| `npm run smoke` local (27/11/2026) | **12 PASS, 0 FAIL, 0 SKIP** |
 | Caja producción | 116 pagos, 10/página; búsqueda DNI `72000059`: 3 pagos; PDF OK |
 | Docente producción | `65429f9`; selector `id_carga` corregido y búsqueda DNI/nombre verificada |
 | Rendimiento H81 | Tesorería: **1 petición**, 25 filas/página; Personal paginado; Caja 10 pagos/página con búsqueda |
@@ -254,19 +285,28 @@ Health: `GET http://localhost:3000/api/health`.
    final. No ejecutar normalizaciones ni cambios de datos ahora. Si en el futuro se
    reactiva el refresh, aplicar `database/migracion_h81_rendimiento_paginacion.sql` y
    `ALTER DATABASE postgres SET timezone = 'America/Lima';` si el pooler es transaccional.
-4. ✅ **Render desplegado y verificado**: backend `2864531` con health `status: "ok"`,
-   `dbReady: true` y `zona_horaria: "America/Lima"`; frontend `65429f9` con caja paginada,
-   búsqueda por DNI y conclusiones del grado correcto. **No repetir la revisión de módulos
-   ni las suites.**
-5. **SIAGIE oficial** (solo si el colegio lo pide):
+4. ✅ **Render desplegado y verificado**: backend `07f5bac5` con health `status: "ok"`,
+   `dbReady: true` y `zona_horaria: "America/Lima"`; frontend `main-DST4JNBS.js` con
+   recuperación honesta y mérito completo. **No repetir la revisión de módulos ni las
+   suites.**
+5. ⛔ **Correo de recuperación en producción — acción del usuario:** la API ya reporta
+   `enviado: false`, pero Render no puede entregar porque su configuración de Resend no
+   sirve para destinatarios arbitrarios. Hay que:
+   - verificar un dominio en Resend (DNS: SPF/DKIM);
+   - usar `EMAIL_FROM=SIGA-UC <no-reply@dominio-verificado>`;
+   - cargar una `RESEND_API_KEY` válida en Render;
+   - confirmar `FRONTEND_URL=https://siga-uc-web.onrender.com`;
+   - redeploy del backend y probar con un correo real de alumno/docente.
+   Sin dominio verificado, `onboarding@resend.dev` solo entrega al dueño de la cuenta.
+6. **SIAGIE oficial** (solo si el colegio lo pide):
    - obtener la plantilla oficial de SIAGIE;
    - mapear áreas/cursos/competencias;
    - conclusiones por competencia;
    - llenar la plantilla oficial conservando su código y nombre;
    - SIAGIE valida al subir el archivo.
-6. **No activar 2027** ni confirmar promociones en Supabase sin decisión.
-7. **No cargar datos reales** de menores hasta la aprobación.
-8. `INFORME/` es documentación del usuario y **no está trackeada**; no tocar.
+7. **No activar 2027** ni confirmar promociones en Supabase sin decisión.
+8. **No cargar datos reales** de menores hasta la aprobación.
+9. `INFORME/` es documentación del usuario y **no está trackeada**; no tocar.
 
 ---
 
@@ -285,6 +325,11 @@ Health: `GET http://localhost:3000/api/health`.
 - `siga-uc-backend/scripts/uat-seed.js` y `uat-verify.js`.
 - `siga-uc-backend/scripts/demo-reset.js` — limpieza demo previa al seed.
 - `siga-uc-backend/scripts/smoke.js` — health, RBAC y desfase horario.
+- `siga-uc-backend/src/dao/reporteDao.js` — `getCuadroMerito` exige notas completas.
+- `siga-uc-backend/src/services/recuperacionService.js` — recuperación y fallo de Resend.
+- `siga-uc-backend/src/services/emailService.js` — Resend y advertencia de remitente.
+- `siga-uc-frontend/src/app/features/auth/login/login.component.ts` — aviso de recuperación.
+- `siga-uc-frontend/src/app/features/admin/reportes/` — cuadro de mérito y nota de cursos.
 - `siga-uc-backend/src/dao/tesoreriaDao.js` — `listarPadronPensiones`.
 - `siga-uc-backend/src/dao/personalDao.js` — `listarPaginado`.
 - `siga-uc-frontend/src/app/features/{admin,secretaria,docente}/layout/` — drawers y cabeceras.
@@ -310,8 +355,8 @@ NO reanalices el repo, NO leas AGENTS.md, HANDOFF_SESSION.md ni documentacion/ c
 Lee solo CONTEXTO_SESION.md (una página) si necesitas el detalle.
 
 ESTADO
-- main = 65429f9 (frontend) / 2864531 (backend); Render verificado; /api/health:
-  status ok, dbReady true, database ok, zona_horaria America/Lima.
+- main = 07f5bac; Render verificado (backend 07f5bac5, frontend main-DST4JNBS.js);
+  /api/health: status ok, dbReady true, database ok, zona_horaria America/Lima.
 - Demo funcional y suites verdes; no las repitas.
 - Supabase se queda con el seed v1 A PROPÓSITO. NO refrescar datos, NO pedir
   DATABASE_URL ni contraseñas, NO ejecutar demo:reset/uat:seed ahora.
@@ -321,6 +366,12 @@ ESTADO
   (10/página, búsqueda por DNI). No volver a revisarlo.
 - Docente: los selectores de curso usan id_carga, no id_curso. Notas y Conclusiones
   ya tienen búsqueda por DNI/nombre/código. No volver a revisarlo.
+- Recuperación: la API ya distingue envío real de fallo (enviado true/false). En
+  producción responde enviado=false porque Resend en Render no tiene dominio/key
+  válidos. Es configuración, no código. El usuario debe verificar dominio y cargar
+  RESEND_API_KEY + EMAIL_FROM en Render.
+- Mérito: solo alumnos con nota final en todos los cursos de carga_curricular. Un
+  alumno con una sola nota no se rankea. No volver a revisarlo.
 
 ARCHIVOS QUE SE ESTÁN USANDO
 - Backend: src/config/database.js, src/dao/tesoreriaDao.js, src/dao/personalDao.js,
