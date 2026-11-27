@@ -469,6 +469,7 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 | Diseño multi-año y promoción | `documentacion/19-DISENO-MULTIANIO-Y-PROMOCION.md` |
 | Módulo de configuración (diseño y fases) | `documentacion/20-MODULO-CONFIGURACION.md` |
 | Conclusiones descriptivas y control interno SIAGIE | `documentacion/21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md` |
+| Módulos y flujo de prueba | `documentacion/22-MODULOS-Y-FLUJO-DE-PRUEBA.md` |
 
 ---
 
