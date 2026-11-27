@@ -133,6 +133,11 @@ una ruta interna válida; si no, navega al dashboard del rol (H72).
 > `loginSetupGuard` espera como máximo 1.5 s por `/api/setup/status`; si la API está despertando
 > o falla, deja abrir `/login` en lugar de bloquear la pantalla.
 
+> **Selectores de curso del docente (27/11/2026):** usar `id_carga` como valor del
+> selector, no `id_curso`. Un mismo curso se repite en varios grados; con `id_curso`
+> Conclusiones cargaba el primer grado de ese curso y ocultaba alumnos de otra sección.
+> Notas y Conclusiones incluyen búsqueda local por DNI, nombre o código.
+
 `Usuario`:
 
 ```ts
@@ -312,8 +317,8 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 | `AdminBecasComponent` | `GET/POST/PUT /configuracion/becas/tipos`, `GET/POST/PUT /configuracion/becas`, `POST /preview`, `PUT /:id/aprobar`, `/rechazar`, `/anular`; asignaciones y tipos con motivo (H78) |
 | `SetupComponent` | `GET /setup/status`, `POST /setup/inicializar`; asistente de 3 pasos con token, institución, año, niveles y primer admin (H79) |
 | `DocenteDashboardComponent` | `GET /carga-curricular/docente/:id`; botones Asistencia/Notas navegan con `id_curso` e `id_grado` (H53) |
-| `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53) |
-| `DocenteConclusionesComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id/conclusiones?bimestre=&anio=`, `PUT /calificaciones/conclusiones`; nivel desde la nota final, tres textos, contador 350, plantilla de sugerencia, borrador/publicado y bloqueo por acta cerrada (H80) |
+| `DocenteNotasComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `POST /calificaciones/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53); búsqueda local por DNI, nombre o código |
+| `DocenteConclusionesComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id/conclusiones?bimestre=&anio=`, `PUT /calificaciones/conclusiones`; nivel desde la nota final, tres textos, contador 350, plantilla de sugerencia, borrador/publicado, bloqueo por acta cerrada (H80) y búsqueda por DNI, nombre o código |
 | `DocenteAsistenciaComponent` | `GET /carga-curricular/docente/:id`, `GET /asistencias/curso/:id/fecha/:fecha`, `POST /asistencias/masivo`; preselecciona `id_curso`/`id_grado` por query params (H53), usa `parseFechaLocal`/`diaSemanaLocal` y muestra el día en español (H61); bloquea observación sin P/T/F con error inline (H60) |
 | `DocenteFichaComponent` | `GET /alumnos/dni/:dni`, `GET /asistencias/alumno/:id?anio=`, `/resumen?anio=`, `GET /calificaciones/notas-finales/alumno/:id?anio=`; el historial muestra el día en español que devuelve el backend (H61) y solo el año lectivo elegido (H56) |
 | `DocenteReportesComponent` | `GET /carga-curricular/docente/:id`, `GET /calificaciones/curso/:id/grado/:id`, `GET /notificaciones`, `PUT /notificaciones/:id/leer`, `PUT /leer-todas`; el consolidado se imprime con vista aislada (H58) |

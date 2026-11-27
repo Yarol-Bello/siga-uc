@@ -22,6 +22,32 @@
       </select>
     </div>
 
+    <div class="filtro-group filtro-busqueda">
+      <label><i class="fa-solid fa-magnifying-glass"></i> Buscar alumno</label>
+      <div class="input-busqueda">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input
+          type="search"
+          placeholder="DNI, nombre o código"
+          autocomplete="off"
+          [ngModel]="busquedaAlumno()"
+          (ngModelChange)="busquedaAlumno.set($event)"
+          aria-label="Buscar alumno por DNI, nombre o código"
+        />
+        @if (busquedaAlumno()) {
+        <button
+          type="button"
+          class="btn-clear"
+          (click)="limpiarBusqueda()"
+          title="Limpiar búsqueda"
+          aria-label="Limpiar búsqueda"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        }
+      </div>
+    </div>
+
     <div class="toolbar-actions">
       <button class="btn-secondary" (click)="cargarCalificaciones()" [disabled]="cargandoNotas()">
         <i class="fa-solid fa-rotate"></i> Actualizar
@@ -103,8 +129,25 @@
         {{ cursoSeleccionado()!.nombre_curso }} — {{ cursoSeleccionado()!.nombre_grado }}
       </h3>
       <span class="badge-bimestre">{{ bimestre() }}° Bimestre</span>
+      <span class="badge-estudiantes">{{ textoConteo() }}</span>
     </div>
 
+    @if (alumnosFiltrados().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid" [ngClass]="alumnos().length === 0 ? 'fa-users-slash' : 'fa-magnifying-glass'"></i>
+      <h3>
+        {{ alumnos().length === 0
+          ? 'No hay alumnos matriculados en este grado'
+          : 'No se encontraron estudiantes' }}
+      </h3>
+      @if (alumnos().length > 0) {
+      <p>Pruebe con otro DNI, nombre o código.</p>
+      <button type="button" class="btn-secondary" (click)="limpiarBusqueda()">
+        <i class="fa-solid fa-xmark"></i> Limpiar búsqueda
+      </button>
+      }
+    </div>
+    } @else {
     <div class="table-responsive">
       <table>
         <thead>
@@ -121,7 +164,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (alumno of alumnos(); track alumno.id_alumno; let i = $index) {
+          @for (alumno of alumnosFiltrados(); track alumno.id_alumno; let i = $index) {
           <tr>
             <td style="text-align: center;">{{ (i + 1).toString().padStart(2, '0') }}</td>
             <td>{{ alumno.dni }}</td>
@@ -150,11 +193,6 @@
       </table>
     </div>
 
-    @if (alumnos().length === 0) {
-    <div class="empty-state">
-      <i class="fa-solid fa-users-slash"></i>
-      <h3>No hay alumnos matriculados en este grado</h3>
-    </div>
     }
   </div>
   }

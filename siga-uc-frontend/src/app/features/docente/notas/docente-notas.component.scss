@@ -55,6 +55,72 @@
   align-items: flex-end;
 }
 
+.filtro-busqueda {
+  min-width: 280px;
+}
+
+.input-busqueda {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  > i {
+    position: absolute;
+    left: 12px;
+    color: #64748b;
+    pointer-events: none;
+  }
+
+  input {
+    width: 100%;
+    padding: 10px 38px 10px 36px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
+    outline: none;
+
+    &:focus {
+      border-color: #800020;
+    }
+  }
+}
+
+.btn-clear {
+  position: absolute;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+
+  &:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+  }
+}
+
+.badge-estudiantes {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.section-header-banner h3 {
+  flex: 1;
+}
+
 .btn-primary,
 .btn-secondary {
   display: flex;
@@ -294,6 +360,10 @@ tr:hover td {
     color: #1e293b;
     margin-bottom: 8px;
   }
+}
+
+.empty-state .btn-secondary {
+  margin-top: 12px;
 }
 
 .alert-warning {

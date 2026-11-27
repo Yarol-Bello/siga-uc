@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -67,6 +67,7 @@ export class DocenteNotasComponent implements OnInit {
   cursos = signal<CursoAsignado[]>([]);
   competencias = signal<Competencia[]>([]);
   alumnos = signal<AlumnoCalificacion[]>([]);
+  busquedaAlumno = signal('');
 
   // Selección
   cursoSeleccionado = signal<CursoAsignado | null>(null);
@@ -135,6 +136,7 @@ export class DocenteNotasComponent implements OnInit {
    */
   seleccionarCurso(curso: CursoAsignado): void {
     this.cursoSeleccionado.set(curso);
+    this.busquedaAlumno.set('');
     this.calificacionesModificadas = {};
     this.mensajeExito.set(null);
     this.cargarCalificaciones();
@@ -202,6 +204,42 @@ export class DocenteNotasComponent implements OnInit {
    */
   get totalModificadas(): number {
     return Object.keys(this.calificacionesModificadas).length;
+  }
+
+  readonly alumnosFiltrados = computed(() => {
+    const termino = this.normalizarBusqueda(this.busquedaAlumno());
+    if (!termino) return this.alumnos();
+
+    return this.alumnos().filter((alumno) => {
+      const nombre = this.normalizarBusqueda(alumno.nombre_completo);
+      const dni = String(alumno.dni || '');
+      const codigo = this.normalizarBusqueda(alumno.codigo_estudiante);
+      return (
+        nombre.includes(termino) ||
+        dni.includes(termino) ||
+        codigo.includes(termino)
+      );
+    });
+  });
+
+  readonly textoConteo = computed(() => {
+    const total = this.alumnos().length;
+    const filtrados = this.alumnosFiltrados().length;
+    return this.busquedaAlumno().trim()
+      ? `${filtrados} de ${total} estudiantes`
+      : `${total} estudiantes`;
+  });
+
+  limpiarBusqueda(): void {
+    this.busquedaAlumno.set('');
+  }
+
+  private normalizarBusqueda(valor: string | null | undefined): string {
+    return String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
   }
 
   /**

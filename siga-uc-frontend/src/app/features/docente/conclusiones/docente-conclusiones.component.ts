@@ -74,6 +74,7 @@ export class DocenteConclusionesComponent implements OnInit {
   cursos = signal<CursoAsignado[]>([]);
   cursoSeleccionado = signal<CursoAsignado | null>(null);
   bimestre = signal<number>(2);
+  busquedaAlumno = signal('');
 
   actaCerrada = signal(false);
   alumnos = signal<ConclusionAlumno[]>([]);
@@ -110,6 +111,30 @@ export class DocenteConclusionesComponent implements OnInit {
   );
 
   readonly anioLectivo = computed(() => this.configuracion.anioLectivo());
+
+  readonly alumnosFiltrados = computed(() => {
+    const termino = this.normalizarBusqueda(this.busquedaAlumno());
+    if (!termino) return this.alumnos();
+
+    return this.alumnos().filter((alumno) => {
+      const nombre = this.normalizarBusqueda(alumno.nombre_completo);
+      const dni = String(alumno.dni || '');
+      const codigo = this.normalizarBusqueda(alumno.codigo_estudiante);
+      return (
+        nombre.includes(termino) ||
+        dni.includes(termino) ||
+        codigo.includes(termino)
+      );
+    });
+  });
+
+  readonly textoConteo = computed(() => {
+    const total = this.alumnos().length;
+    const filtrados = this.alumnosFiltrados().length;
+    return this.busquedaAlumno().trim()
+      ? `${filtrados} de ${total} estudiantes`
+      : `${total} estudiantes`;
+  });
 
   ngOnInit(): void {
     this.cargarCursos();
@@ -156,6 +181,7 @@ export class DocenteConclusionesComponent implements OnInit {
 
   seleccionarCurso(curso: CursoAsignado): void {
     this.cursoSeleccionado.set(curso);
+    this.busquedaAlumno.set('');
     this.mensajeExito.set(null);
     this.cargarConclusiones();
   }
@@ -165,9 +191,9 @@ export class DocenteConclusionesComponent implements OnInit {
     this.cargarConclusiones();
   }
 
-  onCursoChange(idCurso: string | number): void {
+  onCursoChange(idCarga: string | number): void {
     const curso = this.cursos().find(
-      (item) => item.id_curso === Number(idCurso),
+      (item) => item.id_carga === Number(idCarga),
     );
     if (!curso) return;
     this.seleccionarCurso(curso);
@@ -363,6 +389,18 @@ export class DocenteConclusionesComponent implements OnInit {
     if (estado === 'PUBLICADO') return 'Publicada';
     if (estado === 'BORRADOR') return 'Borrador';
     return 'Sin conclusión';
+  }
+
+  limpiarBusqueda(): void {
+    this.busquedaAlumno.set('');
+  }
+
+  private normalizarBusqueda(valor: string | null | undefined): string {
+    return String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
   }
 
   private plantillaConclusion(

@@ -36,12 +36,12 @@
         </label>
         <select
           id="conclusionCurso"
-          [ngModel]="cursoSeleccionado()?.id_curso || ''"
+          [ngModel]="cursoSeleccionado()?.id_carga || ''"
           (ngModelChange)="onCursoChange($event)"
           [disabled]="cargandoCursos() || cursos().length === 0"
         >
           @for (curso of cursos(); track curso.id_carga) {
-          <option [value]="curso.id_curso">
+          <option [value]="curso.id_carga">
             {{ curso.nombre_curso }} — {{ curso.nombre_grado }} ({{ curso.seccion }})
           </option>
           }
@@ -62,6 +62,34 @@
           <option [value]="3">III Bimestre</option>
           <option [value]="4">IV Bimestre</option>
         </select>
+      </div>
+
+      <div class="campo campo-busqueda">
+        <label for="conclusionBusqueda">
+          <i class="fa-solid fa-magnifying-glass"></i> Buscar estudiante
+        </label>
+        <div class="input-busqueda">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input
+            id="conclusionBusqueda"
+            type="search"
+            placeholder="DNI, nombre o código"
+            autocomplete="off"
+            [ngModel]="busquedaAlumno()"
+            (ngModelChange)="busquedaAlumno.set($event)"
+          />
+          @if (busquedaAlumno()) {
+          <button
+            type="button"
+            class="btn-clear"
+            (click)="limpiarBusqueda()"
+            title="Limpiar búsqueda"
+            aria-label="Limpiar búsqueda"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          }
+        </div>
       </div>
     </div>
   </div>
@@ -97,7 +125,7 @@
           {{ curso.nombre_curso }} — {{ curso.nombre_grado }} ({{ curso.seccion }})
         </h3>
         <p>
-          {{ bimestre() }}° Bimestre · {{ alumnos().length }} estudiantes
+          {{ bimestre() }}° Bimestre · {{ textoConteo() }}
         </p>
       </div>
       <button
@@ -125,7 +153,18 @@
     </div>
     }
 
-    @if (!cargando() && alumnos().length > 0) {
+    @if (!cargando() && alumnos().length > 0 && alumnosFiltrados().length === 0) {
+    <div class="empty-state">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <h3>No se encontraron estudiantes</h3>
+      <p>Pruebe con otro DNI, nombre o código.</p>
+      <button type="button" class="btn-soft" (click)="limpiarBusqueda()">
+        <i class="fa-solid fa-xmark"></i> Limpiar búsqueda
+      </button>
+    </div>
+    }
+
+    @if (!cargando() && alumnosFiltrados().length > 0) {
     <div class="tabla-conclusiones">
       <table>
         <thead>
@@ -140,7 +179,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (alumno of alumnos(); track alumno.id_alumno) {
+          @for (alumno of alumnosFiltrados(); track alumno.id_alumno) {
           <tr>
             <td class="mono">{{ alumno.dni }}</td>
             <td>

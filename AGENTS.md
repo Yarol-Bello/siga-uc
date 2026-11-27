@@ -358,6 +358,10 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
   `/docente/conclusiones`; ADMIN puede revisar. El Excel interno lleva código/hash de
   control **interno** (no es el código oficial de SIAGIE) y una tarjeta de verificación en
   `/admin/siagie`.
+- **Selectores de curso del docente:** usar `id_carga`, no `id_curso`. Un curso se repite
+  en varios grados; con `id_curso` Conclusiones cargaba el primer grado de ese curso y
+  ocultaba al alumno de otra sección. Notas y Conclusiones ya incluyen búsqueda por DNI,
+  nombre o código.
 - Los **IDs de conceptos** de tesorería ya se resuelven por tipo y por pre-ticket; la
   tabla de pensiones aún muestra 12 meses fijos y el mensaje “hasta diciembre”. El módulo
   de configuración reemplazará esos supuestos por tarifas y calendarios administrables.

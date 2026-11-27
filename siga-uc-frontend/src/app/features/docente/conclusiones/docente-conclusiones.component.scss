@@ -231,6 +231,59 @@
 }
 
 .loading-state,
+.campo-busqueda {
+  min-width: 300px;
+}
+
+.input-busqueda {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  > i {
+    position: absolute;
+    left: 12px;
+    color: #64748b;
+    pointer-events: none;
+  }
+
+  input {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 38px 10px 36px;
+    font-size: 0.9rem;
+    color: #1e293b;
+    background: #ffffff;
+    outline: none;
+
+    &:focus {
+      border-color: #800020;
+      box-shadow: 0 0 0 3px rgba(128, 0, 32, 0.08);
+    }
+  }
+}
+
+.btn-clear {
+  position: absolute;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+
+  &:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+  }
+}
+
 .empty-state {
   text-align: center;
   padding: 50px 20px;
@@ -251,6 +304,10 @@
     margin: 0;
     font-size: 0.9rem;
   }
+}
+
+.empty-state .btn-soft {
+  margin-top: 12px;
 }
 
 .tabla-conclusiones {
