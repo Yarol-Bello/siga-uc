@@ -399,17 +399,17 @@ const startServer = () => {
       // informa "starting" hasta que terminen.
       void inicializarDependencias();
 
-      // Verificar conexión con Resend en SEGUNDO PLANO (no bloquea el arranque)
+      // Verificar el servicio de correo en SEGUNDO PLANO (no bloquea el arranque)
       setTimeout(async () => {
         try {
           const emailService = require("./services/emailService");
           await emailService.verificarConexion();
-          console.log("✅ Resend configurado correctamente.");
+          console.log("✅ Servicio de correo verificado.");
         } catch (err) {
-          console.warn("⚠️  Resend no disponible:", err.message);
+          console.warn("⚠️  Servicio de correo no disponible:", err.message);
           console.warn("   El servidor sigue funcionando, solo sin correos.\n");
         }
-      }, 5000); // espera 5 segundos antes de verificar Resend
+      }, 5000); // espera 5 segundos antes de verificar el correo
     });
 
     server.on("error", (error) => {

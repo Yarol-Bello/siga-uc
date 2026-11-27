@@ -207,41 +207,55 @@ const crearMasivo = async (data) => {
     ? `${remitente.nombres} ${remitente.apellidos}`
     : "SIGA-UC";
 
-  let correosEnviados = 0;
-  let correosFallidos = 0;
-  let correosSinDestino = 0;
+  const destinatariosConCorreo = destinatariosUnicos
+    .map((destinatario) => ({
+      ...destinatario,
+      correoDestino:
+        destinatario.correo_personal || destinatario.correo_institucional,
+    }))
+    .filter((destinatario) => Boolean(destinatario.correoDestino));
 
-  for (const destinatario of destinatariosUnicos) {
-    const correoDestino =
-      destinatario.correo_personal || destinatario.correo_institucional;
+  const correosSinDestino =
+    destinatariosUnicos.length - destinatariosConCorreo.length;
 
-    if (!correoDestino) {
-      correosSinDestino += 1;
-      continue;
-    }
+  let resultadoCorreos = {
+    enviados: 0,
+    fallidos: 0,
+    resultados: [],
+    error: null,
+  };
 
+  if (destinatariosConCorreo.length > 0) {
     try {
-      const resultado = await emailService.enviarNotificacion({
-        to: correoDestino,
-        destinatario: `${destinatario.nombres} ${destinatario.apellidos}`,
+      resultadoCorreos = await emailService.enviarNotificacionLote({
+        destinatarios: destinatariosConCorreo.map((destinatario) => ({
+          to: destinatario.correoDestino,
+          destinatario: `${destinatario.nombres} ${destinatario.apellidos}`,
+        })),
         asunto,
         cuerpo,
         remitente: nombreRemitente,
       });
-
-      if (resultado?.success) {
-        correosEnviados += 1;
-      } else {
-        correosFallidos += 1;
-      }
     } catch (emailError) {
-      correosFallidos += 1;
+      resultadoCorreos = {
+        enviados: 0,
+        fallidos: destinatariosConCorreo.length,
+        resultados: [],
+        error: emailError.message,
+      };
       console.error(
-        `⚠️ No se pudo enviar el correo a ${correoDestino}:`,
+        "⚠️ No se pudo enviar el lote de correos de la notificación:",
         emailError.message,
       );
     }
   }
+
+  const correosEnviados = Number(resultadoCorreos.enviados) || 0;
+  const correosFallidos = Number(resultadoCorreos.fallidos) || 0;
+  const correosError =
+    resultadoCorreos.error ||
+    resultadoCorreos.resultados?.find((resultado) => !resultado.ok)?.error ||
+    null;
 
   return {
     total_destinatarios: destinatariosUnicos.length,
@@ -249,6 +263,7 @@ const crearMasivo = async (data) => {
     correos_enviados: correosEnviados,
     correos_fallidos: correosFallidos,
     correos_sin_destino: correosSinDestino,
+    correos_error: correosError,
     tipo: tipoDestinatario,
     rol_nombre: rolNombre,
   };

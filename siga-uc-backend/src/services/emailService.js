@@ -9,6 +9,7 @@
 const { Resend } = require("resend");
 const env = require("../config/env");
 const configuracionService = require("./configuracionService");
+const gmailRelayService = require("./gmailRelayService");
 
 // Inicializar cliente de Resend solo si hay clave.
 // El correo es opcional: la API debe arrancar aunque RESEND_API_KEY no exista.
@@ -24,6 +25,16 @@ const FROM_EMAIL = process.env.EMAIL_FROM || "SIGA-UC <onboarding@resend.dev>";
  */
 const verificarConexion = async () => {
   try {
+    if (gmailRelayService.estaConfigurado()) {
+      console.log(
+        "✅ Servicio de correo (Gmail relay) configurado correctamente",
+      );
+      console.warn(
+        "⚠️ Gmail relay usa la cuenta de Gmail: límite de 100 destinatarios por día en cuentas gratuitas.",
+      );
+      return true;
+    }
+
     if (!process.env.RESEND_API_KEY) {
       throw new Error(
         "RESEND_API_KEY no está configurada en las variables de entorno",
@@ -40,7 +51,7 @@ const verificarConexion = async () => {
     console.log("✅ Servicio de correo (Resend) configurado correctamente");
     return true;
   } catch (error) {
-    console.error("❌ Error al configurar Resend:", error.message);
+    console.error("❌ Error al configurar el servicio de correo:", error.message);
     return false;
   }
 };
@@ -50,6 +61,31 @@ const verificarConexion = async () => {
  * @param {object} params - { to, subject, html, text }
  */
 const enviarCorreo = async ({ to, subject, html, text }) => {
+  if (gmailRelayService.estaConfigurado()) {
+    const resultado = await gmailRelayService.enviarLote([
+      { to, subject, html, text },
+    ]);
+
+    if (resultado.enviados > 0) {
+      console.log(
+        `📧 Correo enviado por Gmail relay (restantes hoy: ${resultado.restantes ?? "?"})`,
+      );
+      return {
+        success: true,
+        proveedor: "gmail",
+        messageId: null,
+        restantes: resultado.restantes,
+      };
+    }
+
+    const error =
+      resultado.error ||
+      resultado.resultados?.find((r) => !r.ok)?.error ||
+      "No se pudo enviar el correo por Gmail";
+    console.error("❌ Error al enviar correo por Gmail relay:", error);
+    return { success: false, proveedor: "gmail", error };
+  }
+
   if (!resend) {
     console.warn("⚠️ RESEND_API_KEY no configurada: correo omitido.");
     return { success: false, error: "RESEND_API_KEY no configurada" };
@@ -162,8 +198,80 @@ const enviarNotificacion = async ({
   return await enviarCorreo({ to, subject: `[SIGA-UC] ${asunto}`, html });
 };
 
+/**
+ * Enviar la misma notificación a varios destinatarios.
+ * Con Gmail relay se envía en un solo lote HTTP (máximo 40 por llamada).
+ * Con Resend se recorre uno por uno como respaldo.
+ */
+const enviarNotificacionLote = async ({
+  destinatarios = [],
+  asunto,
+  cuerpo,
+  remitente,
+}) => {
+  if (!Array.isArray(destinatarios) || destinatarios.length === 0) {
+    return {
+      success: true,
+      proveedor: gmailRelayService.estaConfigurado() ? "gmail" : "resend",
+      enviados: 0,
+      fallidos: 0,
+      resultados: [],
+    };
+  }
+
+  const institucion = await configuracionService.obtenerInstitucionDocumentos();
+  const mensajes = destinatarios.map((destinatario) => ({
+    to: destinatario.to,
+    subject: `[SIGA-UC] ${asunto}`,
+    html: plantillaNotificacion(
+      destinatario.destinatario,
+      asunto,
+      cuerpo,
+      remitente,
+      institucion,
+    ),
+  }));
+
+  if (gmailRelayService.estaConfigurado()) {
+    return await gmailRelayService.enviarLote(mensajes);
+  }
+
+  let enviados = 0;
+  let fallidos = 0;
+  const resultados = [];
+
+  for (const mensaje of mensajes) {
+    const resultado = await enviarCorreo(mensaje);
+    if (resultado.success) {
+      enviados += 1;
+      resultados.push({ to: mensaje.to, ok: true });
+    } else {
+      fallidos += 1;
+      resultados.push({
+        to: mensaje.to,
+        ok: false,
+        error: resultado.error || "No se pudo enviar",
+      });
+    }
+  }
+
+  return {
+    success: fallidos === 0,
+    proveedor: "resend",
+    enviados,
+    fallidos,
+    resultados,
+    error:
+      enviados === 0
+        ? resultados.find((r) => !r.ok)?.error ||
+          "No se pudo enviar ningún correo"
+        : null,
+  };
+};
+
 module.exports = {
   verificarConexion,
   enviarCorreo,
   enviarNotificacion,
+  enviarNotificacionLote,
 };

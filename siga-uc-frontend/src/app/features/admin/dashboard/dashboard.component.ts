@@ -382,17 +382,26 @@ export class DashboardComponent implements OnInit {
         next: (response) => {
           const data = response?.data || {};
           const total = Number(data.total_destinatarios) || 0;
+          const guardadas =
+            Number(data.total_guardadas ?? data.total_enviadas ?? total) || 0;
           const enviados = Number(data.correos_enviados) || 0;
           const fallidos = Number(data.correos_fallidos) || 0;
           const sinDestino = Number(data.correos_sin_destino) || 0;
 
           this.exitoNotificacion.set(
-            `${total} destinatarios, ${enviados} correos enviados, ${fallidos} fallidos.`,
+            `${total} destinatarios: ${guardadas} notificaciones guardadas en la campanita y ${enviados} correos enviados.`,
           );
 
+          const avisos = [];
+          if (fallidos > 0) {
+            avisos.push(`${fallidos} correo(s) no se pudieron enviar`);
+          }
           if (sinDestino > 0) {
+            avisos.push(`${sinDestino} destinatario(s) sin correo registrado`);
+          }
+          if (avisos.length > 0) {
             this.warningNotificacion.set(
-              `${sinDestino} destinatario(s) sin correo registrado. La notificación sí quedó guardada en la campanita.`,
+              `${avisos.join(". ")}. La notificación sí quedó guardada en la campanita.`,
             );
           }
 
