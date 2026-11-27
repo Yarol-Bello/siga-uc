@@ -38,6 +38,8 @@
 | Entender el diseño multi-año y promoción | `19-DISENO-MULTIANIO-Y-PROMOCION.md` |
 | Diseñar el módulo de configuración y ajustes | `20-MODULO-CONFIGURACION.md` |
 | Implementar conclusiones descriptivas y código de control SIAGIE | `21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md` |
+| Repasar módulos y flujo de prueba | `22-MODULOS-Y-FLUJO-DE-PRUEBA.md` |
+| Preparar la defensa ante jurado y responder preguntas | `23-GUION-DEFENSA-JURADO.md` |
 
 ---
 
