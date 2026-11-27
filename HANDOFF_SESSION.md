@@ -1,10 +1,10 @@
 # HANDOFF_SESSION.md — SIGA-UC
 
-> **Fecha:** 23/11/2026
+> **Fecha:** 27/11/2026
 > **Fase:** demostración y aprobación. **No es producción real.**
-> **Código funcional:** `5f3512d` (demo v2 + rendimiento H81 + reset reproducible).
-> **Render:** **verificado** con `5f3512d`; `/api/health` devuelve
-> `zona_horaria: "America/Lima"` y el commit del HEAD.
+> **Código funcional:** `2864531` (caja con historial paginado y búsqueda por DNI).
+> **Render:** **verificado** con `2864531`; `/api/health` devuelve `status: "ok"`,
+> `dbReady: true`, `database: "ok"`, `zona_horaria: "America/Lima"` y el commit del HEAD.
 > **Supabase demo:** se deja con el **seed v1 a propósito**; el borrado total será al
 > cierre final, cuando el usuario lo pida.
 > **Demo local v2:** base `siga_uc_h81` con 432 pagos y notas por perfil.
@@ -27,8 +27,8 @@ SIGA-UC está funcional y desplegado en la demo:
 |---|---|
 | Frontend | https://siga-uc-web.onrender.com |
 | Backend | https://siga-uc-api-prod.onrender.com/api |
-| Render desplegado | `d9b24fe` (verificado el 23/11/2026) |
-| Health | OK, `database: "ok"`, `zona_horaria: "America/Lima"`, `commit` |
+| Render desplegado | `2864531` (verificado el 27/11/2026; commits documentales posteriores) |
+| Health | OK, `status: "ok"`, `dbReady: true`, `database: "ok"`, `zona_horaria: "America/Lima"`, `commit` |
 | Supabase | `siga-uc-prod` (us-west-2), 48 tablas, H74–H80, seed v1 |
 | Año activo | 2026 |
 | 2027 | No activo |
@@ -64,6 +64,17 @@ Los 5 docentes demo antiguos (`99000001`–`99000005`) quedaron **INACTIVOS**.
 ---
 
 ## 2. Bloques recientes
+
+### 2.0 Caja — historial paginado y búsqueda por DNI (27/11/2026)
+
+- `GET /api/tesoreria/pagos` acepta `page`, `pageSize`, `search`, `anio=todos`,
+  `estado`, `id_alumno`, `desde` y `hasta`; `data` sigue siendo un arreglo y agrega
+  `pagination` (`total`, `totalPages`).
+- La caja muestra 10 pagos por página, busca por DNI/nombres/código y permite cambiar
+  entre año activo y todos los años.
+- Cada fila muestra fecha de pago, DNI, comprobante, monto, medio, estado y permite
+  descargar la boleta PDF.
+- Sin migración: H81 ya tiene los índices de pagos.
 
 ### 2.1 H80
 
@@ -119,10 +130,11 @@ documentada en `documentacion/21-CONCLUSIONES-DESCRIPTIVAS-Y-SIAGIE.md`.
   S/ 0.00 mientras la tabla marca “Moroso”.
 - **Responsive:** ADMIN, SECRETARÍA y DOCENTE usan drawer <900 px, overlay y cabeceras
   dinámicas por ruta. La matriz de pensiones muestra los 12 meses a 1280 px.
-- **Rendimiento (H81):** `GET /api/tesoreria/pensiones/padron` trae alumnos + pensiones +
-  estado general en una sola consulta (25 por página). Tesorería pasó de 76 peticiones a
-  1 (~44 ms local). `GET /api/personal?page=` pagina personal y
-  `GET /api/tesoreria/pagos?limit=50` limita la caja. La migración
+- **Rendimiento (H81) y caja:** `GET /api/tesoreria/pensiones/padron` trae alumnos +
+  pensiones + estado general en una sola consulta (25 por página). Tesorería pasó de 76
+  peticiones a 1 (~44 ms local). `GET /api/personal?page=` pagina personal y
+  `GET /api/tesoreria/pagos?page=&pageSize=&search=&anio=` pagina la caja (10 por
+  página) y busca boletas por DNI/nombre. La migración
   `migracion_h81_rendimiento_paginacion.sql` agrega índices idempotentes.
 - **Seed v2 (local `siga_uc_h81`):** 432 pagos de marzo a noviembre, 750 pensiones
   (357 pagadas, 386 pendientes, 7 exoneradas), S/ 95,625 pendientes y notas por perfil
@@ -171,9 +183,10 @@ Estudiantes `72000002`–`72000075`: contraseña `UC<DNI>`.
 | `npm run uat:verify` en `siga_uc_h81` (seed v2) | **22 PASS, 0 FAIL** |
 | `npm run uat:verify` contra Supabase (seed v1) | **22 PASS, 0 FAIL** |
 | Build Angular | OK (warning de budget inicial) |
-| Render producción | `5f3512d`; H81 activo; health OK con `zona_horaria: "America/Lima"` |
-| Frontend producción | drawer y matriz de pensiones verificados a 375 px y 1280 px |
-| Rendimiento H81 | Tesorería: **1 petición**, 25 filas/página, ~44 ms local; Personal paginado; Caja 50 pagos |
+| Render producción | `2864531`; caja paginada; health OK con `status`/`dbReady` |
+| Frontend producción | `main-V4ESQCE6.js`; caja paginada y búsqueda por DNI verificadas |
+| Caja producción | 116 pagos, 10/página; búsqueda DNI `72000059`: 3 pagos; PDF OK |
+| Rendimiento H81 | Tesorería: **1 petición**, 25 filas/página; Personal paginado; Caja 10 pagos/página con búsqueda |
 
 > **No repetir estas suites en la próxima sesión.** Ya están verdes y el deploy está
 > confirmado. Solo se vuelven a ejecutar si se cambia código o si el usuario lo pide.
@@ -229,9 +242,9 @@ Health: `GET http://localhost:3000/api/health`.
    final. No ejecutar normalizaciones ni cambios de datos ahora. Si en el futuro se
    reactiva el refresh, aplicar `database/migracion_h81_rendimiento_paginacion.sql` y
    `ALTER DATABASE postgres SET timezone = 'America/Lima';` si el pooler es transaccional.
-4. ✅ **Render desplegado y verificado** con `5f3512d`: health OK,
-   `zona_horaria: "America/Lima"` y H81 activo (padrón paginado, personal paginado y
-   caja limitada). **No repetir la revisión de módulos ni las suites.**
+4. ✅ **Render desplegado y verificado** con `2864531`: health OK con `status: "ok"` y
+   `dbReady: true`, `zona_horaria: "America/Lima"`; caja paginada con búsqueda por DNI
+   verificada en producción. **No repetir la revisión de módulos ni las suites.**
 5. **SIAGIE oficial** (solo si el colegio lo pide):
    - obtener la plantilla oficial de SIAGIE;
    - mapear áreas/cursos/competencias;
@@ -284,13 +297,15 @@ NO reanalices el repo, NO leas AGENTS.md, HANDOFF_SESSION.md ni documentacion/ c
 Lee solo CONTEXTO_SESION.md (una página) si necesitas el detalle.
 
 ESTADO
-- main = 5f3512d; Render verificado; /api/health: database ok, zona_horaria America/Lima.
+- main = 2864531; Render verificado; /api/health: status ok, dbReady true, database ok,
+  zona_horaria America/Lima.
 - Demo funcional y suites verdes; no las repitas.
 - Supabase se queda con el seed v1 A PROPÓSITO. NO refrescar datos, NO pedir
   DATABASE_URL ni contraseñas, NO ejecutar demo:reset/uat:seed ahora.
 - El borrado total y el inicio desde 0 serán al final, cuando el usuario lo pida.
 - H81 ya está resuelto: /api/tesoreria/pensiones/padron (25/página, una petición),
-  /api/personal?page= y /api/tesoreria/pagos?limit=50. No volver a revisarlo.
+  /api/personal?page= y /api/tesoreria/pagos?page=&pageSize=&search=&anio=
+  (10/página, búsqueda por DNI). No volver a revisarlo.
 
 ARCHIVOS QUE SE ESTÁN USANDO
 - Backend: src/config/database.js, src/dao/tesoreriaDao.js, src/dao/personalDao.js,

@@ -12,9 +12,10 @@ I.E.P. Unión Científica (Huancayo, Perú). **No es producción real.**
 - Frontend: https://siga-uc-web.onrender.com
 - Backend: https://siga-uc-api-prod.onrender.com/api
 - Repo: `https://github.com/Yarol-Bello/siga-uc.git`, rama `main`
-- Código desplegado y verificado: **`5f3512d`** (los commits posteriores son solo
-  documentación). El health siempre muestra el HEAD; no comparar el hash si solo cambió docs.
-- Health: `database: "ok"`, `zona_horaria: "America/Lima"`, `commit` del HEAD.
+- Código desplegado y verificado: **`2864531`** (caja paginada y búsqueda de pagos por
+  DNI). Los commits documentales posteriores pueden cambiar el `commit` del health; no
+  comparar el hash si solo cambió documentación.
+- Health: `status: "ok"`, `dbReady: true`, `database: "ok"`, `zona_horaria: "America/Lima"`.
 
 ## 2. Estado actual (no re-verificar)
 
@@ -27,16 +28,20 @@ I.E.P. Unión Científica (Huancayo, Perú). **No es producción real.**
   iniciará desde 0.
 - **Local:** `siga_uc_h81` tiene el seed v2 validado (75 alumnos, 750 pensiones,
   ~423–432 pagos, 3,300 notas, 3,300 conclusiones). No es la base de Supabase.
-- **Render:** ya desplegó `5f3512d`; no volver a desplegar si no hay cambios de código.
+- **Render:** desplegó `2864531`; el backend y el frontend de caja quedaron verificados.
 
-## 3. Lo último implementado (H81, ya probado)
+## 3. Lo último implementado (caja paginada + H81, ya probado)
 
+- `GET /api/tesoreria/pagos?page=&pageSize=&search=&anio=`: historial paginado; `search`
+  acepta DNI, nombres o código; `anio=todos` incluye años anteriores. `data` sigue siendo
+  un arreglo y `pagination` lleva `total`/`totalPages`.
+- La caja muestra 10 pagos por página, fecha de pago, DNI, comprobante, monto, medio,
+  estado y descarga de boleta PDF.
 - `GET /api/tesoreria/pensiones/padron?anio=&page=&pageSize=&search=&estado=`:
   alumnos + pensiones + estado general en **una sola consulta**. Tesorería carga 25 por
   página y dejó de hacer 75 peticiones.
 - `GET /api/personal?page=&pageSize=`: paginación server-side; sin `page` conserva el
   arreglo histórico.
-- `GET /api/tesoreria/pagos?limit=50`: la caja ya no descarga todo el historial.
 - `database/migracion_h81_rendimiento_paginacion.sql`: índices idempotentes.
 - Responsive ADMIN/SECRETARÍA/DOCENTE y cabeceras dinámicas ya desplegados.
 - Seed v2 y reset reproducible listos, pero **no ejecutados en Supabase**.
