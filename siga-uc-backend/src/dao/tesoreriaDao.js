@@ -173,19 +173,57 @@ const listarPagos = async (filtros = {}) => {
     conditions.push(`a.anio_lectivo = $${idx++}`);
     params.push(filtros.anio_lectivo);
   }
+  if (filtros.estado) {
+    conditions.push(`p.estado = $${idx++}`);
+    params.push(filtros.estado);
+  }
+  if (filtros.dni) {
+    conditions.push(`a.dni = $${idx++}`);
+    params.push(String(filtros.dni).trim());
+  }
+
+  const termino = String(filtros.search || filtros.q || "").trim();
+  if (termino) {
+    const patron = `%${termino}%`;
+    conditions.push(`(
+      a.dni LIKE $${idx}
+      OR LOWER(a.nombres || ' ' || a.apellidos) LIKE LOWER($${idx})
+      OR LOWER(COALESCE(a.codigo_estudiante, '')) LIKE LOWER($${idx})
+    )`);
+    params.push(patron);
+    idx++;
+  }
 
   const where =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-  let limitClause = "";
-  if (filtros.limit !== undefined && filtros.limit !== null) {
-    const limite = Number.parseInt(String(filtros.limit), 10);
-    if (Number.isInteger(limite) && limite > 0) {
-      limitClause = `LIMIT $${idx++}`;
-      params.push(Math.min(limite, 200));
-    }
-  }
+  const pageSizeSolicitado = Number.parseInt(
+    String(filtros.pageSize ?? filtros.limit ?? 25),
+    10,
+  );
+  const limite =
+    Number.isInteger(pageSizeSolicitado) && pageSizeSolicitado > 0
+      ? Math.min(pageSizeSolicitado, 100)
+      : 25;
 
+  const paginaSolicitada = Number.parseInt(String(filtros.page ?? 1), 10);
+  const pagina =
+    Number.isInteger(paginaSolicitada) && paginaSolicitada > 0
+      ? paginaSolicitada
+      : 1;
+  const offset = (pagina - 1) * limite;
+
+  const countSql = `
+    SELECT COUNT(*)::int AS total
+    FROM pagos p
+    INNER JOIN alumnos a ON a.id_alumno = p.id_alumno
+    ${where}
+  `;
+  const countResult = await query(countSql, params);
+  const total = Number(countResult.rows[0]?.total) || 0;
+
+  const limitParam = idx++;
+  const offsetParam = idx++;
   const sql = `
     SELECT 
       p.id_pago,
@@ -211,11 +249,20 @@ const listarPagos = async (filtros = {}) => {
     LEFT JOIN usuarios u ON u.id_usuario = p.id_usuario_cobrador
     LEFT JOIN boletas_electronicas b ON b.id_pago = p.id_pago
     ${where}
-    ORDER BY p.fecha_pago DESC
-    ${limitClause}
+    ORDER BY p.fecha_pago DESC, p.id_pago DESC
+    LIMIT $${limitParam} OFFSET $${offsetParam}
   `;
-  const result = await query(sql, params);
-  return result.rows;
+  const result = await query(sql, [...params, limite, offset]);
+
+  return {
+    pagos: result.rows,
+    paginacion: {
+      page: pagina,
+      pageSize: limite,
+      total,
+      totalPages: total > 0 ? Math.ceil(total / limite) : 0,
+    },
+  };
 };
 
 const findPagoById = async (id) => {

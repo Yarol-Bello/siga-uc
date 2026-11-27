@@ -517,7 +517,7 @@ tiene prioridad. `asistencia_alumnos` no tiene columna `anio_lectivo`: el año s
 | 55 | GET | `/api/tesoreria/pre-tickets?estado=&id_alumno=&anio=` | Autenticado | Lista pre-tickets del año |
 | 56 | GET | `/api/tesoreria/pre-tickets/:id` | Autenticado | Detalle |
 | 57 | POST | `/api/tesoreria/pre-tickets` | ADMIN/SECRETARIA | Crea pre-ticket `PENDIENTE` |
-| 58 | GET | `/api/tesoreria/pagos?id_alumno=&desde=&hasta=&anio=` | Autenticado | Lista pagos + boleta del año |
+| 58 | GET | `/api/tesoreria/pagos?page=&pageSize=&search=&anio=&estado=&id_alumno=&desde=&hasta=` | ADMIN/SECRETARIA | Historial paginado de pagos + boleta; `search` busca DNI/nombre/código y `anio=todos` incluye históricos |
 | 59 | GET | `/api/tesoreria/pagos/:id` | Autenticado | Detalle de pago/boleta |
 | 60 | PUT | `/api/tesoreria/pagos/:id/anular` | ADMIN/SECRETARIA | Anula pago, boleta, pensión/pre-ticket y revierte caja |
 | 61 | POST | `/api/tesoreria/pagos` | ADMIN/SECRETARIA | Pago + boleta + efectos |
@@ -538,8 +538,9 @@ pensiones; el dashboard de Secretaría usa ese total y no solo los pre-tickets.
 **Paginación (H81):** `GET /api/personal?page=&pageSize=` responde
 `{ data, pagination }` solo cuando se envía `page`; sin `page` conserva el arreglo
 histórico. `GET /api/tesoreria/pensiones/padron` responde `{ alumnos, paginacion }` y
-reemplaza las 75 peticiones por alumno. `GET /api/tesoreria/pagos?limit=50` limita el
-historial de caja sin cambiar el formato de la respuesta.
+reemplaza las 75 peticiones por alumno. `GET /api/tesoreria/pagos?page=&pageSize=&search=&anio=`
+devuelve el arreglo en `data` y la metadata en `pagination` (`total`, `totalPages`); acepta
+`anio=todos` para buscar boletas de años anteriores y `limit` por compatibilidad.
 
 **Anulación de pago:** `PUT /api/tesoreria/pagos/:id/anular` con `{ motivo }` (mínimo 10
 caracteres). Solo aplica a pagos `PAGADO`; doble anulación → 409. En una transacción marca el

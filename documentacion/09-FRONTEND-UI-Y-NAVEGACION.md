@@ -344,7 +344,7 @@ y enlaza a libreta (`/admin/reportes?anio=&dni=&grado=&bimestre=4`), asistencia 
 > modal de retiro de Admin → Alumnos avisa que se anularán las pensiones y pre-tickets
 > pendientes de meses posteriores al retiro, manteniendo la pensión del mes de retiro.
 | `SecretariaTesoreriaComponent` | `GET /alumnos?anio=`, `GET /anios-lectivos` (selector 6.4), `GET /tesoreria/pensiones/alumno/:id?anio=` (N+1), `GET /tesoreria/pre-tickets?anio=`, `GET /tesoreria/conceptos?anio=`, `POST /tesoreria/pagos`, `POST /tesoreria/pensiones/alumno/:id/generar`; abre el cobro si recibe `id_preticket`/`id_alumno` (H54); acepta `?anio=&dni=` desde el histórico y en año no activo oculta cobrar/generar |
-| `SecretariaCajaComponent` | `GET /caja/actual`, `GET /caja/movimientos/:id`, `POST /caja/aperturar`, `POST /caja/egresos`, `POST /caja/cerrar`, `GET /tesoreria/boletas/:id/pdf`; boletas descargan PDF de backend y el reporte de cierre se imprime aislado (H58) |
+| `SecretariaCajaComponent` | `GET /caja/actual`, `GET /caja/movimientos/:id`, `POST /caja/aperturar`, `POST /caja/egresos`, `POST /caja/cerrar`, `GET /tesoreria/pagos?page=&pageSize=&search=&anio=`, `GET /tesoreria/boletas/:id/pdf`; historial paginado con búsqueda por DNI/nombre y descarga de boleta PDF; el reporte de cierre se imprime aislado (H58) |
 
 ## 7. Patrones de implementación
 
@@ -454,7 +454,7 @@ del rol original; el backend debe permitir ambos roles.
 2. Centralizar manejo de errores/401 y refresh de sesión.
 3. Reemplazar `alert/confirm` por componentes accesibles.
 4. ~~Implementar pantalla de cambio de contraseña obligatorio.~~ ✅ (H18)
-5. ~~Añadir paginación real (hoy listas completas).~~ ✅ Parcial (H23): alumnos y bitácora; falta personal, pagos y pre-tickets.
+5. ~~Añadir paginación real (hoy listas completas).~~ ✅ Alumnos, bitácora, personal, padrón de pensiones y pagos de caja; faltan pre-tickets.
 6. Evitar N+1 en tesorería (cargar pensiones en un endpoint agregado).
 7. ~~Parametrizar año lectivo y conceptos (hoy hardcodeados).~~ ✅ (H12: `ANIO_LECTIVO` + `GET /api/configuracion`).
 8. ~~Añadir “Cerrar acta” con bloqueo real.~~ ✅ (H48: tarjeta de cierre, reapertura, acta global y bloqueo). Nota final automática desde H04.

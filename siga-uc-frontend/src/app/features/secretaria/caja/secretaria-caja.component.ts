@@ -1,9 +1,10 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 interface Movimiento {
   id_movimiento: number;
@@ -28,6 +29,7 @@ interface Pago {
   fecha_pago: string;
   estado: string;
   alumno_nombre: string;
+  dni: string;
   nombre_grado?: string | null;
   concepto_nombre: string;
   numero_boleta?: string | null;
@@ -59,7 +61,7 @@ interface CajaAbierta {
 @Component({
   selector: 'app-secretaria-caja',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PaginationComponent],
   templateUrl: './secretaria-caja.component.html',
   styleUrl: './secretaria-caja.component.scss',
 })
@@ -77,6 +79,13 @@ export class SecretariaCajaComponent implements OnInit {
   // Historial de pagos y anulación
   pagos = signal<Pago[]>([]);
   cargandoPagos = signal(false);
+  errorPagos = signal<string | null>(null);
+  busquedaPagos = signal('');
+  anioPagos = signal<'actual' | 'todos'>('actual');
+  readonly pageSizePagos = 10;
+  paginaPagos = signal(1);
+  totalRegistrosPagos = signal(0);
+  totalPaginasPagos = signal(1);
   modalAnulacion = signal(false);
   pagoAnular = signal<Pago | Movimiento | null>(null);
   motivoAnulacion = signal('');
@@ -147,23 +156,76 @@ export class SecretariaCajaComponent implements OnInit {
   }
 
   /**
-   * Cargar los últimos pagos para el historial y la anulación.
+   * Cargar el historial de pagos con paginación y búsqueda server-side.
+   * Por defecto muestra el año lectivo activo; "Todos los años" permite
+   * localizar boletas de años anteriores por DNI.
    */
-  cargarPagos(): void {
+  cargarPagos(pagina = this.paginaPagos()): void {
     this.cargandoPagos.set(true);
+    this.errorPagos.set(null);
 
-    this.http.get<any>(`${environment.apiUrl}/tesoreria/pagos?limit=50`).subscribe({
-      next: (res) => {
-        if (res.success) {
-          this.pagos.set(res.data || []);
-        }
-        this.cargandoPagos.set(false);
-      },
-      error: (err) => {
-        console.error('Error pagos:', err);
-        this.cargandoPagos.set(false);
-      },
-    });
+    const paginaSolicitada = Math.max(Number(pagina) || 1, 1);
+    let params = new HttpParams()
+      .set('page', String(paginaSolicitada))
+      .set('pageSize', String(this.pageSizePagos));
+
+    const busqueda = this.busquedaPagos().trim();
+    if (busqueda) {
+      params = params.set('search', busqueda);
+    }
+    if (this.anioPagos() === 'todos') {
+      params = params.set('anio', 'todos');
+    }
+
+    this.http
+      .get<any>(`${environment.apiUrl}/tesoreria/pagos`, { params })
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.pagos.set(res.data || []);
+
+            const paginacion = res.pagination;
+            this.totalRegistrosPagos.set(Number(paginacion?.total) || 0);
+            this.totalPaginasPagos.set(
+              Math.max(Number(paginacion?.totalPages) || 1, 1),
+            );
+            this.paginaPagos.set(
+              Number(paginacion?.page) || paginaSolicitada,
+            );
+          }
+          this.cargandoPagos.set(false);
+        },
+        error: (err) => {
+          console.error('Error pagos:', err);
+          this.errorPagos.set(
+            err.error?.message ||
+              'No se pudo cargar el historial de pagos. Intente nuevamente.',
+          );
+          this.cargandoPagos.set(false);
+        },
+      });
+  }
+
+  buscarPagos(): void {
+    this.paginaPagos.set(1);
+    this.cargarPagos(1);
+  }
+
+  limpiarBusquedaPagos(): void {
+    this.busquedaPagos.set('');
+    this.paginaPagos.set(1);
+    this.cargarPagos(1);
+  }
+
+  cambiarAnioPagos(anio: string): void {
+    this.anioPagos.set(anio === 'todos' ? 'todos' : 'actual');
+    this.paginaPagos.set(1);
+    this.cargarPagos(1);
+  }
+
+  irPaginaPagos(pagina: number): void {
+    if (pagina < 1 || pagina > this.totalPaginasPagos()) return;
+    this.cargarPagos(pagina);
   }
 
   abrirModalAnulacion(pago: Pago | Movimiento): void {
@@ -216,7 +278,7 @@ export class SecretariaCajaComponent implements OnInit {
             this.modalAnulacion.set(false);
             this.pagoAnular.set(null);
             this.cargarCajaAbierta();
-            this.cargarPagos();
+            this.cargarPagos(this.paginaPagos());
           }
         },
         error: (err) => {

@@ -406,7 +406,8 @@ Admin: `74829102 / UC2026*`. Estudiantes: `UC<DNI>`.
 - **Rendimiento (H81):** `GET /api/tesoreria/pensiones/padron?anio=&page=&pageSize=&search=&estado=`
   devuelve alumnos + pensiones + estado general en **una sola consulta** (25 por página por
   defecto). El frontend ya no hace 75 peticiones. `GET /api/personal?page=` pagina el
-  personal y `GET /api/tesoreria/pagos?limit=50` limita la caja. La migración
+  personal y `GET /api/tesoreria/pagos?page=&pageSize=&search=&anio=` pagina el historial
+  de caja y permite buscar boletas por DNI/nombre. La migración
   `migracion_h81_rendimiento_paginacion.sql` agrega índices idempotentes.
 - **Cierre 23/11/2026:** Render quedó verificado con `5f3512d` (health OK,
   `zona_horaria: America/Lima`) y H81 desplegado. El frontend responsive y el padrón

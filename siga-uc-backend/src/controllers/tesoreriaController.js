@@ -65,17 +65,41 @@ const crearPreTicket = async (req, res) => {
 
 const listarPagos = async (req, res) => {
   try {
+    const anioParam = String(req.query.anio || "").trim().toLowerCase();
+    const todosLosAnios = anioParam === "todos" || anioParam === "all";
+    const anioSolicitado = Number.parseInt(anioParam, 10);
+    const anioValido =
+      Number.isInteger(anioSolicitado) &&
+      anioSolicitado >= 2000 &&
+      anioSolicitado <= 2100;
+
     const filtros = {
       id_alumno: req.query.id_alumno ? parseInt(req.query.id_alumno) : null,
       desde: req.query.desde || null,
       hasta: req.query.hasta || null,
-      anio_lectivo: req.query.anio
-        ? parseInt(req.query.anio, 10)
-        : getAnioLectivo(),
-      limit: req.query.limit ? parseInt(req.query.limit, 10) : null,
+      anio_lectivo: todosLosAnios
+        ? null
+        : anioValido
+          ? anioSolicitado
+          : getAnioLectivo(),
+      page: req.query.page ? parseInt(req.query.page, 10) : 1,
+      pageSize: req.query.pageSize
+        ? parseInt(req.query.pageSize, 10)
+        : req.query.limit
+          ? parseInt(req.query.limit, 10)
+          : 25,
+      search: req.query.search || req.query.q || null,
+      estado: req.query.estado || null,
     };
+
     const data = await tesoreriaService.listarPagos(filtros);
-    return response.success(res, 200, `${data.length} pagos encontrados`, data);
+    return response.success(
+      res,
+      200,
+      `${data.paginacion.total} pagos encontrados`,
+      data.pagos,
+      data.paginacion,
+    );
   } catch (error) {
     return response.error(res, error.statusCode || 500, error.message);
   }

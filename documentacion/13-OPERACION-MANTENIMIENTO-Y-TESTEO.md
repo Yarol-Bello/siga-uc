@@ -305,8 +305,9 @@ Supabase: usan las tablas H49/H73 ya aplicadas.
   **25 alumnos por página** y ya no hace una petición por alumno.
 - **Personal:** `GET /api/personal?page=&pageSize=` devuelve `{ data, pagination }`.
   Sin `page` conserva el arreglo para los consumidores existentes.
-- **Caja:** `GET /api/tesoreria/pagos?limit=50` limita el historial; la respuesta sigue
-  siendo un arreglo.
+- **Caja:** `GET /api/tesoreria/pagos?page=&pageSize=&search=&anio=` pagina el historial;
+  `data` sigue siendo un arreglo y la metadata va en `pagination`. `search` acepta DNI,
+  nombres o código; `anio=todos` incluye años anteriores.
 - Si una pantalla vuelve a cargar lento, revisar primero si está pidiendo el listado
   completo sin `page`/`limit` o si hace N+1 por alumno.
 
